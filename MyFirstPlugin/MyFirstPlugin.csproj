@@ -24,33 +24,69 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Spine" Version="3.3.0" />
+    <PackageReference Include="UnityEngine" Version="1.0.0" />
     <PackageReference Include="UnityEngine.Modules" Version="6000.1.7" IncludeAssets="compile" />
   </ItemGroup>
-  
+
   <ItemGroup Condition="'$(TargetFramework.TrimEnd(`0123456789`))' == 'net'">
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all" />
-    
+
   </ItemGroup>
   <ItemGroup>
     <Reference Include="LBoL.Base">
       <HintPath>MyFirstPlugin\lib\LBoL.Base.dll</HintPath>
     </Reference>
+    <Reference Include="LBoL.Core">
+      <HintPath>MyFirstPlugin\lib\LBoL.Core.dll</HintPath>
+    </Reference>
+
+    <Reference Include="LBoL.ConfigData">
+      <HintPath>MyFirstPlugin\lib\LBoL.ConfigData.dll</HintPath>
+    </Reference>
+
+    <Reference Include="LBoL.EntityLib">
+      <HintPath>MyFirstPlugin\lib\LBoL.EntityLib.dll</HintPath>
+    </Reference>
+
+    <Reference Include="LBoL.Presentation">
+      <HintPath>MyFirstPlugin\lib\LBoL.Presentation.dll</HintPath>
+    </Reference>
+    <Reference Include="Spine.Unity">
+      <HintPath>MyFirstPlugin\lib\spine-unity.dll</HintPath>
+    </Reference>
+    <Reference Include="spine-csharp">
+      <HintPath>MyFirstPlugin\lib\spine-csharp.dll</HintPath>
+    </Reference>
     <Reference Include="UnityEngine.CoreModule">
-        <HintPath>MyFirstPlugin\lib\CoreModule.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.AnimationModule">
-        <HintPath>MyFirstPlugin\lib\AnimationModule.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.Playables">
-        <HintPath>MyFirstPlugin\lib\Playables.dll</HintPath>
+      <HintPath>MyFirstPlugin\lib\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UI">
-        <HintPath>MyFirstPlugin\lib\UI.dll</HintPath>
+      <HintPath>MyFirstPlugin\lib\UnityEngine.UI.dll</HintPath>
     </Reference>
-    <Reference Include="LBoL.Base">
-        <HintPath>MyFirstPlugin\lib\MyFirstPlugin\lib\LBoL.Base.dll</HintPath>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>MyFirstPlugin\lib\UnityEngine.UIModule.dll</HintPath>
     </Reference>
-  </ItemGroup>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>MyFirstPlugin\lib\UnityEngine.PhysicsModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.Physics2DModule">
+      <HintPath>MyFirstPlugin\lib\UnityEngine.Physics2DModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AnimationModule">
+      <HintPath>MyFirstPlugin\lib\UnityEngine.AnimationModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.ImageConversionModule">
+      <HintPath>lib\UnityEngine.ImageConversionModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>lib\UnityEngine.IMGUIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>lib\UnityEngine.TextRenderingModule.dll</HintPath>
+    </Reference>
+    
+ </ItemGroup>
   <ItemGroup>
     <Folder Include="Patch\" />
   </ItemGroup>
