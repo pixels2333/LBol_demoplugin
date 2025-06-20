@@ -8,6 +8,7 @@ namespace MyFirstPlugin.Patch
     using Spine; // 确保导入 Spine 的命名空间 (如果需要 Spine.AnimationState 等)
     using MyFirstPlugin.Loader;
     using System.IO;
+    using Spine.Unity;
 
     [HarmonyPatch]
     public class Viewer_Loadspine_Patch

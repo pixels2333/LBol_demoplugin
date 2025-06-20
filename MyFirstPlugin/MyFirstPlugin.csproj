@@ -24,18 +24,16 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Spine" Version="3.3.0" />
     <PackageReference Include="UnityEngine" Version="5.6.1" />
     <PackageReference Include="UnityEngine.Modules" Version="6000.1.8" IncludeAssets="compile" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework.TrimEnd(`0123456789`))' == 'net'">
-    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2"
-      PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all" />
 
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="LBoL.Base">
+    <!-- <Reference Include="LBoL.Base">
       <HintPath>MyFirstPlugin\lib\LBoL.Base.dll</HintPath>
     </Reference>
     <Reference Include="LBoL.Core">
@@ -85,11 +83,9 @@
     </Reference>
     <Reference Include="UnityEngine.TextRenderingModule">
       <HintPath>lib\UnityEngine.TextRenderingModule.dll</HintPath>
-    </Reference>
-    <Reference Include="*">
-      <HintPath>MyFirstPlugin\lib\*.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
+    </Reference> -->
+    <Reference Include="..\lib\*.dll" />
+
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Patch\" />
