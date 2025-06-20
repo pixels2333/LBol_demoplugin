@@ -1,9 +1,11 @@
 namespace MyFirstPlugin.Loader;
 
 using System.IO;
+using HarmonyLib;
 using UnityEngine;
 
-public class SpineLoader : MonoBehaviour
+[HarmonyPatch]
+public static class SpineLoader : MonoBehaviour
 {
     // 从指定路径加载Spine动画
     public void LoadSpineAnimation(SkeletonAnimation animator, string jsonPath, string atlasPath)

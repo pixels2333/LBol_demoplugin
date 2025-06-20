@@ -25,8 +25,8 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Spine" Version="3.3.0" />
-    <PackageReference Include="UnityEngine" Version="1.0.0" />
-    <PackageReference Include="UnityEngine.Modules" Version="6000.1.7" IncludeAssets="compile" />
+    <PackageReference Include="UnityEngine" Version="5.6.1" />
+    <PackageReference Include="UnityEngine.Modules" Version="6000.1.8" IncludeAssets="compile" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework.TrimEnd(`0123456789`))' == 'net'">
@@ -87,7 +87,4 @@
     </Reference>
     
  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Patch\" />
-  </ItemGroup>
 </Project>
