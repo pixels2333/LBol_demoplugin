@@ -2,10 +2,11 @@ namespace MyFirstPlugin.Loader;
 
 using System.IO;
 using HarmonyLib;
+using Spine.Unity;
 using UnityEngine;
 
 [HarmonyPatch]
-public static class SpineLoader : MonoBehaviour
+public  class SpineLoader : MonoBehaviour
 {
     // 从指定路径加载Spine动画
     public void LoadSpineAnimation(SkeletonAnimation animator, string jsonPath, string atlasPath)
@@ -24,11 +25,13 @@ public static class SpineLoader : MonoBehaviour
         }
 
         // 加载Atlas资源
-        var atlasAsset = SpineAtlasAsset.CreateRuntimeInstance(atlasPath,
-            new[] { new Material(Shader.Find("Spine/Skeleton")) }, true);
+        TextAsset atlasTextAsset = new(File.ReadAllText(atlasPath));
+        var atlasAsset = SpineAtlasAsset.CreateRuntimeInstance(atlasTextAsset,
+            [new Material(Shader.Find("Spine/Skeleton"))], true);
 
         // 加载JSON骨骼数据
-        var skeletonDataAsset = SkeletonDataAsset.CreateRuntimeInstance(jsonPath, atlasAsset, true);
+        TextAsset jsonTextAsset = new(File.ReadAllText(jsonPath));
+        var skeletonDataAsset = SkeletonDataAsset.CreateRuntimeInstance(jsonTextAsset, atlasAsset, true);
 
         // 应用到动画组件
         animator.skeletonDataAsset = skeletonDataAsset;

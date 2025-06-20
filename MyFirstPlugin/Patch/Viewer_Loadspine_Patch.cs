@@ -28,7 +28,7 @@ namespace MyFirstPlugin.Patch
             // 检查 __instance 是否为空，然后检查是否是特定的单位类型
             // 使用 'is' 模式匹配可以同时检查 null 和类型/属性
             var modelName = Traverse.Create(__instance).Field("_modelname").GetValue<string>();
-            if (modelName != "koishi" || __instance is not { Unit.UnitType: "SpineViewer" })
+            if (modelName != "koishi" || __instance is not {})
             {
                 // 如果不是目标单位类型，直接返回，不执行后续逻辑
                 return;
@@ -44,7 +44,7 @@ namespace MyFirstPlugin.Patch
             {
                 // 对于 SpineViewer 类型但没有 SkeletonAnimation 的情况，可能需要警告
                 // 这可能意味着 SpineLoaded 为 false，或者 UnitView 的设置有问题
-                Debug.LogWarning($"UnitView '{__instance.name}' of type '{unit.UnitType}' is marked as SpineViewer but has no SkeletonAnimation component.");
+                Debug.LogWarning($"UnitView '{__instance.name}'  is marked as SpineViewer but has no SkeletonAnimation component.");
                 return;
             }
 
@@ -62,7 +62,8 @@ namespace MyFirstPlugin.Patch
             // 我们假设它能够正确加载动画和图集，并将 SkeletonDataAsset 和 AtlasAsset
             // 分配给 skeletonAnimation 组件，并且可能调用 skeletonAnimation.Initialize(true);
             // 您可能需要根据实际的 SpineLoader 类调整这里的调用或后续步骤。
-            SpineLoader.LoadSpineAnimation(skeletonAnimation,
+            SpineLoader spineLoader = new(); // 创建 SpineLoader 实例
+            spineLoader.LoadSpineAnimation(skeletonAnimation,
                                            Path.Combine(Application.streamingAssetsPath, "spine/character.json"),
                                            Path.Combine(Application.streamingAssetsPath, "spine/character.atlas"));
 
