@@ -1,26 +1,34 @@
 namespace MyFirstPlugin.Loader;
 
 using System.IO;
+using BepInEx.Logging;
 using HarmonyLib;
+using HarmonyLib.Tools;
 using Spine.Unity;
 using UnityEngine;
 
-[HarmonyPatch]
-public  class SpineLoader : MonoBehaviour
+
+public class SpineLoader
 {
     // 从指定路径加载Spine动画
-    public void LoadSpineAnimation(SkeletonAnimation animator, string jsonPath, string atlasPath)
+
+    internal static new ManualLogSource Logger;
+    public static void LoadSpineAnimation(SkeletonAnimation animator, string jsonPath, string atlasPath)
     {
+        Logger.LogInfo($"加载Spine动画: JSON路径: {jsonPath}, Atlas路径: {atlasPath}");
         if (animator == null)
         {
-            Debug.LogError("动画组件为空");
+            Logger.LogError("动画组件为空");
             return;
         }
+        //清除动画文件
+        animator.skeletonDataAsset = null;
+        animator.Initialize(false);// 初始化时不加载骨骼数据
 
         // 检查文件是否存在
         if (!File.Exists(jsonPath) || !File.Exists(atlasPath))
         {
-            Debug.LogError($"文件不存在: JSON: {jsonPath} 或 Atlas: {atlasPath}");
+            Logger.LogError($"文件不存在: JSON: {jsonPath} 或 Atlas: {atlasPath}");
             return;
         }
 
@@ -46,7 +54,7 @@ public  class SpineLoader : MonoBehaviour
 
         if (skeletonDataAsset == null)
         {
-            Debug.LogError($"无法加载Spine数据: {jsonResourcePath}");
+            Logger.LogError($"无法加载Spine数据: {jsonResourcePath}");
             return;
         }
 

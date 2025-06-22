@@ -1,10 +1,13 @@
 using System;
+using HarmonyLib;
 
 namespace MyFirstPlugin;
 
 public class PluginInfo
 {
-    public const string PLUGIN_GUID = "MyFirstPlugin";
-    public const string PLUGIN_NAME = "My first plugin";
-    public const string PLUGIN_VERSION = "1.0.0";
+    public const string PLUGIN_GUID = "SkinPlugin";
+    public const string PLUGIN_NAME = "koishi skin plugin";
+    public const string PLUGIN_VERSION = "1.0.1";
+
+    public static readonly Harmony harmony = new("pixels.lbol.mods.skinmod");
 }
