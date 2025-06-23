@@ -6,6 +6,7 @@ using UnityEngine.Events;
 namespace MyFirstPlugin;
 
 [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
+[BepInProcess("LBoL.exe")]
 public class Plugin : BaseUnityPlugin
 {
     internal static new ManualLogSource Logger;
@@ -20,7 +21,7 @@ public class Plugin : BaseUnityPlugin
         Logger = base.Logger;
         Loader.SpineLoader.Logger = Logger; // 初始化 SpineLoader 的 Logger
         Patch.Viewer_Loadspine_Patch.Logger = Logger; // 初始化 Patch 的 Logger
-
+        DontDestroyOnLoad(gameObject);
         Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
         Plugin.harmony.PatchAll();
         Logger.LogInfo("补丁已加载");
@@ -28,10 +29,7 @@ public class Plugin : BaseUnityPlugin
     private void OnDestroy()
     {
         Harmony harmony = Plugin.harmony;
-        if (harmony != null)
-        {
-            harmony.UnpatchSelf();
-        }
+        // harmony?.UnpatchSelf();
         Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is unloaded!");
     }
 

@@ -12,7 +12,7 @@ public class SpineLoader
 {
     // 从指定路径加载Spine动画
 
-    internal static new ManualLogSource Logger;
+    internal static  ManualLogSource Logger;
     public static void LoadSpineAnimation(SkeletonAnimation animator, string jsonPath, string atlasPath)
     {
         Logger.LogInfo($"加载Spine动画: JSON路径: {jsonPath}, Atlas路径: {atlasPath}");

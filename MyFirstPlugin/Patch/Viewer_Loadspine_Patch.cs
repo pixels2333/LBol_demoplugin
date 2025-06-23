@@ -13,7 +13,7 @@ namespace MyFirstPlugin.Patch
     public class Viewer_Loadspine_Patch
     {
 
-        public static SpineLoader spineLoader;
+        // public static SpineLoader spineLoader;
         internal static ManualLogSource Logger ;
         
         // 假设 SpineLoader 类在某个命名空间下，如果不在，请根据实际情况添加 using 或移除
