@@ -37,7 +37,7 @@ namespace MyFirstPlugin.Patch
                     return;
                 }
 
-                var modelName = Traverse.Create(__instance).Field("_modelname").GetValue<string>();
+                var modelName = Traverse.Create(__instance).Field("_modelName").GetValue<string>();
                 if (modelName != "Koishi")
                 {
                     // 如果不是目标单位类型，直接返回，不执行后续逻辑
@@ -49,7 +49,8 @@ namespace MyFirstPlugin.Patch
                 // 获取 SkeletonAnimation 组件
                 // 原方法中的 SpineLoaded 可能意味着这个组件是否存在或已被初始化
                 // 依赖 GetComponent 是获取它的标准方式
-                var skeletonAnimation = __instance.GetComponent<SkeletonAnimation>();
+                // var skeletonAnimation = __instance.GetComponent<SkeletonAnimation>();
+                var skeletonAnimation = Traverse.Create(__instance).Field("spineSkeleton").GetValue<SkeletonAnimation>();
                 if (skeletonAnimation == null)
                 {
                     // 对于 SpineViewer 类型但没有 SkeletonAnimation 的情况，可能需要警告
@@ -57,14 +58,6 @@ namespace MyFirstPlugin.Patch
                     Debug.LogWarning($"UnitView '{__instance.name}'  is marked as SpineViewer but has no SkeletonAnimation component.");
                     return;
                 }
-
-                // --- 动画加载和设置逻辑 ---
-                // 注意：在每次调用 SetAnimation 时都创建新的 SpineLoader 并加载资源是非常低效的。
-                // 理想情况下，Spine 数据应该在 UnitView 初始化时或 SpineLoaded 变为 true 时加载一次。
-                // 为了遵循您原有的结构，这里保留了加载调用，但请注意性能问题。
-                // 更好的做法是：
-                // 1. 在 UnitView 初始化时加载资源。
-                // 2. 在 Postfix 中只负责设置动画。
 
 
                 // 调用加载方法。

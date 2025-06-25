@@ -1,4 +1,5 @@
-﻿using BepInEx;
+﻿using System;
+using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine.Events;
@@ -18,19 +19,32 @@ public class Plugin : BaseUnityPlugin
     private void Awake()
     {
         // Plugin startup logic
-        Logger = base.Logger;
-        Loader.SpineLoader.Logger = Logger; // 初始化 SpineLoader 的 Logger
-        Patch.Viewer_Loadspine_Patch.Logger = Logger; // 初始化 Patch 的 Logger
-        DontDestroyOnLoad(gameObject);
-        Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
-        Plugin.harmony.PatchAll();
-        Logger.LogInfo("补丁已加载");
+        try
+        {
+            Logger = base.Logger;
+            Loader.SpineLoader.Logger = Logger; // 初始化 SpineLoader 的 Logger
+            Patch.Viewer_Loadspine_Patch.Logger = Logger; // 初始化 Patch 的 Logger
+            if (gameObject == null)
+            {
+                Logger.LogError("GameObject is null, cannot call DontDestroyOnLoad.");
+                return;
+            }
+            DontDestroyOnLoad(gameObject);
+            Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
+            Plugin.harmony.PatchAll();
+            Logger.LogInfo("补丁已加载");
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError($"Error during plugin initialization: {ex}");
+        }
     }
     private void OnDestroy()
     {
-        Harmony harmony = Plugin.harmony;
+        Logger = base.Logger;
         // harmony?.UnpatchSelf();
-        Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is unloaded!");
+        Logger?.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is unloaded!");
+
     }
 
 }
