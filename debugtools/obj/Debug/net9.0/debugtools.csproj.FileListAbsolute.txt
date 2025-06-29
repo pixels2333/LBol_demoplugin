@@ -1,0 +1,15 @@
+F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\debugtools\bin\Debug\net9.0\debugtools.exe
+F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\debugtools\bin\Debug\net9.0\debugtools.deps.json
+F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\debugtools\bin\Debug\net9.0\debugtools.runtimeconfig.json
+F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\debugtools\bin\Debug\net9.0\debugtools.dll
+F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\debugtools\bin\Debug\net9.0\debugtools.pdb
+F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\debugtools\obj\Debug\net9.0\debugtools.GeneratedMSBuildEditorConfig.editorconfig
+F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\debugtools\obj\Debug\net9.0\debugtools.AssemblyInfoInputs.cache
+F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\debugtools\obj\Debug\net9.0\debugtools.AssemblyInfo.cs
+F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\debugtools\obj\Debug\net9.0\debugtools.csproj.CoreCompileInputs.cache
+F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\debugtools\obj\Debug\net9.0\debugtools.sourcelink.json
+F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\debugtools\obj\Debug\net9.0\debugtools.dll
+F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\debugtools\obj\Debug\net9.0\refint\debugtools.dll
+F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\debugtools\obj\Debug\net9.0\debugtools.pdb
+F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\debugtools\obj\Debug\net9.0\debugtools.genruntimeconfig.cache
+F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\debugtools\obj\Debug\net9.0\ref\debugtools.dll

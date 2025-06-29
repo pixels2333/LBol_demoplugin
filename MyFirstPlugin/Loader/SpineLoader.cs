@@ -46,12 +46,27 @@ public class SpineLoader
                 return;
             }
         }
+        else
+        {
+            Logger.LogInfo("成功找到Spine/Skeleton着色器");
+        }
         // 加载Atlas资源
         TextAsset atlasTextAsset = new(File.ReadAllText(atlasPath));
         // 解析Atlas文本来查找引用的图片文件
         string atlasText = atlasTextAsset.text;
         string[] atlasLines = atlasText.Split('\n');
+        Logger.LogInfo($"Atlas文件行数: {atlasLines.Length}\n");
+        //输出atlasLines前五个元素
+        // for (int i = 0; i < Math.Min(5, atlasLines.Length); i++)
+        // {
+        //     Logger.LogInfo($"Atlas行 {i}: {atlasLines[i]}");
+        // }
+        // bool haslines = string.IsNullOrWhiteSpace(atlasLines[0]) && !atlasLines[0].StartsWith(" ") && atlasLines[0].EndsWith(".png", StringComparison.OrdinalIgnoreCase);
+        // if (!haslines)
+        // {
+        //     Logger.LogError("Atlas文件格式不正确，无法解析纹理页");
 
+        // }
         // 创建材质列表
         List<Material> materials = [];
 
@@ -61,9 +76,12 @@ public class SpineLoader
         foreach (string line in atlasLines)
         {
             // Atlas格式中的纹理页通常是独立一行的文件名
-            if (!string.IsNullOrWhiteSpace(line) && !line.StartsWith(" ") && line.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+            // if (!string.IsNullOrWhiteSpace(line)  && line.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+            if (atlasLines[0] == "reimu.png")
             {
+                Logger.LogInfo($"处理Atlas行: {line}");
                 currentPageName = line.Trim();
+                Logger.LogInfo($"当前纹理页名称: {currentPageName}");
                 string texturePath = Path.Combine(atlasDir, currentPageName);
                 Logger.LogInfo($"尝试加载纹理: {texturePath}");
 
@@ -93,6 +111,10 @@ public class SpineLoader
                     Logger.LogError($"纹理文件不存在: {texturePath}");
                 }
             }
+            // else
+            // {
+
+            // }
         }
 
         // 如果没有找到任何材质，添加一个默认材质

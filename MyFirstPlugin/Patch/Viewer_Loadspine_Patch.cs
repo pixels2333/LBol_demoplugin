@@ -14,8 +14,8 @@ namespace MyFirstPlugin.Patch
     {
 
         // public static SpineLoader spineLoader;
-        internal static ManualLogSource Logger ;
-        
+        internal static ManualLogSource Logger;
+
         // 假设 SpineLoader 类在某个命名空间下，如果不在，请根据实际情况添加 using 或移除
 
         // 假设 UnitView 和 Unit 类是可访问的
@@ -67,8 +67,8 @@ namespace MyFirstPlugin.Patch
                 // 您可能需要根据实际的 SpineLoader 类调整这里的调用或后续步骤。
 
                 SpineLoader.LoadSpineAnimation(skeletonAnimation,
-                                        Path.Combine(Application.streamingAssetsPath, "MyFirstPlugin/Resource/baize/baize.json"),
-                                        Path.Combine(Application.streamingAssetsPath, "MyFirstPlugin/Resource/baize/baize.atlas"));
+                                         @"F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\MyFirstPlugin\Resource\reimu\reimu.json",
+                                         @"F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\MyFirstPlugin\Resource\reimu\reimu.atlas");
 
 
                 // --- 设置加载后的特定动画来播放 ---
