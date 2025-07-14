@@ -15,7 +15,7 @@ public class SpineLoader
     // 从指定路径加载Spine动画
 
     internal static ManualLogSource Logger;
-    public static void LoadSpineAnimation(SkeletonAnimation animator, string jsonPath, string atlasPath)
+    public static void LoadSpineAnimation(SkeletonAnimation animator, string jsonPath, string atlasPath, string imagefilename)
     {
         Logger.LogInfo($"加载Spine动画: JSON路径: {jsonPath}, Atlas路径: {atlasPath}");
         if (animator == null)
@@ -37,12 +37,12 @@ public class SpineLoader
         var shader = Shader.Find("Spine/Skeleton");
         if (shader == null)
         {
-            Logger.LogError("找不到Spine/Skeleton着色器，尝试使用默认着色器");
+            Logger.LogError("找不到Spine/Skeleton着色器,尝试使用默认着色器");
             shader = Shader.Find("Sprites/Default");
 
             if (shader == null)
             {
-                Logger.LogError("无法找到可用着色器，无法加载Spine动画");
+                Logger.LogError("无法找到可用着色器,无法加载Spine动画");
                 return;
             }
         }
@@ -72,58 +72,56 @@ public class SpineLoader
 
         // 尝试找到并加载Atlas引用的所有纹理
         string currentPageName = null;
+        // TODO: 将参数更改为imagepath，并使用path提取文件名
         string atlasDir = Path.GetDirectoryName(atlasPath);
-        foreach (string line in atlasLines)
+
+
+        currentPageName = string.IsNullOrEmpty(imagefilename)
+            ? null
+            : (imagefilename.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+                ? imagefilename
+                : null
+                );
+        
+        Logger.LogInfo($"当前图片纹理名称: {currentPageName}\n");
+        string texturePath = Path.Combine(atlasDir, currentPageName);
+        Logger.LogInfo($"尝试加载纹理图片: {texturePath}\n");
+
+        try
         {
-            Logger.LogInfo($"处理Atlas行: {line}");
-            // Atlas格式中的纹理页通常是独立一行的文件名
-            // if (!string.IsNullOrWhiteSpace(line)  && line.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
-            if (string.Equals(line, atlasLines[0], StringComparison.OrdinalIgnoreCase))
+            if (File.Exists(texturePath))
             {
-
-                currentPageName = line.Trim();
-                Logger.LogInfo($"当前纹理页名称: {currentPageName}\n");
-                string texturePath = Path.Combine(atlasDir, currentPageName);
-                Logger.LogInfo($"尝试加载纹理: {texturePath}\n");
-
-                try
+                // 加载纹理
+                byte[] textureData = File.ReadAllBytes(texturePath);
+                Texture2D texture = new(2, 2); // 尺寸会在加载时重置
+                if (texture.LoadImage(textureData))
                 {
-                    if (File.Exists(texturePath))
+                    texture.name = Path.GetFileNameWithoutExtension(currentPageName);
+                    Material mat = new(shader)
                     {
-                        // 加载纹理
-                        byte[] textureData = File.ReadAllBytes(texturePath);
-                        Texture2D texture = new(2, 2); // 尺寸会在加载时重置
-                        if (texture.LoadImage(textureData))
-                        {
-                            texture.name = Path.GetFileNameWithoutExtension(currentPageName);
-                            Material mat = new(shader)
-                            {
-                                name = currentPageName + " Material",
-                                mainTexture = texture
-                            };
-                            materials.Add(mat);
-                            Logger.LogInfo($"成功加载纹理: {currentPageName}\n");
-                        }
-                        else
-                        {
-                            Logger.LogError($"无法加载纹理: {texturePath}\n");
-                        }
-                    }
-                    else
-                    {
-                        Logger.LogError($"纹理文件不存在: {texturePath}\n");
-                    }
+                        name = currentPageName + " Material",
+                        mainTexture = texture
+                    };
+                    materials.Add(mat);
+                    Logger.LogInfo($"成功加载纹理: {currentPageName}\n");
                 }
-                catch (Exception ex)
+                else
                 {
-                    Logger.LogError($"加载纹理时发生异常: {texturePath}, 错误: {ex.Message}\n{ex.StackTrace}");
+                    Logger.LogError($"无法加载纹理: {texturePath}\n");
                 }
             }
             else
             {
-                Logger.LogInfo($"跳过Atlas行: {line}");
+                Logger.LogError($"纹理文件不存在: {texturePath}\n");
             }
         }
+        catch (Exception ex)
+        {
+            Logger.LogError($"加载纹理时发生异常: {texturePath}, 错误: {ex.Message}\n{ex.StackTrace}");
+        }
+
+
+
 
         // 如果没有找到任何材质，添加一个默认材质
         if (materials.Count == 0)

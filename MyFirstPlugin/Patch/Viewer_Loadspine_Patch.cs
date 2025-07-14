@@ -55,7 +55,7 @@ namespace MyFirstPlugin.Patch
                 {
                     // 对于 SpineViewer 类型但没有 SkeletonAnimation 的情况，可能需要警告
                     // 这可能意味着 SpineLoaded 为 false，或者 UnitView 的设置有问题
-                    Debug.LogWarning($"UnitView '{__instance.name}'  is marked as SpineViewer but has no SkeletonAnimation component.");
+                    Logger.LogWarning($"UnitView '{__instance.name}'  is marked as SpineViewer but has no SkeletonAnimation component.");
                     return;
                 }
 
@@ -68,12 +68,8 @@ namespace MyFirstPlugin.Patch
 
                 SpineLoader.LoadSpineAnimation(skeletonAnimation,
                                          @"F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\MyFirstPlugin\Resource\marisa\marisa.json",
-                                         @"F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\MyFirstPlugin\Resource\marisa\marisa.atlas");
-
-
-                // --- 设置加载后的特定动画来播放 ---
-                // 加载资源只是准备数据，还需要告诉 Spine 运行时播放哪个动画片段。
-                // 假设您想播放加载数据中的一个名为 "idle" 的动画片段（或者您想要的任何片段）
+                                         @"F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\MyFirstPlugin\Resource\marisa\marisa.atlas",
+                                         "huiyin.png");
                 const string targetAnimationName = "idle"; // <--- 替换为您希望播放的 Spine 动画片段的实际名称
                 const int trackIndex = 0; // 通常使用轨道 0 来播放主动画
                 const bool loopAnimation = true; // <--- 设置为 true 如果希望动画循环，false 如果是单次播放
