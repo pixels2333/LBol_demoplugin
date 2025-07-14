@@ -1,0 +1,123 @@
+marisa.png
+	size: 2048, 2048
+	filter: Linear, Linear
+BeamWhite01
+	bounds: 2, 1046, 1000, 1000
+Bowknot
+	bounds: 935, 625, 223, 161
+Magicbottle_01
+	bounds: 1701, 972, 256, 256
+Magicbottle_03
+	bounds: 935, 788, 256, 256
+Trail01
+	bounds: 1004, 1690, 1000, 356
+Trail22
+	bounds: 2, 102, 512, 512
+apron
+	bounds: 1784, 1230, 291, 163
+	rotate: 90
+arm1_L
+	bounds: 1695, 763, 106, 188
+	rotate: 90
+arm1_R
+	bounds: 127, 7, 93, 203
+	rotate: 90
+arm2_L
+	bounds: 1189, 368, 127, 111
+arm2_R
+	bounds: 332, 8, 92, 163
+	rotate: 90
+bang_1
+	bounds: 1959, 1090, 61, 138
+bang_2
+	bounds: 1180, 164, 96, 129
+	rotate: 90
+bang_3
+	bounds: 1189, 481, 146, 116
+	rotate: 90
+bang_4
+	bounds: 1701, 871, 99, 225
+	rotate: 90
+bang_5
+	bounds: 1573, 756, 120, 193
+body
+	bounds: 958, 175, 220, 210
+broom
+	bounds: 2, 616, 931, 428
+calf1_L
+	bounds: 516, 2, 164, 117
+calf1_R
+	bounds: 1332, 817, 239, 132
+calf2_L
+	bounds: 1424, 1254, 267, 358
+	rotate: 90
+calf2_R
+	bounds: 766, 195, 190, 419
+card_1
+	bounds: 1169, 2, 54, 131
+	rotate: 90
+card_2
+	bounds: 1959, 957, 54, 131
+card_3
+	bounds: 2006, 1932, 114, 34
+	rotate: 90
+graze
+	bounds: 1942, 1561, 127, 104
+	rotate: 90
+guard
+	bounds: 1949, 1436, 123, 91
+	rotate: 90
+hair_1
+	bounds: 957, 27, 146, 210
+	rotate: 90
+hair_2
+	bounds: 766, 23, 170, 189
+	rotate: 90
+hair_3
+	bounds: 1193, 826, 137, 247
+hair_4
+	bounds: 1377, 951, 301, 322
+	rotate: 90
+hand_L
+	bounds: 1273, 743, 81, 57
+	rotate: 90
+hand_R
+	bounds: 682, 26, 93, 76
+	rotate: 90
+hand_R_back
+	bounds: 1332, 756, 63, 59
+hand_back
+	bounds: 1332, 1055, 43, 18
+hand_front
+	bounds: 1949, 1230, 88, 56
+	rotate: 90
+hand_front_R
+	bounds: 1949, 1230, 88, 56
+	rotate: 90
+hat_back
+	bounds: 1424, 1523, 516, 165
+hat_f
+	bounds: 516, 121, 493, 248
+	rotate: 90
+head
+	bounds: 958, 387, 236, 229
+	rotate: 90
+hit
+	bounds: 1949, 1320, 114, 92
+	rotate: 90
+idle
+	bounds: 2, 2, 123, 98
+scarf
+	bounds: 1160, 629, 157, 111
+	rotate: 90
+shoot
+	bounds: 1180, 262, 123, 104
+skirt_back
+	bounds: 1004, 1075, 371, 281
+skirt_front
+	bounds: 1004, 1358, 418, 330
+心虚五官
+	bounds: 1169, 58, 122, 104
+流汗
+	bounds: 1885, 777, 92, 60
+	rotate: 90

@@ -67,8 +67,8 @@ namespace MyFirstPlugin.Patch
                 // 您可能需要根据实际的 SpineLoader 类调整这里的调用或后续步骤。
 
                 SpineLoader.LoadSpineAnimation(skeletonAnimation,
-                                         @"F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\MyFirstPlugin\Resource\reimu\reimu.json",
-                                         @"F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\MyFirstPlugin\Resource\reimu\reimu.atlas");
+                                         @"F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\MyFirstPlugin\Resource\marisa\marisa.json",
+                                         @"F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\MyFirstPlugin\Resource\marisa\marisa.atlas");
 
 
                 // --- 设置加载后的特定动画来播放 ---
