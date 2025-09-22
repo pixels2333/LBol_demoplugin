@@ -1,2 +1,5 @@
 MyFirstPlugin/bin/*
 MyFirstPlugin/obj/*
+debugtools/bin/Debug/net9.0
+debugtools/obj/*
+debugtools/obj/Debug/net9.0/debugtools.AssemblyInfo.cs

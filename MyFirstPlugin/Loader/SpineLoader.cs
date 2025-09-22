@@ -15,7 +15,7 @@ public class SpineLoader
     // 从指定路径加载Spine动画
 
     internal static ManualLogSource Logger;
-    public static void LoadSpineAnimation(SkeletonAnimation animator, string jsonPath, string atlasPath, string imagefilename)
+    public static void LoadSpineAnimation(SkeletonAnimation animator, string jsonPath, string atlasPath, string texturepath)
     {
         Logger.LogInfo($"加载Spine动画: JSON路径: {jsonPath}, Atlas路径: {atlasPath}");
         if (animator == null)
@@ -74,17 +74,16 @@ public class SpineLoader
         string currentPageName = null;
         // TODO: 将参数更改为imagepath，并使用path提取文件名
         string atlasDir = Path.GetDirectoryName(atlasPath);
-
-
-        currentPageName = string.IsNullOrEmpty(imagefilename)
+        string imageName = Path.GetFileName(texturepath);
+        currentPageName = string.IsNullOrEmpty(imageName)
             ? null
-            : (imagefilename.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
-                ? imagefilename
+            : (imageName.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+                ? imageName
                 : null
                 );
         
         Logger.LogInfo($"当前图片纹理名称: {currentPageName}\n");
-        string texturePath = Path.Combine(atlasDir, currentPageName);
+        // string texturePath = Path.Combine(atlasDir, currentPageName);
         Logger.LogInfo($"尝试加载纹理图片: {texturePath}\n");
 
         try
