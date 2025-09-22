@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "F:\\thunderbolt mods\\TouhouLostBranchOfLegend\\profiles\\Default\\BepInEx\\plugins\\koishi514\\debugtools\\debugtools.csproj": {}
+    "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\debugtools\\debugtools.csproj": {}
   },
   "projects": {
-    "F:\\thunderbolt mods\\TouhouLostBranchOfLegend\\profiles\\Default\\BepInEx\\plugins\\koishi514\\debugtools\\debugtools.csproj": {
+    "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\debugtools\\debugtools.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "F:\\thunderbolt mods\\TouhouLostBranchOfLegend\\profiles\\Default\\BepInEx\\plugins\\koishi514\\debugtools\\debugtools.csproj",
+        "projectUniqueName": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\debugtools\\debugtools.csproj",
         "projectName": "debugtools",
-        "projectPath": "F:\\thunderbolt mods\\TouhouLostBranchOfLegend\\profiles\\Default\\BepInEx\\plugins\\koishi514\\debugtools\\debugtools.csproj",
-        "packagesPath": "C:\\Users\\pixels\\.nuget\\packages\\",
-        "outputPath": "F:\\thunderbolt mods\\TouhouLostBranchOfLegend\\profiles\\Default\\BepInEx\\plugins\\koishi514\\debugtools\\obj\\",
+        "projectPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\debugtools\\debugtools.csproj",
+        "packagesPath": "C:\\Users\\oft-Enginner PC\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\debugtools\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
-          "F:\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+          "E:\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\pixels\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\oft-Enginner PC\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -44,7 +44,7 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "9.0.200"
+        "SdkAnalysisLevel": "9.0.300"
       },
       "frameworks": {
         "net9.0": {
@@ -65,7 +65,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.203/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.301/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
