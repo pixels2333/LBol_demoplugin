@@ -1,10 +1,12 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
+using HarmonyLib;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace NetworkPlugin;
 
 [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
+[BepInProcess("LBoL.exe")]
 public class Plugin : BaseUnityPlugin
 {
     internal static new ManualLogSource Logger;
@@ -12,11 +14,11 @@ public class Plugin : BaseUnityPlugin
     private ServiceProvider serviceProvider;
     // private IService service; // 你的服务接口
 
+    private static readonly Harmony harmony = PluginInfo.harmony;
+
     private void Awake()
     {
-        // Plugin startup logic
-        Logger = base.Logger;
-        Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
+
         // 1. 创建一个 ServiceCollection 对象
         var services = new ServiceCollection();
 
@@ -37,9 +39,28 @@ public class Plugin : BaseUnityPlugin
         // ServiceProvider 负责解析和提供服务实例
         //  从容器中解析服务（获取一个 IEmailSender 实例）
         // var service = serviceProvider.GetService<IService>();
-        
+
         // 5.使用服务
         // service.method(params);
+
+
+
+
+
+
+        // // Plugin startup logic
+        Logger = base.Logger;
+        Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
+
+        if (gameObject == null)
+        {
+            Logger.LogError("GameObject is null, cannot call DontDestroyOnLoad.");
+            return;
+        }
+        DontDestroyOnLoad(gameObject);
+        Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
+        harmony.PatchAll();
+        Logger.LogInfo("补丁已加载");
     }
     private void ConfigureServices(IServiceCollection services)
     {
