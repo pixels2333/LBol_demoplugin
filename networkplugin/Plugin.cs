@@ -2,6 +2,7 @@
 using BepInEx.Logging;
 using HarmonyLib;
 using Microsoft.Extensions.DependencyInjection;
+using NetworkPlugin.Network.NetworkPlayer;
 
 namespace NetworkPlugin;
 
@@ -10,6 +11,9 @@ namespace NetworkPlugin;
 public class Plugin : BaseUnityPlugin
 {
     internal static new ManualLogSource Logger;
+
+    private NetWorkPlayer netWorkPlayer; // 你的网络玩家类实例
+    
 
     private ServiceProvider serviceProvider;
     // private IService service; // 你的服务接口
@@ -68,6 +72,8 @@ public class Plugin : BaseUnityPlugin
         // services.AddSingleton<IService, ServiceImpl>();
         // 你也可以注册其他Logger、配置服务等
         services.AddSingleton(Logger); // 注册BepInEx的Logger
+        
+        
     }
 
     void Update()

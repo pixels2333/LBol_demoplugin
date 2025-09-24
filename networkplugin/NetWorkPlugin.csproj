@@ -41,7 +41,4 @@
       <Private>false</Private>
     </Reference>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Patch\" />
-  </ItemGroup>
 </Project>

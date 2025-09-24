@@ -137,5 +137,33 @@ public class NetworkClient : INetworkClient
         }
     }
 
+    public void SendRequest<T>(string requestType, T requestdata)
+    {
+        if (IsConnected)
+        {
+            NetDataWriter writer = new();
+            writer.Put(requestType); // 写入请求类型
+
+            switch (requestdata)
+            {
+
+                case float f: writer.Put(f); break;
+                case double d: writer.Put(d); break;
+                case long l: writer.Put(l); break;
+                case int i: writer.Put(i); break;
+                case string s: writer.Put(s); break;
+                case bool b: writer.Put(b); break;
+                default: throw new NotSupportedException($"Type {typeof(T)} is not supported by NetDataWriter.Put");
+            }
+
+            _serverPeer.Send(writer, DeliveryMethod.ReliableOrdered); // 发送请求到服务器
+            Console.WriteLine($"[Client] Request sent: {requestType} with data {requestdata}");
+        }
+        else
+        {
+            Console.WriteLine("[Client] Not connected to server. Cannot send request.");
+        }
+    }
+
 
 }
