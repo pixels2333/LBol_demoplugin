@@ -9,7 +9,8 @@ public interface INetworkClient
     void PollEvents();
     void Stop();
     bool IsConnected { get; }
-    void SendProcessNumberRequest(int numberToSend);
+
+    void SendRequest<T>(string requestType, T requestdata);
 
     // TODO:如果客户端需要处理服务器的响应并更新UI或模型，可以在这里添加事件或回调
     // 例如：

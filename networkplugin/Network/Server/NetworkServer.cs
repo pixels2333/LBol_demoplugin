@@ -58,9 +58,7 @@ namespace NetworkPlugin.Network.Server
             {
                 Console.WriteLine($"[Server] Client connected: {peer.EndPoint}");
                 // 可以选择在这里发送欢迎消息
-                // NetDataWriter writer = new NetDataWriter();
-                // writer.Put("Welcome to the server!");
-                // peer.Send(writer, DeliveryMethod.ReliableOrdered);
+
             };
 
             _listener.PeerDisconnectedEvent += (peer, disconnectInfo) =>
@@ -72,28 +70,6 @@ namespace NetworkPlugin.Network.Server
             {
                 try
                 {
-                    string requestType = dataReader.GetString(); // 假设请求类型
-                    Console.WriteLine($"[Server] Received request from {fromPeer.EndPoint}: Type = '{requestType}'");
-
-                    if (requestType == "PROCESS_NUMBER_REQUEST")
-                    {
-                        int clientNumber = dataReader.GetInt();
-                        Console.WriteLine($"[Server] Client requested to process number: {clientNumber}");
-
-                        int processedNumber = clientNumber + 100;
-
-                        NetDataWriter responseWriter = new NetDataWriter();
-                        responseWriter.Put("PROCESS_NUMBER_RESPONSE");
-                        responseWriter.Put(processedNumber);
-                        responseWriter.Put($"Server processed {clientNumber} to {processedNumber}");
-
-                        fromPeer.Send(responseWriter, DeliveryMethod.ReliableOrdered);
-                        Console.WriteLine($"[Server] Sent response '{processedNumber}' to {fromPeer.EndPoint}");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"[Server] Unknown request type: {requestType} from {fromPeer.EndPoint}");
-                    }
                 }
                 catch (Exception ex)
                 {
@@ -122,6 +98,8 @@ namespace NetworkPlugin.Network.Server
             _netManager.Stop();
             Console.WriteLine("[Server] Server stopped.");
         }
+
+       
     }
 }
 

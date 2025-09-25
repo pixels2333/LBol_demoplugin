@@ -49,13 +49,11 @@ public class NetworkClient : INetworkClient
                 string responseType = dataReader.GetString(); // 读取响应类型
                 Console.WriteLine($"[Client] Received response from {fromPeer.EndPoint}: Type = '{responseType}'");
 
-                if (responseType == "PROCESS_NUMBER_RESPONSE")
+                if (responseType.EndsWith("GetSelf_RESPONSE"))
                 {
-                    int processedNumber = dataReader.GetInt(); // 读取处理后的数字
-                    string message = dataReader.GetString(); // 读取消息内容
-                    Console.WriteLine($"[Client] Server processed number: {processedNumber}. Message: {message}");
-                    // TODO:如果有ProcessNumberResponseReceived事件，可以在此处触发它
-                    // ProcessNumberResponseReceived?.Invoke(processedNumber, message);
+                    // 回退一格，重新读取响应类型
+                    // dataReader.Position -= responseType.Length + sizeof(int); // 这里根据实际协议调整
+                    HandleRequestResponse(fromPeer, dataReader);
                 }
                 else
                 {
@@ -90,7 +88,7 @@ public class NetworkClient : INetworkClient
     public void ConnectToServer(string host, int port)
     {
         Console.WriteLine($"[Client] Attempting to connect to {host}:{port} with key '{_connectionKey}'...");
-        NetDataWriter connectData = new NetDataWriter(); // 创建连接数据
+        NetDataWriter connectData = new(); // 创建连接数据
         connectData.Put(_connectionKey); // 写入连接密钥
         _netManager.Connect(host, port, connectData); // 发起连接请求
     }
@@ -117,33 +115,15 @@ public class NetworkClient : INetworkClient
     /// </summary>
     public bool IsConnected => _serverPeer != null && _serverPeer.ConnectionState == ConnectionState.Connected; // 判断连接状态
 
-    /// <summary>
-    /// 发送处理数字的请求到服务器。此功能用作测试
-    /// </summary>
-    /// <param name="numberToSend">要发送的数字。</param>
-    public void SendProcessNumberRequest(int numberToSend)
-    {
-        if (IsConnected) // 检查是否已连接
-        {
-            NetDataWriter writer = new(); // 创建数据写入器
-            writer.Put("PROCESS_NUMBER_REQUEST"); // 写入请求类型
-            writer.Put(numberToSend); // 写入数字
-            _serverPeer.Send(writer, DeliveryMethod.ReliableOrdered); // 发送数据到服务器
-            Console.WriteLine($"[Client] Request sent: PROCESS_NUMBER_REQUEST with number {numberToSend}");
-        }
-        else
-        {
-            Console.WriteLine("[Client] Not connected to server. Cannot send request.");
-        }
-    }
 
-    public void SendRequest<T>(string requestType, T requestdata)
+
+    public void SendRequest<T>(string requestHeader, T requestdata)
     {
         if (IsConnected)
         {
             NetDataWriter writer = new();
-            writer.Put(requestType); // 写入请求类型
-
+            writer.Put(requestHeader); // 写入请求类型
+            
             switch (requestdata)
             {
 
@@ -157,13 +137,37 @@ public class NetworkClient : INetworkClient
             }
 
             _serverPeer.Send(writer, DeliveryMethod.ReliableOrdered); // 发送请求到服务器
-            Console.WriteLine($"[Client] Request sent: {requestType} with data {requestdata}");
+            Console.WriteLine($"[Client] Request sent: {requestHeader} with data {requestdata}");
         }
         else
         {
             Console.WriteLine("[Client] Not connected to server. Cannot send request.");
         }
     }
+
+    /// <summary>
+    /// 处理 SendRequest 响应（通用响应处理）。
+    /// </summary>
+    private void HandleRequestResponse(NetPeer fromPeer, NetDataReader dataReader)
+    {
+        object result = null;
+        try
+        {
+            string responseHeader = dataReader.GetString(); // 读取响应类型
+            Console.WriteLine($"[Client] Received response: Type = '{responseHeader}' from {fromPeer.EndPoint}");
+
+            
+
+            string responsedata = dataReader.GetString(); // 读取消息内容
+            Console.WriteLine($"[Client] Message: {responsedata}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Client] Error handling response: {ex.Message}");
+        }
+        
+    }
+
 
 
 }
