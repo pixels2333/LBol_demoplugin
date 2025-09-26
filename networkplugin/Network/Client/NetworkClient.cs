@@ -11,12 +11,15 @@ public class NetworkClient : INetworkClient
     private NetPeer _serverPeer;
     private string _connectionKey;
 
+    private INetworkManager _networkManager;
+
     /// <summary>
     /// 初始化 NetworkClient 实例并注册事件监听。
     /// </summary>
     /// <param name="connectionKey">连接密钥，用于服务器鉴权。</param>
-    public NetworkClient(string connectionKey)
+    public NetworkClient(string connectionKey,INetworkManager NetworkManager)
     {
+        _networkManager = NetworkManager;
         _connectionKey = connectionKey; // 保存连接密钥
         _listener = new EventBasedNetListener(); // 创建事件监听器
         _netManager = new NetManager(_listener); // 初始化网络管理器
@@ -32,7 +35,9 @@ public class NetworkClient : INetworkClient
         {
             Console.WriteLine($"[Client] Connected to server: {peer.EndPoint}");
             _serverPeer = peer; // 保存服务器端点
-            // 可选：在这里触发一个事件，通知其他组件连接成功
+                                // 可选：在这里触发一个事件，通知其他组件连接成功
+                                //客户端在连接时向服务器上传自己的数据
+            INetworkPlayer networkPlayer = NetworkPlayerManager.Instance.GetNetworkPlayer();
         };
 
         _listener.PeerDisconnectedEvent += (peer, disconnectInfo) =>

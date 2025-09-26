@@ -1,7 +1,8 @@
+
 using System;
 using System.Collections.Generic;
 using LBoL.Core;
-
+using System.Text.Json.Serialization;
 
 namespace NetworkPlugin.Network.NetworkPlayer;
 
@@ -9,37 +10,56 @@ public class NetWorkPlayer
 {
 
    //TODO:需改成SyncVar
-   private string username;
+   [JsonPropertyName("username")]
+   public string username;
 
-   private int HP;
+   [JsonPropertyName("HP")]
+   public int HP;
 
-   private int maxHP;
+   [JsonPropertyName("maxHP")]
+   public int maxHP;
 
-   private int block;
+   [JsonPropertyName("block")]
+   public int block;
 
-   private int shield;
+   [JsonPropertyName("shield")]
+   public int shield;
 
+   [JsonPropertyName("coins")]
+   public int coins;
 
-   private int coins;
+   [JsonPropertyName("chara")]
+   public string chara;
 
-   private string chara;
+   [JsonPropertyName("UltimatePower")]
+   public int UltimatePower;
 
-   private int UltimatePower;
+   [JsonPropertyName("location")]
+   public string location;
 
-   private string location;
+   [JsonPropertyName("endturn")]
+   public bool endturn;
 
-   private bool endturn;
+   [JsonPropertyName("mana")]
+   public int[] mana;
 
-   private int[] mana;
+   [JsonPropertyName("stance")]
+   public string stance; //TODO:需修改
 
-   private string stance; //TODO:需修改
+   [JsonPropertyName("exhibits")]
+   public string[] exhibits;
 
-   private string[] exhibits;
+   [JsonPropertyName("tradingStatus")]
+   public bool tradingStatus;
 
-   private bool tradingStatus;
+   [JsonPropertyName("location_X")]
+   public int location_X;
 
+   [JsonPropertyName("location_Y")]
+   public int location_Y;
+
+   
    public MapNode VisitingNode { get; set; }
-
 
    public NetWorkPlayer()
    {
@@ -71,6 +91,10 @@ public class NetWorkPlayer
 
       tradingStatus = false;
 
+      location_X = VisitingNode.X;
+
+      location_Y = VisitingNode.Y;
+
 
    }
    public void SendData()
@@ -96,10 +120,6 @@ public class NetWorkPlayer
       throw new NotImplementedException("IsPlayerInSameRoom method is not implemented yet.");
 
 
-
    }
-
-
-
 
 }
