@@ -1,6 +1,7 @@
 using System;
 using LiteNetLib;
 using LiteNetLib.Utils;
+using NetworkPlugin.Network.NetworkPlayer;
 
 namespace NetworkPlugin.Network.Client;
 
@@ -37,7 +38,8 @@ public class NetworkClient : INetworkClient
             _serverPeer = peer; // 保存服务器端点
                                 // 可选：在这里触发一个事件，通知其他组件连接成功
                                 //客户端在连接时向服务器上传自己的数据
-            INetworkPlayer networkPlayer = NetworkPlayerManager.Instance.GetNetworkPlayer();
+            //TODO:username需改成枚举,还需要将玩家消息发送至服务端
+            INetworkPlayer networkPlayer = _networkManager.GetPlayer("username");
         };
 
         _listener.PeerDisconnectedEvent += (peer, disconnectInfo) =>
