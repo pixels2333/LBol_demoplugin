@@ -27,7 +27,7 @@ public class MapPanel_UpdateMapNodesStatus_Patch()
         }
         var NetWorkManager = serviceProvider.GetRequiredService<INetworkManager>();
         MapNode visitingNode = Traverse.Create(__instance).Field("_map").GetValue<GameMap>().VisitingNode;
-        NetWorkManager.GetSelf().UpdateLocation(visitingNode.X, visitingNode.Y);
+        NetWorkManager.GetSelf().UpdateLocation(visitingNode);
         Console.WriteLine("MapPanel_UpdateMapNodesStatus_Patch executed.");
     }
 }

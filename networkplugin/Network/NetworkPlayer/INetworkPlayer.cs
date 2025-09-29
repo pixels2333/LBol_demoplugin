@@ -1,5 +1,6 @@
 
 using System;
+using LBoL.Core;
 using UnityEngine.InputSystem.EnhancedTouch;
 
 namespace NetworkPlugin.Network.NetworkPlayer;
@@ -138,11 +139,12 @@ public interface INetworkPlayer
     //TODO:stance名称可能要改
     void UpdateStance(bool updateServer);
 
-    void ClearPowers(bool updateServer);
+    // void ClearPowers(bool updateServer);
 
-    void UpdatePowers(bool updateServer);
+    // void UpdatePowers(bool updateServer);
 
-    void UpdateTempPowers(bool updateServer);
+    // void UpdateTempPowers(bool updateServer);
+    void UpdateStatusEffects(bool updateServer);
 
     void UpdateUltimatePower(bool updateServer);
 
@@ -152,7 +154,7 @@ public interface INetworkPlayer
 
     void UpdateEndTurn(bool updateServer);
 
-    void UpdateLocation(int X,int Y,bool updateServer=true);
+    void UpdateLocation(MapNode visitingnode,bool updateServer=true);
 
     void UpdateLiveStatus(bool updateServer);
 
