@@ -2,7 +2,7 @@ using System;
 
 namespace NetworkPlugin.Network;
 
-public class ModService
+public static class ModService
 {
 
     public static IServiceProvider ServiceProvider { get; set; }
