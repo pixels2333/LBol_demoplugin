@@ -1,0 +1,161 @@
+using System;
+using System.Text.Json;
+using HarmonyLib;
+using LBoL.Core.Battle;
+using LBoL.Core.Units;
+using Microsoft.Extensions.DependencyInjection;
+using NetworkPlugin.Network;
+using NetworkPlugin.Network.Client;
+
+namespace NetworkPlugin.Patch;
+
+[HarmonyPatch]
+public class Unit_Patch
+{
+    private static IServiceProvider serviceProvider = ModService.ServiceProvider;
+    private static INetworkClient networkClient => _networkClient ??= serviceProvider?.GetRequiredService<INetworkClient>();
+    private static INetworkClient _networkClient;
+
+    [HarmonyPatch(typeof(Unit), "Hp", MethodType.Setter)]
+    [HarmonyPostfix]
+    public static void SetHp_Postfix(Unit __instance)
+    {
+        int currentHp = __instance.Hp;
+        if (serviceProvider == null)
+        {
+            // 在这里可以添加日志或错误处理，以防服务未被正确初始化
+            return;
+        }
+        if (networkClient == null)
+        {
+            // 在这里可以添加日志或错误处理，以防网络客户端未被正确初始化
+            return;
+        }
+        var json = JsonSerializer.Serialize(new
+        {
+            Hp = currentHp.ToString(),
+
+        });
+        //TODO:请求应该添加用户id
+        networkClient.SendRequest("UpdateHp", json);
+    }
+
+    [HarmonyPatch(typeof(Unit), "MaxHp", MethodType.Setter)]
+    [HarmonyPostfix]
+    public static void SetMaxHp_Postfix(Unit __instance)
+    {
+        int currentMaxHp = __instance.MaxHp;
+        if (serviceProvider == null)
+        {
+            // 在这里可以添加日志或错误处理，以防服务未被正确初始化
+            return;
+        }
+        if (networkClient == null)
+        {
+            // 在这里可以添加日志或错误处理，以防网络客户端未被正确初始化
+            return;
+        }
+        var json = JsonSerializer.Serialize(new
+        {
+            MaxHp = currentMaxHp.ToString(),
+
+        });
+        //TODO:请求应该添加用户id
+        networkClient.SendRequest("UpdateHp", json);
+    }
+
+    //Shield
+    [HarmonyPatch(typeof(Unit), "Shield", MethodType.Setter)]
+    [HarmonyPostfix]
+    public static void SetShield_Postfix(Unit __instance)
+    {
+        int currentShield = __instance.Shield;
+        if (serviceProvider == null)
+        {
+            // 在这里可以添加日志或错误处理，以防服务未被正确初始化
+            return;
+        }
+        if (networkClient == null)
+        {
+            // 在这里可以添加日志或错误处理，以防网络客户端未被正确初始化
+            return;
+        }
+        var json = JsonSerializer.Serialize(new
+        {
+            Shield = currentShield.ToString(),
+
+        });
+        //TODO:请求应该添加用户id
+        networkClient.SendRequest("UpdateHp", json);
+
+    }
+
+    // Block
+    [HarmonyPatch(typeof(Unit), "Block", MethodType.Setter)]
+    [HarmonyPostfix]
+    public static void SetBlock_Postfix(Unit __instance)
+    {
+        int currentBlock = __instance.Block;
+        if (serviceProvider == null)
+        {
+            return;
+        }
+        if (networkClient == null)
+        {
+            return;
+        }
+        var json = JsonSerializer.Serialize(new
+        {
+            Block = currentBlock.ToString(),
+        });
+        //TODO:请求应该添加用户id
+        networkClient.SendRequest("UpdateBlock", json);
+    }
+
+    // IsExtraTurn
+    [HarmonyPatch(typeof(Unit), "IsExtraTurn", MethodType.Setter)]
+    [HarmonyPostfix]
+    public static void SetIsExtraTurn_Postfix(Unit __instance)
+    {
+        bool isExtraTurn = __instance.IsExtraTurn;
+        if (serviceProvider == null)
+        {
+            return;
+        }
+        if (networkClient == null)
+        {
+            return;
+        }
+        var json = JsonSerializer.Serialize(new
+        {
+            IsExtraTurn = isExtraTurn.ToString(),
+        });
+        //TODO:请求应该添加用户id
+        networkClient.SendRequest("UpdateIsExtraTurn", json);
+    }
+
+    // Status
+    [HarmonyPatch(typeof(Unit), "Status", MethodType.Setter)]
+    [HarmonyPostfix]
+    public static void SetStatus_Postfix(Unit __instance)
+    {
+        var status = __instance.Status.ToString();
+        if (serviceProvider == null)
+        {
+            return;
+        }
+        if (networkClient == null)
+        {
+            return;
+        }
+        var json = JsonSerializer.Serialize(new
+        {
+            Status = status.ToString(),
+        });
+        //TODO:请求应该添加用户id
+        networkClient.SendRequest("UpdateStatus", json);
+    }
+
+    
+}
+

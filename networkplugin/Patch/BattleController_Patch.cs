@@ -27,25 +27,25 @@ public class BattleController_Patch
     {
         //向服务器上传player的血量信息
 
-        if (serviceProvider == null)
-        {
-            // 在这里可以添加日志或错误处理，以防服务未被正确初始化
-            return;
-        }
-        if (networkClient == null)
-        {
-            // 在这里可以添加日志或错误处理，以防网络客户端未被正确初始化
-            return;
-        }
-        var json = JsonSerializer.Serialize(new
-        {
-            Hp = target.Hp.ToString(),
-            Block = target.Block.ToString(),
-            Shield = target.Shield.ToString(),
-            Status = target.Status.ToString()
-        });
-        //TODO:请求应该添加用户id
-        networkClient.SendRequest("UpdateHealthAfterDamage", json);
+        // if (serviceProvider == null)
+        // {
+        //     // 在这里可以添加日志或错误处理，以防服务未被正确初始化
+        //     return;
+        // }
+        // if (networkClient == null)
+        // {
+        //     // 在这里可以添加日志或错误处理，以防网络客户端未被正确初始化
+        //     return;
+        // }
+        // var json = JsonSerializer.Serialize(new
+        // {
+        //     Hp = target.Hp.ToString(),
+        //     Block = target.Block.ToString(),
+        //     Shield = target.Shield.ToString(),
+        //     Status = target.Status.ToString()
+        // });
+        // //TODO:请求应该添加用户id
+        // networkClient.SendRequest("UpdateHealthAfterDamage", json);
 
     }
 
@@ -53,7 +53,7 @@ public class BattleController_Patch
     [HarmonyPostfix]
     public static void TryAddStatusEffect_Postfix(BattleController __instance, Unit target)
     {
-        //向服务器上传player的状态信息
+        // 向服务器上传player的状态信息
 
         if (serviceProvider == null)
         {
