@@ -8,7 +8,7 @@ using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 
 namespace NetworkPlugin.Patch;
-
+//因为玩家上传同步血量时会导致血量为最后一名玩家本地的血量,故此份代码文件作废
 [HarmonyPatch]
 public class Unit_Patch
 {

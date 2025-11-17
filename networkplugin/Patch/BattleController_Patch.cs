@@ -22,31 +22,36 @@ public class BattleController_Patch
     //TODO:可能需要在伤害结算前添加给予伤害的action
     [HarmonyPatch(typeof(BattleController), "Damage")]
     [HarmonyPostfix]
-    public static void Damage_Postfix(BattleController __instance, Unit target)
+    public static void Damage_Postfix(BattleController __instance, DamageInfo damageinfo, Unit target)
     {
-        //向服务器上传player的血量信息
+        // 向服务器上传player的血量信息
 
-        // if (serviceProvider == null)
-        // {
-        //     // 在这里可以添加日志或错误处理，以防服务未被正确初始化
-        //     return;
-        // }
-        // if (networkClient == null)
-        // {
-        //     // 在这里可以添加日志或错误处理，以防网络客户端未被正确初始化
-        //     return;
-        // }
-        // var json = JsonSerializer.Serialize(new
-        // {
-        //     Hp = target.Hp.ToString(),
-        //     Block = target.Block.ToString(),
-        //     Shield = target.Shield.ToString(),
-        //     Status = target.Status.ToString()
-        // });
-        // //TODO:请求应该添加用户id
-        // networkClient.SendRequest("UpdateHealthAfterDamage", json);
+        if (serviceProvider == null)
+        {
+            // 在这里可以添加日志或错误处理，以防服务未被正确初始化
+            return;
+        }
+        if (networkClient == null)
+        {
+            // 在这里可以添加日志或错误处理，以防网络客户端未被正确初始化
+            return;
+        }
+        var json = JsonSerializer.Serialize(new
+        {
+            //TODO:传输更多的伤害信息
+            Damage=damageinfo.Damage.ToString(),
+            DamageType = damageinfo.DamageType.ToString(),
+            Hp = target.Hp.ToString(),
+            Block = target.Block.ToString(),
+            Shield = target.Shield.ToString(),
+            Status = target.Status.ToString()
+        });
+        //TODO:请求应该添加用户id
+        networkClient.SendRequest("UpdateHealthAfterDamage", json);
 
     }
+
+
 
     [HarmonyPatch(typeof(BattleController), "TryAddStatusEffect")]
     [HarmonyPostfix]
@@ -110,8 +115,26 @@ public class BattleController_Patch
         networkClient.SendRequest("UpdateAfterTryRemoveStatusEffects", json);
     }
 
-    
+    [HarmonyPatch(typeof(BattleController), "Heal")]
+    [HarmonyPostfix]
+    public static void Heal_Postfix(BattleController __instance, Unit target)
+    {
+        //向服务器上传player的血量信息
+
+        if (serviceProvider == null)
+        {
+            // 在这里可以添加日志或错误处理，以防服务未被正确初始化
+            return;
+        }
+        // var networkClient = serviceProvider.GetRequiredService<INetworkClient>();
+        var json = JsonSerializer.Serialize(new
+        {
+            Hp = target.Hp.ToString(),
+            Block = target.Block.ToString(),
+            Shield = target.Shield.ToString(),
+            Status = target.Status.ToString()
+        });
 
 
 
-}
+    }}
