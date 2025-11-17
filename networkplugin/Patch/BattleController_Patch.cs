@@ -18,8 +18,7 @@ public class BattleController_Patch
 {
 
     private static IServiceProvider serviceProvider = ModService.ServiceProvider;
-    private static INetworkClient networkClient => _networkClient ??= serviceProvider?.GetRequiredService<INetworkClient>();
-    private static INetworkClient _networkClient;
+    private static INetworkClient networkClient => serviceProvider?.GetRequiredService<INetworkClient>();
     //TODO:可能需要在伤害结算前添加给予伤害的action
     [HarmonyPatch(typeof(BattleController), "Damage")]
     [HarmonyPostfix]
@@ -70,7 +69,7 @@ public class BattleController_Patch
         {
             _statusEffectList.Add(se.ToString());
         }
-        var networkClient = serviceProvider.GetRequiredService<INetworkClient>();
+        // var networkClient = serviceProvider.GetRequiredService<INetworkClient>();
         var json = JsonSerializer.Serialize(new
         {
             statusEffects = _statusEffectList
@@ -102,7 +101,7 @@ public class BattleController_Patch
         {
             _statusEffectList.Add(se.ToString());
         }
-        var networkClient = serviceProvider.GetRequiredService<INetworkClient>();
+        // var networkClient = serviceProvider.GetRequiredService<INetworkClient>();
         var json = JsonSerializer.Serialize(new
         {
             statusEffects = _statusEffectList
@@ -110,5 +109,9 @@ public class BattleController_Patch
         //TODO:请求应该添加用户id
         networkClient.SendRequest("UpdateAfterTryRemoveStatusEffects", json);
     }
+
+    
+
+
 
 }

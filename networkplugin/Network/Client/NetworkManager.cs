@@ -18,9 +18,14 @@ public class NetworkManager(INetworkClient networkClient) : INetworkManager
         throw new NotImplementedException();
     }
 
+    public int GetPlayerCount()
+    {
+        throw new NotImplementedException();
+    }
+
     public INetworkPlayer GetSelf()
     {
-        networkClient.SendRequest("GetSelf", ClientData.username);
+        // networkClient.SendRequest("GetSelf", ClientData.username);
         throw new NotImplementedException("GetSelf method is not implemented yet.");
     }
 
@@ -33,4 +38,6 @@ public class NetworkManager(INetworkClient networkClient) : INetworkManager
     {
         throw new NotImplementedException();
     }
+
+    
 }

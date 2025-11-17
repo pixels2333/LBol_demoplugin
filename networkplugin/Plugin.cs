@@ -15,7 +15,7 @@ public class Plugin : BaseUnityPlugin
     internal static new ManualLogSource Logger;
 
     private NetWorkPlayer netWorkPlayer; // 你的网络玩家类实例
-    
+
 
     private ServiceProvider serviceProvider;
     // private IService service; // 你的服务接口
@@ -79,8 +79,8 @@ public class Plugin : BaseUnityPlugin
         services.AddSingleton<INetworkManager, NetworkManager>(); // 注册网络管理器
         services.AddSingleton<INetworkClient, NetworkClient>(); // 注册网络客户端
 
-        
-        
+    
+    
     }
 
     void Update()

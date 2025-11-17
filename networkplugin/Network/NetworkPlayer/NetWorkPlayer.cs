@@ -146,5 +146,5 @@ public class NetWorkPlayer
    {
       throw new NotImplementedException("IsPlayerOnSameAct method is not implemented yet."); // 未实现
    }
-  
+
 }

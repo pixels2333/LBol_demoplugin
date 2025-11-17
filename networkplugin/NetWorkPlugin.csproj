@@ -42,6 +42,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Patch\Actions\" />
+    <Folder Include="Patch\EnemyUnits\Map\" />
   </ItemGroup>
 </Project>

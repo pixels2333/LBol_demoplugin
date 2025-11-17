@@ -7,7 +7,7 @@ using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.NetworkPlayer;
 
-namespace NetworkPlugin.Patch;
+namespace NetworkPlugin.Patch.Map;
 
 
 [HarmonyPatch]
@@ -31,4 +31,3 @@ public class MapPanel_UpdateMapNodesStatus_Patch()
         Console.WriteLine("MapPanel_UpdateMapNodesStatus_Patch executed.");
     }
 }
-

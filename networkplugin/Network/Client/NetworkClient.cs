@@ -130,7 +130,7 @@ public class NetworkClient : INetworkClient
         {
             NetDataWriter writer = new();
             writer.Put(requestHeader); // 写入请求类型
-            
+        
             switch (requestdata)
             {
 
@@ -163,7 +163,7 @@ public class NetworkClient : INetworkClient
             string responseHeader = dataReader.GetString(); // 读取响应类型
             Console.WriteLine($"[Client] Received response: Type = '{responseHeader}' from {fromPeer.EndPoint}");
 
-            
+        
 
             string responsedata = dataReader.GetString(); // 读取消息内容
             Console.WriteLine($"[Client] Message: {responsedata}");
@@ -172,7 +172,7 @@ public class NetworkClient : INetworkClient
         {
             Console.WriteLine($"[Client] Error handling response: {ex.Message}");
         }
-        
+    
     }
 
 
