@@ -1,0 +1,23 @@
+﻿using System;
+using System.Collections.Generic;
+using JetBrains.Annotations;
+using LBoL.Base;
+using LBoL.Core;
+using LBoL.Core.Battle;
+using LBoL.Core.Cards;
+using LBoL.EntityLib.StatusEffects.Neutral.TwoColor;
+
+namespace LBoL.EntityLib.Cards.Neutral.TwoColor
+{
+	// Token: 0x020002B8 RID: 696
+	[UsedImplicitly]
+	public sealed class YachieDefend : Card
+	{
+		// Token: 0x06000AB2 RID: 2738 RVA: 0x0001608E File Offset: 0x0001428E
+		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
+		{
+			yield return base.BuffAction<YachieDefendSe>(base.Value1, 0, 0, 0, 0.2f);
+			yield break;
+		}
+	}
+}

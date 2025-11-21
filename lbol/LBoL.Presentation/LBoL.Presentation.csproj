@@ -1,0 +1,392 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <ProjectGuid>{B12C7AB6-8218-45E5-9412-B8727169AFB8}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>LBoL.Presentation</RootNamespace>
+    <AssemblyName>LBoL.Presentation</AssemblyName>
+    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <FileAlignment>512</FileAlignment>
+    <TargetFramework>net40</TargetFramework>
+  </PropertyGroup>
+  <PropertyGroup>
+    <EnableDefaultItems>False</EnableDefaultItems>
+  </PropertyGroup>
+  <PropertyGroup />
+  <ItemGroup>
+    <Compile Include="Animations\SingleAnimationClipPlayer.cs" />
+    <Compile Include="AudioManager.cs" />
+    <Compile Include="Bullet\Bullet.cs" />
+    <Compile Include="Bullet\BulletEvent.cs" />
+    <Compile Include="Bullet\Gun.cs" />
+    <Compile Include="Bullet\GunManager.cs" />
+    <Compile Include="Bullet\HitType.cs" />
+    <Compile Include="Bullet\Laser.cs" />
+    <Compile Include="Bullet\Launcher.cs" />
+    <Compile Include="Bullet\ParticalRotator.cs" />
+    <Compile Include="Bullet\Piece.cs" />
+    <Compile Include="Bullet\Projectile.cs" />
+    <Compile Include="CameraController.cs" />
+    <Compile Include="Effect\CubicBezierMoving.cs" />
+    <Compile Include="Effect\EffectBullet.cs" />
+    <Compile Include="Effect\EffectBulletView.cs" />
+    <Compile Include="Effect\EffectManager.cs" />
+    <Compile Include="Effect\EffectUIBulletView.cs" />
+    <Compile Include="Effect\EffectWidget.cs" />
+    <Compile Include="Effect\ExhibitActivating.cs" />
+    <Compile Include="Effect\ExileCoverEffect.cs" />
+    <Compile Include="Effect\LoveGirlEffectManager.cs" />
+    <Compile Include="Effect\LoveGirlEffectView.cs" />
+    <Compile Include="Effect\ManaFlyEffect.cs" />
+    <Compile Include="Effect\MarisaCharging.cs" />
+    <Compile Include="Effect\Point.cs" />
+    <Compile Include="Effect\ReimiChain.cs" />
+    <Compile Include="Effect\RemoveCoverEffect.cs" />
+    <Compile Include="Effect\RinOrb.cs" />
+    <Compile Include="Effect\SanaeSuck.cs" />
+    <Compile Include="Effect\SeijaExhibitManager.cs" />
+    <Compile Include="Effect\SeijaExhibitView.cs" />
+    <Compile Include="Effect\VampireBlood.cs" />
+    <Compile Include="Environments\Environment.cs" />
+    <Compile Include="Environments\EnvironmentObject.cs" />
+    <Compile Include="Environments\FinalStageEnvironment.cs" />
+    <Compile Include="Environments\IntoFinalEffect.cs" />
+    <Compile Include="FrameSetting.cs" />
+    <Compile Include="GameEntry.cs" />
+    <Compile Include="GameMaster.cs" />
+    <Compile Include="GamepadCanvasSimpleBinder.cs" />
+    <Compile Include="HighlightManager.cs" />
+    <Compile Include="I10N\L10nInfo.cs" />
+    <Compile Include="I10N\L10nManager.cs" />
+    <Compile Include="I10N\LocalizedGameObject.cs" />
+    <Compile Include="I10N\LocalizedText.cs" />
+    <Compile Include="InputSystemExtend\GamepadBehaviour.cs" />
+    <Compile Include="InputSystemExtend\GamepadButton.cs" />
+    <Compile Include="InputSystemExtend\GamepadButtonCursor.cs" />
+    <Compile Include="InputSystemExtend\GamepadButtonKey.cs" />
+    <Compile Include="InputSystemExtend\GamepadButtonPressType.cs" />
+    <Compile Include="InputSystemExtend\GamepadButtonTip.cs" />
+    <Compile Include="InputSystemExtend\GamepadCardCursor.cs" />
+    <Compile Include="InputSystemExtend\GamepadCommonButtonTip.cs" />
+    <Compile Include="InputSystemExtend\GamepadKeySprite.cs" />
+    <Compile Include="InputSystemExtend\GamepadNavigationManager.cs" />
+    <Compile Include="InputSystemExtend\GamepadNavigationOrigin.cs" />
+    <Compile Include="InputSystemExtend\GamepadPairButton.cs" />
+    <Compile Include="InputSystemExtend\GamepadScrollRectItem.cs" />
+    <Compile Include="InputSystemExtend\GamepadUGUISliderAdapter.cs" />
+    <Compile Include="InputSystemExtend\IInteractablePanel.cs" />
+    <Compile Include="InputSystemExtend\InputDeviceManager.cs" />
+    <Compile Include="InputSystemExtend\InputDeviceType.cs" />
+    <Compile Include="OutlineCameraController.cs" />
+    <Compile Include="PlatformHandlerRunner.cs" />
+    <Compile Include="PortraitGroup.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ResolutionHelper.cs" />
+    <Compile Include="ResourcesHelper.cs" />
+    <Compile Include="Touchable.cs" />
+    <Compile Include="UI\ActionMapping.cs" />
+    <Compile Include="UI\CharNumTransf.cs" />
+    <Compile Include="UI\DialogButtons.cs" />
+    <Compile Include="UI\DialogResult.cs" />
+    <Compile Include="UI\Dialogs\MessageContent.cs" />
+    <Compile Include="UI\Dialogs\MessageDialog.cs" />
+    <Compile Include="UI\Dialogs\MessageIcon.cs" />
+    <Compile Include="UI\Dialogs\RemoveCardContent.cs" />
+    <Compile Include="UI\Dialogs\RemoveCardDialog.cs" />
+    <Compile Include="UI\Dialogs\TransformCardContent.cs" />
+    <Compile Include="UI\Dialogs\TransformCardDialog.cs" />
+    <Compile Include="UI\Dialogs\UpgradeCardContent.cs" />
+    <Compile Include="UI\Dialogs\UpgradeCardDialog.cs" />
+    <Compile Include="UI\ExtraWidgets\AchievementTooltipSource.cs" />
+    <Compile Include="UI\ExtraWidgets\CardsRow.cs" />
+    <Compile Include="UI\ExtraWidgets\ClearState.cs" />
+    <Compile Include="UI\ExtraWidgets\DamagePopup.cs" />
+    <Compile Include="UI\ExtraWidgets\DifficultyGroup.cs" />
+    <Compile Include="UI\ExtraWidgets\DollTooltipSource.cs" />
+    <Compile Include="UI\ExtraWidgets\ExhibitTooltipSource.cs" />
+    <Compile Include="UI\ExtraWidgets\HandCard.cs" />
+    <Compile Include="UI\ExtraWidgets\IntentionTooltipSource.cs" />
+    <Compile Include="UI\ExtraWidgets\PuzzleToggleWidget.cs" />
+    <Compile Include="UI\ExtraWidgets\SelectBaseManaWidget.cs" />
+    <Compile Include="UI\ExtraWidgets\SelectCardWidget.cs" />
+    <Compile Include="UI\ExtraWidgets\ShopCard.cs" />
+    <Compile Include="UI\ExtraWidgets\ShopExhibit.cs" />
+    <Compile Include="UI\ExtraWidgets\ShowingCard.cs" />
+    <Compile Include="UI\ExtraWidgets\ShowingCardRelative.cs" />
+    <Compile Include="UI\ExtraWidgets\SimpleTooltipSource.cs" />
+    <Compile Include="UI\ExtraWidgets\StatusTooltipSource.cs" />
+    <Compile Include="UI\ExtraWidgets\UltimateSkillTooltipSource.cs" />
+    <Compile Include="UI\IAdventureHandler.cs" />
+    <Compile Include="UI\IInputActionHandler.cs" />
+    <Compile Include="UI\LoadingScreen.cs" />
+    <Compile Include="UI\LocaleFontReplaceEntry.cs" />
+    <Compile Include="UI\LocaleFontReplacePair.cs" />
+    <Compile Include="UI\LocalizationManager.cs" />
+    <Compile Include="UI\NavigateDirection.cs" />
+    <Compile Include="UI\PanelLayer.cs" />
+    <Compile Include="UI\Panels\BackgroundPanel.cs" />
+    <Compile Include="UI\Panels\BattleHintPanel.cs" />
+    <Compile Include="UI\Panels\BattleManaPanel.cs" />
+    <Compile Include="UI\Panels\BattleNotifier.cs" />
+    <Compile Include="UI\Panels\BossExhibitPanel.cs" />
+    <Compile Include="UI\Panels\CardDetailPanel.cs" />
+    <Compile Include="UI\Panels\CardDetailPayload.cs" />
+    <Compile Include="UI\Panels\CardUi.cs" />
+    <Compile Include="UI\Panels\ChangeLogPanel.cs" />
+    <Compile Include="UI\Panels\ComplexRulesPanel.cs" />
+    <Compile Include="UI\Panels\ConsumingMana.cs" />
+    <Compile Include="UI\Panels\CreditsPanel.cs" />
+    <Compile Include="UI\Panels\DebugBattleLogPanel.cs" />
+    <Compile Include="UI\Panels\EntryPanel.cs" />
+    <Compile Include="UI\Panels\ExhibitInfoPanel.cs" />
+    <Compile Include="UI\Panels\GameResultData.cs" />
+    <Compile Include="UI\Panels\GameResultPanel.cs" />
+    <Compile Include="UI\Panels\GameRunVisualPanel.cs" />
+    <Compile Include="UI\Panels\GapOptionsPanel.cs" />
+    <Compile Include="UI\Panels\HintKeys.cs" />
+    <Compile Include="UI\Panels\HintPanel.cs" />
+    <Compile Include="UI\Panels\HintPayload.cs" />
+    <Compile Include="UI\Panels\HistoryPanel.cs" />
+    <Compile Include="UI\Panels\InteractionType.cs" />
+    <Compile Include="UI\Panels\LicensesPanel.cs" />
+    <Compile Include="UI\Panels\LocaleSettingItem.cs" />
+    <Compile Include="UI\Panels\MainMenuPanel.cs" />
+    <Compile Include="UI\Panels\MapPanel.cs" />
+    <Compile Include="UI\Panels\MultipleCardTooltip.cs" />
+    <Compile Include="UI\Panels\MuseumPanel.cs" />
+    <Compile Include="UI\Panels\MusicRoomPanel.cs" />
+    <Compile Include="UI\Panels\NazrinDetectPanel.cs" />
+    <Compile Include="UI\Panels\PlayBoard.cs" />
+    <Compile Include="UI\Panels\PopupHud.cs" />
+    <Compile Include="UI\Panels\ProfilePanel.cs" />
+    <Compile Include="UI\Panels\RecordRow.cs" />
+    <Compile Include="UI\Panels\RewardPanel.cs" />
+    <Compile Include="UI\Panels\RewardType.cs" />
+    <Compile Include="UI\Panels\ScoreData.cs" />
+    <Compile Include="UI\Panels\ScoreDataId.cs" />
+    <Compile Include="UI\Panels\SelectBaseManaPanel.cs" />
+    <Compile Include="UI\Panels\SelectBaseManaPayload.cs" />
+    <Compile Include="UI\Panels\SelectCardPanel.cs" />
+    <Compile Include="UI\Panels\SelectCardPayload.cs" />
+    <Compile Include="UI\Panels\SelectDebugPanel.cs" />
+    <Compile Include="UI\Panels\SettingPanel.cs" />
+    <Compile Include="UI\Panels\SettingsPanelType.cs" />
+    <Compile Include="UI\Panels\ShopPanel.cs" />
+    <Compile Include="UI\Panels\ShowCardsPanel.cs" />
+    <Compile Include="UI\Panels\ShowCardsPayload.cs" />
+    <Compile Include="UI\Panels\ShowCardZone.cs" />
+    <Compile Include="UI\Panels\ShowRewardContent.cs" />
+    <Compile Include="UI\Panels\SpellPanel.cs" />
+    <Compile Include="UI\Panels\StartGameData.cs" />
+    <Compile Include="UI\Panels\StartGamePanel.cs" />
+    <Compile Include="UI\Panels\StartupSelectLocalePanel.cs" />
+    <Compile Include="UI\Panels\SystemBoard.cs" />
+    <Compile Include="UI\Panels\TooltipsLayer.cs" />
+    <Compile Include="UI\Panels\TopMessagePanel.cs" />
+    <Compile Include="UI\Panels\UltimateSkillPanel.cs" />
+    <Compile Include="UI\Panels\UnitStatusHud.cs" />
+    <Compile Include="UI\Panels\VnExtraSettings.cs" />
+    <Compile Include="UI\Panels\VnPanel.cs" />
+    <Compile Include="UI\RawImageUvTweener.cs" />
+    <Compile Include="UI\RectPositionTier.cs" />
+    <Compile Include="UI\ScenePositionTier.cs" />
+    <Compile Include="UI\TooltipAlignment.cs" />
+    <Compile Include="UI\TooltipDirection.cs" />
+    <Compile Include="UI\TooltipPosition.cs" />
+    <Compile Include="UI\TooltipPositioner.cs" />
+    <Compile Include="UI\Transitions\AnimationTransition.cs" />
+    <Compile Include="UI\Transitions\BossExhibitTransition.cs" />
+    <Compile Include="UI\Transitions\GameResultTransition.cs" />
+    <Compile Include="UI\Transitions\MapTransition.cs" />
+    <Compile Include="UI\Transitions\MusicRoomTransition.cs" />
+    <Compile Include="UI\Transitions\ProfileTransition.cs" />
+    <Compile Include="UI\Transitions\SelectBaseManaTransition.cs" />
+    <Compile Include="UI\Transitions\SimpleTransition.cs" />
+    <Compile Include="UI\Transitions\StartGameTransition.cs" />
+    <Compile Include="UI\UiAdventurePanel.cs" />
+    <Compile Include="UI\UiBase.cs" />
+    <Compile Include="UI\UiDialog.cs" />
+    <Compile Include="UI\UiDialogBase.cs" />
+    <Compile Include="UI\UiManager.cs" />
+    <Compile Include="UI\UiPanel.2.cs" />
+    <Compile Include="UI\UiPanel.cs" />
+    <Compile Include="UI\UiPanelBase.cs" />
+    <Compile Include="UI\UiTransition.cs" />
+    <Compile Include="UI\Widgets\AchievementHintWidget.cs" />
+    <Compile Include="UI\Widgets\AchievementWidget.cs" />
+    <Compile Include="UI\Widgets\ActionMappingRow.cs" />
+    <Compile Include="UI\Widgets\BaseManaWidget.cs" />
+    <Compile Include="UI\Widgets\BattleManaStatus.cs" />
+    <Compile Include="UI\Widgets\BattleManaWidget.cs" />
+    <Compile Include="UI\Widgets\BeginningStatusWidget.cs" />
+    <Compile Include="UI\Widgets\BgmHint.cs" />
+    <Compile Include="UI\Widgets\CardFlyBrief.cs" />
+    <Compile Include="UI\Widgets\CardInFastView.cs" />
+    <Compile Include="UI\Widgets\CardPackWidget.cs" />
+    <Compile Include="UI\Widgets\CardWidget.cs" />
+    <Compile Include="UI\Widgets\CardZoneUpperCountWidget.cs" />
+    <Compile Include="UI\Widgets\CharacterButtonWidget.cs" />
+    <Compile Include="UI\Widgets\CharacterLifetimeWidget.cs" />
+    <Compile Include="UI\Widgets\CharacterToggleWidget.cs" />
+    <Compile Include="UI\Widgets\ChatWidget.cs" />
+    <Compile Include="UI\Widgets\CommonButtonWidget.cs" />
+    <Compile Include="UI\Widgets\CommonToggleWidget.cs" />
+    <Compile Include="UI\Widgets\CostWidget.cs" />
+    <Compile Include="UI\Widgets\CurveLine.cs" />
+    <Compile Include="UI\Widgets\DeckHolder.cs" />
+    <Compile Include="UI\Widgets\DollInfoWidget.cs" />
+    <Compile Include="UI\Widgets\DropdownWidget.cs" />
+    <Compile Include="UI\Widgets\EndTurnButtonWidget.cs" />
+    <Compile Include="UI\Widgets\EntityTooltipWidget.cs" />
+    <Compile Include="UI\Widgets\ExhibitWidget.cs" />
+    <Compile Include="UI\Widgets\FastDeckViewButton.cs" />
+    <Compile Include="UI\Widgets\FastDeckViewer.cs" />
+    <Compile Include="UI\Widgets\FastViewCard.cs" />
+    <Compile Include="UI\Widgets\GameLogoWidget.cs" />
+    <Compile Include="UI\Widgets\GapOptionWidget.cs" />
+    <Compile Include="UI\Widgets\HealthBar.cs" />
+    <Compile Include="UI\Widgets\ICardTooltipSource.cs" />
+    <Compile Include="UI\Widgets\IMultiCardTooltipSource.cs" />
+    <Compile Include="UI\Widgets\IntentionWidget.cs" />
+    <Compile Include="UI\Widgets\JadeBoxToggle.cs" />
+    <Compile Include="UI\Widgets\JadeBoxWidget.cs" />
+    <Compile Include="UI\Widgets\LifetimeWidget.cs" />
+    <Compile Include="UI\Widgets\LogoOrbWidget.cs" />
+    <Compile Include="UI\Widgets\MainMenuButtonWidget.cs" />
+    <Compile Include="UI\Widgets\MapLineWidget.cs" />
+    <Compile Include="UI\Widgets\MapNodeWidget.cs" />
+    <Compile Include="UI\Widgets\MapPageChangeWidget.cs" />
+    <Compile Include="UI\Widgets\MinimizedButtonWidget.cs" />
+    <Compile Include="UI\Widgets\MuseumExhibitTooltip.cs" />
+    <Compile Include="UI\Widgets\MuseumExhibitWidget.cs" />
+    <Compile Include="UI\Widgets\MusicWidget.cs" />
+    <Compile Include="UI\Widgets\OptionWidget.cs" />
+    <Compile Include="UI\Widgets\ProfileWidget.cs" />
+    <Compile Include="UI\Widgets\RecordCardCell.cs" />
+    <Compile Include="UI\Widgets\RecyclableScrollRectWidget.cs" />
+    <Compile Include="UI\Widgets\RewardWidget.cs" />
+    <Compile Include="UI\Widgets\ScoreWidget.cs" />
+    <Compile Include="UI\Widgets\ScrollBarWidget.cs" />
+    <Compile Include="UI\Widgets\SeedInputValidator.cs" />
+    <Compile Include="UI\Widgets\SideTipWidget.cs" />
+    <Compile Include="UI\Widgets\SpellDeclareWidget.cs" />
+    <Compile Include="UI\Widgets\StartSetupWidget.cs" />
+    <Compile Include="UI\Widgets\StartStatusWidget.cs" />
+    <Compile Include="UI\Widgets\StatusEffectWidget.cs" />
+    <Compile Include="UI\Widgets\SwitchWidget.cs" />
+    <Compile Include="UI\Widgets\TargetSelector.cs" />
+    <Compile Include="UI\Widgets\TargetSelectorStatus.cs" />
+    <Compile Include="UI\Widgets\TooltipSource.cs" />
+    <Compile Include="UI\Widgets\TooltipWidget.cs" />
+    <Compile Include="UI\Widgets\UnitInfoWidget.cs" />
+    <Compile Include="UI\Widgets\UnitStatusWidget.cs" />
+    <Compile Include="Units\DialogMessageKeys.cs" />
+    <Compile Include="Units\DollSlotView.cs" />
+    <Compile Include="Units\DollView.cs" />
+    <Compile Include="Units\EnemyFormation.cs" />
+    <Compile Include="Units\GameDirector.cs" />
+    <Compile Include="Units\GunHitArgs.cs" />
+    <Compile Include="Units\SpecialUnits\KokoroUnitController.cs" />
+    <Compile Include="Units\SpecialUnits\MuskData.cs" />
+    <Compile Include="Units\UnitView.cs" />
+    <Compile Include="UnitySourceGeneratedAssemblyMonoScriptTypes_v1.cs" />
+    <Compile Include="YukariRoom.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LBoL.Base\LBoL.Base.csproj">
+      <Project>{B12C7AB6-8218-45E5-9412-B8727169AFB4}</Project>
+      <Name>LBoL.Base</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\LBoL.ConfigData\LBoL.ConfigData.csproj">
+      <Project>{B12C7AB6-8218-45E5-9412-B8727169AFB5}</Project>
+      <Name>LBoL.ConfigData</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\LBoL.Core\LBoL.Core.csproj">
+      <Project>{B12C7AB6-8218-45E5-9412-B8727169AFB6}</Project>
+      <Name>LBoL.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\LBoL.EntityLib\LBoL.EntityLib.csproj">
+      <Project>{B12C7AB6-8218-45E5-9412-B8727169AFB7}</Project>
+      <Name>LBoL.EntityLib</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="..\lib\*.dll">
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="DOTween">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\DOTween.dll</HintPath>
+    </Reference>
+    <Reference Include="DOTween.Modules">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\DOTween.Modules.dll</HintPath>
+    </Reference>
+    <Reference Include="spine-csharp">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\spine-csharp.dll</HintPath>
+    </Reference>
+    <Reference Include="spine-unity">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\spine-unity.dll</HintPath>
+    </Reference>
+    <Reference Include="UniTask">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\UniTask.dll</HintPath>
+    </Reference>
+    <Reference Include="UniTask.Addressables">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\UniTask.Addressables.dll</HintPath>
+    </Reference>
+    <Reference Include="UniTask.DOTween">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\UniTask.DOTween.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.Addressables">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\Unity.Addressables.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.InputSystem">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\Unity.InputSystem.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.RenderPipelines.Core.Runtime">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\Unity.RenderPipelines.Core.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.RenderPipelines.Universal.Runtime">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\Unity.RenderPipelines.Universal.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.ResourceManager">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\Unity.ResourceManager.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\Unity.TextMeshPro.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AnimationModule">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\UnityEngine.AnimationModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\UnityEngine.AudioModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\UnityEngine.IMGUIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\UnityEngine.ParticleSystemModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.Physics2DModule">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\UnityEngine.Physics2DModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\UnityEngine.PhysicsModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\UnityEngine.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\UnityEngine.UIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityUIExtensions">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\UnityUIExtensions.dll</HintPath>
+    </Reference>
+    <Reference Include="YarnSpinner">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\YarnSpinner.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>

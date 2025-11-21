@@ -1,0 +1,327 @@
+{
+  "format": 1,
+  "restore": {
+    "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Presentation\\LBoL.Presentation.csproj": {}
+  },
+  "projects": {
+    "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Base\\LBoL.Base.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Base\\LBoL.Base.csproj",
+        "projectName": "LBoL.Base",
+        "projectPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Base\\LBoL.Base.csproj",
+        "packagesPath": "C:\\Users\\oft-Enginner PC\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Base\\obj\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "E:\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\oft-Enginner PC\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net40"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net40": {
+            "targetAlias": "net40",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net40": {
+          "targetAlias": "net40",
+          "dependencies": {
+            "Microsoft.NETFramework.ReferenceAssemblies": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[1.0.3, )",
+              "autoReferenced": true
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.307\\RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.ConfigData\\LBoL.ConfigData.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.ConfigData\\LBoL.ConfigData.csproj",
+        "projectName": "LBoL.ConfigData",
+        "projectPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.ConfigData\\LBoL.ConfigData.csproj",
+        "packagesPath": "C:\\Users\\oft-Enginner PC\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.ConfigData\\obj\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "E:\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\oft-Enginner PC\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net40"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net40": {
+            "targetAlias": "net40",
+            "projectReferences": {
+              "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Base\\LBoL.Base.csproj": {
+                "projectPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Base\\LBoL.Base.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net40": {
+          "targetAlias": "net40",
+          "dependencies": {
+            "Microsoft.NETFramework.ReferenceAssemblies": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[1.0.3, )",
+              "autoReferenced": true
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.307\\RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Core\\LBoL.Core.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Core\\LBoL.Core.csproj",
+        "projectName": "LBoL.Core",
+        "projectPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Core\\LBoL.Core.csproj",
+        "packagesPath": "C:\\Users\\oft-Enginner PC\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Core\\obj\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "E:\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\oft-Enginner PC\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net40"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net40": {
+            "targetAlias": "net40",
+            "projectReferences": {
+              "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Base\\LBoL.Base.csproj": {
+                "projectPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Base\\LBoL.Base.csproj"
+              },
+              "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.ConfigData\\LBoL.ConfigData.csproj": {
+                "projectPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.ConfigData\\LBoL.ConfigData.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net40": {
+          "targetAlias": "net40",
+          "dependencies": {
+            "Microsoft.NETFramework.ReferenceAssemblies": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[1.0.3, )",
+              "autoReferenced": true
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.307\\RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.EntityLib\\LBoL.EntityLib.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.EntityLib\\LBoL.EntityLib.csproj",
+        "projectName": "LBoL.EntityLib",
+        "projectPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.EntityLib\\LBoL.EntityLib.csproj",
+        "packagesPath": "C:\\Users\\oft-Enginner PC\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.EntityLib\\obj\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "E:\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\oft-Enginner PC\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net40"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net40": {
+            "targetAlias": "net40",
+            "projectReferences": {
+              "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Base\\LBoL.Base.csproj": {
+                "projectPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Base\\LBoL.Base.csproj"
+              },
+              "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.ConfigData\\LBoL.ConfigData.csproj": {
+                "projectPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.ConfigData\\LBoL.ConfigData.csproj"
+              },
+              "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Core\\LBoL.Core.csproj": {
+                "projectPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Core\\LBoL.Core.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net40": {
+          "targetAlias": "net40",
+          "dependencies": {
+            "Microsoft.NETFramework.ReferenceAssemblies": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[1.0.3, )",
+              "autoReferenced": true
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.307\\RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Presentation\\LBoL.Presentation.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Presentation\\LBoL.Presentation.csproj",
+        "projectName": "LBoL.Presentation",
+        "projectPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Presentation\\LBoL.Presentation.csproj",
+        "packagesPath": "C:\\Users\\oft-Enginner PC\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Presentation\\obj\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "E:\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\oft-Enginner PC\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net40"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net40": {
+            "targetAlias": "net40",
+            "projectReferences": {
+              "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Base\\LBoL.Base.csproj": {
+                "projectPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Base\\LBoL.Base.csproj"
+              },
+              "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.ConfigData\\LBoL.ConfigData.csproj": {
+                "projectPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.ConfigData\\LBoL.ConfigData.csproj"
+              },
+              "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Core\\LBoL.Core.csproj": {
+                "projectPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Core\\LBoL.Core.csproj"
+              },
+              "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.EntityLib\\LBoL.EntityLib.csproj": {
+                "projectPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.EntityLib\\LBoL.EntityLib.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net40": {
+          "targetAlias": "net40",
+          "dependencies": {
+            "Microsoft.NETFramework.ReferenceAssemblies": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[1.0.3, )",
+              "autoReferenced": true
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.307\\RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+﻿using System;
+using JetBrains.Annotations;
+using LBoL.Core.Cards;
+
+namespace LBoL.EntityLib.Cards.Character.Sakuya
+{
+	// Token: 0x020003B7 RID: 951
+	[UsedImplicitly]
+	public sealed class SakuyaZeroDefense : Card
+	{
+	}
+}
