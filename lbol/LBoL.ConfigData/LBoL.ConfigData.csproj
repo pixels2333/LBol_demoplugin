@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <ProjectGuid>{B12C7AB6-8218-45E5-9412-B8727169AFB5}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>LBoL.ConfigData</RootNamespace>
+    <AssemblyName>LBoL.ConfigData</AssemblyName>
+    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <FileAlignment>512</FileAlignment>
+    <TargetFramework>net40</TargetFramework>
+  </PropertyGroup>
+  <PropertyGroup>
+    <EnableDefaultItems>False</EnableDefaultItems>
+  </PropertyGroup>
+  <PropertyGroup />
+  <ItemGroup>
+    <Compile Include="AchievementConfig.cs" />
+    <Compile Include="AdventureConfig.cs" />
+    <Compile Include="BgmConfig.cs" />
+    <Compile Include="BluePointConfig.cs" />
+    <Compile Include="BulletConfig.cs" />
+    <Compile Include="CardConfig.cs" />
+    <Compile Include="ConfigDataManager.cs" />
+    <Compile Include="DollConfig.cs" />
+    <Compile Include="EffectConfig.cs" />
+    <Compile Include="EnemyGroupConfig.cs" />
+    <Compile Include="EnemyUnitConfig.cs" />
+    <Compile Include="ExhibitConfig.cs" />
+    <Compile Include="ExpConfig.cs" />
+    <Compile Include="GunConfig.cs" />
+    <Compile Include="JadeBoxConfig.cs" />
+    <Compile Include="LaserConfig.cs" />
+    <Compile Include="PieceConfig.cs" />
+    <Compile Include="PlayerUnitConfig.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="PuzzleConfig.cs" />
+    <Compile Include="RuleConfig.cs" />
+    <Compile Include="SequenceConfig.cs" />
+    <Compile Include="SfxConfig.cs" />
+    <Compile Include="SpellConfig.cs" />
+    <Compile Include="SpineEventConfig.cs" />
+    <Compile Include="StageConfig.cs" />
+    <Compile Include="StatusEffectConfig.cs" />
+    <Compile Include="UiSoundConfig.cs" />
+    <Compile Include="UltimateSkillConfig.cs" />
+    <Compile Include="UnitModelConfig.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LBoL.Base\LBoL.Base.csproj">
+      <Project>{B12C7AB6-8218-45E5-9412-B8727169AFB4}</Project>
+      <Name>LBoL.Base</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System.Core" />
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="Untitled.ConfigDataBuilder.Base">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\Untitled.ConfigDataBuilder.Base.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+    <ItemGroup>
+    <Reference Include="...\lib\*.dll">
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

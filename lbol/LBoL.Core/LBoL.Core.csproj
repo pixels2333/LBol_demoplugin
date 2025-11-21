@@ -1,0 +1,510 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <ProjectGuid>{B12C7AB6-8218-45E5-9412-B8727169AFB6}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>LBoL.Core</RootNamespace>
+    <AssemblyName>LBoL.Core</AssemblyName>
+    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <FileAlignment>512</FileAlignment>
+    <TargetFramework>net40</TargetFramework>
+  </PropertyGroup>
+  <PropertyGroup>
+    <EnableDefaultItems>False</EnableDefaultItems>
+  </PropertyGroup>
+  <PropertyGroup />
+  <ItemGroup>
+    <Compile Include="AchievementKey.cs" />
+    <Compile Include="Achievements.cs" />
+    <Compile Include="AddCardsType.cs" />
+    <Compile Include="Adventures\Adventure.cs" />
+    <Compile Include="Adventures\AdventureInfoAttribute.cs" />
+    <Compile Include="Adventures\FakeAdventure.cs" />
+    <Compile Include="Adventures\IAdventureWeighter.cs" />
+    <Compile Include="Attributes\LocalizableAttribute.cs" />
+    <Compile Include="Battle\ActionCause.cs" />
+    <Compile Include="Battle\ActionResolver.cs" />
+    <Compile Include="Battle\ActionViewer.cs" />
+    <Compile Include="Battle\BattleAction.cs" />
+    <Compile Include="Battle\BattleActionRecord\ActionRecord.cs" />
+    <Compile Include="Battle\BattleActionRecord\PhaseRecord.cs" />
+    <Compile Include="Battle\BattleActions\ActionViewerTypeAttribute.cs" />
+    <Compile Include="Battle\BattleActions\AddCardsToDeckAction.cs" />
+    <Compile Include="Battle\BattleActions\AddCardsToDiscardAction.cs" />
+    <Compile Include="Battle\BattleActions\AddCardsToDrawZoneAction.cs" />
+    <Compile Include="Battle\BattleActions\AddCardsToExileAction.cs" />
+    <Compile Include="Battle\BattleActions\AddCardsToHandAction.cs" />
+    <Compile Include="Battle\BattleActions\AddDollAction.cs" />
+    <Compile Include="Battle\BattleActions\AddDollSlotAction.cs" />
+    <Compile Include="Battle\BattleActions\ApplyStatusEffectAction.2.cs" />
+    <Compile Include="Battle\BattleActions\ApplyStatusEffectAction.cs" />
+    <Compile Include="Battle\BattleActions\CardTransitionType.cs" />
+    <Compile Include="Battle\BattleActions\CastBlockShieldAction.cs" />
+    <Compile Include="Battle\BattleActions\ConsumeMagicAction.cs" />
+    <Compile Include="Battle\BattleActions\ConsumeManaAction.cs" />
+    <Compile Include="Battle\BattleActions\ConsumeMoneyAction.cs" />
+    <Compile Include="Battle\BattleActions\ConsumePowerAction.cs" />
+    <Compile Include="Battle\BattleActions\ConvertManaAction.cs" />
+    <Compile Include="Battle\BattleActions\DamageAction.cs" />
+    <Compile Include="Battle\BattleActions\DieAction.cs" />
+    <Compile Include="Battle\BattleActions\DiscardAction.cs" />
+    <Compile Include="Battle\BattleActions\DiscardManyAction.cs" />
+    <Compile Include="Battle\BattleActions\DollGainMagicAction.cs" />
+    <Compile Include="Battle\BattleActions\DrawCardAction.cs" />
+    <Compile Include="Battle\BattleActions\DrawCardsToSpecificAction.cs" />
+    <Compile Include="Battle\BattleActions\DrawManyCardAction.cs" />
+    <Compile Include="Battle\BattleActions\DrawSelectedCardAction.cs" />
+    <Compile Include="Battle\BattleActions\DreamCardsAction.cs" />
+    <Compile Include="Battle\BattleActions\DreamCardsToHandAction.cs" />
+    <Compile Include="Battle\BattleActions\EndAllEnemyTurnAction.cs" />
+    <Compile Include="Battle\BattleActions\EndBattleAction.cs" />
+    <Compile Include="Battle\BattleActions\EndEnemyTurnAction.cs" />
+    <Compile Include="Battle\BattleActions\EndPlayerTurnAction.cs" />
+    <Compile Include="Battle\BattleActions\EndRoundAction.cs" />
+    <Compile Include="Battle\BattleActions\EndShootAction.cs" />
+    <Compile Include="Battle\BattleActions\EnemyMoveAction.cs" />
+    <Compile Include="Battle\BattleActions\EnemyTurnAction.cs" />
+    <Compile Include="Battle\BattleActions\EscapeAction.cs" />
+    <Compile Include="Battle\BattleActions\ExileCardAction.cs" />
+    <Compile Include="Battle\BattleActions\ExileManyCardAction.cs" />
+    <Compile Include="Battle\BattleActions\ExplodeAction.cs" />
+    <Compile Include="Battle\BattleActions\FollowAttackAction.cs" />
+    <Compile Include="Battle\BattleActions\ForceKillAction.cs" />
+    <Compile Include="Battle\BattleActions\GainManaAction.cs" />
+    <Compile Include="Battle\BattleActions\GainMoneyAction.cs" />
+    <Compile Include="Battle\BattleActions\GainPowerAction.cs" />
+    <Compile Include="Battle\BattleActions\GainTurnManaAction.cs" />
+    <Compile Include="Battle\BattleActions\HealAction.cs" />
+    <Compile Include="Battle\BattleActions\InstantWinAction.cs" />
+    <Compile Include="Battle\BattleActions\InteractionAction.cs" />
+    <Compile Include="Battle\BattleActions\LockRandomTurnManaAction.cs" />
+    <Compile Include="Battle\BattleActions\LockTurnManaAction.cs" />
+    <Compile Include="Battle\BattleActions\LoseAllExhibitsAction.cs" />
+    <Compile Include="Battle\BattleActions\LoseBlockShieldAction.cs" />
+    <Compile Include="Battle\BattleActions\LoseManaAction.cs" />
+    <Compile Include="Battle\BattleActions\LoseMoneyAction.cs" />
+    <Compile Include="Battle\BattleActions\LosePowerAction.cs" />
+    <Compile Include="Battle\BattleActions\LoseTurnManaAction.cs" />
+    <Compile Include="Battle\BattleActions\MoodChangeAction.cs" />
+    <Compile Include="Battle\BattleActions\MoveCardAction.cs" />
+    <Compile Include="Battle\BattleActions\MoveCardToDrawZoneAction.cs" />
+    <Compile Include="Battle\BattleActions\PerformAction.cs" />
+    <Compile Include="Battle\BattleActions\PlayCardAction.cs" />
+    <Compile Include="Battle\BattleActions\PlayTwiceAction.cs" />
+    <Compile Include="Battle\BattleActions\RemoveAllNegativeStatusEffectAction.cs" />
+    <Compile Include="Battle\BattleActions\RemoveCardAction.cs" />
+    <Compile Include="Battle\BattleActions\RemoveDollAction.cs" />
+    <Compile Include="Battle\BattleActions\RemoveDollSlotAction.cs" />
+    <Compile Include="Battle\BattleActions\RemoveStatusEffectAction.cs" />
+    <Compile Include="Battle\BattleActions\RequestEndPlayerTurnAction.cs" />
+    <Compile Include="Battle\BattleActions\ReshuffleAction.cs" />
+    <Compile Include="Battle\BattleActions\RetainAction.cs" />
+    <Compile Include="Battle\BattleActions\ScryAction.cs" />
+    <Compile Include="Battle\BattleActions\SpawnEnemyAction.2.cs" />
+    <Compile Include="Battle\BattleActions\SpawnEnemyAction.cs" />
+    <Compile Include="Battle\BattleActions\SpecialSourceType.cs" />
+    <Compile Include="Battle\BattleActions\StartAllEnemyTurnAction.cs" />
+    <Compile Include="Battle\BattleActions\StartBattleAction.cs" />
+    <Compile Include="Battle\BattleActions\StartEnemyTurnAction.cs" />
+    <Compile Include="Battle\BattleActions\StartPlayerTurnAction.cs" />
+    <Compile Include="Battle\BattleActions\StartRoundAction.cs" />
+    <Compile Include="Battle\BattleActions\StatisticalTotalDamageAction.cs" />
+    <Compile Include="Battle\BattleActions\TransformCardAction.cs" />
+    <Compile Include="Battle\BattleActions\TriggerAllDollsPassiveAction.cs" />
+    <Compile Include="Battle\BattleActions\TriggerDollActiveAction.cs" />
+    <Compile Include="Battle\BattleActions\TriggerDollPassiveAction.cs" />
+    <Compile Include="Battle\BattleActions\UnlockAllTurnManaAction.cs" />
+    <Compile Include="Battle\BattleActions\UnlockTurnManaAction.cs" />
+    <Compile Include="Battle\BattleActions\UpgradeCardAction.cs" />
+    <Compile Include="Battle\BattleActions\UpgradeCardsAction.cs" />
+    <Compile Include="Battle\BattleActions\UseCardAction.cs" />
+    <Compile Include="Battle\BattleActions\UseDollAction.cs" />
+    <Compile Include="Battle\BattleActions\UseUsAction.cs" />
+    <Compile Include="Battle\BattleActions\WaitForCoroutineAction.cs" />
+    <Compile Include="Battle\BattleActions\WaitForYieldInstructionAction.cs" />
+    <Compile Include="Battle\BattleActionViewer.cs" />
+    <Compile Include="Battle\BattleController.cs" />
+    <Compile Include="Battle\BattleMessage.cs" />
+    <Compile Include="Battle\BattleStatus.cs" />
+    <Compile Include="Battle\CustomCounterResetTiming.cs" />
+    <Compile Include="Battle\DieCause.cs" />
+    <Compile Include="Battle\EventBattleAction.cs" />
+    <Compile Include="Battle\EventSequencedReactor.cs" />
+    <Compile Include="Battle\ICustomCounter.cs" />
+    <Compile Include="Battle\Interaction.cs" />
+    <Compile Include="Battle\InteractionExtensions.cs" />
+    <Compile Include="Battle\Interactions\MiniSelectCardInteraction.cs" />
+    <Compile Include="Battle\Interactions\RemoveCardInteraction.cs" />
+    <Compile Include="Battle\Interactions\RewardInteraction.cs" />
+    <Compile Include="Battle\Interactions\SelectBaseManaInteraction.cs" />
+    <Compile Include="Battle\Interactions\SelectCardInteraction.cs" />
+    <Compile Include="Battle\Interactions\SelectedCardHandling.cs" />
+    <Compile Include="Battle\Interactions\SelectHandInteraction.cs" />
+    <Compile Include="Battle\Interactions\TransformCardInteraction.cs" />
+    <Compile Include="Battle\Interactions\UpgradeCardInteraction.cs" />
+    <Compile Include="Battle\LazyActionReactor.cs" />
+    <Compile Include="Battle\LazySequencedReactor.cs" />
+    <Compile Include="Battle\Phase.cs" />
+    <Compile Include="Battle\Reactor.cs" />
+    <Compile Include="Battle\SimpleAction.cs" />
+    <Compile Include="Battle\SimpleEventBattleAction.cs" />
+    <Compile Include="BlockInfo.cs" />
+    <Compile Include="BlockShieldEventArgs.cs" />
+    <Compile Include="BlockShieldType.cs" />
+    <Compile Include="CancelCause.cs" />
+    <Compile Include="CardEventArgs.cs" />
+    <Compile Include="CardMovingEventArgs.cs" />
+    <Compile Include="CardMovingToDrawZoneEventArgs.cs" />
+    <Compile Include="CardsAddingToDrawZoneEventArgs.cs" />
+    <Compile Include="CardsEventArgs.cs" />
+    <Compile Include="Cards\Card.cs" />
+    <Compile Include="Cards\CardZone.cs" />
+    <Compile Include="Cards\CirnoFreeze.cs" />
+    <Compile Include="Cards\FollowAttackFiller.cs" />
+    <Compile Include="Cards\FriendToken.cs" />
+    <Compile Include="Cards\GunPair.cs" />
+    <Compile Include="Cards\Guns.cs" />
+    <Compile Include="Cards\GunType.cs" />
+    <Compile Include="Cards\IXCostFilter.cs" />
+    <Compile Include="Cards\ManaFreezer.cs" />
+    <Compile Include="Cards\NightMana1.cs" />
+    <Compile Include="Cards\NightMana2.cs" />
+    <Compile Include="Cards\NightMana3.cs" />
+    <Compile Include="Cards\NightMana4.cs" />
+    <Compile Include="Cards\WhiteLaser.cs" />
+    <Compile Include="Cards\Xiaozhuo.cs" />
+    <Compile Include="Cards\Zhukeling.cs" />
+    <Compile Include="CardTransformEventArgs.cs" />
+    <Compile Include="CardUsingEventArgs.cs" />
+    <Compile Include="CrossPlatformHelper.cs" />
+    <Compile Include="DamageDealingEventArgs.cs" />
+    <Compile Include="DamageEventArgs.cs" />
+    <Compile Include="DamageInfo.cs" />
+    <Compile Include="Dialogs\DialogCommandPhase.cs" />
+    <Compile Include="Dialogs\DialogFunctionAttribute.cs" />
+    <Compile Include="Dialogs\DialogFunctions.cs" />
+    <Compile Include="Dialogs\DialogLinePhase.cs" />
+    <Compile Include="Dialogs\DialogOption.cs" />
+    <Compile Include="Dialogs\DialogOptionData.cs" />
+    <Compile Include="Dialogs\DialogOptionsPhase.cs" />
+    <Compile Include="Dialogs\DialogPhase.cs" />
+    <Compile Include="Dialogs\DialogProgram.cs" />
+    <Compile Include="Dialogs\DialogRunner.cs" />
+    <Compile Include="Dialogs\DialogStorage.cs" />
+    <Compile Include="Dialogs\LineArgumentHandler.cs" />
+    <Compile Include="DieEventArgs.cs" />
+    <Compile Include="DollEventArgs.cs" />
+    <Compile Include="DollMagicArgs.cs" />
+    <Compile Include="DollMagicEventArgs.cs" />
+    <Compile Include="DollTriggeredEventArgs.cs" />
+    <Compile Include="DollUsingEventArgs.cs" />
+    <Compile Include="DollValueArgs.cs" />
+    <Compile Include="DrawZoneTarget.cs" />
+    <Compile Include="EntityName.cs" />
+    <Compile Include="EntityNameTable.cs" />
+    <Compile Include="Exhibit.cs" />
+    <Compile Include="ExhibitInfoAttribute.cs" />
+    <Compile Include="ExhibitsEventArgs.cs" />
+    <Compile Include="Exhibits\YichuiPiao.cs" />
+    <Compile Include="Exhibits\ZhinengYinxiang.cs" />
+    <Compile Include="ExpHelper.cs" />
+    <Compile Include="FaultTolerantArray.cs" />
+    <Compile Include="FollowAttackEventArgs.cs" />
+    <Compile Include="ForceKillEventArgs.cs" />
+    <Compile Include="FriendCostInfo.cs" />
+    <Compile Include="FriendCostType.cs" />
+    <Compile Include="GameDifficulty.cs" />
+    <Compile Include="GameDifficultyExtensions.cs" />
+    <Compile Include="GameEntity.cs" />
+    <Compile Include="GameEntityFormatWrapper.cs" />
+    <Compile Include="GameEvent.cs" />
+    <Compile Include="GameEventArgs.cs" />
+    <Compile Include="GameEventHandler.cs" />
+    <Compile Include="GameEventHandlerHolder.cs" />
+    <Compile Include="GameEventPriority.cs" />
+    <Compile Include="GameMap.cs" />
+    <Compile Include="GameMode.cs" />
+    <Compile Include="GameResultType.cs" />
+    <Compile Include="GameRunController.cs" />
+    <Compile Include="GameRunMapMode.cs" />
+    <Compile Include="GameRunStartupParameters.cs" />
+    <Compile Include="GameRunStatus.cs" />
+    <Compile Include="GapOptions\DrinkTea.cs" />
+    <Compile Include="GapOptions\FindExhibit.cs" />
+    <Compile Include="GapOptions\GapOption.cs" />
+    <Compile Include="GapOptions\GetMoney.cs" />
+    <Compile Include="GapOptions\GetRareCard.cs" />
+    <Compile Include="GapOptions\RemoveCard.cs" />
+    <Compile Include="GapOptions\UpgradeBaota.cs" />
+    <Compile Include="GapOptions\UpgradeCard.cs" />
+    <Compile Include="GlobalConfig.cs" />
+    <Compile Include="HealEventArgs.cs" />
+    <Compile Include="HealType.cs" />
+    <Compile Include="Helpers\EnumHelper.cs" />
+    <Compile Include="Helpers\StreamingAssetsHelper.cs" />
+    <Compile Include="Helpers\UiUtils.cs" />
+    <Compile Include="IDisplayWord.cs" />
+    <Compile Include="IExhibitWeighter.cs" />
+    <Compile Include="IGameRunAchievementHandler.cs" />
+    <Compile Include="IGameRunVisualTrigger.cs" />
+    <Compile Include="IInitializable.cs" />
+    <Compile Include="IMapModeOverrider.cs" />
+    <Compile Include="INotifyActivating.cs" />
+    <Compile Include="INotifyChanged.cs" />
+    <Compile Include="Intentions\AddCardIntention.cs" />
+    <Compile Include="Intentions\AttackIntention.cs" />
+    <Compile Include="Intentions\ChargeIntention.cs" />
+    <Compile Include="Intentions\ClearIntention.cs" />
+    <Compile Include="Intentions\CountDownIntention.cs" />
+    <Compile Include="Intentions\DefendIntention.cs" />
+    <Compile Include="Intentions\DoNothingIntention.cs" />
+    <Compile Include="Intentions\EscapeIntention.cs" />
+    <Compile Include="Intentions\ExplodeAllyIntention.cs" />
+    <Compile Include="Intentions\ExplodeIntention.cs" />
+    <Compile Include="Intentions\GrazeIntention.cs" />
+    <Compile Include="Intentions\HealIntention.cs" />
+    <Compile Include="Intentions\HexIntention.cs" />
+    <Compile Include="Intentions\KokoroDarkIntention.cs" />
+    <Compile Include="Intentions\NegativeEffectIntention.cs" />
+    <Compile Include="Intentions\PositiveEffectIntention.cs" />
+    <Compile Include="Intentions\RepairIntention.cs" />
+    <Compile Include="Intentions\SleepIntention.cs" />
+    <Compile Include="Intentions\SpawnDroneIntention.cs" />
+    <Compile Include="Intentions\SpawnIntention.cs" />
+    <Compile Include="Intentions\SpellCardIntention.cs" />
+    <Compile Include="Intentions\StunIntention.cs" />
+    <Compile Include="Intentions\UnknownIntention.cs" />
+    <Compile Include="InteractionViewer.2.cs" />
+    <Compile Include="InteractionViewer.cs" />
+    <Compile Include="IVerifiable.cs" />
+    <Compile Include="JadeBox.cs" />
+    <Compile Include="JadeBoxes\StartWithMythic.cs" />
+    <Compile Include="JadeBoxes\TwoColorStart.cs" />
+    <Compile Include="KeywordDisplayWord.cs" />
+    <Compile Include="Keywords.cs" />
+    <Compile Include="Library.cs" />
+    <Compile Include="Locale.cs" />
+    <Compile Include="LocaleExtensions.cs" />
+    <Compile Include="Localization.cs" />
+    <Compile Include="LocalizationExtensions.cs" />
+    <Compile Include="MainMenuStatus.cs" />
+    <Compile Include="ManaConvertingEventArgs.cs" />
+    <Compile Include="ManaEventArgs.cs" />
+    <Compile Include="MapNode.cs" />
+    <Compile Include="MapNodeStatus.cs" />
+    <Compile Include="Microsoft\CodeAnalysis\EmbeddedAttribute.cs" />
+    <Compile Include="MiscExtensions.cs" />
+    <Compile Include="MoodChangeEventArgs.cs" />
+    <Compile Include="NounCase.cs" />
+    <Compile Include="OrderedList.cs" />
+    <Compile Include="PlatformHandler.cs" />
+    <Compile Include="PlatformHandlers\EditorPlatformHandler.cs" />
+    <Compile Include="PlatformHandlers\StandalonePlatformHandler.cs" />
+    <Compile Include="PlatformHandlers\SteamPlatformHandler.cs" />
+    <Compile Include="PowerEventArgs.cs" />
+    <Compile Include="ProfileStatsKey.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="PuzzleFlag.cs" />
+    <Compile Include="PuzzleFlagDisplayWord.cs" />
+    <Compile Include="PuzzleFlags.cs" />
+    <Compile Include="Randoms\AppearanceWeightTable.cs" />
+    <Compile Include="Randoms\CardTypeWeightTable.cs" />
+    <Compile Include="Randoms\CardWeightTable.cs" />
+    <Compile Include="Randoms\CardWeightTableExtensions.cs" />
+    <Compile Include="Randoms\ExhibitWeightTable.cs" />
+    <Compile Include="Randoms\IRandomPool.cs" />
+    <Compile Include="Randoms\OwnerWeightTable.cs" />
+    <Compile Include="Randoms\RandomPoolEntry.cs" />
+    <Compile Include="Randoms\RarityWeightTable.cs" />
+    <Compile Include="Randoms\RarityWeightTableExtensions.cs" />
+    <Compile Include="Randoms\RepeatableRandomPool.cs" />
+    <Compile Include="Randoms\UniqueRandomPool.cs" />
+    <Compile Include="RuntimeCommandAttribute.cs" />
+    <Compile Include="RuntimeCommandHandler.cs" />
+    <Compile Include="RuntimeFormatter.cs" />
+    <Compile Include="RuntimeFormatterArgmentHandler.cs" />
+    <Compile Include="RuntimeFormatterExtensions.cs" />
+    <Compile Include="SaveData\AdventureSaveData.cs" />
+    <Compile Include="SaveData\AdvSlotSaveData.cs" />
+    <Compile Include="SaveData\CardRecordSaveData.cs" />
+    <Compile Include="SaveData\CardSaveData.cs" />
+    <Compile Include="SaveData\CardWeightFactorSaveData.cs" />
+    <Compile Include="SaveData\CharacterStatsSaveData.cs" />
+    <Compile Include="SaveData\ExhibitSaveData.cs" />
+    <Compile Include="SaveData\GameRunRecordSaveData.cs" />
+    <Compile Include="SaveData\GameRunSaveData.cs" />
+    <Compile Include="SaveData\GameSettingsSaveData.cs" />
+    <Compile Include="SaveData\HintLevel.cs" />
+    <Compile Include="SaveData\HintStatusSaveData.cs" />
+    <Compile Include="SaveData\JadeBoxSaveData.cs" />
+    <Compile Include="SaveData\Lzss.cs" />
+    <Compile Include="SaveData\MapNodeSaveData.cs" />
+    <Compile Include="SaveData\PlayerSaveData.cs" />
+    <Compile Include="SaveData\ProfileSaveData.cs" />
+    <Compile Include="SaveData\QuickPlayLevel.cs" />
+    <Compile Include="SaveData\RandomPoolEntrySaveData.cs" />
+    <Compile Include="SaveData\RepeatableRandomPoolSaveData.cs" />
+    <Compile Include="SaveData\SaveDataHelper.cs" />
+    <Compile Include="SaveData\SaveTiming.cs" />
+    <Compile Include="SaveData\StageRecord.cs" />
+    <Compile Include="SaveData\StageSaveData.cs" />
+    <Compile Include="SaveData\StationRecord.cs" />
+    <Compile Include="SaveData\SysSaveData.cs" />
+    <Compile Include="SaveData\UniqueRandomPoolSaveData.cs" />
+    <Compile Include="ScryEventArgs.cs" />
+    <Compile Include="ScryInfo.cs" />
+    <Compile Include="SemVer.cs" />
+    <Compile Include="ShieldInfo.cs" />
+    <Compile Include="Singleton.cs" />
+    <Compile Include="Stage.cs" />
+    <Compile Include="StationEventArgs.cs" />
+    <Compile Include="Stations\AdventureStation.cs" />
+    <Compile Include="Stations\BattleAdvTestStation.cs" />
+    <Compile Include="Stations\BattleStation.cs" />
+    <Compile Include="Stations\BossStation.cs" />
+    <Compile Include="Stations\EliteEnemyStation.cs" />
+    <Compile Include="Stations\EnemyStation.cs" />
+    <Compile Include="Stations\EntryStation.cs" />
+    <Compile Include="Stations\GapStation.cs" />
+    <Compile Include="Stations\IAdventureStation.cs" />
+    <Compile Include="Stations\SelectStation.cs" />
+    <Compile Include="Stations\ShopItem.cs" />
+    <Compile Include="Stations\ShopStation.cs" />
+    <Compile Include="Stations\Station.cs" />
+    <Compile Include="Stations\StationDialogSource.cs" />
+    <Compile Include="Stations\StationReward.cs" />
+    <Compile Include="Stations\StationRewardType.cs" />
+    <Compile Include="Stations\StationStatus.cs" />
+    <Compile Include="Stations\StationType.cs" />
+    <Compile Include="Stations\SupplyStation.cs" />
+    <Compile Include="Stations\TradeStation.cs" />
+    <Compile Include="StatisticalDamageEventArgs.cs" />
+    <Compile Include="Stats\BattleStats.cs" />
+    <Compile Include="Stats\GameRunStats.cs" />
+    <Compile Include="Stats\StageStats.cs" />
+    <Compile Include="StatusEffectApplyEventArgs.cs" />
+    <Compile Include="StatusEffectEventArgs.cs" />
+    <Compile Include="StatusEffects\BossAct.cs" />
+    <Compile Include="StatusEffects\Burst.cs" />
+    <Compile Include="StatusEffects\BurstDrawSe.cs" />
+    <Compile Include="StatusEffects\BurstUpgrade.cs" />
+    <Compile Include="StatusEffects\Charging.cs" />
+    <Compile Include="StatusEffects\Concentration.cs" />
+    <Compile Include="StatusEffects\Control.cs" />
+    <Compile Include="StatusEffects\ControlNegative.cs" />
+    <Compile Include="StatusEffects\DeepFreezeSe.cs" />
+    <Compile Include="StatusEffects\EnemyLockedOn.cs" />
+    <Compile Include="StatusEffects\EnemyVulnerable.cs" />
+    <Compile Include="StatusEffects\ExtraTurn.cs" />
+    <Compile Include="StatusEffects\Firepower.cs" />
+    <Compile Include="StatusEffects\FirepowerNegative.cs" />
+    <Compile Include="StatusEffects\Fragil.cs" />
+    <Compile Include="StatusEffects\Grace.cs" />
+    <Compile Include="StatusEffects\Graze.cs" />
+    <Compile Include="StatusEffects\GuangxueMicai.cs" />
+    <Compile Include="StatusEffects\Invincible.cs" />
+    <Compile Include="StatusEffects\InvincibleEternal.cs" />
+    <Compile Include="StatusEffects\IOpposing.cs" />
+    <Compile Include="StatusEffects\LimitedDamage.cs" />
+    <Compile Include="StatusEffects\LockedOn.cs" />
+    <Compile Include="StatusEffects\MirrorImage.cs" />
+    <Compile Include="StatusEffects\Mood.cs" />
+    <Compile Include="StatusEffects\OpposeResult.cs" />
+    <Compile Include="StatusEffects\Servant.cs" />
+    <Compile Include="StatusEffects\Spirit.cs" />
+    <Compile Include="StatusEffects\SpiritNegative.cs" />
+    <Compile Include="StatusEffects\StatusEffect.cs" />
+    <Compile Include="StatusEffects\StatusEffectAddResult.cs" />
+    <Compile Include="StatusEffects\SuperExtraTurn.cs" />
+    <Compile Include="StatusEffects\TempControl.cs" />
+    <Compile Include="StatusEffects\TempControlNegative.cs" />
+    <Compile Include="StatusEffects\TempFirepower.cs" />
+    <Compile Include="StatusEffects\TempFirepowerNegative.cs" />
+    <Compile Include="StatusEffects\TempSpirit.cs" />
+    <Compile Include="StatusEffects\TempSpiritNegative.cs" />
+    <Compile Include="StatusEffects\TurnStartDontLoseBlock.cs" />
+    <Compile Include="StatusEffects\TurnStatus.cs" />
+    <Compile Include="StatusEffects\Vulnerable.cs" />
+    <Compile Include="StatusEffects\Weak.cs" />
+    <Compile Include="StatusEffects\WindGirl.cs" />
+    <Compile Include="StringDecorator.cs" />
+    <Compile Include="System\Runtime\CompilerServices\NullableAttribute.cs" />
+    <Compile Include="TypeFactory.cs" />
+    <Compile Include="UnitEventArgs.cs" />
+    <Compile Include="UnitName.cs" />
+    <Compile Include="UnitNameStyle.cs" />
+    <Compile Include="UnitNameTable.cs" />
+    <Compile Include="UnitSelector.cs" />
+    <Compile Include="Units\BattleSet.cs" />
+    <Compile Include="Units\Doll.cs" />
+    <Compile Include="Units\EnemyGroup.cs" />
+    <Compile Include="Units\EnemyGroupEntry.cs" />
+    <Compile Include="Units\EnemyUnit.2.cs" />
+    <Compile Include="Units\EnemyUnit.cs" />
+    <Compile Include="Units\IEnemyMove.cs" />
+    <Compile Include="Units\IEnemyUnitView.cs" />
+    <Compile Include="Units\Intention.cs" />
+    <Compile Include="Units\IntentionType.cs" />
+    <Compile Include="Units\IPlayerUnitView.cs" />
+    <Compile Include="Units\IUnitView.cs" />
+    <Compile Include="Units\PlayerType.cs" />
+    <Compile Include="Units\PlayerUnit.cs" />
+    <Compile Include="Units\SimpleEnemyMove.cs" />
+    <Compile Include="Units\UltimateSkill.cs" />
+    <Compile Include="Units\Unit.cs" />
+    <Compile Include="Units\UnitStatus.cs" />
+    <Compile Include="UnitySourceGeneratedAssemblyMonoScriptTypes_v1.cs" />
+    <Compile Include="UsUsingEventArgs.cs" />
+    <Compile Include="Utils.cs" />
+    <Compile Include="VersionInfo.cs" />
+    <Compile Include="VisualSourceData.cs" />
+    <Compile Include="VisualSourceType.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LBoL.Base\LBoL.Base.csproj">
+      <Project>{B12C7AB6-8218-45E5-9412-B8727169AFB4}</Project>
+      <Name>LBoL.Base</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\LBoL.ConfigData\LBoL.ConfigData.csproj">
+      <Project>{B12C7AB6-8218-45E5-9412-B8727169AFB5}</Project>
+      <Name>LBoL.ConfigData</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="com.rlabrecque.steamworks.net">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\com.rlabrecque.steamworks.net.dll</HintPath>
+    </Reference>
+    <Reference Include="Google.Protobuf">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\Google.Protobuf.dll</HintPath>
+    </Reference>
+    <Reference Include="UniTask">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\UniTask.dll</HintPath>
+    </Reference>
+    <Reference Include="UniTask.Addressables">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\UniTask.Addressables.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.Addressables">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\Unity.Addressables.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.ResourceManager">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\Unity.ResourceManager.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\Unity.TextMeshPro.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="YamlDotNet">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\YamlDotNet.dll</HintPath>
+    </Reference>
+    <Reference Include="YarnSpinner">
+      <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\YarnSpinner.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+    <ItemGroup>
+    <Reference Include="...\lib\*.dll">
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

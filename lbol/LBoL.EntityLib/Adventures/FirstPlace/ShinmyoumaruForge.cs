@@ -1,0 +1,138 @@
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using JetBrains.Annotations;
+using LBoL.ConfigData;
+using LBoL.Core;
+using LBoL.Core.Adventures;
+using LBoL.Core.Battle.Interactions;
+using LBoL.Core.Cards;
+using LBoL.Core.Randoms;
+using UnityEngine;
+using Yarn;
+
+namespace LBoL.EntityLib.Adventures.FirstPlace
+{
+	// Token: 0x02000521 RID: 1313
+	[AdventureInfo(WeighterType = typeof(ShinmyoumaruForge.ShinmyoumaruForgeWeighter))]
+	public sealed class ShinmyoumaruForge : Adventure
+	{
+		// Token: 0x06001136 RID: 4406 RVA: 0x0001FD6C File Offset: 0x0001DF6C
+		protected override void InitVariables(IVariableStorage storage)
+		{
+			bool flag = Enumerable.Count<Card>(base.GameRun.BaseDeck, (Card c) => c.CanUpgrade && c.IsBasic) > 0;
+			storage.SetValue("$hasUpgradableBasics", flag);
+			storage.SetValue("$upgradeCount", 5f);
+			bool flag2 = Enumerable.Count<Card>(base.GameRun.BaseDeckWithoutUnremovable, (Card c) => !c.IsBasic) > 0;
+			storage.SetValue("$hasNonBasics", flag2);
+			storage.SetValue("$replaceCount", 3f);
+			bool flag3 = Enumerable.Count<Card>(base.GameRun.BaseDeck, (Card c) => c.IsBasic) > 0;
+			storage.SetValue("$hasBasics", flag3);
+			int num = Mathf.FloorToInt((float)base.GameRun.Player.MaxHp * 0.2f);
+			storage.SetValue("$loseMax", (float)num);
+		}
+
+		// Token: 0x06001137 RID: 4407 RVA: 0x0001FE80 File Offset: 0x0001E080
+		[RuntimeCommand("upgradeBasic", "")]
+		[UsedImplicitly]
+		public IEnumerator UpgradeBasic(string description)
+		{
+			List<Card> list = Enumerable.ToList<Card>(Enumerable.Where<Card>(base.GameRun.BaseDeck, (Card c) => c.CanUpgrade && c.IsBasic));
+			int num = Math.Min(list.Count, 5);
+			if (num == 0)
+			{
+				yield break;
+			}
+			SelectCardInteraction interaction = new SelectCardInteraction(num, num, list, SelectedCardHandling.DoNothing)
+			{
+				CanCancel = false,
+				Description = description
+			};
+			yield return base.GameRun.InteractionViewer.View(interaction);
+			IReadOnlyList<Card> selectedCards = interaction.SelectedCards;
+			base.GameRun.UpgradeDeckCards(selectedCards, true);
+			yield return new WaitForSeconds(1f);
+			yield break;
+		}
+
+		// Token: 0x06001138 RID: 4408 RVA: 0x0001FE96 File Offset: 0x0001E096
+		[RuntimeCommand("removeNonBasic", "")]
+		[UsedImplicitly]
+		public IEnumerator RemoveNonBasic(string description, bool canCancel = false)
+		{
+			List<Card> list = Enumerable.ToList<Card>(Enumerable.Where<Card>(base.GameRun.BaseDeckWithoutUnremovable, (Card c) => !c.IsBasic));
+			RemoveCardInteraction interaction = new RemoveCardInteraction(list)
+			{
+				CanCancel = canCancel,
+				Description = description
+			};
+			yield return base.GameRun.InteractionViewer.View(interaction);
+			if (!interaction.IsCanceled)
+			{
+				base.GameRun.RemoveDeckCards(new Card[] { interaction.SelectedCard }, true);
+			}
+			yield break;
+		}
+
+		// Token: 0x06001139 RID: 4409 RVA: 0x0001FEB3 File Offset: 0x0001E0B3
+		[RuntimeCommand("replaceBasic", "")]
+		[UsedImplicitly]
+		public IEnumerator ReplaceBasic(string description)
+		{
+			List<Card> list = Enumerable.ToList<Card>(Enumerable.Where<Card>(base.GameRun.BaseDeck, (Card c) => c.IsBasic));
+			int num = Math.Min(list.Count, 3);
+			if (num == 0)
+			{
+				yield break;
+			}
+			SelectCardInteraction interaction = new SelectCardInteraction(num, num, list, SelectedCardHandling.DoNothing)
+			{
+				CanCancel = false,
+				Description = description
+			};
+			yield return base.GameRun.InteractionViewer.View(interaction);
+			IReadOnlyList<Card> selectedCards = interaction.SelectedCards;
+			if (selectedCards.Count > 0)
+			{
+				base.GameRun.RemoveDeckCards(selectedCards, false);
+				List<Card> list2 = new List<Card>();
+				using (IEnumerator<Card> enumerator = selectedCards.GetEnumerator())
+				{
+					while (enumerator.MoveNext())
+					{
+						Card card = enumerator.Current;
+						Card card2 = base.GameRun.RollCard(base.GameRun.AdventureRng, new CardWeightTable(RarityWeightTable.OnlyCommon, OwnerWeightTable.Valid, CardTypeWeightTable.CanBeLoot, false), false, false, (CardConfig config) => config.Type == card.CardType);
+						if (card.IsUpgraded && card2.CanUpgrade)
+						{
+							card2.Upgrade();
+						}
+						list2.Add(card2);
+					}
+				}
+				base.GameRun.AddDeckCards(list2, true, null);
+				yield return new WaitForSeconds(2f);
+			}
+			yield break;
+		}
+
+		// Token: 0x04000144 RID: 324
+		private const int UpgradeCount = 5;
+
+		// Token: 0x04000145 RID: 325
+		private const int ReplaceCount = 3;
+
+		// Token: 0x04000146 RID: 326
+		private const float LoseRatio = 0.2f;
+
+		// Token: 0x02000A7A RID: 2682
+		private class ShinmyoumaruForgeWeighter : IAdventureWeighter
+		{
+			// Token: 0x06003785 RID: 14213 RVA: 0x00086D51 File Offset: 0x00084F51
+			public float WeightFor(Type type, GameRunController gameRun)
+			{
+				return (float)((Enumerable.Count<Card>(gameRun.BaseDeck, (Card c) => c.IsBasic) > 0) ? 1 : 0);
+			}
+		}
+	}
+}
