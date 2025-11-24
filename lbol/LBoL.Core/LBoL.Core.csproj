@@ -502,8 +502,8 @@
       <HintPath>..\..\..\Desktop\LBol_demoplugin\lib\YarnSpinner.dll</HintPath>
     </Reference>
   </ItemGroup>
-    <ItemGroup>
-    <Reference Include="...\lib\*.dll">
+  <ItemGroup>
+    <Reference Include="..\..\lib\*.dll">
       <Private>false</Private>
     </Reference>
   </ItemGroup>

@@ -15,6 +15,11 @@
   </PropertyGroup>
   <PropertyGroup />
   <ItemGroup>
+    <Reference Include="..\..\lib\*.dll">
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="AppearanceType.cs" />
     <Compile Include="AssociationList.cs" />
     <Compile Include="BaseManaGroup.cs" />
@@ -52,9 +57,6 @@
     <Compile Include="UnitySourceGeneratedAssemblyMonoScriptTypes_v1.cs" />
     <Compile Include="UsRepeatableType.cs" />
   </ItemGroup>
-  <ItemGroup>
-    <Reference Include="...\lib\*.dll">
-      <Private>false</Private>
-    </Reference>
-  </ItemGroup>
+
+
 </Project>
