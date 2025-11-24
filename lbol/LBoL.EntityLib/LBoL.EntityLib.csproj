@@ -1344,8 +1344,8 @@
       <Name>LBoL.Core</Name>
     </ProjectReference>
   </ItemGroup>
-    <ItemGroup>
-    <Reference Include="..\lib\*.dll">
+  <ItemGroup>
+    <Reference Include="..\..\lib\*.dll">
       <Private>false</Private>
     </Reference>
   </ItemGroup>
