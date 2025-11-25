@@ -8,6 +8,7 @@ using System;
 using System.Text.Json;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Messages;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Generic;
 
@@ -21,123 +22,173 @@ public class PlayCardAction_Patch
 {
     private static IServiceProvider serviceProvider => ModService.ServiceProvider;
 
-    /*
     /// <summary>
-    /// PlayCardAction执行前的前缀补丁
-    /// 用于记录卡牌使用的初始状态
+    /// PlayCardAction - CardPlaying事件同步补丁
+    /// 在卡牌开始使用时触发
     /// </summary>
-    // [HarmonyPatch(typeof(PlayCardAction), nameof(PlayCardAction.Execute))] // Execute method doesn't exist
-    // [HarmonyPrefix]
-    // public static void PlayCardAction_Execute_Prefix(PlayCardAction __instance)
+    [HarmonyPatch(typeof(PlayCardAction), "CardPlaying")]
+    [HarmonyPostfix]
+    public static void PlayCardAction_CardPlaying_Postfix(CardUsingEventArgs args)
     {
         try
         {
-            if (serviceProvider == null)
+            if (serviceProvider == null || args == null)
                 return;
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
                 return;
 
-            // 获取卡牌和目标信息
-            var card = __instance.Card;
-            var source = __instance.Source;
-            var target = __instance.Target;
-            var battle = source.Battle;
-
-            if (card == null || source == null || battle == null)
+            var card = args.Card;
+            if (card == null)
                 return;
 
-            // 只同步玩家出的牌
-            if (!(source is PlayerUnit))
+            // 只同步玩家使用的卡牌
+            if (card.Zone?.Owner == null || !(card.Zone.Owner is PlayerUnit))
                 return;
+
+            var player = card.Zone.Owner as PlayerUnit;
+            var battle = player.Battle;
 
             var cardData = new
             {
+                Timestamp = DateTime.Now.Ticks,
                 CardId = card.Id,
                 CardName = card.Name,
-                CardType = card.GetType().Name,
+                CardType = card.CardType.ToString(),
+                TargetType = card.Config?.TargetType.ToString() ?? "Unknown",
                 ManaCost = GetManaCost(card),
-                SourceId = source.Id,
-                SourceType = source.GetType().Name,
-                TargetId = target?.Id ?? "",
-                TargetType = target?.GetType().Name ?? "",
-                BeforeState = new
+                Selector = args.Selector?.ToString() ?? "Nobody",
+                PlayerId = GetCurrentPlayerId(player),
+                PlayerState = new
                 {
-                    Hp = source.Hp,
-                    Block = source.Block,
-                    Shield = source.Shield,
-                    Mana = GetManaGroup(battle.BattleMana)
+                    Hp = player.Hp,
+                    MaxHp = player.MaxHp,
+                    Block = player.Block,
+                    Shield = player.Shield,
+                    Mana = battle?.BattleMana != null ? GetManaGroup(battle.BattleMana) : new int[4] { 0, 0, 0, 0 },
+                    CardsInHand = player.HandZone?.Count ?? 0,
+                    CardsInDraw = battle?.DrawZone?.Count ?? 0,
+                    CardsInDiscard = battle?.DiscardZone?.Count ?? 0,
+                    IsCardUpgraded = card.IsUpgraded
                 }
             };
 
-            Plugin.Logger?.LogInfo($"[PlayCardAction_Patch] Player playing card: {cardData.CardName} (ID: {cardData.CardId})");
+            SendGameEvent(NetworkMessageTypes.OnCardPlayStart, cardData);
 
-            // 发送卡牌使用请求
-            var json = JsonSerializer.Serialize(cardData);
-            networkClient.SendRequest("OnCardPlayStart", json);
+            Plugin.Logger?.LogInfo($"[PlayCardAction_Patch] Player started playing card: {card.Name} (Mana: {JsonSerializer.Serialize(GetManaCost(card))})");
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[PlayCardAction_Patch] Error in PlayCardAction_Execute_Prefix: {ex.Message}");
+            Plugin.Logger?.LogError($"[PlayCardAction_Patch] Error in CardPlaying_Prefix: {ex.Message}");
         }
     }
-    */
 
-    /*
     /// <summary>
-    /// PlayCardAction执行后的后缀补丁
-    /// 用于同步卡牌使用后的状态变化
+    /// PlayCardAction - CardPlayed事件同步补丁
+    /// 在卡牌使用完成后触发
     /// </summary>
-    // [HarmonyPatch(typeof(PlayCardAction), nameof(PlayCardAction.Execute))] // Execute method doesn't exist
-    // [HarmonyPostfix]
-    // public static void PlayCardAction_Execute_Postfix(PlayCardAction __instance)
+    [HarmonyPatch(typeof(PlayCardAction), "CardPlayed")]
+    [HarmonyPostfix]
+    public static void PlayCardAction_CardPlayed_Postfix(CardUsingEventArgs args)
     {
         try
         {
-            if (serviceProvider == null)
+            if (serviceProvider == null || args == null)
                 return;
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
                 return;
 
-            var card = __instance.Card;
-            var source = __instance.Source;
-            var battle = source.Battle;
-
-            if (card == null || source == null || battle == null)
+            var card = args.Card;
+            if (card == null)
                 return;
 
-            if (!(source is PlayerUnit))
+            // 只同步玩家使用的卡牌
+            if (card.Zone?.Owner == null || !(card.Zone.Owner is PlayerUnit))
                 return;
+
+            var player = card.Zone.Owner as PlayerUnit;
+            var battle = player.Battle;
 
             var cardData = new
             {
+                Timestamp = DateTime.Now.Ticks,
                 CardId = card.Id,
                 CardName = card.Name,
-                AfterState = new
+                CardType = card.CardType.ToString(),
+                IsCanceled = args.IsCanceled,
+                CancelCause = args.CancelCause?.ToString() ?? "None",
+                PlayerId = GetCurrentPlayerId(player),
+                PlayerState = new
                 {
-                    Hp = source.Hp,
-                    Block = source.Block,
-                    Shield = source.Shield,
-                    Mana = GetManaGroup(battle.BattleMana),
-                    CardsInHand = battle.Player.HandZone.Count,
-                    CardsInDraw = battle.DrawZone.Count
-                }
+                    Hp = player.Hp,
+                    MaxHp = player.MaxHp,
+                    Block = player.Block,
+                    Shield = player.Shield,
+                    Mana = battle?.BattleMana != null ? GetManaGroup(battle.BattleMana) : new int[4] { 0, 0, 0, 0 },
+                    CardsInHand = player.HandZone?.Count ?? 0,
+                    CardsInDraw = battle?.DrawZone?.Count ?? 0,
+                    CardsInDiscard = battle?.DiscardZone?.Count ?? 0,
+                    CardsInExhaust = battle?.ExhaustZone?.Count ?? 0
+                },
+                CardZone = card.Zone?.ToString() ?? "Unknown",
+                CardEffectsApplied = GetCardEffectsApplied(args)
             };
 
-            var json = JsonSerializer.Serialize(cardData);
-            networkClient.SendRequest("OnCardPlayComplete", json);
+            SendGameEvent(NetworkMessageTypes.OnCardPlayComplete, cardData);
 
-            Plugin.Logger?.LogInfo($"[PlayCardAction_Patch] Card play completed: {card.Name}");
+            Plugin.Logger?.LogInfo($"[PlayCardAction_Patch] Card play completed: {card.Name} (Canceled: {args.IsCanceled}, Zone: {card.Zone})");
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[PlayCardAction_Patch] Error in PlayCardAction_Execute_Postfix: {ex.Message}");
+            Plugin.Logger?.LogError($"[PlayCardAction_Patch] Error in CardPlayed_Postfix: {ex.Message}");
         }
     }
-    */
+
+    /// <summary>
+    /// Patch "CardPlay/CardAction" 阶段来同步具体的卡牌动作执行
+    /// </summary>
+    [HarmonyPatch(typeof(PlayCardAction), "GetPhases")]
+    [HarmonyPostfix]
+    public static void PlayCardAction_GetPhases_Postfix(PlayCardAction __instance, ref IEnumerable<Phase> __result)
+    {
+        try
+        {
+            if (serviceProvider == null || __instance?.Args?.Card == null)
+                return;
+
+            var networkClient = serviceProvider.GetService<INetworkClient>();
+            if (networkClient == null || !networkClient.IsConnected)
+                return;
+
+            var card = __instance.Args.Card;
+            if (card.Zone?.Owner == null || !(card.Zone.Owner is PlayerUnit))
+                return;
+
+            // 发送卡牌阶段开始事件
+            var phaseData = new
+            {
+                Timestamp = DateTime.Now.Ticks,
+                EventType = "CardPhasesStarted",
+                CardId = card.Id,
+                CardName = card.Name,
+                PlayerId = GetCurrentPlayerId(card.Zone.Owner as PlayerUnit),
+                PhaseCount = __result?.Count() ?? 0
+            };
+
+            SendGameEvent("CardPhasesStarted", phaseData);
+
+            // 这里我们记录卡片即将执行具体动作
+            // 但不发送同步数据，让具体的Action (如DamageAction) 自己处理同步
+            Plugin.Logger?.LogDebug($"[PlayCardAction_Patch] GetPhases called for card: {card.Name} (Phases: {__result?.Count() ?? 0})");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[PlayCardAction_Patch] Error in GetPhases_Postfix: {ex.Message}");
+        }
+    }
 
     /*
     /// <summary>
@@ -181,6 +232,41 @@ public class PlayCardAction_Patch
 
     // 辅助方法
 
+    private static void SendGameEvent(string eventType, object eventData)
+    {
+        try
+        {
+            var networkClient = serviceProvider?.GetService<INetworkClient>();
+            if (networkClient is NetworkClient liteNetClient)
+            {
+                liteNetClient.SendGameEvent(eventType, eventData);
+            }
+            else
+            {
+                // 备用方案：使用通用SendRequest方法
+                networkClient?.SendRequest(eventType, JsonSerializer.Serialize(eventData));
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[PlayCardAction_Patch] Error sending game event {eventType}: {ex.Message}");
+        }
+    }
+
+    private static string GetCurrentPlayerId(PlayerUnit player)
+    {
+        try
+        {
+            // TODO: 从GameStateUtils获取或使用player.Id
+            return $"Player_{player.Index}";
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[PlayCardAction_Patch] Error getting current player ID: {ex.Message}");
+            return "unknown_player";
+        }
+    }
+
     private static int[] GetManaGroup(ManaGroup manaGroup)
     {
         if (manaGroup == null)
@@ -201,5 +287,25 @@ public class PlayCardAction_Patch
             return new int[4] { 0, 0, 0, 0 };
 
         return GetManaGroup(card.ManaGroup);
+    }
+
+    private static object GetCardEffectsApplied(CardUsingEventArgs args)
+    {
+        try
+        {
+            // TODO: 根据需要提取卡牌应用的效果信息
+            return new
+            {
+                HasDamage = false, // TODO: 检查是否包含伤害
+                HasBuff = false,   // TODO: 检查是否包含buff
+                HasHeal = false,   // TODO: 检查是否包含治疗
+                HasDraw = false    // TODO: 检查是否包含抽牌
+            };
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[PlayCardAction_Patch] Error getting card effects: {ex.Message}");
+            return new { Error = ex.Message };
+        }
     }
 }

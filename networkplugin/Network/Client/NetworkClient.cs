@@ -1,7 +1,10 @@
 using System;
+using System.Text.Json;
 using LiteNetLib;
 using LiteNetLib.Utils;
 using NetworkPlugin.Network.NetworkPlayer;
+using NetworkPlugin.Core;
+using NetworkPlugin.Events;
 
 namespace NetworkPlugin.Network.Client;
 
@@ -18,13 +21,13 @@ public class NetworkClient : INetworkClient
     /// 初始化 NetworkClient 实例并注册事件监听。
     /// </summary>
     /// <param name="connectionKey">连接密钥，用于服务器鉴权。</param>
-    public NetworkClient(string connectionKey,INetworkManager NetworkManager)
+    public NetworkClient(string connectionKey, INetworkManager NetworkManager)
     {
         _networkManager = NetworkManager;
-        _connectionKey = connectionKey; // 保存连接密钥
-        _listener = new EventBasedNetListener(); // 创建事件监听器
-        _netManager = new NetManager(_listener); // 初始化网络管理器
-        RegisterEvents(); // 注册网络事件
+        _connectionKey = connectionKey;
+        _listener = new EventBasedNetListener();
+        _netManager = new NetManager(_listener);
+        RegisterEvents();
     }
 
     /// <summary>
@@ -35,36 +38,59 @@ public class NetworkClient : INetworkClient
         _listener.PeerConnectedEvent += peer =>
         {
             Console.WriteLine($"[Client] Connected to server: {peer.EndPoint}");
-            _serverPeer = peer; // 保存服务器端点
-                                // 可选：在这里触发一个事件，通知其他组件连接成功
-                                //客户端在连接时向服务器上传自己的数据
-            //TODO:username需改成枚举,还需要将玩家消息发送至服务端
+            _serverPeer = peer;
+
+            // 通知SynchronizationManager连接已建立
+            try
+            {
+                SynchronizationManager.Instance.OnConnectionRestored();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Client] Error notifying sync manager: {ex.Message}");
+            }
+
+            // 客户端在连接时向服务器上传自己的数据
             INetworkPlayer networkPlayer = _networkManager.GetPlayer("username");
+
+            // 发送玩家信息
+            var playerInfo = new
+            {
+                PlayerId = networkPlayer.Id,
+                PlayerName = networkPlayer.Name,
+                ConnectionTime = DateTime.Now.Ticks
+            };
+
+            SendGameEvent("PlayerJoined", playerInfo);
         };
 
         _listener.PeerDisconnectedEvent += (peer, disconnectInfo) =>
         {
             Console.WriteLine($"[Client] Disconnected from server: {peer.EndPoint}, Reason: {disconnectInfo.Reason}");
-            _serverPeer = null; // 清空服务器端点
-            // 可选：在这里触发一个事件，通知其他组件连接断开
+            _serverPeer = null;
+
+            // TODO: 可以在这里触发重连逻辑
         };
 
         _listener.NetworkReceiveEvent += (fromPeer, dataReader, deliveryMethod) =>
         {
             try
             {
-                string responseType = dataReader.GetString(); // 读取响应类型
-                Console.WriteLine($"[Client] Received response from {fromPeer.EndPoint}: Type = '{responseType}'");
+                string messageType = dataReader.GetString();
 
-                if (responseType.EndsWith("GetSelf_RESPONSE"))
+                // 处理游戏同步事件
+                if (IsGameEvent(messageType))
                 {
-                    // 回退一格，重新读取响应类型
-                    // dataReader.Position -= responseType.Length + sizeof(int); // 这里根据实际协议调整
+                    HandleGameEvent(messageType, dataReader);
+                }
+                // 处理系统响应
+                else if (messageType.EndsWith("GetSelf_RESPONSE"))
+                {
                     HandleRequestResponse(fromPeer, dataReader);
                 }
                 else
                 {
-                    Console.WriteLine($"[Client] Unknown response type: {responseType} from {fromPeer.EndPoint}");
+                    Console.WriteLine($"[Client] Unknown message type: {messageType} from {fromPeer.EndPoint}");
                 }
             }
             catch (Exception ex)
@@ -73,9 +99,47 @@ public class NetworkClient : INetworkClient
             }
             finally
             {
-                dataReader.Recycle(); // 回收数据读取器
+                dataReader.Recycle();
             }
         };
+    }
+
+    /// <summary>
+    /// 检查是否为游戏事件消息
+    /// </summary>
+    private bool IsGameEvent(string messageType)
+    {
+        return messageType.StartsWith("On") ||
+               messageType.StartsWith("Mana") ||
+               messageType.StartsWith("Gap") ||
+               messageType.StartsWith("Battle") ||
+               messageType == "StateSyncResponse";
+    }
+
+    /// <summary>
+    /// 处理游戏同步事件
+    /// </summary>
+    private void HandleGameEvent(string eventType, NetDataReader dataReader)
+    {
+        try
+        {
+            string jsonPayload = dataReader.GetString();
+            var eventData = JsonSerializer.Deserialize<object>(jsonPayload);
+
+            Console.WriteLine($"[Client] Received game event: {eventType}");
+
+            // 交给SynchronizationManager处理
+            SynchronizationManager.Instance.ProcessNetworkEvent(new
+            {
+                EventType = eventType,
+                Payload = eventData,
+                Timestamp = DateTime.Now.Ticks
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Client] Error handling game event: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -124,27 +188,68 @@ public class NetworkClient : INetworkClient
 
 
 
-    public void SendRequest<T>(string requestHeader, T requestdata)
+    /// <summary>
+    /// 发送游戏同步事件（JSON格式）
+    /// </summary>
+    /// <param name="eventType">事件类型</param>
+    /// <param name="eventData">事件数据</param>
+    public void SendGameEvent(string eventType, object eventData)
+    {
+        if (!IsConnected)
+        {
+            Console.WriteLine($"[Client] Not connected to server. Cannot send game event: {eventType}");
+            return;
+        }
+
+        try
+        {
+            var json = JsonSerializer.Serialize(eventData);
+            NetDataWriter writer = new NetDataWriter();
+            writer.Put(eventType);
+            writer.Put(json);
+
+            _serverPeer.Send(writer, DeliveryMethod.ReliableOrdered);
+            Console.WriteLine($"[Client] Game event sent: {eventType}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Client] Error sending game event {eventType}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 兼容原有的SendRequest方法，但现在支持JSON对象
+    /// </summary>
+    public void SendRequest<T>(string requestHeader, T requestData)
     {
         if (IsConnected)
         {
-            NetDataWriter writer = new();
-            writer.Put(requestHeader); // 写入请求类型
-        
-            switch (requestdata)
-            {
+            NetDataWriter writer = new NetDataWriter();
+            writer.Put(requestHeader);
 
-                case float f: writer.Put(f); break;
-                case double d: writer.Put(d); break;
-                case long l: writer.Put(l); break;
-                case int i: writer.Put(i); break;
-                case string s: writer.Put(s); break;
-                case bool b: writer.Put(b); break;
-                default: throw new NotSupportedException($"Type {typeof(T)} is not supported by NetDataWriter.Put");
+            // 支持JSON序列化复杂对象
+            if (typeof(T).IsPrimitive || typeof(T) == typeof(string))
+            {
+                switch (requestData)
+                {
+                    case float f: writer.Put(f); break;
+                    case double d: writer.Put(d); break;
+                    case long l: writer.Put(l); break;
+                    case int i: writer.Put(i); break;
+                    case string s: writer.Put(s); break;
+                    case bool b: writer.Put(b); break;
+                    default: throw new NotSupportedException($"Type {typeof(T)} is not supported by NetDataWriter.Put");
+                }
+            }
+            else
+            {
+                // 复杂对象使用JSON序列化
+                var json = JsonSerializer.Serialize(requestData);
+                writer.Put(json);
             }
 
-            _serverPeer.Send(writer, DeliveryMethod.ReliableOrdered); // 发送请求到服务器
-            Console.WriteLine($"[Client] Request sent: {requestHeader} with data {requestdata}");
+            _serverPeer.Send(writer, DeliveryMethod.ReliableOrdered);
+            Console.WriteLine($"[Client] Request sent: {requestHeader}");
         }
         else
         {

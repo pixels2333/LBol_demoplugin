@@ -1,6 +1,7 @@
 using HarmonyLib;
 using LBoL.Core;
 using LBoL.Core.GapOptions;
+using LBoL.Core.Stations;
 using LBoL.Core.Units;
 using System;
 using System.Collections.Generic;
@@ -11,14 +12,150 @@ using Microsoft.Extensions.DependencyInjection;
 namespace NetworkPlugin.Patch.Network;
 
 /// <summary>
-/// 篝火选项同步补丁 - 同步休息、升级、挖掘等操作
+/// GapStation同步补丁 - 同步喝茶、升级卡牌、移除卡牌等休息点操作
+/// 对应LBoL中的GapStation（间隙站/休息点）
 /// 参考杀戮尖塔CampfireOptionsPatches
 /// 重要性: ⭐⭐⭐⭐⭐ (核心游戏循环)
-/// TODO: 需要找到LBoL中对应的休息/篝火点逻辑
 /// </summary>
 public class CampfireSyncPatch
 {
     private static IServiceProvider serviceProvider => ModService.ServiceProvider;
+
+    /// <summary>
+    /// GapStation.OnEnter同步补丁 - 进入休息点时同步可用选项
+    /// </summary>
+    [HarmonyPatch(typeof(GapStation), "OnEnter")]
+    [HarmonyPostfix]
+    public static void GapStation_OnEnter_Postfix(GapStation __instance)
+    {
+        try
+        {
+            if (serviceProvider == null)
+                return;
+
+            var networkClient = serviceProvider.GetService<INetworkClient>();
+            if (networkClient == null || !networkClient.IsConnected)
+                return;
+
+            var gapOptions = new List<object>();
+            foreach (var option in __instance.GapOptions)
+            {
+                gapOptions.Add(new
+                {
+                    OptionType = option.GetType().Name,
+                    OptionId = option.UniqueId,
+                    DisplayName = option.Name // TODO: 确认GapOption有Name属性
+                });
+            }
+
+            var stationData = new
+            {
+                Timestamp = DateTime.Now.Ticks,
+                EventType = "GapStationEntered",
+                AvailableOptions = gapOptions,
+                StationType = "Gap",
+                PlayerId = GetCurrentPlayerId()
+            };
+
+            var json = JsonSerializer.Serialize(stationData);
+            networkClient.SendRequest("GapStationEntered", json);
+
+            Plugin.Logger?.LogInfo($"[CampfireSync] GapStation entered with {__instance.GapOptions.Count} options");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[CampfireSync] Error in GapStation_OnEnter_Postfix: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 喝茶（DrinkTea）同步补丁
+    /// </summary>
+    [HarmonyPatch(typeof(GapStation), "DrinkTea")]
+    [HarmonyPrefix]
+    public static void GapStation_DrinkTea_Prefix(GapStation __instance, DrinkTea drinkTea)
+    {
+        try
+        {
+            if (serviceProvider == null)
+                return;
+
+            var networkClient = serviceProvider.GetService<INetworkClient>();
+            if (networkClient == null || !networkClient.IsConnected)
+                return;
+
+            var gameRun = __instance.GameRun;
+            var player = gameRun.Player;
+
+            var teaData = new
+            {
+                Timestamp = DateTime.Now.Ticks,
+                EventType = "DrinkTeaStarted",
+                HealValue = drinkTea.Value + drinkTea.AdditionalHeal,
+                AdditionalPower = drinkTea.AdditionalPower,
+                AdditionalCardReward = drinkTea.AdditionalCardReward,
+                PlayerState = new
+                {
+                    Hp = player.Hp,
+                    MaxHp = player.MaxHp,
+                    Power = gameRun.Power // TODO: 确认GameRun有Power属性
+                },
+                PlayerId = GetCurrentPlayerId()
+            };
+
+            var json = JsonSerializer.Serialize(teaData);
+            networkClient.SendRequest("DrinkTeaStarted", json);
+
+            Plugin.Logger?.LogInfo($"[CampfireSync] DrinkTea started: Heal +{teaData.HealValue}, Power +{teaData.AdditionalPower}");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[CampfireSync] Error in GapStation_DrinkTea_Prefix: {ex.Message}");
+        }
+    }
+
+    [HarmonyPatch(typeof(GapStation), "DrinkTea")]
+    [HarmonyPostfix]
+    public static void GapStation_DrinkTea_Postfix(GapStation __instance, DrinkTea drinkTea)
+    {
+        try
+        {
+            if (serviceProvider == null)
+                return;
+
+            var networkClient = serviceProvider.GetService<INetworkClient>();
+            if (networkClient == null || !networkClient.IsConnected)
+                return;
+
+            var gameRun = __instance.GameRun;
+            var player = gameRun.Player;
+
+            var teaData = new
+            {
+                Timestamp = DateTime.Now.Ticks,
+                EventType = "DrinkTeaCompleted",
+                HealValue = drinkTea.Value + drinkTea.AdditionalHeal,
+                AdditionalPower = drinkTea.AdditionalPower,
+                AdditionalCardReward = drinkTea.AdditionalCardReward,
+                PlayerState = new
+                {
+                    Hp = player.Hp,
+                    MaxHp = player.MaxHp,
+                    Power = gameRun.Power
+                },
+                PlayerId = GetCurrentPlayerId()
+            };
+
+            var json = JsonSerializer.Serialize(teaData);
+            networkClient.SendRequest("DrinkTeaCompleted", json);
+
+            Plugin.Logger?.LogInfo($"[CampfireSync] DrinkTea completed");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[CampfireSync] Error in GapStation_DrinkTea_Postfix: {ex.Message}");
+        }
+    }
 
     /// <summary>
     /// TODO: 找到LBoL中的休息节点/篝火点
@@ -106,60 +243,265 @@ public class CampfireSyncPatch
     }
 
     /// <summary>
-    /// 卡牌升级同步
-    /// TODO: Patch LBoL中的卡牌升级逻辑
-    /// 可能在GapStation的UpgradeCard选项中
+    /// 卡牌升级同步补丁 - 完成UpgradeCard选项的实际补丁
     /// </summary>
-    public class SmithOptionSync
+    [HarmonyPatch(typeof(UpgradeCard), "RunAction")]
+    [HarmonyPrefix]
+    public static void UpgradeCard_RunAction_Prefix(UpgradeCard __instance)
     {
-        // LBoL中的卡牌升级可能在：
-        // 1. UpgradeCard（升级卡牌）选项
-        // 2. 某些特殊事件中的升级
-        // 3. 商店的升级服务
-
-        // TODO: Patch UpgradeCard选项的选择
-        // TODO: Patch卡牌升级的实际执行
-
-        /// <summary>
-        /// 同步卡牌升级选择
-        /// </summary>
-        public static void SyncUpgradeSelection(string cardId, string cardName)
+        try
         {
-            try
+            if (serviceProvider == null)
+                return;
+
+            var networkClient = serviceProvider.GetService<INetworkClient>();
+            if (networkClient == null || !networkClient.IsConnected)
+                return;
+
+            var gameRun = __instance.GameRun;
+            var player = gameRun?.Player;
+            if (player == null) return;
+
+            var upgradeData = new
             {
-                if (serviceProvider == null) return;
-
-                var networkClient = serviceProvider.GetService<INetworkClient>();
-                if (networkClient == null || !networkClient.IsConnected)
-                    return;
-
-                var upgradeData = new
+                Timestamp = DateTime.Now.Ticks,
+                EventType = "UpgradeCardStarted",
+                PlayerId = GetCurrentPlayerId(),
+                PlayerState = new
                 {
-                    Timestamp = DateTime.Now.Ticks,
-                    CardId = cardId,
-                    CardName = cardName,
-                    PlayerId = GetCurrentPlayerId()
-                };
+                    Hp = player.Hp,
+                    MaxHp = player.MaxHp,
+                    Power = gameRun?.Power ?? 0,
+                    CardsInDeck = gameRun?.DeckZone?.Count ?? 0
+                },
+                UpgradeOptionType = "UpgradeCard"
+            };
 
-                var json = JsonSerializer.Serialize(upgradeData);
-                networkClient.SendRequest("CampfireUpgradeSelected", json);
+            SendGameEvent("UpgradeCardStarted", upgradeData);
 
-                Plugin.Logger?.LogInfo($"[CampfireSync] Player selected upgrade for card: {cardName}");
-            }
-            catch (Exception ex)
-            {
-                Plugin.Logger?.LogError($"[CampfireSync] Error in SyncUpgradeSelection: {ex.Message}");
-            }
+            Plugin.Logger?.LogInfo("[CampfireSync] UpgradeCard action started");
         }
-
-        /// <summary>
-        /// 同步卡牌升级完成
-        /// </summary>
-        public static void SyncUpgradeComplete(string cardId, string cardName, int upgradeCount)
+        catch (Exception ex)
         {
-            try
+            Plugin.Logger?.LogError($"[CampfireSync] Error in UpgradeCard_RunAction_Prefix: {ex.Message}");
+        }
+    }
+
+    [HarmonyPatch(typeof(UpgradeCard), "RunAction")]
+    [HarmonyPostfix]
+    public static void UpgradeCard_RunAction_Postfix(UpgradeCard __instance)
+    {
+        try
+        {
+            if (serviceProvider == null)
+                return;
+
+            var networkClient = serviceProvider.GetService<INetworkClient>();
+            if (networkClient == null || !networkClient.IsConnected)
+                return;
+
+            var gameRun = __instance.GameRun;
+            var player = gameRun?.Player;
+            if (player == null) return;
+
+            var upgradeData = new
             {
-                if (serviceProvider == null) return;
+                Timestamp = DateTime.Now.Ticks,
+                EventType = "UpgradeCardCompleted",
+                PlayerId = GetCurrentPlayerId(),
+                PlayerState = new
+                {
+                    Hp = player.Hp,
+                    MaxHp = player.MaxHp,
+                    Power = gameRun?.Power ?? 0,
+                    CardsInDeck = gameRun?.DeckZone?.Count ?? 0
+                },
+                UpgradeOptionType = "UpgradeCard"
+            };
+
+            SendGameEvent("UpgradeCardCompleted", upgradeData);
+
+            Plugin.Logger?.LogInfo("[CampfireSync] UpgradeCard action completed");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[CampfireSync] Error in UpgradeCard_RunAction_Postfix: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 卡牌移除同步补丁 - 完成RemoveCard选项的实际补丁
+    /// </summary>
+    [HarmonyPatch(typeof(RemoveCard), "RunAction")]
+    [HarmonyPrefix]
+    public static void RemoveCard_RunAction_Prefix(RemoveCard __instance)
+    {
+        try
+        {
+            if (serviceProvider == null)
+                return;
+
+            var networkClient = serviceProvider.GetService<INetworkClient>();
+            if (networkClient == null || !networkClient.IsConnected)
+                return;
+
+            var gameRun = __instance.GameRun;
+            var player = gameRun?.Player;
+            if (player == null) return;
+
+            var removeData = new
+            {
+                Timestamp = DateTime.Now.Ticks,
+                EventType = "RemoveCardStarted",
+                PlayerId = GetCurrentPlayerId(),
+                PlayerState = new
+                {
+                    Hp = player.Hp,
+                    MaxHp = player.MaxHp,
+                    Power = gameRun?.Power ?? 0,
+                    CardsInDeck = gameRun?.DeckZone?.Count ?? 0
+                },
+                RemoveOptionType = "RemoveCard"
+            };
+
+            SendGameEvent("RemoveCardStarted", removeData);
+
+            Plugin.Logger?.LogInfo("[CampfireSync] RemoveCard action started");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[CampfireSync] Error in RemoveCard_RunAction_Prefix: {ex.Message}");
+        }
+    }
+
+    [HarmonyPatch(typeof(RemoveCard), "RunAction")]
+    [HarmonyPostfix]
+    public static void RemoveCard_RunAction_Postfix(RemoveCard __instance)
+    {
+        try
+        {
+            if (serviceProvider == null)
+                return;
+
+            var networkClient = serviceProvider.GetService<INetworkClient>();
+            if (networkClient == null || !networkClient.IsConnected)
+                return;
+
+            var gameRun = __instance.GameRun;
+            var player = gameRun?.Player;
+            if (player == null) return;
+
+            var removeData = new
+            {
+                Timestamp = DateTime.Now.Ticks,
+                EventType = "RemoveCardCompleted",
+                PlayerId = GetCurrentPlayerId(),
+                PlayerState = new
+                {
+                    Hp = player.Hp,
+                    MaxHp = player.MaxHp,
+                    Power = gameRun?.Power ?? 0,
+                    CardsInDeck = gameRun?.DeckZone?.Count ?? 0
+                },
+                RemoveOptionType = "RemoveCard"
+            };
+
+            SendGameEvent("RemoveCardCompleted", removeData);
+
+            Plugin.Logger?.LogInfo("[CampfireSync] RemoveCard action completed");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[CampfireSync] Error in RemoveCard_RunAction_Postfix: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 寻找宝物同步补丁 - 完成FindExhibit选项的实际补丁
+    /// </summary>
+    [HarmonyPatch(typeof(FindExhibit), "RunAction")]
+    [HarmonyPrefix]
+    public static void FindExhibit_RunAction_Prefix(FindExhibit __instance)
+    {
+        try
+        {
+            if (serviceProvider == null)
+                return;
+
+            var networkClient = serviceProvider.GetService<INetworkClient>();
+            if (networkClient == null || !networkClient.IsConnected)
+                return;
+
+            var gameRun = __instance.GameRun;
+            var player = gameRun?.Player;
+            if (player == null) return;
+
+            var exhibitData = new
+            {
+                Timestamp = DateTime.Now.Ticks,
+                EventType = "FindExhibitStarted",
+                PlayerId = GetCurrentPlayerId(),
+                PlayerState = new
+                {
+                    Hp = player.Hp,
+                    MaxHp = player.MaxHp,
+                    Power = gameRun?.Power ?? 0,
+                    ExhibitsCount = player?.Exhibits?.Count ?? 0
+                },
+                ExhibitOptionType = "FindExhibit"
+            };
+
+            SendGameEvent("FindExhibitStarted", exhibitData);
+
+            Plugin.Logger?.LogInfo("[CampfireSync] FindExhibit action started");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[CampfireSync] Error in FindExhibit_RunAction_Prefix: {ex.Message}");
+        }
+    }
+
+    [HarmonyPatch(typeof(FindExhibit), "RunAction")]
+    [HarmonyPostfix]
+    public static void FindExhibit_RunAction_Postfix(FindExhibit __instance)
+    {
+        try
+        {
+            if (serviceProvider == null)
+                return;
+
+            var networkClient = serviceProvider.GetService<INetworkClient>();
+            if (networkClient == null || !networkClient.IsConnected)
+                return;
+
+            var gameRun = __instance.GameRun;
+            var player = gameRun?.Player;
+            if (player == null) return;
+
+            var exhibitData = new
+            {
+                Timestamp = DateTime.Now.Ticks,
+                EventType = "FindExhibitCompleted",
+                PlayerId = GetCurrentPlayerId(),
+                PlayerState = new
+                {
+                    Hp = player.Hp,
+                    MaxHp = player.MaxHp,
+                    Power = gameRun?.Power ?? 0,
+                    ExhibitsCount = player?.Exhibits?.Count ?? 0
+                },
+                ExhibitOptionType = "FindExhibit"
+            };
+
+            SendGameEvent("FindExhibitCompleted", exhibitData);
+
+            Plugin.Logger?.LogInfo("[CampfireSync] FindExhibit action completed");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[CampfireSync] Error in FindExhibit_RunAction_Postfix: {ex.Message}");
+        }
+    }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
@@ -351,9 +693,49 @@ public class CampfireSyncPatch
         public static string ResolveConflict()
         {
             // TODO: 实现冲突解决
-            // 方案1: 多数投票
-            // 方案2: 主机决定
-            // 方案3: 随机选择
+    // 辅助方法
+
+    /// <summary>
+    /// 获取当前玩家ID
+    /// </summary>
+    private static string GetCurrentPlayerId()
+    {
+        try
+        {
+            // 使用GameStateUtils获取玩家ID
+            return GameStateUtils.GetCurrentPlayerId();
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[CampfireSync] Error getting current player ID: {ex.Message}");
+            return "unknown_player";
+        }
+    }
+
+    /// <summary>
+    /// 发送游戏事件
+    /// </summary>
+    private static void SendGameEvent(string eventType, object eventData)
+    {
+        try
+        {
+            var networkClient = serviceProvider?.GetService<INetworkClient>();
+            if (networkClient is NetworkClient liteNetClient)
+            {
+                liteNetClient.SendGameEvent(eventType, eventData);
+            }
+            else
+            {
+                // 备用方案：使用通用SendRequest方法
+                networkClient?.SendRequest(eventType, JsonSerializer.Serialize(eventData));
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[CampfireSync] Error sending game event {eventType}: {ex.Message}");
+        }
+    }
+}
 
             return string.Empty;
         }

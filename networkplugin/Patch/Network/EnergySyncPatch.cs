@@ -1,6 +1,7 @@
 using HarmonyLib;
 using LBoL.Core;
 using LBoL.Core.Battle;
+using LBoL.Core.Battle.BattleActions;
 using LBoL.Base;
 using System;
 using System.Text.Json;
@@ -10,13 +11,190 @@ using Microsoft.Extensions.DependencyInjection;
 namespace NetworkPlugin.Patch.Network;
 
 /// <summary>
-/// 能量管理同步补丁 - 同步能量增减、上限变更、能量球获取
-/// 参考杀戮尖塔EnergyManagerPatch
+/// 法力管理同步补丁 - 同步法力增减、上限变更、法力获取
+/// 参考杀戮尖塔EnergyManagerPatch，但适配LBoL的多色法力系统
 /// 重要性: ⭐⭐⭐⭐⭐ (战斗核心机制)
 /// </summary>
 public class EnergySyncPatch
 {
     private static IServiceProvider serviceProvider => ModService.ServiceProvider;
+
+    /// <summary>
+    /// ConsumeManaAction同步补丁 - 法力消耗同步
+    /// </summary>
+    [HarmonyPatch(typeof(ConsumeManaAction), "MainPhase")]
+    [HarmonyPrefix]
+    public static void ConsumeManaAction_MainPhase_Prefix(ConsumeManaAction __instance)
+    {
+        try
+        {
+            if (serviceProvider == null)
+                return;
+
+            var networkClient = serviceProvider.GetService<INetworkClient>();
+            if (networkClient == null || !networkClient.IsConnected)
+                return;
+
+            var battle = __instance.Battle;
+            if (battle?.BattleMana == null)
+                return;
+
+            var manaBefore = new
+            {
+                Red = battle.BattleMana.Red,
+                Blue = battle.BattleMana.Blue,
+                Green = battle.BattleMana.Green,
+                White = battle.BattleMana.White,
+                Total = battle.BattleMana.Total
+            };
+
+            var consumeManaData = new
+            {
+                Timestamp = DateTime.Now.Ticks,
+                EventType = "ManaConsumeStarted",
+                ManaBefore = manaBefore,
+                ManaToConsume = __instance.Args.Value != null ? new
+                {
+                    Red = __instance.Args.Value.Red,
+                    Blue = __instance.Args.Value.Blue,
+                    Green = __instance.Args.Value.Green,
+                    White = __instance.Args.Value.White,
+                    Total = __instance.Args.Value.Total
+                } : new { Red = 0, Blue = 0, Green = 0, White = 0, Total = 0 },
+                Source = "ConsumeManaAction"
+            };
+
+            var json = JsonSerializer.Serialize(consumeManaData);
+            networkClient.SendRequest("ManaConsumeStarted", json);
+
+            Plugin.Logger?.LogInfo($"[EnergySync] Mana consume started: R{__instance.Args.Value?.Red}B{__instance.Args.Value?.Blue}G{__instance.Args.Value?.Green}W{__instance.Args.Value?.White}");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[EnergySync] Error in ConsumeManaAction_MainPhase_Prefix: {ex.Message}");
+        }
+    }
+
+    [HarmonyPatch(typeof(ConsumeManaAction), "MainPhase")]
+    [HarmonyPostfix]
+    public static void ConsumeManaAction_MainPhase_Postfix(ConsumeManaAction __instance)
+    {
+        try
+        {
+            if (serviceProvider == null)
+                return;
+
+            var networkClient = serviceProvider.GetService<INetworkClient>();
+            if (networkClient == null || !networkClient.IsConnected)
+                return;
+
+            var battle = __instance.Battle;
+            if (battle?.BattleMana == null)
+                return;
+
+            var manaAfter = new
+            {
+                Red = battle.BattleMana.Red,
+                Blue = battle.BattleMana.Blue,
+                Green = battle.BattleMana.Green,
+                White = battle.BattleMana.White,
+                Total = battle.BattleMana.Total
+            };
+
+            var consumeManaData = new
+            {
+                Timestamp = DateTime.Now.Ticks,
+                EventType = "ManaConsumeCompleted",
+                ManaAfter = manaAfter,
+                ManaConsumed = __instance.Args.Value != null ? new
+                {
+                    Red = __instance.Args.Value.Red,
+                    Blue = __instance.Args.Value.Blue,
+                    Green = __instance.Args.Value.Green,
+                    White = __instance.Args.Value.White,
+                    Total = __instance.Args.Value.Total
+                } : new { Red = 0, Blue = 0, Green = 0, White = 0, Total = 0 },
+                Source = "ConsumeManaAction"
+            };
+
+            var json = JsonSerializer.Serialize(consumeManaData);
+            networkClient.SendRequest("ManaConsumeCompleted", json);
+
+            Plugin.Logger?.LogInfo($"[EnergySync] Mana consume completed. Current: R{manaAfter.Red}B{manaAfter.Blue}G{manaAfter.Green}W{manaAfter.White}");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[EnergySync] Error in ConsumeManaAction_MainPhase_Postfix: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// BattleController回合开始法力重置同步补丁
+    /// </summary>
+    [HarmonyPatch(typeof(BattleController), "TurnMana", MethodType.Getter)]
+    [HarmonyPostfix]
+    public static void BattleController_TurnMana_Postfix(BattleController __instance, ref ManaGroup __result)
+    {
+        try
+        {
+            if (serviceProvider == null)
+                return;
+
+            var networkClient = serviceProvider.GetService<INetworkClient>();
+            if (networkClient == null || !networkClient.IsConnected)
+                return;
+
+            // 只在回合开始时同步一次（检查法力状态变化）
+            // 这里可能需要添加额外的逻辑来避免重复发送
+
+            var turnManaData = new
+            {
+                Timestamp = DateTime.Now.Ticks,
+                EventType = "TurnManaCalculated",
+                TurnMana = new
+                {
+                    Red = __result.Red,
+                    Blue = __result.Blue,
+                    Green = __result.Green,
+                    White = __result.White,
+                    Total = __result.Total
+                },
+                BaseTurnMana = new
+                {
+                    Red = __instance.BaseTurnMana.Red,
+                    Blue = __instance.BaseTurnMana.Blue,
+                    Green = __instance.BaseTurnMana.Green,
+                    White = __instance.BaseTurnMana.White,
+                    Total = __instance.BaseTurnMana.Total
+                },
+                ExtraTurnMana = new
+                {
+                    Red = __instance.ExtraTurnMana.Red,
+                    Blue = __instance.ExtraTurnMana.Blue,
+                    Green = __instance.ExtraTurnMana.Green,
+                    White = __instance.ExtraTurnMana.White,
+                    Total = __instance.ExtraTurnMana.Total
+                },
+                LockedTurnMana = new
+                {
+                    Red = __instance.LockedTurnMana.Red,
+                    Blue = __instance.LockedTurnMana.Blue,
+                    Green = __instance.LockedTurnMana.Green,
+                    White = __instance.LockedTurnMana.White,
+                    Total = __instance.LockedTurnMana.Total
+                }
+            };
+
+            var json = JsonSerializer.Serialize(turnManaData);
+            networkClient.SendRequest("TurnManaCalculated", json);
+
+            Plugin.Logger?.LogDebug($"[EnergySync] Turn mana calculated: R{__result.Red}B{__result.Blue}G{__result.Green}W{__result.White}");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[EnergySync] Error in BattleController_TurnMana_Postfix: {ex.Message}");
+        }
+    }
 
     /// <summary>
     /// TODO: 找到能量变更的Patch点
