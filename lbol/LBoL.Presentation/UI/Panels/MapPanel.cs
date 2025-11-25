@@ -21,14 +21,10 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
-
 namespace LBoL.Presentation.UI.Panels
 {
-	// Token: 0x020000A2 RID: 162
 	public class MapPanel : UiPanel, IInputActionHandler
 	{
-		// Token: 0x17000166 RID: 358
-		// (get) Token: 0x06000873 RID: 2163 RVA: 0x000286D1 File Offset: 0x000268D1
 		public override PanelLayer Layer
 		{
 			get
@@ -36,9 +32,6 @@ namespace LBoL.Presentation.UI.Panels
 				return PanelLayer.Top;
 			}
 		}
-
-		// Token: 0x17000167 RID: 359
-		// (get) Token: 0x06000874 RID: 2164 RVA: 0x000286D4 File Offset: 0x000268D4
 		private MapNodeWidget CurrentWidget
 		{
 			get
@@ -46,9 +39,6 @@ namespace LBoL.Presentation.UI.Panels
 				return this._mapNodeWidgets[this._map.VisitingNode.X, this._map.VisitingNode.Y];
 			}
 		}
-
-		// Token: 0x17000168 RID: 360
-		// (get) Token: 0x06000875 RID: 2165 RVA: 0x00028704 File Offset: 0x00026904
 		public MapNodeWidget FinalWidget
 		{
 			get
@@ -70,8 +60,6 @@ namespace LBoL.Presentation.UI.Panels
 				return null;
 			}
 		}
-
-		// Token: 0x06000876 RID: 2166 RVA: 0x0002878C File Offset: 0x0002698C
 		public void Awake()
 		{
 			this.mainHudReturn.onClick.AddListener(new UnityAction(base.Hide));
@@ -102,8 +90,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.RefreshTimer();
 			this._canvasGroup = base.GetComponent<CanvasGroup>();
 		}
-
-		// Token: 0x06000877 RID: 2167 RVA: 0x0002892C File Offset: 0x00026B2C
 		private void Update()
 		{
 			this._timerUpdateInterval -= Time.deltaTime;
@@ -113,8 +99,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.RefreshTimer();
 			}
 		}
-
-		// Token: 0x06000878 RID: 2168 RVA: 0x00028960 File Offset: 0x00026B60
 		private void RefreshTimer()
 		{
 			int num2;
@@ -122,8 +106,6 @@ namespace LBoL.Presentation.UI.Panels
 			int num = Math.DivRem(Math.DivRem(Singleton<GameMaster>.Instance.CurrentGameRunPlayedSeconds, 60, ref num2), 60, ref num3);
 			this.playedTimeText.text = string.Format("{0}:{1:00}:{2:00}", num, num3, num2);
 		}
-
-		// Token: 0x06000879 RID: 2169 RVA: 0x000289B4 File Offset: 0x00026BB4
 		protected override void OnShowing()
 		{
 			this.UpdateMapNodesStatus();
@@ -187,8 +169,6 @@ namespace LBoL.Presentation.UI.Panels
 			this._canvasGroup.interactable = true;
 			UiManager.PushActionHandler(this);
 		}
-
-		// Token: 0x0600087A RID: 2170 RVA: 0x00028D50 File Offset: 0x00026F50
 		protected override void OnShown()
 		{
 			this.mainHudReturn.interactable = true;
@@ -197,8 +177,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.CurrentWidget.PlayFinish();
 			}
 		}
-
-		// Token: 0x0600087B RID: 2171 RVA: 0x00028D7C File Offset: 0x00026F7C
 		protected override void OnHiding()
 		{
 			this._canvasGroup.interactable = false;
@@ -206,8 +184,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.mainHudReturn.interactable = false;
 			AudioManager.PlayUi("MapRoll1", false);
 		}
-
-		// Token: 0x0600087C RID: 2172 RVA: 0x00028DA8 File Offset: 0x00026FA8
 		protected override void OnHided()
 		{
 			this.DOKill(true);
@@ -230,42 +206,30 @@ namespace LBoL.Presentation.UI.Panels
 				}
 			}
 		}
-
-		// Token: 0x0600087D RID: 2173 RVA: 0x00028E70 File Offset: 0x00027070
 		void IInputActionHandler.OnCancel()
 		{
 			base.Hide();
 		}
-
-		// Token: 0x0600087E RID: 2174 RVA: 0x00028E78 File Offset: 0x00027078
 		void IInputActionHandler.OnToggleMap()
 		{
 			base.Hide();
 		}
-
-		// Token: 0x0600087F RID: 2175 RVA: 0x00028E80 File Offset: 0x00027080
 		private void SetPage(int page)
 		{
 			base.StartCoroutine(this.CoSetPage(page));
 		}
-
-		// Token: 0x06000880 RID: 2176 RVA: 0x00028E90 File Offset: 0x00027090
 		public void OnPreviousPageButtonClick(GameObject button)
 		{
 			this.SetPage(this._page - 1);
 			button.transform.DOScale(0.8f, 0.1f).From(1f, true, false).SetLoops(2, LoopType.Yoyo)
 				.SetUpdate(true);
 		}
-
-		// Token: 0x06000881 RID: 2177 RVA: 0x00028ECF File Offset: 0x000270CF
 		public void OnNextPageButtonClick(GameObject button)
 		{
 			this.SetPage(this._page + 1);
 			button.transform.DOScale(0.8f, 0.1f).From(1f, true, false).SetLoops(2, LoopType.Yoyo)
 				.SetUpdate(true);
 		}
-
-		// Token: 0x06000882 RID: 2178 RVA: 0x00028F0E File Offset: 0x0002710E
 		private IEnumerator CoSetPage(int page)
 		{
 			this._page = page;
@@ -302,21 +266,15 @@ namespace LBoL.Presentation.UI.Panels
 			this.pageButtonList[1].gameObject.SetActive(this._page < 2);
 			yield break;
 		}
-
-		// Token: 0x06000883 RID: 2179 RVA: 0x00028F24 File Offset: 0x00027124
 		protected override void OnEnterGameRun()
 		{
 			base.HandleGameRunEvent<GameEventArgs>(base.GameRun.StageEntered, new GameEventHandler<GameEventArgs>(this.OnStageEntered));
 			base.HandleGameRunEvent<StationEventArgs>(base.GameRun.StationFinished, new GameEventHandler<StationEventArgs>(this.OnStationFinished));
 		}
-
-		// Token: 0x06000884 RID: 2180 RVA: 0x00028F60 File Offset: 0x00027160
 		private void OnStationFinished(StationEventArgs args)
 		{
 			this.UpdateMapNodesStatus();
 		}
-
-		// Token: 0x06000885 RID: 2181 RVA: 0x00028F68 File Offset: 0x00027168
 		private void OnStageEntered(GameEventArgs args)
 		{
 			if (base.GameRun.CurrentMap != null)
@@ -324,20 +282,14 @@ namespace LBoL.Presentation.UI.Panels
 				this.GenerateMapUI();
 			}
 		}
-
-		// Token: 0x06000886 RID: 2182 RVA: 0x00028F7D File Offset: 0x0002717D
 		public MapNodeWidget GetMapNodeWidget(int x, int y)
 		{
 			return this._mapNodeWidgets[x, y];
 		}
-
-		// Token: 0x06000887 RID: 2183 RVA: 0x00028F8C File Offset: 0x0002718C
 		public void RequestEnterNode(MapNodeWidget enteringWidget)
 		{
 			base.StartCoroutine(this.RequestEnterNodeRunner(enteringWidget));
 		}
-
-		// Token: 0x06000888 RID: 2184 RVA: 0x00028F9C File Offset: 0x0002719C
 		private IEnumerator RequestEnterNodeRunner(MapNodeWidget enteringWidget)
 		{
 			this.EnterNode(enteringWidget);
@@ -345,8 +297,6 @@ namespace LBoL.Presentation.UI.Panels
 			GameMaster.RequestEnterMapNode(enteringWidget.X, enteringWidget.Y);
 			yield break;
 		}
-
-		// Token: 0x06000889 RID: 2185 RVA: 0x00028FB4 File Offset: 0x000271B4
 		public void EnterNode(MapNodeWidget enteringWidget)
 		{
 			MapNodeWidget currentWidget = this.CurrentWidget;
@@ -382,8 +332,6 @@ namespace LBoL.Presentation.UI.Panels
 			mapLineWidget2.SetLineStatus(MapLineWidget.LineStatus.Acrossing);
 			mapLineWidget2.SetLineCrossing();
 		}
-
-		// Token: 0x0600088A RID: 2186 RVA: 0x000290F0 File Offset: 0x000272F0
 		private void GenerateMapUI()
 		{
 			foreach (object obj in this.nodeHolder)
@@ -556,8 +504,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.SetEnemyInStage(base.GameRun.CurrentStage);
 		}
-
-		// Token: 0x0600088B RID: 2187 RVA: 0x000298A4 File Offset: 0x00027AA4
 		private void UpdateMapNodesStatus()
 		{
 			if (this._map != base.GameRun.CurrentMap)
@@ -592,20 +538,14 @@ namespace LBoL.Presentation.UI.Panels
 				}
 			}
 		}
-
-		// Token: 0x0600088C RID: 2188 RVA: 0x000299C0 File Offset: 0x00027BC0
 		private void OnEnemyInStageButtonClicked()
 		{
 			this.ShowEnemyInStage(!this.enemyInStageRoot.gameObject.activeSelf);
 		}
-
-		// Token: 0x0600088D RID: 2189 RVA: 0x000299DB File Offset: 0x00027BDB
 		private void ShowEnemyInStage(bool on)
 		{
 			this.enemyInStageRoot.gameObject.SetActive(on);
 		}
-
-		// Token: 0x0600088E RID: 2190 RVA: 0x000299F0 File Offset: 0x00027BF0
 		private void SetEnemyInStage(Stage stage)
 		{
 			foreach (object obj in this.enemyInsStageLayout)
@@ -644,16 +584,12 @@ namespace LBoL.Presentation.UI.Panels
 				this.<SetEnemyInStage>g__CreateWidget|75_1(adventure.HostName + ": " + adventure.Title, false);
 			}
 		}
-
-		// Token: 0x06000891 RID: 2193 RVA: 0x00029C88 File Offset: 0x00027E88
 		[CompilerGenerated]
 		private void <SetEnemyInStage>g__CreateWidgetForEnemy|75_0(string enemyGroupId)
 		{
 			EnemyGroupConfig enemyGroupConfig = EnemyGroupConfig.FromId(enemyGroupId);
 			this.<SetEnemyInStage>g__CreateWidget|75_1((enemyGroupConfig != null) ? enemyGroupConfig.Name : enemyGroupId, false);
 		}
-
-		// Token: 0x06000892 RID: 2194 RVA: 0x00029CB0 File Offset: 0x00027EB0
 		[CompilerGenerated]
 		private void <SetEnemyInStage>g__CreateWidget|75_1(string text, bool isTitle = false)
 		{
@@ -673,164 +609,73 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			image.gameObject.SetActive(true);
 		}
-
-		// Token: 0x040005FF RID: 1535
 		public const float MapLineAcrossTime = 0.5f;
-
-		// Token: 0x04000600 RID: 1536
 		[SerializeField]
 		private ScrollRect mapScrollRect;
-
-		// Token: 0x04000601 RID: 1537
 		[SerializeField]
 		private MapNodeWidget mapNodeTemplate;
-
-		// Token: 0x04000602 RID: 1538
 		[SerializeField]
 		private MapLineWidget lineTemplate;
-
-		// Token: 0x04000603 RID: 1539
 		[SerializeField]
 		private RectTransform content;
-
-		// Token: 0x04000604 RID: 1540
 		[SerializeField]
 		private RectTransform lineHolder;
-
-		// Token: 0x04000605 RID: 1541
 		[SerializeField]
 		private RectTransform nodeHolder;
-
-		// Token: 0x04000606 RID: 1542
 		[SerializeField]
 		private Button mainHudReturn;
-
-		// Token: 0x04000607 RID: 1543
 		[SerializeField]
 		private TextMeshProUGUI hintText;
-
-		// Token: 0x04000608 RID: 1544
 		[SerializeField]
 		private TextMeshProUGUI powerText;
-
-		// Token: 0x04000609 RID: 1545
 		[SerializeField]
 		private TextMeshProUGUI bluePointText;
-
-		// Token: 0x0400060A RID: 1546
 		[SerializeField]
 		private TextMeshProUGUI moneyText;
-
-		// Token: 0x0400060B RID: 1547
 		[SerializeField]
 		private TextMeshProUGUI playedTimeText;
-
-		// Token: 0x0400060C RID: 1548
 		[SerializeField]
 		private TextMeshProUGUI historyStatusText;
-
-		// Token: 0x0400060D RID: 1549
 		[SerializeField]
 		private List<MapPageChangeWidget> pageWidgetList;
-
-		// Token: 0x0400060E RID: 1550
 		[SerializeField]
 		private List<Button> pageButtonList;
-
-		// Token: 0x0400060F RID: 1551
 		[SerializeField]
 		private List<Image> waveImageList;
-
-		// Token: 0x04000610 RID: 1552
 		[Header("Enemy In Stage")]
 		[SerializeField]
 		private Button enemyInStageButton;
-
-		// Token: 0x04000611 RID: 1553
 		[SerializeField]
 		private Transform enemyInStageRoot;
-
-		// Token: 0x04000612 RID: 1554
 		[SerializeField]
 		private Image enemyInStageTemplate;
-
-		// Token: 0x04000613 RID: 1555
 		[SerializeField]
 		private Transform enemyInsStageLayout;
-
-		// Token: 0x04000614 RID: 1556
 		private CanvasGroup _canvasGroup;
-
-		// Token: 0x04000615 RID: 1557
 		private int _page;
-
-		// Token: 0x04000616 RID: 1558
 		private GameMap _map;
-
-		// Token: 0x04000617 RID: 1559
 		private MapNodeWidget[,] _mapNodeWidgets;
-
-		// Token: 0x04000618 RID: 1560
 		private Dictionary<MapPanel.EdgeKey, MapLineWidget> _mapLineWidgets;
-
-		// Token: 0x04000619 RID: 1561
 		private float _timerUpdateInterval = 0.5f;
-
-		// Token: 0x0400061A RID: 1562
 		private const float MaxFade = 0.9f;
-
-		// Token: 0x0400061B RID: 1563
 		private const float MinFade = 0.1f;
-
-		// Token: 0x0400061C RID: 1564
 		private const float MaxPauseTime = 1f;
-
-		// Token: 0x0400061D RID: 1565
 		private const float FadeToMinTime = 0.7f;
-
-		// Token: 0x0400061E RID: 1566
 		private const float MinPauseTime = 0.2f;
-
-		// Token: 0x0400061F RID: 1567
 		private const float FadeToMaxTime = 0.7f;
-
-		// Token: 0x04000620 RID: 1568
 		private const float Page1 = -1450f;
-
-		// Token: 0x04000621 RID: 1569
 		private const float Page2 = -4450f;
-
-		// Token: 0x04000622 RID: 1570
 		private const float Page3 = -7600f;
-
-		// Token: 0x04000623 RID: 1571
 		private const float XInterval = 600f;
-
-		// Token: 0x04000624 RID: 1572
 		private const float YInterval = 350f;
-
-		// Token: 0x04000625 RID: 1573
 		private const float XEdge = 800f;
-
-		// Token: 0x04000626 RID: 1574
 		private const float BossAddInterval = 400f;
-
-		// Token: 0x04000627 RID: 1575
 		private const float XRandom = 40f;
-
-		// Token: 0x04000628 RID: 1576
 		private const float YRandom = 40f;
-
-		// Token: 0x04000629 RID: 1577
 		private bool _useRandom = true;
-
-		// Token: 0x0400062A RID: 1578
 		private static readonly Color Title = new Color32(107, 147, 194, byte.MaxValue);
-
-		// Token: 0x0200026E RID: 622
 		private struct EdgeKey
 		{
-			// Token: 0x06001585 RID: 5509 RVA: 0x0006295C File Offset: 0x00060B5C
 			public EdgeKey(int sourceX, int sourceY, int targetX, int targetY)
 			{
 				this.SourceX = sourceX;
@@ -838,23 +683,13 @@ namespace LBoL.Presentation.UI.Panels
 				this.TargetX = targetX;
 				this.TargetY = targetY;
 			}
-
-			// Token: 0x06001586 RID: 5510 RVA: 0x00062990 File Offset: 0x00060B90
 			public override string ToString()
 			{
 				return string.Format("({0}, {1}, {2}, {3})", new object[] { this.SourceX, this.SourceY, this.TargetX, this.TargetY });
 			}
-
-			// Token: 0x040010F1 RID: 4337
 			public int SourceX;
-
-			// Token: 0x040010F2 RID: 4338
 			public int SourceY;
-
-			// Token: 0x040010F3 RID: 4339
 			public int TargetX;
-
-			// Token: 0x040010F4 RID: 4340
 			public int TargetY;
 		}
 	}

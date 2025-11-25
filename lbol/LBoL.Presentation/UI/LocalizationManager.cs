@@ -5,18 +5,11 @@ using System.Runtime.CompilerServices;
 using LBoL.Core;
 using TMPro;
 using UnityEngine;
-
 namespace LBoL.Presentation.UI
 {
-	// Token: 0x02000022 RID: 34
 	public class LocalizationManager : MonoBehaviour
 	{
-		// Token: 0x17000080 RID: 128
-		// (get) Token: 0x06000314 RID: 788 RVA: 0x0000D60F File Offset: 0x0000B80F
-		// (set) Token: 0x06000315 RID: 789 RVA: 0x0000D616 File Offset: 0x0000B816
 		public static LocalizationManager Instance { get; private set; }
-
-		// Token: 0x06000316 RID: 790 RVA: 0x0000D61E File Offset: 0x0000B81E
 		private void Awake()
 		{
 			if (LocalizationManager.Instance)
@@ -26,8 +19,6 @@ namespace LBoL.Presentation.UI
 			}
 			LocalizationManager.Instance = this;
 		}
-
-		// Token: 0x06000317 RID: 791 RVA: 0x0000D640 File Offset: 0x0000B840
 		public Material CopyFontMatStyle(Material written, Material read)
 		{
 			written.SetColor(LocalizationManager.FaceColor, read.GetColor(LocalizationManager.FaceColor));
@@ -55,8 +46,6 @@ namespace LBoL.Presentation.UI
 			}
 			return written;
 		}
-
-		// Token: 0x06000318 RID: 792 RVA: 0x0000D7C8 File Offset: 0x0000B9C8
 		[return: TupleElementNames(new string[] { "font", "mat", "resize" })]
 		public ValueTuple<TMP_FontAsset, Material, float>? GetCurrentLocaleFontAndMaterial(TMP_FontAsset originFont, Material originMaterial)
 		{
@@ -73,8 +62,6 @@ namespace LBoL.Presentation.UI
 			}
 			return new ValueTuple<TMP_FontAsset, Material, float>?(new ValueTuple<TMP_FontAsset, Material, float>(originFont, originMaterial, 1f));
 		}
-
-		// Token: 0x06000319 RID: 793 RVA: 0x0000D86C File Offset: 0x0000BA6C
 		public void FillEmptyMaterial()
 		{
 			if (this.ValidateFontTable())
@@ -110,13 +97,9 @@ namespace LBoL.Presentation.UI
 			}
 			Debug.LogWarning("localeFontReplaceTable存在非法数据，Fill Empty Material取消。");
 		}
-
-		// Token: 0x0600031A RID: 794 RVA: 0x0000D9F4 File Offset: 0x0000BBF4
 		public void ValidateAllLocalizedText()
 		{
 		}
-
-		// Token: 0x0600031B RID: 795 RVA: 0x0000D9F8 File Offset: 0x0000BBF8
 		private Material GenerateMaterialFile(string fileName, Material mat)
 		{
 			"Assets/TextMesh Pro/Resources/Fonts & Materials/Generated/" + fileName + ".mat";
@@ -130,13 +113,9 @@ namespace LBoL.Presentation.UI
 			}
 			return null;
 		}
-
-		// Token: 0x0600031C RID: 796 RVA: 0x0000DA4C File Offset: 0x0000BC4C
 		private void OnValidate()
 		{
 		}
-
-		// Token: 0x0600031D RID: 797 RVA: 0x0000DA50 File Offset: 0x0000BC50
 		private bool ValidateFontTable()
 		{
 			bool flag = true;
@@ -160,53 +139,21 @@ namespace LBoL.Presentation.UI
 			}
 			return flag;
 		}
-
-		// Token: 0x04000145 RID: 325
 		public List<LocaleFontReplaceEntry> localeFontReplaceTable;
-
-		// Token: 0x04000147 RID: 327
 		private static readonly int FaceColor = Shader.PropertyToID("_FaceColor");
-
-		// Token: 0x04000148 RID: 328
 		private static readonly int FaceDilate = Shader.PropertyToID("_FaceDilate");
-
-		// Token: 0x04000149 RID: 329
 		private static readonly int OutlineColor = Shader.PropertyToID("_OutlineColor");
-
-		// Token: 0x0400014A RID: 330
 		private static readonly int OutlineWidth = Shader.PropertyToID("_OutlineWidth");
-
-		// Token: 0x0400014B RID: 331
 		private static readonly int OutlineSoftness = Shader.PropertyToID("_OutlineSoftness");
-
-		// Token: 0x0400014C RID: 332
 		private static readonly int UnderlayColor = Shader.PropertyToID("_UnderlayColor");
-
-		// Token: 0x0400014D RID: 333
 		private static readonly int UnderlayOffsetX = Shader.PropertyToID("_UnderlayOffsetX");
-
-		// Token: 0x0400014E RID: 334
 		private static readonly int UnderlayOffsetY = Shader.PropertyToID("_UnderlayOffsetY");
-
-		// Token: 0x0400014F RID: 335
 		private static readonly int UnderlayDilate = Shader.PropertyToID("_UnderlayDilate");
-
-		// Token: 0x04000150 RID: 336
 		private static readonly int UnderlaySoftness = Shader.PropertyToID("_UnderlaySoftness");
-
-		// Token: 0x04000151 RID: 337
 		private static readonly int GlowColor = Shader.PropertyToID("_GlowColor");
-
-		// Token: 0x04000152 RID: 338
 		private static readonly int GlowOffset = Shader.PropertyToID("_GlowOffset");
-
-		// Token: 0x04000153 RID: 339
 		private static readonly int GlowInner = Shader.PropertyToID("_GlowInner");
-
-		// Token: 0x04000154 RID: 340
 		private static readonly int GlowOuter = Shader.PropertyToID("_GlowOuter");
-
-		// Token: 0x04000155 RID: 341
 		private static readonly int GlowPower = Shader.PropertyToID("_GlowPower");
 	}
 }

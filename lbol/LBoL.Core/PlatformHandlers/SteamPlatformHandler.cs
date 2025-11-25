@@ -4,20 +4,15 @@ using System.Text;
 using AOT;
 using Steamworks;
 using UnityEngine;
-
 namespace LBoL.Core.PlatformHandlers
 {
-	// Token: 0x020000F7 RID: 247
 	public sealed class SteamPlatformHandler : PlatformHandler
 	{
-		// Token: 0x0600097E RID: 2430 RVA: 0x0001B948 File Offset: 0x00019B48
 		[MonoPInvokeCallback(typeof(SteamAPIWarningMessageHook_t))]
 		private static void SteamAPIDebugTextHook(int nSeverity, StringBuilder pchDebugText)
 		{
 			Debug.LogWarning(pchDebugText);
 		}
-
-		// Token: 0x0600097F RID: 2431 RVA: 0x0001B950 File Offset: 0x00019B50
 		public override bool Init()
 		{
 			if (!Packsize.Test())
@@ -52,8 +47,6 @@ namespace LBoL.Core.PlatformHandlers
 			SteamUserStats.RequestCurrentStats();
 			return true;
 		}
-
-		// Token: 0x06000980 RID: 2432 RVA: 0x0001BA04 File Offset: 0x00019C04
 		private void OnUserStatsReceived(UserStatsReceived_t param)
 		{
 			if ((ulong)SteamPlatformHandler.AppId.m_AppId != param.m_nGameID)
@@ -68,20 +61,14 @@ namespace LBoL.Core.PlatformHandlers
 			}
 			this._userStatsReceived = true;
 		}
-
-		// Token: 0x06000981 RID: 2433 RVA: 0x0001BA5A File Offset: 0x00019C5A
 		public override void Update()
 		{
 			SteamAPI.RunCallbacks();
 		}
-
-		// Token: 0x06000982 RID: 2434 RVA: 0x0001BA61 File Offset: 0x00019C61
 		public override void Shutdown()
 		{
 			SteamAPI.Shutdown();
 		}
-
-		// Token: 0x06000983 RID: 2435 RVA: 0x0001BA68 File Offset: 0x00019C68
 		public override Locale GetDefaultLocale()
 		{
 			string steamUILanguage = SteamUtils.GetSteamUILanguage();
@@ -228,21 +215,15 @@ namespace LBoL.Core.PlatformHandlers
 			}
 			return Locale.En;
 		}
-
-		// Token: 0x06000984 RID: 2436 RVA: 0x0001BD32 File Offset: 0x00019F32
 		public override string GetSaveDataFolder()
 		{
 			return Path.Combine(Application.persistentDataPath, this._steamId.ToString());
 		}
-
-		// Token: 0x06000985 RID: 2437 RVA: 0x0001BD49 File Offset: 0x00019F49
 		public override void SetMainMenuInfo(MainMenuStatus status)
 		{
 			SteamFriends.SetRichPresence("status", status.ToString());
 			SteamFriends.SetRichPresence("steam_display", "#StatusMainMenu");
 		}
-
-		// Token: 0x06000986 RID: 2438 RVA: 0x0001BD74 File Offset: 0x00019F74
 		public override void SetGameRunInfo(GameRunController gameRun)
 		{
 			SteamFriends.SetRichPresence("player", gameRun.Player.Id);
@@ -257,8 +238,6 @@ namespace LBoL.Core.PlatformHandlers
 			SteamFriends.SetRichPresence("difficulty", text);
 			SteamFriends.SetRichPresence("steam_display", "#StatusGameRun");
 		}
-
-		// Token: 0x06000987 RID: 2439 RVA: 0x0001BE37 File Offset: 0x0001A037
 		public override void SetAchievement(string key)
 		{
 			if (!this._userStatsReceived)
@@ -277,8 +256,6 @@ namespace LBoL.Core.PlatformHandlers
 				return;
 			}
 		}
-
-		// Token: 0x06000988 RID: 2440 RVA: 0x0001BE77 File Offset: 0x0001A077
 		public override void ClearAchievement(string key)
 		{
 			if (!this._userStatsReceived)
@@ -297,14 +274,8 @@ namespace LBoL.Core.PlatformHandlers
 				return;
 			}
 		}
-
-		// Token: 0x040004F8 RID: 1272
 		private static readonly AppId_t AppId = (AppId_t)1140150U;
-
-		// Token: 0x040004F9 RID: 1273
 		private ulong _steamId;
-
-		// Token: 0x040004FA RID: 1274
 		private bool _userStatsReceived;
 	}
 }

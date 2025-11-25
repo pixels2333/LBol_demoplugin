@@ -8,14 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Neutral.White
 {
-	// Token: 0x0200027E RID: 638
 	[UsedImplicitly]
 	public sealed class YoumuAttack : Card
 	{
-		// Token: 0x06000A17 RID: 2583 RVA: 0x0001542C File Offset: 0x0001362C
 		public override Interaction Precondition()
 		{
 			List<Card> list = Enumerable.ToList<Card>(Enumerable.Where<Card>(base.Battle.HandZone, (Card hand) => hand != this));
@@ -29,8 +26,6 @@ namespace LBoL.EntityLib.Cards.Neutral.White
 			}
 			return new SelectHandInteraction(1, 1, list);
 		}
-
-		// Token: 0x06000A18 RID: 2584 RVA: 0x00015484 File Offset: 0x00013684
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.AttackAction(selector, null);
@@ -53,8 +48,6 @@ namespace LBoL.EntityLib.Cards.Neutral.White
 			}
 			yield break;
 		}
-
-		// Token: 0x040000ED RID: 237
 		private Card _oneTargetHand;
 	}
 }

@@ -5,17 +5,11 @@ using LBoL.Base;
 using LBoL.Base.Extensions;
 using LBoL.Core.Cards;
 using LBoL.Core.Exhibits;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x020001B2 RID: 434
 	public sealed class UseCardAction : BattleAction
 	{
-		// Token: 0x17000531 RID: 1329
-		// (get) Token: 0x06000F69 RID: 3945 RVA: 0x00029700 File Offset: 0x00027900
 		public CardUsingEventArgs Args { get; }
-
-		// Token: 0x06000F6A RID: 3946 RVA: 0x00029708 File Offset: 0x00027908
 		internal UseCardAction(Card card, UnitSelector selector, ManaGroup consumingMana, bool kicker)
 		{
 			this.Args = new CardUsingEventArgs
@@ -26,25 +20,18 @@ namespace LBoL.Core.Battle.BattleActions
 				Kicker = kicker
 			};
 		}
-
-		// Token: 0x06000F6B RID: 3947 RVA: 0x00029738 File Offset: 0x00027938
 		public override BattleAction SetCause(ActionCause cause)
 		{
 			base.SetCause(cause);
 			this.Args.Cause = cause;
 			return this;
 		}
-
-		// Token: 0x06000F6C RID: 3948 RVA: 0x0002974F File Offset: 0x0002794F
 		public override BattleAction SetSource(GameEntity source)
 		{
 			base.SetSource(source);
 			this.Args.ActionSource = base.Source;
 			return this;
 		}
-
-		// Token: 0x17000532 RID: 1330
-		// (get) Token: 0x06000F6D RID: 3949 RVA: 0x0002976B File Offset: 0x0002796B
 		public override bool IsModified
 		{
 			get
@@ -52,9 +39,6 @@ namespace LBoL.Core.Battle.BattleActions
 				return this.Args.IsModified;
 			}
 		}
-
-		// Token: 0x17000533 RID: 1331
-		// (get) Token: 0x06000F6E RID: 3950 RVA: 0x00029778 File Offset: 0x00027978
 		public override string[] Modifiers
 		{
 			get
@@ -62,9 +46,6 @@ namespace LBoL.Core.Battle.BattleActions
 				return this.Args.Modifiers;
 			}
 		}
-
-		// Token: 0x17000534 RID: 1332
-		// (get) Token: 0x06000F6F RID: 3951 RVA: 0x00029785 File Offset: 0x00027985
 		public override CancelCause CancelCause
 		{
 			get
@@ -72,9 +53,6 @@ namespace LBoL.Core.Battle.BattleActions
 				return this.Args.CancelCause;
 			}
 		}
-
-		// Token: 0x17000535 RID: 1333
-		// (get) Token: 0x06000F70 RID: 3952 RVA: 0x00029792 File Offset: 0x00027992
 		public override bool IsCanceled
 		{
 			get
@@ -82,14 +60,10 @@ namespace LBoL.Core.Battle.BattleActions
 				return this.Args.IsCanceled;
 			}
 		}
-
-		// Token: 0x06000F71 RID: 3953 RVA: 0x0002979F File Offset: 0x0002799F
 		public override void ClearModifiers()
 		{
 			this.Args.ClearModifiers();
 		}
-
-		// Token: 0x06000F72 RID: 3954 RVA: 0x000297AC File Offset: 0x000279AC
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			base.Battle.PlayedCardInManaFreezeLevel = base.Battle.ManaFreezeLevel;
@@ -231,17 +205,11 @@ namespace LBoL.Core.Battle.BattleActions
 			yield return base.CreateEventPhase<CardUsingEventArgs>("CardUsed", this.Args, base.Battle.CardUsed);
 			yield break;
 		}
-
-		// Token: 0x06000F73 RID: 3955 RVA: 0x000297BC File Offset: 0x000279BC
 		public override string ExportDebugDetails()
 		{
 			return this.Args.ExportDebugDetails();
 		}
-
-		// Token: 0x040006A8 RID: 1704
 		private Interaction _precondition;
-
-		// Token: 0x040006A9 RID: 1705
 		private Card _twiceTokenCard;
 	}
 }

@@ -4,21 +4,12 @@ using System.Linq;
 using LBoL.Base.Extensions;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x02000178 RID: 376
 	public sealed class EndPlayerTurnAction : BattleAction
 	{
-		// Token: 0x170004F7 RID: 1271
-		// (get) Token: 0x06000E54 RID: 3668 RVA: 0x0002731C File Offset: 0x0002551C
 		public UnitEventArgs Args { get; }
-
-		// Token: 0x170004F8 RID: 1272
-		// (get) Token: 0x06000E55 RID: 3669 RVA: 0x00027324 File Offset: 0x00025524
 		public Unit Unit { get; }
-
-		// Token: 0x06000E56 RID: 3670 RVA: 0x0002732C File Offset: 0x0002552C
 		internal EndPlayerTurnAction(Unit unit)
 		{
 			this.Unit = unit;
@@ -28,8 +19,6 @@ namespace LBoL.Core.Battle.BattleActions
 				CanCancel = false
 			};
 		}
-
-		// Token: 0x06000E57 RID: 3671 RVA: 0x00027354 File Offset: 0x00025554
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			yield return base.CreatePhase("OutTurn", delegate
@@ -98,9 +87,6 @@ namespace LBoL.Core.Battle.BattleActions
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x170004F9 RID: 1273
-		// (get) Token: 0x06000E58 RID: 3672 RVA: 0x00027364 File Offset: 0x00025564
 		public override bool IsModified
 		{
 			get
@@ -108,9 +94,6 @@ namespace LBoL.Core.Battle.BattleActions
 				return this.Args.IsModified;
 			}
 		}
-
-		// Token: 0x170004FA RID: 1274
-		// (get) Token: 0x06000E59 RID: 3673 RVA: 0x00027371 File Offset: 0x00025571
 		public override string[] Modifiers
 		{
 			get
@@ -118,9 +101,6 @@ namespace LBoL.Core.Battle.BattleActions
 				return Array.Empty<string>();
 			}
 		}
-
-		// Token: 0x170004FB RID: 1275
-		// (get) Token: 0x06000E5A RID: 3674 RVA: 0x00027378 File Offset: 0x00025578
 		public override bool IsCanceled
 		{
 			get
@@ -128,9 +108,6 @@ namespace LBoL.Core.Battle.BattleActions
 				return false;
 			}
 		}
-
-		// Token: 0x170004FC RID: 1276
-		// (get) Token: 0x06000E5B RID: 3675 RVA: 0x0002737B File Offset: 0x0002557B
 		public override CancelCause CancelCause
 		{
 			get
@@ -138,14 +115,10 @@ namespace LBoL.Core.Battle.BattleActions
 				return CancelCause.None;
 			}
 		}
-
-		// Token: 0x06000E5C RID: 3676 RVA: 0x0002737E File Offset: 0x0002557E
 		public override void ClearModifiers()
 		{
 			this.Args.ClearModifiers();
 		}
-
-		// Token: 0x06000E5D RID: 3677 RVA: 0x0002738B File Offset: 0x0002558B
 		public override string ExportDebugDetails()
 		{
 			return this.Args.ExportDebugDetails();

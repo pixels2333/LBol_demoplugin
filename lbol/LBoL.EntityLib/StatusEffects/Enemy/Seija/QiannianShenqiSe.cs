@@ -6,14 +6,10 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Units;
 using LBoL.EntityLib.Cards.Enemy;
 using LBoL.EntityLib.Exhibits.Seija;
-
 namespace LBoL.EntityLib.StatusEffects.Enemy.Seija
 {
-	// Token: 0x020000D0 RID: 208
 	public sealed class QiannianShenqiSe : SeijaSe
 	{
-		// Token: 0x17000049 RID: 73
-		// (get) Token: 0x060002D4 RID: 724 RVA: 0x00007B85 File Offset: 0x00005D85
 		protected override Type ExhibitType
 		{
 			get
@@ -21,13 +17,7 @@ namespace LBoL.EntityLib.StatusEffects.Enemy.Seija
 				return typeof(QiannianShenqi);
 			}
 		}
-
-		// Token: 0x1700004A RID: 74
-		// (get) Token: 0x060002D5 RID: 725 RVA: 0x00007B91 File Offset: 0x00005D91
-		// (set) Token: 0x060002D6 RID: 726 RVA: 0x00007B99 File Offset: 0x00005D99
 		public override bool ForceNotShowDownText { get; set; } = true;
-
-		// Token: 0x060002D7 RID: 727 RVA: 0x00007BA2 File Offset: 0x00005DA2
 		protected override string GetBaseDescription()
 		{
 			if (!this.LoseLifeVersion)
@@ -36,10 +26,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy.Seija
 			}
 			return base.ExtraDescription;
 		}
-
-		// Token: 0x1700004B RID: 75
-		// (get) Token: 0x060002D8 RID: 728 RVA: 0x00007BB9 File Offset: 0x00005DB9
-		// (set) Token: 0x060002D9 RID: 729 RVA: 0x00007BC1 File Offset: 0x00005DC1
 		public bool LoseLifeVersion
 		{
 			get
@@ -53,8 +39,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy.Seija
 				this.NotifyChanged();
 			}
 		}
-
-		// Token: 0x060002DA RID: 730 RVA: 0x00007BDC File Offset: 0x00005DDC
 		protected override void OnAdded(Unit unit)
 		{
 			base.OnAdded(unit);
@@ -75,8 +59,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy.Seija
 			}
 			this.React(new AddCardsToHandAction(enumerable, AddCardsType.Normal));
 		}
-
-		// Token: 0x060002DB RID: 731 RVA: 0x00007CBD File Offset: 0x00005EBD
 		private void OnPredraw(CardEventArgs args)
 		{
 			if (!this.LoseLifeVersion && base.Count <= 0)
@@ -85,8 +67,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy.Seija
 				args.CancelBy(this);
 			}
 		}
-
-		// Token: 0x060002DC RID: 732 RVA: 0x00007CDD File Offset: 0x00005EDD
 		private IEnumerable<BattleAction> OnCardDrawn(CardEventArgs args)
 		{
 			if (base.Count > 0)
@@ -105,8 +85,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy.Seija
 			}
 			yield break;
 		}
-
-		// Token: 0x04000024 RID: 36
 		private bool _loseLifeVersion;
 	}
 }

@@ -1,13 +1,10 @@
 ﻿using System;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x02000161 RID: 353
 	public class ApplyStatusEffectAction : SimpleEventBattleAction<StatusEffectApplyEventArgs>
 	{
-		// Token: 0x06000DD2 RID: 3538 RVA: 0x00025F4C File Offset: 0x0002414C
 		public ApplyStatusEffectAction(Type type, Unit target, int? level = null, int? duration = null, int? count = null, int? limit = null, float occupationTime = 0f, bool startAutoDecreasing = true)
 		{
 			if (!typeof(StatusEffect).IsAssignableFrom(type))
@@ -53,14 +50,10 @@ namespace LBoL.Core.Battle.BattleActions
 				statusEffect.Limit = limit.Value;
 			}
 		}
-
-		// Token: 0x06000DD3 RID: 3539 RVA: 0x000260AF File Offset: 0x000242AF
 		protected override void PreEventPhase()
 		{
 			base.Trigger(base.Args.Unit.StatusEffectAdding);
 		}
-
-		// Token: 0x06000DD4 RID: 3540 RVA: 0x000260C8 File Offset: 0x000242C8
 		protected override void MainPhase()
 		{
 			if (base.Args.Unit.IsInvalidTarget)
@@ -80,8 +73,6 @@ namespace LBoL.Core.Battle.BattleActions
 			base.Args.IsModified = true;
 			base.Args.CanCancel = false;
 		}
-
-		// Token: 0x06000DD5 RID: 3541 RVA: 0x00026151 File Offset: 0x00024351
 		protected override void PostEventPhase()
 		{
 			base.Trigger(base.Args.Unit.StatusEffectAdded);

@@ -25,22 +25,17 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 using UnityEngine.UI.Extensions;
-
 namespace LBoL.Presentation.UI.Panels
 {
-	// Token: 0x0200009E RID: 158
 	[DisallowMultipleComponent]
 	public sealed class HistoryPanel : UiPanel, IInputActionHandler
 	{
-		// Token: 0x06000830 RID: 2096 RVA: 0x00026B10 File Offset: 0x00024D10
 		private void Awake()
 		{
 			this.recordRowTemplate.gameObject.SetActive(false);
 			this.cardCellTemplate.gameObject.SetActive(false);
 			this.seedButton.onClick.AddListener(new UnityAction(this.CopySeed));
 		}
-
-		// Token: 0x06000831 RID: 2097 RVA: 0x00026B50 File Offset: 0x00024D50
 		protected override void OnShowing()
 		{
 			this._records = GameMaster.GetGameRunHistory();
@@ -115,8 +110,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.rootCanvasGroup.interactable = true;
 			UiManager.PushActionHandler(this);
 		}
-
-		// Token: 0x06000832 RID: 2098 RVA: 0x00026DAC File Offset: 0x00024FAC
 		public override void OnLocaleChanged()
 		{
 			if (this._prevSelected != null)
@@ -130,28 +123,20 @@ namespace LBoL.Presentation.UI.Panels
 				SimpleTooltipSource.CreateDirect(this.puzzleIcons[item], displayWord.Name, displayWord.Description);
 			}
 		}
-
-		// Token: 0x06000833 RID: 2099 RVA: 0x00026E40 File Offset: 0x00025040
 		protected override void OnHiding()
 		{
 			this.rootCanvasGroup.interactable = false;
 			UiManager.PopActionHandler(this);
 		}
-
-		// Token: 0x06000834 RID: 2100 RVA: 0x00026E54 File Offset: 0x00025054
 		protected override void OnHided()
 		{
 			this.listContent.DestroyChildren();
 			this.ClearRecord();
 		}
-
-		// Token: 0x06000835 RID: 2101 RVA: 0x00026E67 File Offset: 0x00025067
 		void IInputActionHandler.OnCancel()
 		{
 			base.Hide();
 		}
-
-		// Token: 0x06000836 RID: 2102 RVA: 0x00026E70 File Offset: 0x00025070
 		public void OnRecordRowClick(RecordRow row, GameRunRecordSaveData record)
 		{
 			if (this._prevSelected)
@@ -166,8 +151,6 @@ namespace LBoL.Presentation.UI.Panels
 			row.SetSelected(true, true);
 			this.SetRecord(record);
 		}
-
-		// Token: 0x06000837 RID: 2103 RVA: 0x00026EBC File Offset: 0x000250BC
 		private unsafe void SetRecord(GameRunRecordSaveData record)
 		{
 			try
@@ -485,22 +468,16 @@ namespace LBoL.Presentation.UI.Panels
 				this.ClearRecord();
 			}
 		}
-
-		// Token: 0x06000838 RID: 2104 RVA: 0x00027BF8 File Offset: 0x00025DF8
 		private void ClearRecord()
 		{
 			this.detailPageGroup.gameObject.SetActive(false);
 			this.detailPageGroup.DOKill(false);
 		}
-
-		// Token: 0x06000839 RID: 2105 RVA: 0x00027C18 File Offset: 0x00025E18
 		private void CopySeed()
 		{
 			GUIUtility.systemCopyBuffer = this.seedString;
 			base.StartCoroutine(this.CopySeedRunner());
 		}
-
-		// Token: 0x0600083A RID: 2106 RVA: 0x00027C32 File Offset: 0x00025E32
 		private IEnumerator CopySeedRunner()
 		{
 			this.seedCopyHint.gameObject.SetActive(true);
@@ -508,174 +485,89 @@ namespace LBoL.Presentation.UI.Panels
 			this.seedCopyHint.gameObject.SetActive(false);
 			yield break;
 		}
-
-		// Token: 0x040005BB RID: 1467
 		[SerializeField]
 		private CanvasGroup rootCanvasGroup;
-
-		// Token: 0x040005BC RID: 1468
 		[SerializeField]
 		private ScrollRect listScrollRect;
-
-		// Token: 0x040005BD RID: 1469
 		[SerializeField]
 		private RectTransform listContent;
-
-		// Token: 0x040005BE RID: 1470
 		[SerializeField]
 		private RecordRow recordRowTemplate;
-
-		// Token: 0x040005BF RID: 1471
 		[Header("Details Page")]
 		[SerializeField]
 		private CanvasGroup detailPageGroup;
-
-		// Token: 0x040005C0 RID: 1472
 		[SerializeField]
 		private Image difficultyIcon;
-
-		// Token: 0x040005C1 RID: 1473
 		[SerializeField]
 		private GameObject puzzlesParent;
-
-		// Token: 0x040005C2 RID: 1474
 		[SerializeField]
 		private TextMeshProUGUI puzzleText;
-
-		// Token: 0x040005C3 RID: 1475
 		[SerializeField]
 		private TextMeshProUGUI oldPuzzleText;
-
-		// Token: 0x040005C4 RID: 1476
 		[SerializeField]
 		private GameObject[] puzzleIcons;
-
-		// Token: 0x040005C5 RID: 1477
 		[SerializeField]
 		private GameObject jadeBoxParent;
-
-		// Token: 0x040005C6 RID: 1478
 		[SerializeField]
 		private TextMeshProUGUI jadeBoxNamesText;
-
-		// Token: 0x040005C7 RID: 1479
 		[SerializeField]
 		private TextMeshProUGUI manaText;
-
-		// Token: 0x040005C8 RID: 1480
 		[SerializeField]
 		private RectTransform baseManaParent;
-
-		// Token: 0x040005C9 RID: 1481
 		[SerializeField]
 		private TextMeshProUGUI moneyText;
-
-		// Token: 0x040005CA RID: 1482
 		[SerializeField]
 		private RectTransform entityArea;
-
-		// Token: 0x040005CB RID: 1483
 		[SerializeField]
 		private RectTransform manaMoneyTitle;
-
-		// Token: 0x040005CC RID: 1484
 		[SerializeField]
 		private RectTransform exhibitsTitle;
-
-		// Token: 0x040005CD RID: 1485
 		[SerializeField]
 		private TextMeshProUGUI exhibitText;
-
-		// Token: 0x040005CE RID: 1486
 		[SerializeField]
 		private TextMeshProUGUI exhibitStatsText;
-
-		// Token: 0x040005CF RID: 1487
 		[SerializeField]
 		private RectTransform exhibitsParent;
-
-		// Token: 0x040005D0 RID: 1488
 		[SerializeField]
 		private RectTransform cardsTitle;
-
-		// Token: 0x040005D1 RID: 1489
 		[SerializeField]
 		private TextMeshProUGUI cardText;
-
-		// Token: 0x040005D2 RID: 1490
 		[SerializeField]
 		private TextMeshProUGUI cardStatsText;
-
-		// Token: 0x040005D3 RID: 1491
 		[SerializeField]
 		private RectTransform cardsParent;
-
-		// Token: 0x040005D4 RID: 1492
 		[SerializeField]
 		private RecordCardCell cardCellTemplate;
-
-		// Token: 0x040005D5 RID: 1493
 		[SerializeField]
 		private TextMeshProUGUI seedText;
-
-		// Token: 0x040005D6 RID: 1494
 		[SerializeField]
 		private TextMeshProUGUI seedCopyHint;
-
-		// Token: 0x040005D7 RID: 1495
 		[SerializeField]
 		private Button seedButton;
-
-		// Token: 0x040005D8 RID: 1496
 		[SerializeField]
 		private TextMeshProUGUI playedTimeText;
-
-		// Token: 0x040005D9 RID: 1497
 		[Header("Resources")]
 		[SerializeField]
 		private BaseManaWidget baseManaTemplate;
-
-		// Token: 0x040005DA RID: 1498
 		[SerializeField]
 		private ExhibitWidget exhibitTemplate;
-
-		// Token: 0x040005DB RID: 1499
 		[SerializeField]
 		private AssociationList<GameDifficulty, Sprite> difficultyIcons;
-
-		// Token: 0x040005DC RID: 1500
 		[SerializeField]
 		private AssociationList<string, HistoryPanel.AvatarGroup> avatarTable;
-
-		// Token: 0x040005DD RID: 1501
 		[Header("Text Colors")]
 		[SerializeField]
 		private AssociationList<Rarity, Color> rarityColors;
-
-		// Token: 0x040005DE RID: 1502
 		[SerializeField]
 		private Color misfortuneColor;
-
-		// Token: 0x040005DF RID: 1503
 		private List<GameRunRecordSaveData> _records;
-
-		// Token: 0x040005E0 RID: 1504
 		private RecordRow _prevSelected;
-
-		// Token: 0x040005E1 RID: 1505
 		private string seedString;
-
-		// Token: 0x02000266 RID: 614
 		[Serializable]
 		public sealed class AvatarGroup
 		{
-			// Token: 0x040010D9 RID: 4313
 			public Sprite Normal;
-
-			// Token: 0x040010DA RID: 4314
 			public Sprite TrueEnd;
-
-			// Token: 0x040010DB RID: 4315
 			public Sprite Failure;
 		}
 	}

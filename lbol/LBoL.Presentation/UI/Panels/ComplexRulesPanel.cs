@@ -12,13 +12,10 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
-
 namespace LBoL.Presentation.UI.Panels
 {
-	// Token: 0x0200008F RID: 143
 	public class ComplexRulesPanel : UiPanel, IInputActionHandler
 	{
-		// Token: 0x0600078C RID: 1932 RVA: 0x000234FC File Offset: 0x000216FC
 		public override async UniTask CustomLocalizationAsync()
 		{
 			Dictionary<string, ComplexRulesPanel.StringTableEntry> dictionary = await Localization.LoadFileAsync<ComplexRulesPanel.StringTableEntry>("Rule");
@@ -28,15 +25,11 @@ namespace LBoL.Presentation.UI.Panels
 				stringTableEntry.Description = StringDecorator.Decorate(stringTableEntry.Description);
 			}
 		}
-
-		// Token: 0x0600078D RID: 1933 RVA: 0x0002353F File Offset: 0x0002173F
 		public override void OnLocaleChanged()
 		{
 			this.CustomLocalizationAsync();
 			this.LoadRule();
 		}
-
-		// Token: 0x0600078E RID: 1934 RVA: 0x0002354E File Offset: 0x0002174E
 		protected override void OnShowing()
 		{
 			this.descriptionText.text = "";
@@ -46,21 +39,15 @@ namespace LBoL.Presentation.UI.Panels
 			this.LoadRule();
 			UiManager.PushActionHandler(this);
 		}
-
-		// Token: 0x0600078F RID: 1935 RVA: 0x0002358E File Offset: 0x0002178E
 		protected override void OnHiding()
 		{
 			this._canvasGroup.interactable = false;
 			UiManager.PopActionHandler(this);
 		}
-
-		// Token: 0x06000790 RID: 1936 RVA: 0x000235A2 File Offset: 0x000217A2
 		void IInputActionHandler.OnCancel()
 		{
 			base.Hide();
 		}
-
-		// Token: 0x06000791 RID: 1937 RVA: 0x000235AC File Offset: 0x000217AC
 		private void Awake()
 		{
 			this.bgButton.onClick.AddListener(new UnityAction(base.Hide));
@@ -70,8 +57,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.exhibitTemplate.gameObject.SetActive(false);
 			this._canvasGroup = base.GetComponent<CanvasGroup>();
 		}
-
-		// Token: 0x06000792 RID: 1938 RVA: 0x00023620 File Offset: 0x00021820
 		private void LoadRule()
 		{
 			this.titleRoot.transform.DestroyChildren();
@@ -102,8 +87,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.SetDescription(ruleConfig);
 			}
 		}
-
-		// Token: 0x06000793 RID: 1939 RVA: 0x00023728 File Offset: 0x00021928
 		private void SetDescription(RuleConfig ruleConfig)
 		{
 			ComplexRulesPanel.StringTableEntry stringTableEntry;
@@ -128,8 +111,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.SetContentSize();
 		}
-
-		// Token: 0x06000794 RID: 1940 RVA: 0x00023880 File Offset: 0x00021A80
 		private void SetContentSize()
 		{
 			RectTransform component = this.descriptionText.GetComponent<RectTransform>();
@@ -164,60 +145,31 @@ namespace LBoL.Presentation.UI.Panels
 			this.entityContent.sizeDelta = new Vector2(0f, num13);
 			this.rightContent.sizeDelta = new Vector2(0f, num9 + num13);
 		}
-
-		// Token: 0x040004F9 RID: 1273
 		[SerializeField]
 		private Transform titleRoot;
-
-		// Token: 0x040004FA RID: 1274
 		[SerializeField]
 		private RectTransform rightContent;
-
-		// Token: 0x040004FB RID: 1275
 		[SerializeField]
 		private RectTransform entityContent;
-
-		// Token: 0x040004FC RID: 1276
 		[SerializeField]
 		private TextMeshProUGUI descriptionText;
-
-		// Token: 0x040004FD RID: 1277
 		[SerializeField]
 		private GameObject titleTemplate;
-
-		// Token: 0x040004FE RID: 1278
 		[SerializeField]
 		private CardWidget cardTemplate;
-
-		// Token: 0x040004FF RID: 1279
 		[SerializeField]
 		private MuseumExhibitWidget exhibitTemplate;
-
-		// Token: 0x04000500 RID: 1280
 		[SerializeField]
 		private Button bgButton;
-
-		// Token: 0x04000501 RID: 1281
 		[SerializeField]
 		private Vector2 entitySpacing;
-
-		// Token: 0x04000502 RID: 1282
 		private Dictionary<string, ComplexRulesPanel.StringTableEntry> _stringTable;
-
-		// Token: 0x04000503 RID: 1283
 		private readonly List<GameObject> _entityList = new List<GameObject>();
-
-		// Token: 0x04000504 RID: 1284
 		private CanvasGroup _canvasGroup;
-
-		// Token: 0x02000247 RID: 583
 		[UsedImplicitly]
 		private sealed class StringTableEntry
 		{
-			// Token: 0x04001075 RID: 4213
 			public string Name;
-
-			// Token: 0x04001076 RID: 4214
 			public string Description;
 		}
 	}

@@ -3,18 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using LBoL.Base.Extensions;
 using LBoL.Core.Cards;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x02000172 RID: 370
 	public sealed class DrawSelectedCardAction : EventBattleAction<CardEventArgs>
 	{
-		// Token: 0x170004EE RID: 1262
-		// (get) Token: 0x06000E34 RID: 3636 RVA: 0x00027110 File Offset: 0x00025310
-		// (set) Token: 0x06000E35 RID: 3637 RVA: 0x00027118 File Offset: 0x00025318
 		public CardTransitionType TransitionType { get; private set; }
-
-		// Token: 0x06000E36 RID: 3638 RVA: 0x00027121 File Offset: 0x00025321
 		public DrawSelectedCardAction(Card card)
 		{
 			base.Args = new CardEventArgs
@@ -22,8 +15,6 @@ namespace LBoL.Core.Battle.BattleActions
 				Card = card
 			};
 		}
-
-		// Token: 0x06000E37 RID: 3639 RVA: 0x0002713B File Offset: 0x0002533B
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			DrawSelectedCardAction.<>c__DisplayClass5_0 CS$<>8__locals1 = new DrawSelectedCardAction.<>c__DisplayClass5_0();

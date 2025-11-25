@@ -9,14 +9,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
 using LBoL.EntityLib.StatusEffects.Koishi;
-
 namespace LBoL.EntityLib.Cards.Character.Koishi
 {
-	// Token: 0x02000459 RID: 1113
 	[UsedImplicitly]
 	public sealed class ButterflyDream : Card
 	{
-		// Token: 0x06000F12 RID: 3858 RVA: 0x0001B3BC File Offset: 0x000195BC
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			Card[] array = base.Battle.RollCardsWithoutManaLimit(new CardWeightTable(RarityWeightTable.BattleCard, OwnerWeightTable.AllOnes, CardTypeWeightTable.CanBeLoot, false), base.Value1, (CardConfig config) => config.Rarity == Rarity.Rare && config.Id != "ButterflyDream" && !config.IsXCost);

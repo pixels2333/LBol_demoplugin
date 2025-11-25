@@ -9,14 +9,11 @@ using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using UnityEngine;
-
 namespace LBoL.EntityLib.StatusEffects.Enemy
 {
-	// Token: 0x020000A2 RID: 162
 	[UsedImplicitly]
 	public sealed class FastAttack : StatusEffect
 	{
-		// Token: 0x06000241 RID: 577 RVA: 0x00006A4D File Offset: 0x00004C4D
 		protected override string GetBaseDescription()
 		{
 			if (!this.Active)
@@ -25,10 +22,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy
 			}
 			return base.GetBaseDescription();
 		}
-
-		// Token: 0x17000036 RID: 54
-		// (get) Token: 0x06000242 RID: 578 RVA: 0x00006A64 File Offset: 0x00004C64
-		// (set) Token: 0x06000243 RID: 579 RVA: 0x00006A6C File Offset: 0x00004C6C
 		private bool Active
 		{
 			get
@@ -41,8 +34,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy
 				base.Highlight = value;
 			}
 		}
-
-		// Token: 0x06000244 RID: 580 RVA: 0x00006A7C File Offset: 0x00004C7C
 		protected override void OnAdded(Unit unit)
 		{
 			if (unit is PlayerUnit)
@@ -70,8 +61,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy
 			}
 			this.Active = true;
 		}
-
-		// Token: 0x06000245 RID: 581 RVA: 0x00006B31 File Offset: 0x00004D31
 		private IEnumerable<BattleAction> OnCardUsed(CardUsingEventArgs args)
 		{
 			if (base.Battle.BattleShouldEnd || !base.Battle.Player.IsInTurn || !this.Active)
@@ -93,11 +82,7 @@ namespace LBoL.EntityLib.StatusEffects.Enemy
 			yield return new StatisticalTotalDamageAction(new DamageAction[] { damageaction });
 			yield break;
 		}
-
-		// Token: 0x04000019 RID: 25
 		private bool _active;
-
-		// Token: 0x0400001A RID: 26
 		private List<int> _chatIndicator;
 	}
 }

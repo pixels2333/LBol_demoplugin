@@ -10,14 +10,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.EntityLib.Cards.Neutral.Colorless.YijiSkills;
-
 namespace LBoL.EntityLib.Cards.Neutral.Colorless
 {
-	// Token: 0x0200030C RID: 780
 	[UsedImplicitly]
 	public sealed class YijiSkill : Card
 	{
-		// Token: 0x06000B94 RID: 2964 RVA: 0x0001730B File Offset: 0x0001550B
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			List<Card> list = new List<Card>();
@@ -55,8 +52,6 @@ namespace LBoL.EntityLib.Cards.Neutral.Colorless
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x06000B95 RID: 2965 RVA: 0x0001731C File Offset: 0x0001551C
 		public YijiSkill()
 		{
 			List<Type> list = new List<Type>();
@@ -69,11 +64,7 @@ namespace LBoL.EntityLib.Cards.Neutral.Colorless
 			this._upgradedTypes = list2;
 			base..ctor();
 		}
-
-		// Token: 0x040000F9 RID: 249
 		private readonly List<Type> _types;
-
-		// Token: 0x040000FA RID: 250
 		private readonly List<Type> _upgradedTypes;
 	}
 }

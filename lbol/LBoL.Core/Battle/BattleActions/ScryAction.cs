@@ -3,13 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x020001A1 RID: 417
 	public sealed class ScryAction : EventBattleAction<ScryEventArgs>
 	{
-		// Token: 0x06000F20 RID: 3872 RVA: 0x00028CFD File Offset: 0x00026EFD
 		public ScryAction(ScryInfo info)
 		{
 			base.Args = new ScryEventArgs
@@ -17,8 +14,6 @@ namespace LBoL.Core.Battle.BattleActions
 				ScryInfo = info
 			};
 		}
-
-		// Token: 0x06000F21 RID: 3873 RVA: 0x00028D17 File Offset: 0x00026F17
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			yield return base.CreateEventPhase<ScryEventArgs>("Scrying", base.Args, base.Battle.Scrying);

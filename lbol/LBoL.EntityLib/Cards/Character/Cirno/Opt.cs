@@ -8,14 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Character.Cirno
 {
-	// Token: 0x020004CC RID: 1228
 	[UsedImplicitly]
 	public sealed class Opt : Card
 	{
-		// Token: 0x0600104B RID: 4171 RVA: 0x0001CDB5 File Offset: 0x0001AFB5
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			Card target = Enumerable.FirstOrDefault<Card>(base.Battle.DrawZone);

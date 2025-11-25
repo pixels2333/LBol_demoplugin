@@ -6,19 +6,14 @@ using LBoL.ConfigData;
 using LBoL.Core;
 using TMPro;
 using UnityEngine;
-
 namespace LBoL.Presentation.UI.Widgets
 {
-	// Token: 0x02000040 RID: 64
 	public class BgmHint : MonoBehaviour
 	{
-		// Token: 0x0600041D RID: 1053 RVA: 0x0001097C File Offset: 0x0000EB7C
 		private void Awake()
 		{
 			this.canvasGroup.alpha = 0f;
 		}
-
-		// Token: 0x0600041E RID: 1054 RVA: 0x00010990 File Offset: 0x0000EB90
 		public void ShowHint(BgmConfig config)
 		{
 			this.DOKill(false);
@@ -32,24 +27,14 @@ namespace LBoL.Presentation.UI.Widgets
 				.SetUpdate(true)
 				.SetTarget(this);
 		}
-
-		// Token: 0x040001EF RID: 495
 		[SerializeField]
 		private CanvasGroup canvasGroup;
-
-		// Token: 0x040001F0 RID: 496
 		[SerializeField]
 		private Transform actor;
-
-		// Token: 0x040001F1 RID: 497
 		[SerializeField]
 		private TextMeshProUGUI text;
-
-		// Token: 0x040001F2 RID: 498
 		[SerializeField]
 		private TextMeshProUGUI subText;
-
-		// Token: 0x040001F3 RID: 499
 		[SerializeField]
 		private float distance = 900f;
 	}

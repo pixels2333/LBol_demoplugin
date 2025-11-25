@@ -9,15 +9,11 @@ using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.EntityLib.Cards.Character.Cirno.Friend;
 using LBoL.EntityLib.StatusEffects.Others;
-
 namespace LBoL.EntityLib.Cards.Character.Cirno
 {
-	// Token: 0x020004C9 RID: 1225
 	[UsedImplicitly]
 	public sealed class LarvaDefense : Card
 	{
-		// Token: 0x170001CB RID: 459
-		// (get) Token: 0x06001044 RID: 4164 RVA: 0x0001CD32 File Offset: 0x0001AF32
 		public override bool Triggered
 		{
 			get
@@ -29,8 +25,6 @@ namespace LBoL.EntityLib.Cards.Character.Cirno
 				return false;
 			}
 		}
-
-		// Token: 0x06001045 RID: 4165 RVA: 0x0001CD6D File Offset: 0x0001AF6D
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.DefenseAction(true);

@@ -5,20 +5,15 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.StatusEffects;
-
 namespace LBoL.EntityLib.Exhibits.Mythic
 {
-	// Token: 0x02000150 RID: 336
 	[UsedImplicitly]
 	public sealed class HuoshuPiyi : MythicExhibit
 	{
-		// Token: 0x06000494 RID: 1172 RVA: 0x0000BE9D File Offset: 0x0000A09D
 		protected override void OnEnterBattle()
 		{
 			base.ReactBattleEvent<GameEventArgs>(base.Battle.BattleStarted, new EventSequencedReactor<GameEventArgs>(this.OnBattleStarted));
 		}
-
-		// Token: 0x06000495 RID: 1173 RVA: 0x0000BEBC File Offset: 0x0000A0BC
 		private IEnumerable<BattleAction> OnBattleStarted(GameEventArgs arg)
 		{
 			base.NotifyActivating();

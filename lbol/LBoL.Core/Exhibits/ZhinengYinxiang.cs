@@ -9,15 +9,11 @@ using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
 using UnityEngine;
-
 namespace LBoL.Core.Exhibits
 {
-	// Token: 0x0200011D RID: 285
 	[UsedImplicitly]
 	public sealed class ZhinengYinxiang : Exhibit
 	{
-		// Token: 0x17000340 RID: 832
-		// (get) Token: 0x06000A21 RID: 2593 RVA: 0x0001CB1A File Offset: 0x0001AD1A
 		[UsedImplicitly]
 		public string HoldedCard
 		{
@@ -31,8 +27,6 @@ namespace LBoL.Core.Exhibits
 				return card.Name;
 			}
 		}
-
-		// Token: 0x06000A22 RID: 2594 RVA: 0x0001CB30 File Offset: 0x0001AD30
 		private Card TryGetGameRunCard()
 		{
 			GameRunController gameRun = base.GameRun;
@@ -52,8 +46,6 @@ namespace LBoL.Core.Exhibits
 			}
 			return null;
 		}
-
-		// Token: 0x06000A23 RID: 2595 RVA: 0x0001CBA0 File Offset: 0x0001ADA0
 		protected override string GetBaseDescription()
 		{
 			if (base.CardInstanceId == null)
@@ -62,8 +54,6 @@ namespace LBoL.Core.Exhibits
 			}
 			return base.ExtraDescription;
 		}
-
-		// Token: 0x06000A24 RID: 2596 RVA: 0x0001CBCA File Offset: 0x0001ADCA
 		protected override IEnumerator SpecialGain(PlayerUnit player)
 		{
 			IReadOnlyList<Card> baseDeck = base.GameRun.BaseDeck;
@@ -83,8 +73,6 @@ namespace LBoL.Core.Exhibits
 			this.NotifyChanged();
 			yield break;
 		}
-
-		// Token: 0x06000A25 RID: 2597 RVA: 0x0001CBD9 File Offset: 0x0001ADD9
 		protected override void OnAdded(PlayerUnit player)
 		{
 			base.HandleGameRunEvent<CardsEventArgs>(base.GameRun.DeckCardsRemoved, delegate(CardsEventArgs args)
@@ -101,14 +89,10 @@ namespace LBoL.Core.Exhibits
 				}
 			});
 		}
-
-		// Token: 0x06000A26 RID: 2598 RVA: 0x0001CBF8 File Offset: 0x0001ADF8
 		protected override void OnEnterBattle()
 		{
 			base.ReactBattleEvent<GameEventArgs>(base.Battle.BattleStarted, new EventSequencedReactor<GameEventArgs>(this.OnBattleStarted));
 		}
-
-		// Token: 0x06000A27 RID: 2599 RVA: 0x0001CC17 File Offset: 0x0001AE17
 		private IEnumerable<BattleAction> OnBattleStarted(GameEventArgs args)
 		{
 			int? cardInstanceId = base.CardInstanceId;
@@ -129,14 +113,10 @@ namespace LBoL.Core.Exhibits
 			}
 			yield break;
 		}
-
-		// Token: 0x06000A28 RID: 2600 RVA: 0x0001CC27 File Offset: 0x0001AE27
 		protected override void OnLeaveBattle()
 		{
 			base.Blackout = false;
 		}
-
-		// Token: 0x06000A29 RID: 2601 RVA: 0x0001CC30 File Offset: 0x0001AE30
 		public override IEnumerable<Card> EnumerateRelativeCards()
 		{
 			foreach (Card card in base.EnumerateRelativeCards())

@@ -15,14 +15,10 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-
 namespace LBoL.Presentation.UI.Panels
 {
-	// Token: 0x020000C1 RID: 193
 	public class UltimateSkillPanel : UiPanel, IPointerDownHandler, IEventSystemHandler, IPointerUpHandler, IPointerEnterHandler, IPointerExitHandler
 	{
-		// Token: 0x170001C0 RID: 448
-		// (get) Token: 0x06000B6B RID: 2923 RVA: 0x0003B80B File Offset: 0x00039A0B
 		public override PanelLayer Layer
 		{
 			get
@@ -30,10 +26,6 @@ namespace LBoL.Presentation.UI.Panels
 				return PanelLayer.Base;
 			}
 		}
-
-		// Token: 0x170001C1 RID: 449
-		// (get) Token: 0x06000B6C RID: 2924 RVA: 0x0003B80E File Offset: 0x00039A0E
-		// (set) Token: 0x06000B6D RID: 2925 RVA: 0x0003B818 File Offset: 0x00039A18
 		private int CurrentPower
 		{
 			get
@@ -186,10 +178,6 @@ namespace LBoL.Presentation.UI.Panels
 				});
 			}
 		}
-
-		// Token: 0x170001C2 RID: 450
-		// (get) Token: 0x06000B6E RID: 2926 RVA: 0x0003BAEC File Offset: 0x00039CEC
-		// (set) Token: 0x06000B6F RID: 2927 RVA: 0x0003BAF4 File Offset: 0x00039CF4
 		public bool IsShown
 		{
 			get
@@ -202,8 +190,6 @@ namespace LBoL.Presentation.UI.Panels
 				this._shown = value;
 			}
 		}
-
-		// Token: 0x06000B70 RID: 2928 RVA: 0x0003BB0C File Offset: 0x00039D0C
 		public void Awake()
 		{
 			this._currentPower = 0;
@@ -213,8 +199,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.gauge1.fillAmount = 0f;
 			this.gauge2.fillAmount = 0f;
 		}
-
-		// Token: 0x06000B71 RID: 2929 RVA: 0x0003BB70 File Offset: 0x00039D70
 		protected override void OnEnterGameRun()
 		{
 			UltimateSkill us = base.GameRun.Player.Us;
@@ -226,8 +210,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			us.PropertyChanged += new Action(this.OnPropertyChanged);
 		}
-
-		// Token: 0x06000B72 RID: 2930 RVA: 0x0003BBD0 File Offset: 0x00039DD0
 		protected override void OnEnterBattle()
 		{
 			base.Battle.ActionViewer.Register<GainPowerAction>(new BattleActionViewer<GainPowerAction>(this.ViewGainPower), null);
@@ -236,19 +218,13 @@ namespace LBoL.Presentation.UI.Panels
 			this._interactable = true;
 			this.OnPowerChanged(true);
 		}
-
-		// Token: 0x06000B73 RID: 2931 RVA: 0x0003BC42 File Offset: 0x00039E42
 		protected override void OnLeaveGameRun()
 		{
 			base.GameRun.Player.Us.PropertyChanged -= new Action(this.OnPropertyChanged);
 		}
-
-		// Token: 0x06000B74 RID: 2932 RVA: 0x0003BC65 File Offset: 0x00039E65
 		private void OnPropertyChanged()
 		{
 		}
-
-		// Token: 0x06000B75 RID: 2933 RVA: 0x0003BC68 File Offset: 0x00039E68
 		protected override void OnLeaveBattle()
 		{
 			base.Battle.ActionViewer.Unregister<GainPowerAction>(new BattleActionViewer<GainPowerAction>(this.ViewGainPower));
@@ -257,8 +233,6 @@ namespace LBoL.Presentation.UI.Panels
 			this._interactable = false;
 			this._pendingUse = false;
 		}
-
-		// Token: 0x06000B76 RID: 2934 RVA: 0x0003BCD7 File Offset: 0x00039ED7
 		private IEnumerator ViewGainPower(GainPowerAction action)
 		{
 			Vector3 vector = UiManager.GetPanel<PlayBoard>().FindActionSourceWorldPosition(action.Source) ?? Vector3.zero;
@@ -290,43 +264,31 @@ namespace LBoL.Presentation.UI.Panels
 			this.GainPower(action.Args.Power);
 			yield break;
 		}
-
-		// Token: 0x06000B77 RID: 2935 RVA: 0x0003BCED File Offset: 0x00039EED
 		private IEnumerator ViewLosePower(LosePowerAction action)
 		{
 			this.LosePower(action.Args.Power);
 			yield break;
 		}
-
-		// Token: 0x06000B78 RID: 2936 RVA: 0x0003BD03 File Offset: 0x00039F03
 		private IEnumerator ViewConsumePower(ConsumePowerAction action)
 		{
 			this.ConsumePower(action.Args.Power);
 			this._pendingUse = false;
 			yield break;
 		}
-
-		// Token: 0x06000B79 RID: 2937 RVA: 0x0003BD19 File Offset: 0x00039F19
 		public void GainPower(int value)
 		{
 			AudioManager.PlayUi((value > 15) ? "UltGain" : "UltGainLittle", false);
 			this.OnPowerChanged(false);
 		}
-
-		// Token: 0x06000B7A RID: 2938 RVA: 0x0003BD39 File Offset: 0x00039F39
 		public void LosePower(int value)
 		{
 			AudioManager.PlayUi("UltLose", false);
 			this.OnPowerChanged(false);
 		}
-
-		// Token: 0x06000B7B RID: 2939 RVA: 0x0003BD4D File Offset: 0x00039F4D
 		public void ConsumePower(int value)
 		{
 			this.OnPowerChanged(false);
 		}
-
-		// Token: 0x06000B7C RID: 2940 RVA: 0x0003BD56 File Offset: 0x00039F56
 		public void UseUsFromKey()
 		{
 			if (this._interactable)
@@ -334,8 +296,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.StartUsingUltimateSkill(false);
 			}
 		}
-
-		// Token: 0x06000B7D RID: 2941 RVA: 0x0003BD68 File Offset: 0x00039F68
 		private void StartUsingUltimateSkill(bool fromClick)
 		{
 			if (this._pendingUse || !base.Battle.Player.IsInTurn)
@@ -397,14 +357,10 @@ namespace LBoL.Presentation.UI.Panels
 				unitView.SelectingVisible = false;
 			}
 		}
-
-		// Token: 0x06000B7E RID: 2942 RVA: 0x0003BEE4 File Offset: 0x0003A0E4
 		public void CancelUse()
 		{
 			this._pendingUse = false;
 		}
-
-		// Token: 0x06000B7F RID: 2943 RVA: 0x0003BEED File Offset: 0x0003A0ED
 		public void ShowInDialog()
 		{
 			if (this.IsShown)
@@ -416,16 +372,12 @@ namespace LBoL.Presentation.UI.Panels
 			this.IsShown = true;
 			this.OnPowerChanged(true);
 		}
-
-		// Token: 0x06000B80 RID: 2944 RVA: 0x0003BF29 File Offset: 0x0003A129
 		public void HideInDialog()
 		{
 			this.canvasGroup.DOKill(false);
 			this.canvasGroup.DOFade(0f, 0.2f);
 			this.IsShown = false;
 		}
-
-		// Token: 0x06000B81 RID: 2945 RVA: 0x0003BF58 File Offset: 0x0003A158
 		private void OnPowerChanged(bool instant = false)
 		{
 			if (!this.IsShown)
@@ -447,8 +399,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.CurrentPower = value;
 			}, power, 1f).SetTarget(base.gameObject).SetUpdate(UpdateType.Fixed);
 		}
-
-		// Token: 0x06000B82 RID: 2946 RVA: 0x0003C004 File Offset: 0x0003A204
 		public void OnPointerEnter(PointerEventData eventData)
 		{
 			AudioManager.Button(2);
@@ -468,8 +418,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 			}
 		}
-
-		// Token: 0x06000B83 RID: 2947 RVA: 0x0003C0B4 File Offset: 0x0003A2B4
 		public void OnPointerExit(PointerEventData eventData)
 		{
 			if (base.Battle != null && base.Battle.Player.Us.TargetType != TargetType.SingleEnemy)
@@ -480,8 +428,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 			}
 		}
-
-		// Token: 0x06000B84 RID: 2948 RVA: 0x0003C134 File Offset: 0x0003A334
 		public void OnPointerDown(PointerEventData eventData)
 		{
 			if (this._interactable && eventData.button == PointerEventData.InputButton.Left && !UiManager.GetPanel<PlayBoard>().IsTempLockedFromMinimize)
@@ -489,8 +435,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.StartUsingUltimateSkill(true);
 			}
 		}
-
-		// Token: 0x06000B85 RID: 2949 RVA: 0x0003C159 File Offset: 0x0003A359
 		public void OnPointerUp(PointerEventData eventData)
 		{
 			if (this._interactable && eventData.button == PointerEventData.InputButton.Left)
@@ -498,76 +442,38 @@ namespace LBoL.Presentation.UI.Panels
 				UiManager.GetPanel<PlayBoard>().OnPointerUp(eventData);
 			}
 		}
-
-		// Token: 0x040008F5 RID: 2293
 		[SerializeField]
 		private Transform root;
-
-		// Token: 0x040008F6 RID: 2294
 		[SerializeField]
 		private CanvasGroup canvasGroup;
-
-		// Token: 0x040008F7 RID: 2295
 		[SerializeField]
 		private Image skillImage;
-
-		// Token: 0x040008F8 RID: 2296
 		[SerializeField]
 		private TextMeshProUGUI powerText;
-
-		// Token: 0x040008F9 RID: 2297
 		[SerializeField]
 		private Image gauge1;
-
-		// Token: 0x040008FA RID: 2298
 		[SerializeField]
 		private Image gauge2;
-
-		// Token: 0x040008FB RID: 2299
 		[SerializeField]
 		private Image gauge3;
-
-		// Token: 0x040008FC RID: 2300
 		[SerializeField]
 		private Color gauge1FontColor;
-
-		// Token: 0x040008FD RID: 2301
 		[SerializeField]
 		private Color gauge2FontColor;
-
-		// Token: 0x040008FE RID: 2302
 		[SerializeField]
 		private Color gauge3FontColor;
-
-		// Token: 0x040008FF RID: 2303
 		[SerializeField]
 		private ParticleSystem fireParticle1;
-
-		// Token: 0x04000900 RID: 2304
 		[SerializeField]
 		private ParticleSystem fireParticle2;
-
-		// Token: 0x04000901 RID: 2305
 		[SerializeField]
 		private ParticleSystem fireParticle3;
-
-		// Token: 0x04000902 RID: 2306
 		[SerializeField]
 		private ParticleSystem lightParticle;
-
-		// Token: 0x04000903 RID: 2307
 		private UltimateSkillTooltipSource _descriptionTs;
-
-		// Token: 0x04000904 RID: 2308
 		private int _currentPower;
-
-		// Token: 0x04000905 RID: 2309
 		private bool _pendingUse;
-
-		// Token: 0x04000906 RID: 2310
 		private bool _interactable;
-
-		// Token: 0x04000907 RID: 2311
 		private bool _shown;
 	}
 }

@@ -7,14 +7,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.Cards.Character.Reimu
 {
-	// Token: 0x020003DD RID: 989
 	[UsedImplicitly]
 	public sealed class KuosanJiejie : Card
 	{
-		// Token: 0x06000DDF RID: 3551 RVA: 0x00019D24 File Offset: 0x00017F24
 		public override ManaGroup GetXCostFromPooled(ManaGroup pooledMana)
 		{
 			return new ManaGroup
@@ -24,8 +21,6 @@ namespace LBoL.EntityLib.Cards.Character.Reimu
 				Philosophy = pooledMana.Philosophy
 			};
 		}
-
-		// Token: 0x06000DE0 RID: 3552 RVA: 0x00019D64 File Offset: 0x00017F64
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			int white = base.SynergyAmount(consumingMana, ManaColor.White, 1);

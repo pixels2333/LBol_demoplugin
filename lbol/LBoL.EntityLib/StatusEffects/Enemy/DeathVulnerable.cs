@@ -6,13 +6,10 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using UnityEngine;
-
 namespace LBoL.EntityLib.StatusEffects.Enemy
 {
-	// Token: 0x02000095 RID: 149
 	public sealed class DeathVulnerable : StatusEffect
 	{
-		// Token: 0x0600021B RID: 539 RVA: 0x00006628 File Offset: 0x00004828
 		protected override void OnAdded(Unit unit)
 		{
 			if (!(unit is EnemyUnit))
@@ -21,8 +18,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy
 			}
 			base.ReactOwnerEvent<DieEventArgs>(base.Owner.Dying, new EventSequencedReactor<DieEventArgs>(this.OnDying));
 		}
-
-		// Token: 0x0600021C RID: 540 RVA: 0x00006674 File Offset: 0x00004874
 		private IEnumerable<BattleAction> OnDying(DieEventArgs args)
 		{
 			base.NotifyActivating();

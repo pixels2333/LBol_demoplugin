@@ -4,24 +4,15 @@ using System.Linq;
 using LBoL.Base.Extensions;
 using LBoL.Core.Cards;
 using UnityEngine;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x0200016F RID: 367
 	public sealed class DrawCardAction : EventBattleAction<CardEventArgs>
 	{
-		// Token: 0x170004E9 RID: 1257
-		// (get) Token: 0x06000E26 RID: 3622 RVA: 0x00027015 File Offset: 0x00025215
-		// (set) Token: 0x06000E27 RID: 3623 RVA: 0x0002701D File Offset: 0x0002521D
 		public CardTransitionType TransitionType { get; private set; }
-
-		// Token: 0x06000E28 RID: 3624 RVA: 0x00027026 File Offset: 0x00025226
 		public DrawCardAction()
 		{
 			base.Args = new CardEventArgs();
 		}
-
-		// Token: 0x06000E29 RID: 3625 RVA: 0x00027039 File Offset: 0x00025239
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			DrawCardAction.<>c__DisplayClass5_0 CS$<>8__locals1 = new DrawCardAction.<>c__DisplayClass5_0();

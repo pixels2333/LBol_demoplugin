@@ -19,14 +19,10 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
-
 namespace LBoL.Presentation.UI.Panels
 {
-	// Token: 0x020000B4 RID: 180
 	public class SettingPanel : UiPanel<SettingsPanelType>, IInputActionHandler
 	{
-		// Token: 0x17000198 RID: 408
-		// (get) Token: 0x060009F8 RID: 2552 RVA: 0x00032569 File Offset: 0x00030769
 		public override PanelLayer Layer
 		{
 			get
@@ -34,8 +30,6 @@ namespace LBoL.Presentation.UI.Panels
 				return PanelLayer.Top;
 			}
 		}
-
-		// Token: 0x060009F9 RID: 2553 RVA: 0x0003256C File Offset: 0x0003076C
 		private void ResetMainSettings()
 		{
 			this._resolutions = ResolutionHelper.GetAvailableResolutions();
@@ -58,8 +52,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.cursorSwitch.SetValueWithoutNotifier(GameMaster.UseLbolCursor, true);
 			this.cursorSwitch.AddListener(new UnityAction<bool>(this.UI_Cursor));
 		}
-
-		// Token: 0x060009FA RID: 2554 RVA: 0x000326F4 File Offset: 0x000308F4
 		private void ResetAudioSettings()
 		{
 			this.masterVolumeSlider.SetValueWithoutNotify(AudioManager.MasterVolume);
@@ -72,8 +64,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.sfxVolumeText.text = (AudioManager.SfxVolume * 100f).RoundToInt().ToString() + "%";
 			this.backgroundMuteToggle.SetValueWithoutNotifier(AudioManager.IsBackgroundMute, true);
 		}
-
-		// Token: 0x060009FB RID: 2555 RVA: 0x00032808 File Offset: 0x00030A08
 		private void ResetPreferenceSettings()
 		{
 			this.turboModeSwitch.SetValueWithoutNotifier(GameMaster.IsTurboMode, true);
@@ -123,8 +113,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			Debug.Log(string.Format("Invalid quick play level: {0}", GameMaster.QuickPlayLevel));
 		}
-
-		// Token: 0x060009FC RID: 2556 RVA: 0x00032AD8 File Offset: 0x00030CD8
 		private void ResetKeyBindings()
 		{
 			this.keyMappingParent.DestroyChildren();
@@ -179,16 +167,12 @@ namespace LBoL.Presentation.UI.Panels
 			this.enableGamepadSwitch.SetValueWithoutNotifier(InputDeviceManager.GamepadEnabled, true);
 			this.keyBindingsGroup.interactable = GameMaster.EnableKeyboard;
 		}
-
-		// Token: 0x060009FD RID: 2557 RVA: 0x00032C2C File Offset: 0x00030E2C
 		private void ResetLocaleDropdown()
 		{
 			this.localeDropdown.dropdown.ClearOptions();
 			this.localeDropdown.dropdown.AddOptions(Enumerable.ToList<string>(Enumerable.Select<LocaleSettingItem, string>(LocaleSettingItem.All, (LocaleSettingItem l) => l.Name)));
 			this.localeDropdown.dropdown.SetValueWithoutNotify(LocaleSettingItem.All.FindIndexOf((LocaleSettingItem l) => l.Locale == Localization.CurrentLocale));
 		}
-
-		// Token: 0x060009FE RID: 2558 RVA: 0x00032CC0 File Offset: 0x00030EC0
 		protected override void OnShowing(SettingsPanelType payload)
 		{
 			this.ResetMainSettings();
@@ -219,23 +203,17 @@ namespace LBoL.Presentation.UI.Panels
 			this._canvasGroup.interactable = true;
 			UiManager.PushActionHandler(this);
 		}
-
-		// Token: 0x060009FF RID: 2559 RVA: 0x00032DB1 File Offset: 0x00030FB1
 		protected override void OnShown()
 		{
 			base.OnShown();
 			this.backgroundHideButton.interactable = true;
 		}
-
-		// Token: 0x06000A00 RID: 2560 RVA: 0x00032DC5 File Offset: 0x00030FC5
 		protected override void OnHiding()
 		{
 			this.backgroundHideButton.interactable = false;
 			this._canvasGroup.interactable = false;
 			UiManager.PopActionHandler(this);
 		}
-
-		// Token: 0x06000A01 RID: 2561 RVA: 0x00032DE5 File Offset: 0x00030FE5
 		void IInputActionHandler.OnCancel()
 		{
 			if (!this.rebindRoot.activeSelf)
@@ -243,8 +221,6 @@ namespace LBoL.Presentation.UI.Panels
 				base.Hide();
 			}
 		}
-
-		// Token: 0x06000A02 RID: 2562 RVA: 0x00032DFC File Offset: 0x00030FFC
 		public void UI_SetResolution(int index)
 		{
 			int num;
@@ -254,8 +230,6 @@ namespace LBoL.Presentation.UI.Panels
 			int num4 = num2;
 			Screen.SetResolution(num3, num4, Screen.fullScreenMode);
 		}
-
-		// Token: 0x06000A03 RID: 2563 RVA: 0x00032E2C File Offset: 0x0003102C
 		public void UI_SetFrameRate(int index)
 		{
 			FrameSetting frameSetting = this._frameSettings[index];
@@ -264,14 +238,10 @@ namespace LBoL.Presentation.UI.Panels
 			PlayerPrefs.SetInt("VsyncCount", frameSetting.VsyncCount);
 			PlayerPrefs.SetInt("TargetFrameRate", frameSetting.FrameRateForSetting);
 		}
-
-		// Token: 0x06000A04 RID: 2564 RVA: 0x00032E7E File Offset: 0x0003107E
 		public void UI_SetFullScreenMode()
 		{
 			Screen.fullScreen = this.fullScreenSwitch.IsOn;
 		}
-
-		// Token: 0x06000A05 RID: 2565 RVA: 0x00032E90 File Offset: 0x00031090
 		public void UI_SetLocale(int index)
 		{
 			Locale locale = LocaleSettingItem.All[index].Locale;
@@ -280,8 +250,6 @@ namespace LBoL.Presentation.UI.Panels
 				base.StartCoroutine(this.CoChangeLocale(locale));
 			}
 		}
-
-		// Token: 0x06000A06 RID: 2566 RVA: 0x00032EC4 File Offset: 0x000310C4
 		private IEnumerator CoChangeLocale(Locale locale)
 		{
 			yield return UiManager.ShowLoading(0.1f).ToCoroutine(null);
@@ -289,14 +257,10 @@ namespace LBoL.Presentation.UI.Panels
 			yield return UiManager.HideLoading(0.1f).ToCoroutine(null);
 			yield break;
 		}
-
-		// Token: 0x06000A07 RID: 2567 RVA: 0x00032ED3 File Offset: 0x000310D3
 		public void UI_SetMasterVolume(float value)
 		{
 			this.InternalSetMasterVolume(value);
 		}
-
-		// Token: 0x06000A08 RID: 2568 RVA: 0x00032EDC File Offset: 0x000310DC
 		private void InternalSetMasterVolume(float value)
 		{
 			AudioManager.MasterVolume = value;
@@ -304,14 +268,10 @@ namespace LBoL.Presentation.UI.Panels
 			this.masterVolumeText.text = (masterVolume * 100f).RoundToInt().ToString() + "%";
 			PlayerPrefs.SetFloat("MasterVolume", masterVolume);
 		}
-
-		// Token: 0x06000A09 RID: 2569 RVA: 0x00032F29 File Offset: 0x00031129
 		public void UI_SetBgmVolume(float value)
 		{
 			this.InternalSetBgmVolume(value);
 		}
-
-		// Token: 0x06000A0A RID: 2570 RVA: 0x00032F34 File Offset: 0x00031134
 		private void InternalSetBgmVolume(float value)
 		{
 			AudioManager.BgmVolume = value;
@@ -319,14 +279,10 @@ namespace LBoL.Presentation.UI.Panels
 			this.bgmVolumeText.text = (bgmVolume * 100f).RoundToInt().ToString() + "%";
 			PlayerPrefs.SetFloat("BgmVolume", bgmVolume);
 		}
-
-		// Token: 0x06000A0B RID: 2571 RVA: 0x00032F81 File Offset: 0x00031181
 		public void UI_SetUiVolume(float value)
 		{
 			this.InternalSetUiVolume(value);
 		}
-
-		// Token: 0x06000A0C RID: 2572 RVA: 0x00032F8C File Offset: 0x0003118C
 		private void InternalSetUiVolume(float value)
 		{
 			AudioManager.UiVolume = value;
@@ -334,8 +290,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.uiVolumeText.text = (uiVolume * 100f).RoundToInt().ToString() + "%";
 			PlayerPrefs.SetFloat("UiVolume", uiVolume);
 		}
-
-		// Token: 0x06000A0D RID: 2573 RVA: 0x00032FD9 File Offset: 0x000311D9
 		public void UI_OnPointerDownPlaySampleUi()
 		{
 			if (!this.uiPlaying)
@@ -344,8 +298,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.uiTimer = 0.5f;
 			}
 		}
-
-		// Token: 0x06000A0E RID: 2574 RVA: 0x00032FF5 File Offset: 0x000311F5
 		public void UI_OnPointerUpPlaySampleUi()
 		{
 			if (this.uiPlaying)
@@ -353,8 +305,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.uiPlaying = false;
 			}
 		}
-
-		// Token: 0x06000A0F RID: 2575 RVA: 0x00033006 File Offset: 0x00031206
 		public void UI_OnPointerDownPlaySampleSfx()
 		{
 			if (!this.sfxPlaying)
@@ -363,8 +313,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.sfxTimer = 0.5f;
 			}
 		}
-
-		// Token: 0x06000A10 RID: 2576 RVA: 0x00033022 File Offset: 0x00031222
 		public void UI_OnPointerUpPlaySampleSfx()
 		{
 			if (this.sfxPlaying)
@@ -372,14 +320,10 @@ namespace LBoL.Presentation.UI.Panels
 				this.sfxPlaying = false;
 			}
 		}
-
-		// Token: 0x06000A11 RID: 2577 RVA: 0x00033033 File Offset: 0x00031233
 		public void UI_SetSfxVolume(float value)
 		{
 			this.InternalSetSfxVolume(value);
 		}
-
-		// Token: 0x06000A12 RID: 2578 RVA: 0x0003303C File Offset: 0x0003123C
 		private void InternalSetSfxVolume(float value)
 		{
 			AudioManager.SfxVolume = value;
@@ -387,8 +331,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.sfxVolumeText.text = (sfxVolume * 100f).RoundToInt().ToString() + "%";
 			PlayerPrefs.SetFloat("SfxVolume", sfxVolume);
 		}
-
-		// Token: 0x06000A13 RID: 2579 RVA: 0x0003308C File Offset: 0x0003128C
 		public void UI_RecommendVolume()
 		{
 			this.masterVolumeSlider.value = 0.5f;
@@ -400,32 +342,22 @@ namespace LBoL.Presentation.UI.Panels
 			this.sfxVolumeSlider.value = 1f;
 			this.InternalSetSfxVolume(1f);
 		}
-
-		// Token: 0x06000A14 RID: 2580 RVA: 0x00033105 File Offset: 0x00031305
 		public void UI_SetBackgroundMute()
 		{
 			AudioManager.IsBackgroundMute = this.backgroundMuteToggle.IsOn;
 		}
-
-		// Token: 0x06000A15 RID: 2581 RVA: 0x00033117 File Offset: 0x00031317
 		public void UI_IsTurboMode(bool isOn)
 		{
 			GameMaster.IsTurboMode = isOn;
 		}
-
-		// Token: 0x06000A16 RID: 2582 RVA: 0x0003311F File Offset: 0x0003131F
 		public void UI_ShowVerboseKeywords(bool isOn)
 		{
 			GameMaster.ShowVerboseKeywords = isOn;
 		}
-
-		// Token: 0x06000A17 RID: 2583 RVA: 0x00033127 File Offset: 0x00031327
 		public void UI_ShowIllustrator(bool isOn)
 		{
 			GameMaster.ShowIllustrator = isOn;
 		}
-
-		// Token: 0x06000A18 RID: 2584 RVA: 0x00033130 File Offset: 0x00031330
 		public void UI_IsLargeTooltips(bool isOn)
 		{
 			GameMaster.IsLargeTooltips = isOn;
@@ -441,21 +373,15 @@ namespace LBoL.Presentation.UI.Panels
 				array2[i].UpdateIntentions();
 			}
 		}
-
-		// Token: 0x06000A19 RID: 2585 RVA: 0x00033186 File Offset: 0x00031386
 		public void UI_PreferWideTooltips(bool isOn)
 		{
 			GameMaster.PreferWideTooltips = isOn;
 			UiManager.GetPanel<TooltipsLayer>().Refresh();
 		}
-
-		// Token: 0x06000A1A RID: 2586 RVA: 0x00033198 File Offset: 0x00031398
 		public void UI_RightClickCancel(bool isOn)
 		{
 			GameMaster.RightClickCancel = isOn;
 		}
-
-		// Token: 0x06000A1B RID: 2587 RVA: 0x000331A0 File Offset: 0x000313A0
 		public void UI_IsLoopOrder(bool isOn)
 		{
 			GameMaster.IsLoopOrder = isOn;
@@ -465,26 +391,18 @@ namespace LBoL.Presentation.UI.Panels
 				array[i].RefreshBgTextureForLoopOrder();
 			}
 		}
-
-		// Token: 0x06000A1C RID: 2588 RVA: 0x000331CF File Offset: 0x000313CF
 		public void UI_IsAnimatingEnvironmentEnabled(bool isOn)
 		{
 			GameMaster.IsAnimatingEnvironmentEnabled = isOn;
 		}
-
-		// Token: 0x06000A1D RID: 2589 RVA: 0x000331D7 File Offset: 0x000313D7
 		public void UI_SingleEnemyAutoSelect(bool isOn)
 		{
 			GameMaster.SingleEnemyAutoSelect = isOn;
 		}
-
-		// Token: 0x06000A1E RID: 2590 RVA: 0x000331DF File Offset: 0x000313DF
 		public void UI_ShowXCostEmptyUseWarning(bool isOn)
 		{
 			GameMaster.ShowXCostEmptyUseWarning = isOn;
 		}
-
-		// Token: 0x06000A1F RID: 2591 RVA: 0x000331E8 File Offset: 0x000313E8
 		public void UI_ShowShortcut(bool isOn)
 		{
 			GameMaster.ShowShortcut = isOn;
@@ -494,26 +412,18 @@ namespace LBoL.Presentation.UI.Panels
 				array[i].ShowShortcut = isOn;
 			}
 		}
-
-		// Token: 0x06000A20 RID: 2592 RVA: 0x00033218 File Offset: 0x00031418
 		public void UI_ShowCardOrder(bool isOn)
 		{
 			GameMaster.ShowCardOrder = isOn;
 		}
-
-		// Token: 0x06000A21 RID: 2593 RVA: 0x00033220 File Offset: 0x00031420
 		public void UI_ShowReload(bool isOn)
 		{
 			GameMaster.ShowReload = isOn;
 		}
-
-		// Token: 0x06000A22 RID: 2594 RVA: 0x00033228 File Offset: 0x00031428
 		public void UI_Shake(bool isOn)
 		{
 			GameMaster.Shake = isOn;
 		}
-
-		// Token: 0x06000A23 RID: 2595 RVA: 0x00033230 File Offset: 0x00031430
 		public void UI_CostMoreLeft(bool isOn)
 		{
 			GameMaster.CostMoreLeft = isOn;
@@ -522,26 +432,18 @@ namespace LBoL.Presentation.UI.Panels
 				handCard.CostMoreLeft = handCard.ShouldShowLeftCost;
 			}
 		}
-
-		// Token: 0x06000A24 RID: 2596 RVA: 0x00033265 File Offset: 0x00031465
 		public void UI_Cursor(bool isOn)
 		{
 			GameMaster.SetCursor(isOn);
 		}
-
-		// Token: 0x06000A25 RID: 2597 RVA: 0x0003326D File Offset: 0x0003146D
 		public void UI_ChangeHintLevel(int index)
 		{
 			GameMaster.HintLevel = (HintLevel)index;
 		}
-
-		// Token: 0x06000A26 RID: 2598 RVA: 0x00033275 File Offset: 0x00031475
 		public void UI_ChangeQuickPlayLevel(int index)
 		{
 			GameMaster.QuickPlayLevel = (QuickPlayLevel)index;
 		}
-
-		// Token: 0x06000A27 RID: 2599 RVA: 0x00033280 File Offset: 0x00031480
 		public void UI_ResetHint()
 		{
 			UiDialog<MessageContent> dialog = UiManager.GetDialog<MessageDialog>();
@@ -554,8 +456,6 @@ namespace LBoL.Presentation.UI.Panels
 			};
 			dialog.Show(messageContent);
 		}
-
-		// Token: 0x06000A28 RID: 2600 RVA: 0x000332D3 File Offset: 0x000314D3
 		public void UI_ResetDefaultKeyBindingds()
 		{
 			UiManager.GetDialog<MessageDialog>().Show(new MessageContent
@@ -570,14 +470,10 @@ namespace LBoL.Presentation.UI.Panels
 				}
 			});
 		}
-
-		// Token: 0x06000A29 RID: 2601 RVA: 0x0003330F File Offset: 0x0003150F
 		public void UI_Hide()
 		{
 			base.Hide();
 		}
-
-		// Token: 0x06000A2A RID: 2602 RVA: 0x00033318 File Offset: 0x00031518
 		public void UI_RestartBattle()
 		{
 			try
@@ -596,8 +492,6 @@ namespace LBoL.Presentation.UI.Panels
 				Debug.LogError(ex);
 			}
 		}
-
-		// Token: 0x06000A2B RID: 2603 RVA: 0x00033374 File Offset: 0x00031574
 		public void UI_LeaveGameRun()
 		{
 			UiManager.GetDialog<MessageDialog>().Show(new MessageContent
@@ -608,8 +502,6 @@ namespace LBoL.Presentation.UI.Panels
 				OnConfirm = new Action(GameMaster.LeaveGameRun)
 			});
 		}
-
-		// Token: 0x06000A2C RID: 2604 RVA: 0x000333B4 File Offset: 0x000315B4
 		public void UI_Quit()
 		{
 			UiManager.GetDialog<MessageDialog>().Show(new MessageContent
@@ -620,8 +512,6 @@ namespace LBoL.Presentation.UI.Panels
 				OnConfirm = new Action(GameMaster.QuitGame)
 			});
 		}
-
-		// Token: 0x06000A2D RID: 2605 RVA: 0x000333F4 File Offset: 0x000315F4
 		private void Update()
 		{
 			if (this.sfxPlaying)
@@ -643,8 +533,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 			}
 		}
-
-		// Token: 0x06000A2E RID: 2606 RVA: 0x00033480 File Offset: 0x00031680
 		private void Awake()
 		{
 			this.localeGroup.SetActive(true);
@@ -675,8 +563,6 @@ namespace LBoL.Presentation.UI.Panels
 			SimpleTooltipSource.CreateWithGeneralKey(this.shakeParent, "Setting.Shake", "Setting.ShakeDescription").WithPosition(TooltipDirection.Bottom, TooltipAlignment.Min);
 			this._canvasGroup = base.GetComponent<CanvasGroup>();
 		}
-
-		// Token: 0x06000A2F RID: 2607 RVA: 0x000336F4 File Offset: 0x000318F4
 		public override void OnLocaleChanged()
 		{
 			TMP_Dropdown tmp_Dropdown = this.hintLevelDropdown;
@@ -729,8 +615,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.ResetLocaleDropdown();
 		}
-
-		// Token: 0x06000A30 RID: 2608 RVA: 0x000338F8 File Offset: 0x00031AF8
 		public void UI_OnTabToggleChanged(Toggle item)
 		{
 			string name = item.name;
@@ -760,8 +644,6 @@ namespace LBoL.Presentation.UI.Panels
 			int num2 = num;
 			this.SwitchToTab(num2);
 		}
-
-		// Token: 0x06000A31 RID: 2609 RVA: 0x0003394C File Offset: 0x00031B4C
 		private void SwitchToTab(int index)
 		{
 			if (index == this._tabIndex)
@@ -795,14 +677,10 @@ namespace LBoL.Presentation.UI.Panels
 					GamepadNavigationManager.RefreshSelection();
 				});
 		}
-
-		// Token: 0x06000A32 RID: 2610 RVA: 0x00033A92 File Offset: 0x00031C92
 		public void SetReenterStationInteractable(bool interactable)
 		{
 			this.reenterStationButton.interactable = interactable;
 		}
-
-		// Token: 0x06000A33 RID: 2611 RVA: 0x00033AA0 File Offset: 0x00031CA0
 		public void OnGamepadPairButtonActive(float valueStep)
 		{
 			int num = (int)((float)this._tabIndex + valueStep);
@@ -816,319 +694,157 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.tabGroup.GetComponentsInChildren<Toggle>()[num].isOn = true;
 		}
-
-		// Token: 0x0400076A RID: 1898
 		[Header("综合")]
 		[SerializeField]
 		private List<CanvasGroup> tabs;
-
-		// Token: 0x0400076B RID: 1899
 		[SerializeField]
 		private ToggleGroup tabGroup;
-
-		// Token: 0x0400076C RID: 1900
 		[SerializeField]
 		private GameObject mainMenuGroup;
-
-		// Token: 0x0400076D RID: 1901
 		[SerializeField]
 		private GameObject inGameGroup;
-
-		// Token: 0x0400076E RID: 1902
 		[SerializeField]
 		private Button reenterStationButton;
-
-		// Token: 0x0400076F RID: 1903
 		[SerializeField]
 		private Button backgroundHideButton;
-
-		// Token: 0x04000770 RID: 1904
 		[Header("主设置")]
 		[SerializeField]
 		private DropdownWidget resolutionDropdown;
-
-		// Token: 0x04000771 RID: 1905
 		[SerializeField]
 		private DropdownWidget frameRateDropdown;
-
-		// Token: 0x04000772 RID: 1906
 		[SerializeField]
 		private SwitchWidget fullScreenSwitch;
-
-		// Token: 0x04000773 RID: 1907
 		[SerializeField]
 		private CanvasGroup animatingEnvironmentEnabledParent;
-
-		// Token: 0x04000774 RID: 1908
 		[SerializeField]
 		private SwitchWidget animatingEnvironmentEnabledSwitch;
-
-		// Token: 0x04000775 RID: 1909
 		[SerializeField]
 		private GameObject localeGroup;
-
-		// Token: 0x04000776 RID: 1910
 		[SerializeField]
 		private DropdownWidget localeDropdown;
-
-		// Token: 0x04000777 RID: 1911
 		[Header("音频")]
 		[SerializeField]
 		private Slider masterVolumeSlider;
-
-		// Token: 0x04000778 RID: 1912
 		[SerializeField]
 		private TextMeshProUGUI masterVolumeText;
-
-		// Token: 0x04000779 RID: 1913
 		[SerializeField]
 		private Slider bgmVolumeSlider;
-
-		// Token: 0x0400077A RID: 1914
 		[SerializeField]
 		private TextMeshProUGUI bgmVolumeText;
-
-		// Token: 0x0400077B RID: 1915
 		[SerializeField]
 		private Slider uiVolumeSlider;
-
-		// Token: 0x0400077C RID: 1916
 		[SerializeField]
 		private TextMeshProUGUI uiVolumeText;
-
-		// Token: 0x0400077D RID: 1917
 		[SerializeField]
 		private Slider sfxVolumeSlider;
-
-		// Token: 0x0400077E RID: 1918
 		[SerializeField]
 		private TextMeshProUGUI sfxVolumeText;
-
-		// Token: 0x0400077F RID: 1919
 		[SerializeField]
 		private SwitchWidget backgroundMuteToggle;
-
-		// Token: 0x04000780 RID: 1920
 		[Header("偏好")]
 		[SerializeField]
 		private GameObject turboModeParent;
-
-		// Token: 0x04000781 RID: 1921
 		[SerializeField]
 		private SwitchWidget turboModeSwitch;
-
-		// Token: 0x04000782 RID: 1922
 		[SerializeField]
 		private GameObject keywordParent;
-
-		// Token: 0x04000783 RID: 1923
 		[SerializeField]
 		private SwitchWidget keywordSwitch;
-
-		// Token: 0x04000784 RID: 1924
 		[SerializeField]
 		private GameObject showIllustratorParent;
-
-		// Token: 0x04000785 RID: 1925
 		[SerializeField]
 		private SwitchWidget showIllustratorSwitch;
-
-		// Token: 0x04000786 RID: 1926
 		[SerializeField]
 		private GameObject tooltipSizeParent;
-
-		// Token: 0x04000787 RID: 1927
 		[SerializeField]
 		private SwitchWidget tooltipSizeSwitch;
-
-		// Token: 0x04000788 RID: 1928
 		[SerializeField]
 		private GameObject tooltipWideParent;
-
-		// Token: 0x04000789 RID: 1929
 		[SerializeField]
 		private SwitchWidget tooltipWideSwitch;
-
-		// Token: 0x0400078A RID: 1930
 		[SerializeField]
 		private GameObject rightClickCancelParent;
-
-		// Token: 0x0400078B RID: 1931
 		[SerializeField]
 		private SwitchWidget rightClickCancelSwitch;
-
-		// Token: 0x0400078C RID: 1932
 		[SerializeField]
 		private GameObject loopOrderSizeParent;
-
-		// Token: 0x0400078D RID: 1933
 		[SerializeField]
 		private SwitchWidget loopOrderSizeSwitch;
-
-		// Token: 0x0400078E RID: 1934
 		[SerializeField]
 		private GameObject singleEnemyAutoSelectParent;
-
-		// Token: 0x0400078F RID: 1935
 		[SerializeField]
 		private SwitchWidget singleEnemyAutoSelectSwitch;
-
-		// Token: 0x04000790 RID: 1936
 		[SerializeField]
 		private GameObject quickPlayLevelParent;
-
-		// Token: 0x04000791 RID: 1937
 		[SerializeField]
 		private TMP_Dropdown quickPlayLevelDropdown;
-
-		// Token: 0x04000792 RID: 1938
 		[SerializeField]
 		private GameObject showXCostWarningParent;
-
-		// Token: 0x04000793 RID: 1939
 		[SerializeField]
 		private SwitchWidget showXCostWarningSwitch;
-
-		// Token: 0x04000794 RID: 1940
 		[SerializeField]
 		private GameObject showShortcutParent;
-
-		// Token: 0x04000795 RID: 1941
 		[SerializeField]
 		private SwitchWidget showShortcutSwitch;
-
-		// Token: 0x04000796 RID: 1942
 		[SerializeField]
 		private GameObject showCardOrderParent;
-
-		// Token: 0x04000797 RID: 1943
 		[SerializeField]
 		private SwitchWidget showCardOrderSwitch;
-
-		// Token: 0x04000798 RID: 1944
 		[SerializeField]
 		private GameObject showReloadParent;
-
-		// Token: 0x04000799 RID: 1945
 		[SerializeField]
 		private SwitchWidget showReloadSwitch;
-
-		// Token: 0x0400079A RID: 1946
 		[SerializeField]
 		private GameObject shakeParent;
-
-		// Token: 0x0400079B RID: 1947
 		[SerializeField]
 		private SwitchWidget shakeSwitch;
-
-		// Token: 0x0400079C RID: 1948
 		[SerializeField]
 		private GameObject costMoreLeftParent;
-
-		// Token: 0x0400079D RID: 1949
 		[SerializeField]
 		private SwitchWidget costMoreLeftSwitch;
-
-		// Token: 0x0400079E RID: 1950
 		[SerializeField]
 		private GameObject cursorParent;
-
-		// Token: 0x0400079F RID: 1951
 		[SerializeField]
 		private SwitchWidget cursorSwitch;
-
-		// Token: 0x040007A0 RID: 1952
 		[SerializeField]
 		private GameObject hintLevelParent;
-
-		// Token: 0x040007A1 RID: 1953
 		[SerializeField]
 		private TMP_Dropdown hintLevelDropdown;
-
-		// Token: 0x040007A2 RID: 1954
 		[SerializeField]
 		private GameObject resetHintParent;
-
-		// Token: 0x040007A3 RID: 1955
 		[Header("按键")]
 		[SerializeField]
 		private RectTransform keyMappingParent;
-
-		// Token: 0x040007A4 RID: 1956
 		[SerializeField]
 		private ActionMappingRow actionMappingRowTemplate;
-
-		// Token: 0x040007A5 RID: 1957
 		[SerializeField]
 		private GameObject rebindRoot;
-
-		// Token: 0x040007A6 RID: 1958
 		[SerializeField]
 		private TextMeshProUGUI rebindMessage;
-
-		// Token: 0x040007A7 RID: 1959
 		[SerializeField]
 		private GameObject enableKeyboardParent;
-
-		// Token: 0x040007A8 RID: 1960
 		[SerializeField]
 		private SwitchWidget enableKeyboardSwitch;
-
-		// Token: 0x040007A9 RID: 1961
 		[SerializeField]
 		private GameObject enableGamepadParent;
-
-		// Token: 0x040007AA RID: 1962
 		[SerializeField]
 		private SwitchWidget enableGamepadSwitch;
-
-		// Token: 0x040007AB RID: 1963
 		[SerializeField]
 		private CanvasGroup keyBindingsGroup;
-
-		// Token: 0x040007AC RID: 1964
 		private CanvasGroup _canvasGroup;
-
-		// Token: 0x040007AD RID: 1965
 		private IReadOnlyList<FrameSetting> _frameSettings;
-
-		// Token: 0x040007AE RID: 1966
 		private IReadOnlyList<Vector2Int> _resolutions;
-
-		// Token: 0x040007AF RID: 1967
 		private SimpleTooltipSource _animatingEnvironmentTooltipSource;
-
-		// Token: 0x040007B0 RID: 1968
 		private const float RecommendMaster = 50f;
-
-		// Token: 0x040007B1 RID: 1969
 		private const float RecommendMusic = 50f;
-
-		// Token: 0x040007B2 RID: 1970
 		private const float RecommendUi = 100f;
-
-		// Token: 0x040007B3 RID: 1971
 		private const float RecommendSfx = 100f;
-
-		// Token: 0x040007B4 RID: 1972
 		private bool sfxPlaying;
-
-		// Token: 0x040007B5 RID: 1973
 		private float sfxTimer;
-
-		// Token: 0x040007B6 RID: 1974
 		private bool uiPlaying;
-
-		// Token: 0x040007B7 RID: 1975
 		private float uiTimer;
-
-		// Token: 0x040007B8 RID: 1976
 		private int _tabIndex;
-
-		// Token: 0x040007B9 RID: 1977
 		private const float TweenTime = 0.3f;
-
-		// Token: 0x040007BA RID: 1978
 		private const float TweenMoveX = 1600f;
 	}
 }

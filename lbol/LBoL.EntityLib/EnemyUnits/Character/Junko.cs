@@ -8,25 +8,16 @@ using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.Cards.Enemy;
 using LBoL.EntityLib.StatusEffects.Enemy;
-
 namespace LBoL.EntityLib.EnemyUnits.Character
 {
-	// Token: 0x0200023A RID: 570
 	[UsedImplicitly]
 	public sealed class Junko : EnemyUnit
 	{
-		// Token: 0x170000EB RID: 235
-		// (get) Token: 0x060008B0 RID: 2224 RVA: 0x00012DA2 File Offset: 0x00010FA2
-		// (set) Token: 0x060008B1 RID: 2225 RVA: 0x00012DAA File Offset: 0x00010FAA
 		private Junko.MoveType Next { get; set; }
-
-		// Token: 0x060008B2 RID: 2226 RVA: 0x00012DB3 File Offset: 0x00010FB3
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			base.ReactBattleEvent<GameEventArgs>(base.Battle.BattleStarted, new Func<GameEventArgs, IEnumerable<BattleAction>>(this.OnBattleStarted));
 		}
-
-		// Token: 0x060008B3 RID: 2227 RVA: 0x00012DD2 File Offset: 0x00010FD2
 		private IEnumerable<BattleAction> OnBattleStarted(GameEventArgs arg)
 		{
 			yield return new ApplyStatusEffectAction<JunkoPurify>(this, new int?(1), default(int?), default(int?), default(int?), 0f, true);
@@ -45,8 +36,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x060008B4 RID: 2228 RVA: 0x00012DE2 File Offset: 0x00010FE2
 		private IEnumerable<BattleAction> StartActions()
 		{
 			yield return PerformAction.Spell(this, "掌上的纯光");
@@ -55,16 +44,12 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield return new AddCardsToDiscardAction(Library.CreateCards<Chunguang>(base.Count1, false), AddCardsType.OneByOne);
 			yield break;
 		}
-
-		// Token: 0x060008B5 RID: 2229 RVA: 0x00012DF2 File Offset: 0x00010FF2
 		private IEnumerable<BattleAction> DefendFirst()
 		{
 			yield return new EnemyMoveAction(this, base.GetSpellCardName(default(int?), 3), true);
 			yield return new CastBlockShieldAction(this, 0, base.Defend, BlockShieldType.Normal, true);
 			yield break;
 		}
-
-		// Token: 0x060008B6 RID: 2230 RVA: 0x00012E02 File Offset: 0x00011002
 		private IEnumerable<BattleAction> NegativeSecond()
 		{
 			yield return PerformAction.Gun(this, base.Battle.Player, "Junko3B", 0.5f);
@@ -116,8 +101,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			yield break;
 		}
-
-		// Token: 0x060008B7 RID: 2231 RVA: 0x00012E12 File Offset: 0x00011012
 		private IEnumerable<BattleAction> LilyActions()
 		{
 			yield return new EnemyMoveAction(this, base.GetSpellCardName(default(int?), 2), true);
@@ -132,8 +115,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x060008B8 RID: 2232 RVA: 0x00012E22 File Offset: 0x00011022
 		protected override IEnumerable<IEnemyMove> GetTurnMoves()
 		{
 			switch (this.Next)
@@ -165,8 +146,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			yield break;
 		}
-
-		// Token: 0x060008B9 RID: 2233 RVA: 0x00012E34 File Offset: 0x00011034
 		protected override void UpdateMoveCounters()
 		{
 			int num = base.CountDown - 1;
@@ -199,33 +178,20 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			IL_003B:
 			this.Next = moveType;
 		}
-
-		// Token: 0x060008BA RID: 2234 RVA: 0x00012E83 File Offset: 0x00011083
 		public IEnumerable<BattleAction> JunkoColorActions(int level)
 		{
 			yield return new ApplyStatusEffectAction<Firepower>(this, new int?((level - this._junkoColorLevel) * base.Power), default(int?), default(int?), default(int?), 0f, true);
 			this._junkoColorLevel = level;
 			yield break;
 		}
-
-		// Token: 0x040000A7 RID: 167
 		private bool _spelled;
-
-		// Token: 0x040000A8 RID: 168
 		private int _junkoColorLevel;
-
-		// Token: 0x0200072D RID: 1837
 		private enum MoveType
 		{
-			// Token: 0x04000A4B RID: 2635
 			Start,
-			// Token: 0x04000A4C RID: 2636
 			MultiShoot,
-			// Token: 0x04000A4D RID: 2637
 			Lunatic,
-			// Token: 0x04000A4E RID: 2638
 			Defend,
-			// Token: 0x04000A4F RID: 2639
 			Lily
 		}
 	}

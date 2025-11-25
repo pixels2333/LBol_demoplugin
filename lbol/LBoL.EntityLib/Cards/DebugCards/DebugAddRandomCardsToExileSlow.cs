@@ -8,14 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
-
 namespace LBoL.EntityLib.Cards.DebugCards
 {
-	// Token: 0x02000377 RID: 887
 	[UsedImplicitly]
 	public sealed class DebugAddRandomCardsToExileSlow : Card
 	{
-		// Token: 0x06000CB2 RID: 3250 RVA: 0x00018820 File Offset: 0x00016A20
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			Card[] array = base.Battle.RollCardsWithoutManaLimit(new CardWeightTable(RarityWeightTable.BattleCard, OwnerWeightTable.AllOnes, CardTypeWeightTable.CanBeLoot, false), base.Value1, (CardConfig config) => config.Id != base.Id);

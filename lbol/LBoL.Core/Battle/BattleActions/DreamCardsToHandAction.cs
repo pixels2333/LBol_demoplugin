@@ -3,13 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x02000174 RID: 372
 	public sealed class DreamCardsToHandAction : SimpleAction
 	{
-		// Token: 0x06000E3D RID: 3645 RVA: 0x000271B4 File Offset: 0x000253B4
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			List<Card> list = Enumerable.ToList<Card>(Enumerable.Where<Card>(base.Battle.DrawZone, (Card card) => card.IsDreamCard));

@@ -2,23 +2,12 @@
 using System.Collections.Generic;
 using LBoL.Base.Extensions;
 using LBoL.Core.Cards;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x0200016C RID: 364
 	public sealed class DiscardAction : EventBattleAction<CardEventArgs>
 	{
-		// Token: 0x170004E6 RID: 1254
-		// (get) Token: 0x06000E1A RID: 3610 RVA: 0x00026EF0 File Offset: 0x000250F0
-		// (set) Token: 0x06000E1B RID: 3611 RVA: 0x00026EF8 File Offset: 0x000250F8
 		public CardTransitionType TransitionType { get; private set; }
-
-		// Token: 0x170004E7 RID: 1255
-		// (get) Token: 0x06000E1C RID: 3612 RVA: 0x00026F01 File Offset: 0x00025101
-		// (set) Token: 0x06000E1D RID: 3613 RVA: 0x00026F09 File Offset: 0x00025109
 		public CardZone SourceZone { get; private set; }
-
-		// Token: 0x06000E1E RID: 3614 RVA: 0x00026F12 File Offset: 0x00025112
 		public DiscardAction(Card card)
 		{
 			base.Args = new CardEventArgs
@@ -26,8 +15,6 @@ namespace LBoL.Core.Battle.BattleActions
 				Card = card
 			};
 		}
-
-		// Token: 0x06000E1F RID: 3615 RVA: 0x00026F2C File Offset: 0x0002512C
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			DiscardAction.<>c__DisplayClass9_0 CS$<>8__locals1 = new DiscardAction.<>c__DisplayClass9_0();

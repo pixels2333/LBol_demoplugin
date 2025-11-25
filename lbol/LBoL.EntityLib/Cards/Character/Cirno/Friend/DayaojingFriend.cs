@@ -7,20 +7,15 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 {
-	// Token: 0x020004D8 RID: 1240
 	[UsedImplicitly]
 	public sealed class DayaojingFriend : Card
 	{
-		// Token: 0x0600106A RID: 4202 RVA: 0x0001CF4D File Offset: 0x0001B14D
 		public override IEnumerable<BattleAction> OnTurnEndingInHand()
 		{
 			return this.GetPassiveActions();
 		}
-
-		// Token: 0x0600106B RID: 4203 RVA: 0x0001CF55 File Offset: 0x0001B155
 		public override IEnumerable<BattleAction> GetPassiveActions()
 		{
 			if (!base.Summoned || base.Battle.BattleShouldEnd)
@@ -43,8 +38,6 @@ namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 			}
 			yield break;
 		}
-
-		// Token: 0x0600106C RID: 4204 RVA: 0x0001CF65 File Offset: 0x0001B165
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (precondition == null || ((MiniSelectCardInteraction)precondition).SelectedCard.FriendToken == FriendToken.Active)

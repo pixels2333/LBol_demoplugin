@@ -6,14 +6,11 @@ using LBoL.EntityLib.Adventures.Common;
 using LBoL.EntityLib.Adventures.FirstPlace;
 using LBoL.EntityLib.Adventures.Shared23;
 using LBoL.EntityLib.Adventures.Stage3;
-
 namespace LBoL.EntityLib.Stages.NormalStages
 {
-	// Token: 0x02000103 RID: 259
 	[UsedImplicitly]
 	public sealed class WindGodLake : NormalStageBase
 	{
-		// Token: 0x060003A1 RID: 929 RVA: 0x00009F5C File Offset: 0x0000815C
 		public WindGodLake()
 		{
 			base.Level = 3;
@@ -113,8 +110,6 @@ namespace LBoL.EntityLib.Stages.NormalStages
 			};
 			base.TradeAdventureType = typeof(SumirekoGathering);
 		}
-
-		// Token: 0x04000039 RID: 57
 		private const float W = 1.2f;
 	}
 }

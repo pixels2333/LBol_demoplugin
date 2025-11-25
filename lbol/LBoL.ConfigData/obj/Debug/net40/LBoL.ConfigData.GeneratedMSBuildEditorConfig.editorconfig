@@ -1,6 +1,6 @@
 is_global = true
 build_property.RootNamespace = LBoL.ConfigData
-build_property.ProjectDir = c:\Users\oft-Enginner PC\Desktop\LBol_demoplugin\lbol\LBoL.ConfigData\
+build_property.ProjectDir = C:\Users\oft-Enginner PC\Desktop\LBol_demoplugin\lbol\LBoL.ConfigData\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.CsWinRTUseWindowsUIXamlProjections = false

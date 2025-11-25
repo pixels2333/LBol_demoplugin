@@ -7,14 +7,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.Cards.Character.Reimu
 {
-	// Token: 0x020003D3 RID: 979
 	[UsedImplicitly]
 	public sealed class FengyinYaomo : Card
 	{
-		// Token: 0x06000DC4 RID: 3524 RVA: 0x00019B4E File Offset: 0x00017D4E
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.AttackAction(selector, null);

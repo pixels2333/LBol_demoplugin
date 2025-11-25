@@ -5,14 +5,11 @@ using LBoL.Core;
 using LBoL.Core.Randoms;
 using LBoL.Core.Stations;
 using LBoL.EntityLib.Adventures.FirstPlace;
-
 namespace LBoL.EntityLib.Stages
 {
-	// Token: 0x020000FE RID: 254
 	[UsedImplicitly]
 	public sealed class SingleRouteStage2 : Stage
 	{
-		// Token: 0x06000392 RID: 914 RVA: 0x00009500 File Offset: 0x00007700
 		public SingleRouteStage2()
 		{
 			base.Level = 2;
@@ -37,14 +34,10 @@ namespace LBoL.EntityLib.Stages
 				}
 			};
 		}
-
-		// Token: 0x06000393 RID: 915 RVA: 0x000095F0 File Offset: 0x000077F0
 		public override void InitBoss(RandomGen rng)
 		{
 			base.Boss = Library.GetEnemyGroupEntry(base.BossPool.SampleOrDefault(rng));
 		}
-
-		// Token: 0x06000394 RID: 916 RVA: 0x00009609 File Offset: 0x00007809
 		public override GameMap CreateMap()
 		{
 			return GameMap.CreateSingleRoute(base.Boss.Id, new StationType[] { StationType.Boss });

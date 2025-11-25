@@ -8,15 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.Exhibits.Adventure
 {
-	// Token: 0x020001BB RID: 443
 	[UsedImplicitly]
 	public sealed class Dahuoji : Exhibit
 	{
-		// Token: 0x17000083 RID: 131
-		// (get) Token: 0x06000662 RID: 1634 RVA: 0x0000EB47 File Offset: 0x0000CD47
 		public override string OverrideIconName
 		{
 			get
@@ -28,16 +24,12 @@ namespace LBoL.EntityLib.Exhibits.Adventure
 				return base.Id;
 			}
 		}
-
-		// Token: 0x06000663 RID: 1635 RVA: 0x0000EB68 File Offset: 0x0000CD68
 		protected override void OnEnterBattle()
 		{
 			base.Counter = 0;
 			base.ReactBattleEvent<StatisticalDamageEventArgs>(base.Battle.Player.StatisticalTotalDamageDealt, new EventSequencedReactor<StatisticalDamageEventArgs>(this.OnStatisticalDamageDealt));
 			base.Active = true;
 		}
-
-		// Token: 0x06000664 RID: 1636 RVA: 0x0000EB9A File Offset: 0x0000CD9A
 		private IEnumerable<BattleAction> OnStatisticalDamageDealt(StatisticalDamageEventArgs args)
 		{
 			if (base.Battle.BattleShouldEnd || base.Counter == 1)
@@ -78,8 +70,6 @@ namespace LBoL.EntityLib.Exhibits.Adventure
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x06000665 RID: 1637 RVA: 0x0000EBB1 File Offset: 0x0000CDB1
 		protected override void OnLeaveBattle()
 		{
 			base.Active = false;

@@ -4,13 +4,10 @@ using LBoL.Base;
 using LBoL.Base.Extensions;
 using TMPro;
 using UnityEngine;
-
 namespace LBoL.Core.Helpers
 {
-	// Token: 0x02000113 RID: 275
 	public static class UiUtils
 	{
-		// Token: 0x060009EA RID: 2538 RVA: 0x0001C4C0 File Offset: 0x0001A6C0
 		public static string ManaGroupToText(ManaGroup mana, bool loopOrder)
 		{
 			StringBuilder stringBuilder = new StringBuilder();
@@ -93,8 +90,6 @@ namespace LBoL.Core.Helpers
 			}
 			return stringBuilder.ToString();
 		}
-
-		// Token: 0x060009EB RID: 2539 RVA: 0x0001C714 File Offset: 0x0001A914
 		public static string BaseManaGroupToText(BaseManaGroup mana)
 		{
 			StringBuilder stringBuilder = new StringBuilder();
@@ -107,8 +102,6 @@ namespace LBoL.Core.Helpers
 			}
 			return stringBuilder.ToString();
 		}
-
-		// Token: 0x060009EC RID: 2540 RVA: 0x0001C7A4 File Offset: 0x0001A9A4
 		public static string WrapByColor(string text, Color color)
 		{
 			return string.Concat(new string[]
@@ -120,14 +113,10 @@ namespace LBoL.Core.Helpers
 				"</color>"
 			});
 		}
-
-		// Token: 0x060009ED RID: 2541 RVA: 0x0001C7D6 File Offset: 0x0001A9D6
 		public static string WrapNormalValue(int value)
 		{
 			return UiUtils.WrapByColor(value.ToString(), GlobalConfig.NormalColor);
 		}
-
-		// Token: 0x060009EE RID: 2542 RVA: 0x0001C7EC File Offset: 0x0001A9EC
 		public static Vector2 GetPreferredSize(TMP_Text text, float width, float height)
 		{
 			float num;
@@ -144,8 +133,6 @@ namespace LBoL.Core.Helpers
 			float num10 = num3;
 			return new Vector2(num9, num10);
 		}
-
-		// Token: 0x04000506 RID: 1286
 		public static readonly string XCostText = "<sprite=\"ManaSprite\" name=\"X\">";
 	}
 }

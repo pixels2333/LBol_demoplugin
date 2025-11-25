@@ -8,14 +8,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.EntityLib.StatusEffects.ExtraTurn.Partners;
-
 namespace LBoL.EntityLib.Cards.Character.Sakuya
 {
-	// Token: 0x02000382 RID: 898
 	[UsedImplicitly]
 	public sealed class BrokenTimeline : Card
 	{
-		// Token: 0x06000CCF RID: 3279 RVA: 0x00018A2D File Offset: 0x00016C2D
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return PerformAction.Effect(base.Battle.Player, "ExtraTime", 0f, null, 0f, PerformAction.EffectBehavior.PlayOneShot, 0f);

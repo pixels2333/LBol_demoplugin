@@ -5,13 +5,10 @@ using LBoL.Base;
 using LBoL.ConfigData;
 using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x02000181 RID: 385
 	public class FollowAttackAction : EventBattleAction<FollowAttackEventArgs>
 	{
-		// Token: 0x06000E91 RID: 3729 RVA: 0x00027A65 File Offset: 0x00025C65
 		public FollowAttackAction(UnitSelector sourceSelector, bool randomFiller = false)
 		{
 			base.Args = new FollowAttackEventArgs
@@ -21,8 +18,6 @@ namespace LBoL.Core.Battle.BattleActions
 				RandomFiller = randomFiller
 			};
 		}
-
-		// Token: 0x06000E92 RID: 3730 RVA: 0x00027A8D File Offset: 0x00025C8D
 		public FollowAttackAction(UnitSelector sourceSelector, int count, bool randomFiller = false)
 		{
 			base.Args = new FollowAttackEventArgs
@@ -32,8 +27,6 @@ namespace LBoL.Core.Battle.BattleActions
 				RandomFiller = randomFiller
 			};
 		}
-
-		// Token: 0x06000E93 RID: 3731 RVA: 0x00027AB5 File Offset: 0x00025CB5
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			yield return base.CreateEventPhase<FollowAttackEventArgs>("FollowAttacking", base.Args, base.Battle.FollowAttacking);

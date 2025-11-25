@@ -5,14 +5,10 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Units;
 using LBoL.EntityLib.Exhibits.Seija;
-
 namespace LBoL.EntityLib.StatusEffects.Enemy.Seija
 {
-	// Token: 0x020000CD RID: 205
 	public sealed class HolyGrailSe : SeijaSe
 	{
-		// Token: 0x17000046 RID: 70
-		// (get) Token: 0x060002C8 RID: 712 RVA: 0x000078FE File Offset: 0x00005AFE
 		protected override Type ExhibitType
 		{
 			get
@@ -20,8 +16,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy.Seija
 				return typeof(HolyGrail);
 			}
 		}
-
-		// Token: 0x060002C9 RID: 713 RVA: 0x0000790C File Offset: 0x00005B0C
 		protected override void OnAdded(Unit unit)
 		{
 			base.OnAdded(unit);
@@ -30,8 +24,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy.Seija
 			this.React(PerformAction.Sfx("GuirenItem", 0f));
 			this.React(PerformAction.EffectMessage(unit, "SeijaExhibitManager", "AddExhibit", this));
 		}
-
-		// Token: 0x060002CA RID: 714 RVA: 0x0000797A File Offset: 0x00005B7A
 		private IEnumerable<BattleAction> OnOwnerTurnStarted(UnitEventArgs args)
 		{
 			if (base.Battle.BattleShouldEnd || this._happened || !base.Owner.IsAlive)
@@ -44,8 +36,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy.Seija
 			this._happened = true;
 			yield break;
 		}
-
-		// Token: 0x04000020 RID: 32
 		private bool _happened;
 	}
 }

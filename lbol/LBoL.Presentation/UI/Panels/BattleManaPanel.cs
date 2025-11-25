@@ -20,13 +20,10 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Pool;
 using UnityEngine.UI;
-
 namespace LBoL.Presentation.UI.Panels
 {
-	// Token: 0x02000088 RID: 136
 	public class BattleManaPanel : UiPanel
 	{
-		// Token: 0x060006C4 RID: 1732 RVA: 0x0001DF5C File Offset: 0x0001C15C
 		private static void FillAnyCost(ref int any, ref ManaGroup available, in ManaGroup handRemainCost, out ManaGroup payment)
 		{
 			payment = ManaGroup.Empty;
@@ -94,8 +91,6 @@ namespace LBoL.Presentation.UI.Panels
 			payment.Philosophy += philosophy;
 			any -= philosophy;
 		}
-
-		// Token: 0x060006C5 RID: 1733 RVA: 0x0001E100 File Offset: 0x0001C300
 		private static void FillHybridCost(ref int hybrid, List<ManaColor> hybridColors, ref ManaGroup available, in ManaGroup handRemainCost, out ManaGroup payment)
 		{
 			payment = ManaGroup.Empty;
@@ -152,8 +147,6 @@ namespace LBoL.Presentation.UI.Panels
 			payment.Philosophy += philosophy;
 			hybrid -= philosophy;
 		}
-
-		// Token: 0x060006C6 RID: 1734 RVA: 0x0001E25C File Offset: 0x0001C45C
 		internal static bool CalculateAutoPayment(ManaGroup unpooledMana, ManaGroup pooledMana, ManaGroup handRemainCost, ManaGroup cost, ManaGroup? kickerCost, bool preferKicker, [MaybeNull] IXCostFilter xCostFilter, out bool kickerPaying, out ManaGroup unpooledPayment, out ManaGroup pooledPayment)
 		{
 			BattleManaPanel.<>c__DisplayClass2_0 CS$<>8__locals1 = new BattleManaPanel.<>c__DisplayClass2_0();
@@ -325,9 +318,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			return any == 0;
 		}
-
-		// Token: 0x17000128 RID: 296
-		// (get) Token: 0x060006C7 RID: 1735 RVA: 0x0001E82C File Offset: 0x0001CA2C
 		public override PanelLayer Layer
 		{
 			get
@@ -335,9 +325,6 @@ namespace LBoL.Presentation.UI.Panels
 				return PanelLayer.Base;
 			}
 		}
-
-		// Token: 0x17000129 RID: 297
-		// (get) Token: 0x060006C8 RID: 1736 RVA: 0x0001E82F File Offset: 0x0001CA2F
 		public float TransitionDuration
 		{
 			get
@@ -345,9 +332,6 @@ namespace LBoL.Presentation.UI.Panels
 				return this.transitionDuration;
 			}
 		}
-
-		// Token: 0x1700012A RID: 298
-		// (get) Token: 0x060006C9 RID: 1737 RVA: 0x0001E837 File Offset: 0x0001CA37
 		public ManaGroup AvailableMana
 		{
 			get
@@ -355,9 +339,6 @@ namespace LBoL.Presentation.UI.Panels
 				return this._pooledCollection.TotalMana + this._unpooledCollection.TotalMana;
 			}
 		}
-
-		// Token: 0x1700012B RID: 299
-		// (get) Token: 0x060006CA RID: 1738 RVA: 0x0001E854 File Offset: 0x0001CA54
 		public ManaGroup PooledMana
 		{
 			get
@@ -365,16 +346,10 @@ namespace LBoL.Presentation.UI.Panels
 				return this._pooledCollection.TotalMana;
 			}
 		}
-
-		// Token: 0x060006CB RID: 1739 RVA: 0x0001E861 File Offset: 0x0001CA61
 		private Vector3 GetTargetCenterWorldPosition(BattleManaWidget widget)
 		{
 			return this.manaRoot.TransformPoint(widget.TargetPosition + this._widgetSize / 2f);
 		}
-
-		// Token: 0x1700012C RID: 300
-		// (get) Token: 0x060006CC RID: 1740 RVA: 0x0001E88E File Offset: 0x0001CA8E
-		// (set) Token: 0x060006CD RID: 1741 RVA: 0x0001E896 File Offset: 0x0001CA96
 		public bool ShowKickerPrefer
 		{
 			get
@@ -391,8 +366,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.kickerPreferRoot.SetActive(value);
 			}
 		}
-
-		// Token: 0x060006CE RID: 1742 RVA: 0x0001E8B8 File Offset: 0x0001CAB8
 		public void Awake()
 		{
 			this._widgetSize = this.battleManaTemplate.GetComponent<RectTransform>().sizeDelta;
@@ -438,8 +411,6 @@ namespace LBoL.Presentation.UI.Panels
 			});
 			SimpleTooltipSource.CreateWithTooltipKey(this.tooltipZone, "BattleMana").WithPosition(TooltipDirection.Right, TooltipAlignment.Min);
 		}
-
-		// Token: 0x060006CF RID: 1743 RVA: 0x0001EACC File Offset: 0x0001CCCC
 		private void OnDestroy()
 		{
 			foreach (KeyValuePair<ManaColor, IObjectPool<BattleManaWidget>> keyValuePair in this._manaWidgetPoolTable)
@@ -447,8 +418,6 @@ namespace LBoL.Presentation.UI.Panels
 				keyValuePair.Value.Clear();
 			}
 		}
-
-		// Token: 0x060006D0 RID: 1744 RVA: 0x0001EB24 File Offset: 0x0001CD24
 		private void UnpoolAllMana()
 		{
 			AudioManager.PlayUi("ManaInactive", false);
@@ -469,8 +438,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.SetPoolBgActive(false);
 		}
-
-		// Token: 0x060006D1 RID: 1745 RVA: 0x0001EBE4 File Offset: 0x0001CDE4
 		public bool TryPoolSingle(ManaColor color)
 		{
 			if (this._unpooledCollection.TotalMana[color] <= 0)
@@ -484,8 +451,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.UpdateHighlightManaForCard();
 			return true;
 		}
-
-		// Token: 0x060006D2 RID: 1746 RVA: 0x0001EC5C File Offset: 0x0001CE5C
 		public void OnBattleManaClicked(BattleManaWidget widget, bool rightClick)
 		{
 			if (rightClick)
@@ -527,8 +492,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.SetPoolBgActive(this._pooledCollection.TotalMana.Amount > 0);
 		}
-
-		// Token: 0x060006D3 RID: 1747 RVA: 0x0001EDC0 File Offset: 0x0001CFC0
 		private void UpdateHighlightManaForCard()
 		{
 			BattleManaPanel.CardCostSnapshot currentHighlightingCost = this._currentHighlightingCost;
@@ -579,23 +542,16 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.UpdateAmountText();
 		}
-
-		// Token: 0x060006D4 RID: 1748 RVA: 0x0001EF66 File Offset: 0x0001D166
 		public void SetCostHighlightForCard(Card card)
 		{
 			this._currentHighlightingCost = new BattleManaPanel.CardCostSnapshot(card);
 			this.UpdateHighlightManaForCard();
 		}
-
-		// Token: 0x060006D5 RID: 1749 RVA: 0x0001EF7A File Offset: 0x0001D17A
 		public void ClearHighlightMana()
 		{
 			this._currentHighlightingCost = null;
 			this.UpdateHighlightManaForCard();
 		}
-
-		// Token: 0x1700012D RID: 301
-		// (get) Token: 0x060006D6 RID: 1750 RVA: 0x0001EF89 File Offset: 0x0001D189
 		public ManaGroup HighlightingMana
 		{
 			get
@@ -603,8 +559,6 @@ namespace LBoL.Presentation.UI.Panels
 				return this._unpooledCollection.HighlightMana + this._pooledCollection.HighlightMana;
 			}
 		}
-
-		// Token: 0x060006D7 RID: 1751 RVA: 0x0001EFA8 File Offset: 0x0001D1A8
 		protected override void OnEnterBattle()
 		{
 			this.ResetAllManas(base.Battle.BattleMana, ManaGroup.Empty, true);
@@ -618,8 +572,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			base.Show();
 		}
-
-		// Token: 0x060006D8 RID: 1752 RVA: 0x0001F080 File Offset: 0x0001D280
 		protected override void OnLeaveBattle()
 		{
 			this._currentHighlightingCost = null;
@@ -631,8 +583,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.ShowKickerPrefer = false;
 			base.Hide();
 		}
-
-		// Token: 0x060006D9 RID: 1753 RVA: 0x0001F128 File Offset: 0x0001D328
 		public void CheckKickerPrefer(IEnumerable<Card> cards)
 		{
 			if (this.ShowKickerPrefer || base.Battle == null)
@@ -644,14 +594,10 @@ namespace LBoL.Presentation.UI.Panels
 				this.ShowKickerPrefer = true;
 			}
 		}
-
-		// Token: 0x060006DA RID: 1754 RVA: 0x0001F174 File Offset: 0x0001D374
 		protected override void OnHided()
 		{
 			this.ResetAllManas(ManaGroup.Empty, ManaGroup.Empty, false);
 		}
-
-		// Token: 0x060006DB RID: 1755 RVA: 0x0001F188 File Offset: 0x0001D388
 		private void UpdateAmountText()
 		{
 			ManaGroup availableMana = this.AvailableMana;
@@ -675,8 +621,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.amountText.color = color2;
 			this.amountText.text = ((num < 99) ? num.ToString() : "99");
 		}
-
-		// Token: 0x060006DC RID: 1756 RVA: 0x0001F220 File Offset: 0x0001D420
 		private void SetPoolBgActive(bool active)
 		{
 			if (this._poolBgActive == active)
@@ -696,8 +640,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.pooledGroup.gameObject.SetActive(false);
 			});
 		}
-
-		// Token: 0x060006DD RID: 1757 RVA: 0x0001F2AC File Offset: 0x0001D4AC
 		private bool TryRemoveWidgetsFromNormal(ManaGroup value, List<BattleManaWidget> result)
 		{
 			ManaGroup manaGroup = value.Intersect(this._unpooledCollection.NormalMana);
@@ -710,8 +652,6 @@ namespace LBoL.Presentation.UI.Panels
 			this._pooledCollection.RemoveNormalMana(manaGroup2, result);
 			return true;
 		}
-
-		// Token: 0x060006DE RID: 1758 RVA: 0x0001F32C File Offset: 0x0001D52C
 		private bool RemoveWidgetsByMana(ManaGroup value, out List<BattleManaWidget> result, out Exception exception)
 		{
 			exception = null;
@@ -753,8 +693,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			return false;
 		}
-
-		// Token: 0x060006DF RID: 1759 RVA: 0x0001F3F0 File Offset: 0x0001D5F0
 		private IEnumerator ViewConsumeMana(ConsumeManaAction action)
 		{
 			float num = 0f;
@@ -801,8 +739,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x060006E0 RID: 1760 RVA: 0x0001F406 File Offset: 0x0001D606
 		private IEnumerator ViewGainMana(GainManaAction action)
 		{
 			ManaGroup value = action.Args.Value;
@@ -889,8 +825,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x060006E1 RID: 1761 RVA: 0x0001F41C File Offset: 0x0001D61C
 		private IEnumerator ViewLoseMana(LoseManaAction action)
 		{
 			ManaGroup value = action.Args.Value;
@@ -936,8 +870,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x060006E2 RID: 1762 RVA: 0x0001F432 File Offset: 0x0001D632
 		private IEnumerator ViewConvertMana(ConvertManaAction action)
 		{
 			AudioManager.PlayUi("ManaConvert", false);
@@ -974,14 +906,10 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x060006E3 RID: 1763 RVA: 0x0001F448 File Offset: 0x0001D648
 		private void RefreshCardsEdge()
 		{
 			UiManager.GetPanel<PlayBoard>().CardUi.RefreshAllCardsEdge();
 		}
-
-		// Token: 0x060006E4 RID: 1764 RVA: 0x0001F45C File Offset: 0x0001D65C
 		public bool TryGetConfirmUseMana(Card card, out bool kicker, out ConsumingMana result)
 		{
 			if (this._currentHighlightingCost == null)
@@ -1026,8 +954,6 @@ namespace LBoL.Presentation.UI.Panels
 			result = null;
 			return false;
 		}
-
-		// Token: 0x060006E5 RID: 1765 RVA: 0x0001F5FC File Offset: 0x0001D7FC
 		public void Prepay(ConsumingMana mana)
 		{
 			ConsumingMana consumingMana = new ConsumingMana(this._unpooledCollection.HighlightMana, this._pooledCollection.HighlightMana);
@@ -1042,8 +968,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.RefreshCardsEdge();
 			this.UpdateAmountText();
 		}
-
-		// Token: 0x060006E6 RID: 1766 RVA: 0x0001F698 File Offset: 0x0001D898
 		private void InternalRefund(BattleManaPanel.ConsumingManaWidgets consuming)
 		{
 			this._unpooledCollection.AddNormalMana(consuming.Value.Unpooled, consuming.UnpooledWidgets, null);
@@ -1052,8 +976,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.ReleaseManaWidgetList(consuming.PooledWidgets);
 			this.UpdateHighlightManaForCard();
 		}
-
-		// Token: 0x060006E7 RID: 1767 RVA: 0x0001F700 File Offset: 0x0001D900
 		public void RefundFront(ManaGroup? checkMana = null)
 		{
 			Debug.Log(string.Format("RefundFront({0}), queue = [{1}]", checkMana, string.Join<BattleManaPanel.ConsumingManaWidgets>(", ", this._consumingDeque)));
@@ -1081,8 +1003,6 @@ namespace LBoL.Presentation.UI.Panels
 			IL_00CE:
 			this.RefreshCardsEdge();
 		}
-
-		// Token: 0x060006E8 RID: 1768 RVA: 0x0001F7E4 File Offset: 0x0001D9E4
 		public void RefundBack(ConsumingMana consumingMana)
 		{
 			Debug.Log(string.Format("RefundBack({0}), queue = [{1}]", consumingMana, string.Join<BattleManaPanel.ConsumingManaWidgets>(", ", this._consumingDeque)));
@@ -1108,14 +1028,7 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.RefreshCardsEdge();
 		}
-
-		// Token: 0x1700012E RID: 302
-		// (get) Token: 0x060006E9 RID: 1769 RVA: 0x0001F8DD File Offset: 0x0001DADD
-		// (set) Token: 0x060006EA RID: 1770 RVA: 0x0001F8E5 File Offset: 0x0001DAE5
 		public bool PreferKicker { get; set; }
-
-		// Token: 0x1700012F RID: 303
-		// (get) Token: 0x060006EB RID: 1771 RVA: 0x0001F8F0 File Offset: 0x0001DAF0
 		public bool CurrentKickerHighlighting
 		{
 			get
@@ -1124,23 +1037,17 @@ namespace LBoL.Presentation.UI.Panels
 				return currentHighlightingCost != null && currentHighlightingCost.KickerPaying;
 			}
 		}
-
-		// Token: 0x060006EC RID: 1772 RVA: 0x0001F910 File Offset: 0x0001DB10
 		private void InitCollections()
 		{
 			this._unpooledCollection = new BattleManaPanel.ManaCollection(this, false, new Vector2(this.unpooledX, this.unpooledY), new Vector2(0f, this.unpooledDeltaY), new Vector2(0f, this.highlightDeltaY), new Vector2(0f, this.pendingUseDeltaY));
 			this._pooledCollection = new BattleManaPanel.ManaCollection(this, true, new Vector2(this.pooledX, this.pooledY), new Vector2(0f, this.pooledDeltaY), new Vector2(0f, this.highlightDeltaY), new Vector2(0f, this.pendingUseDeltaY));
 		}
-
-		// Token: 0x060006ED RID: 1773 RVA: 0x0001F9B9 File Offset: 0x0001DBB9
 		private BattleManaWidget CreateManaWidget(ManaColor color, bool pooled, int amount, BattleManaStatus status, Vector2 fromPosition, Vector2? toPosition = null)
 		{
 			BattleManaWidget battleManaWidget = this.CreateInactiveManaWidget(color, pooled, amount);
 			battleManaWidget.Appear(status, fromPosition, toPosition);
 			return battleManaWidget;
 		}
-
-		// Token: 0x060006EE RID: 1774 RVA: 0x0001F9D0 File Offset: 0x0001DBD0
 		private BattleManaWidget CreateInactiveManaWidget(ManaColor color, bool pooled, int amount)
 		{
 			int num = this._currentManaIndex + 1;
@@ -1153,14 +1060,10 @@ namespace LBoL.Presentation.UI.Panels
 			battleManaWidget.Index = num2;
 			return battleManaWidget;
 		}
-
-		// Token: 0x060006EF RID: 1775 RVA: 0x0001FA62 File Offset: 0x0001DC62
 		private void ReleaseManaWidget(BattleManaWidget widget)
 		{
 			this._manaWidgetPoolTable[widget.ManaColor].Release(widget);
 		}
-
-		// Token: 0x060006F0 RID: 1776 RVA: 0x0001FA7C File Offset: 0x0001DC7C
 		private void DisappearAndReleaseManaWidget(BattleManaWidget widget)
 		{
 			widget.Disappear(delegate
@@ -1168,8 +1071,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.ReleaseManaWidget(widget);
 			});
 		}
-
-		// Token: 0x060006F1 RID: 1777 RVA: 0x0001FAB4 File Offset: 0x0001DCB4
 		private void DisappearAndReleaseManaWidget(BattleManaWidget widget, Vector2 toPosition)
 		{
 			widget.Disappear(toPosition, delegate
@@ -1177,8 +1078,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.ReleaseManaWidget(widget);
 			});
 		}
-
-		// Token: 0x060006F2 RID: 1778 RVA: 0x0001FAF0 File Offset: 0x0001DCF0
 		private void DisappearAndReleaseManaWidget(BattleManaWidget widget, Vector2 toPosition, bool pooled)
 		{
 			widget.Disappear(toPosition, pooled, delegate
@@ -1186,8 +1085,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.ReleaseManaWidget(widget);
 			});
 		}
-
-		// Token: 0x060006F3 RID: 1779 RVA: 0x0001FB2C File Offset: 0x0001DD2C
 		private void ConsumeAndReleaseManaWidget(BattleManaWidget widget)
 		{
 			widget.Consume(delegate
@@ -1195,20 +1092,14 @@ namespace LBoL.Presentation.UI.Panels
 				this.ReleaseManaWidget(widget);
 			});
 		}
-
-		// Token: 0x060006F4 RID: 1780 RVA: 0x0001FB64 File Offset: 0x0001DD64
 		private List<BattleManaWidget> CreateManaWidgetList()
 		{
 			return this._manaListPool.Get();
 		}
-
-		// Token: 0x060006F5 RID: 1781 RVA: 0x0001FB71 File Offset: 0x0001DD71
 		private void ReleaseManaWidgetList(List<BattleManaWidget> list)
 		{
 			this._manaListPool.Release(list);
 		}
-
-		// Token: 0x060006F6 RID: 1782 RVA: 0x0001FB80 File Offset: 0x0001DD80
 		private void ClearWidgetList(List<BattleManaWidget> list, bool transition)
 		{
 			foreach (BattleManaWidget battleManaWidget in list)
@@ -1224,8 +1115,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			list.Clear();
 		}
-
-		// Token: 0x060006F7 RID: 1783 RVA: 0x0001FBE0 File Offset: 0x0001DDE0
 		private void ResetAllManas(ManaGroup unpooled, ManaGroup pooled, bool transition = true)
 		{
 			this._unpooledCollection.ResetAllManas(unpooled, transition);
@@ -1248,142 +1137,68 @@ namespace LBoL.Presentation.UI.Panels
 			this.UpdateAmountText();
 			this.SetPoolBgActive(!this._pooledCollection.TotalMana.IsEmpty);
 		}
-
-		// Token: 0x04000460 RID: 1120
 		[SerializeField]
 		private BattleManaWidget battleManaTemplate;
-
-		// Token: 0x04000461 RID: 1121
 		[SerializeField]
 		private Transform manaRoot;
-
-		// Token: 0x04000462 RID: 1122
 		[SerializeField]
 		private TextMeshProUGUI amountText;
-
-		// Token: 0x04000463 RID: 1123
 		[SerializeField]
 		private CanvasGroup pooledGroup;
-
-		// Token: 0x04000464 RID: 1124
 		[SerializeField]
 		private Button clearPooledButton;
-
-		// Token: 0x04000465 RID: 1125
 		[SerializeField]
 		private GameObject tooltipZone;
-
-		// Token: 0x04000466 RID: 1126
 		[SerializeField]
 		private GameObject kickerPreferRoot;
-
-		// Token: 0x04000467 RID: 1127
 		[SerializeField]
 		private SwitchWidget kickerPreferSwitch;
-
-		// Token: 0x04000468 RID: 1128
 		[Header("UI adjustment")]
 		[SerializeField]
 		private float unpooledX;
-
-		// Token: 0x04000469 RID: 1129
 		[SerializeField]
 		private float unpooledY;
-
-		// Token: 0x0400046A RID: 1130
 		[SerializeField]
 		private float unpooledDeltaY = 110f;
-
-		// Token: 0x0400046B RID: 1131
 		[SerializeField]
 		private float pooledX = 126f;
-
-		// Token: 0x0400046C RID: 1132
 		[SerializeField]
 		private float pooledY;
-
-		// Token: 0x0400046D RID: 1133
 		[SerializeField]
 		private float pooledDeltaY = 100f;
-
-		// Token: 0x0400046E RID: 1134
 		[SerializeField]
 		private float highlightDeltaY = 50f;
-
-		// Token: 0x0400046F RID: 1135
 		[SerializeField]
 		private float pendingUseDeltaY = 50f;
-
-		// Token: 0x04000470 RID: 1136
 		[SerializeField]
 		private float transitionDuration = 0.2f;
-
-		// Token: 0x04000471 RID: 1137
 		private static readonly ManaColor[] Colors = Enumerable.ToArray<ManaColor>(ManaColors.WUBRGCP);
-
-		// Token: 0x04000472 RID: 1138
 		private const int FoldingThreshold = 10;
-
-		// Token: 0x04000473 RID: 1139
 		private RectTransform _rect;
-
-		// Token: 0x04000474 RID: 1140
 		private readonly List<BattleManaPanel.ConsumingManaWidgets> _consumingDeque = new List<BattleManaPanel.ConsumingManaWidgets>();
-
-		// Token: 0x04000475 RID: 1141
 		private readonly Dictionary<ManaColor, IObjectPool<BattleManaWidget>> _manaWidgetPoolTable = new Dictionary<ManaColor, IObjectPool<BattleManaWidget>>();
-
-		// Token: 0x04000476 RID: 1142
 		private readonly IObjectPool<List<BattleManaWidget>> _manaListPool = new ObjectPool<List<BattleManaWidget>>(() => new List<BattleManaWidget>(), null, delegate(List<BattleManaWidget> list)
 		{
 			list.Clear();
 		}, null, false, 16, 10000);
-
-		// Token: 0x04000477 RID: 1143
 		private Vector3 _widgetSize;
-
-		// Token: 0x04000478 RID: 1144
 		private BattleManaPanel.CardCostSnapshot _currentHighlightingCost;
-
-		// Token: 0x04000479 RID: 1145
 		private bool _showKickerPrefer;
-
-		// Token: 0x0400047A RID: 1146
 		private bool _poolBgActive;
-
-		// Token: 0x0400047C RID: 1148
 		private BattleManaPanel.ManaCollection _unpooledCollection;
-
-		// Token: 0x0400047D RID: 1149
 		private BattleManaPanel.ManaCollection _pooledCollection;
-
-		// Token: 0x0400047E RID: 1150
 		private int _currentManaIndex;
-
-		// Token: 0x020001F4 RID: 500
 		private sealed class ConsumingManaWidgets
 		{
-			// Token: 0x170003E9 RID: 1001
-			// (get) Token: 0x0600139A RID: 5018 RVA: 0x0005A596 File Offset: 0x00058796
 			public ConsumingMana Value { get; }
-
-			// Token: 0x170003EA RID: 1002
-			// (get) Token: 0x0600139B RID: 5019 RVA: 0x0005A59E File Offset: 0x0005879E
 			public List<BattleManaWidget> UnpooledWidgets { get; }
-
-			// Token: 0x170003EB RID: 1003
-			// (get) Token: 0x0600139C RID: 5020 RVA: 0x0005A5A6 File Offset: 0x000587A6
 			public List<BattleManaWidget> PooledWidgets { get; }
-
-			// Token: 0x0600139D RID: 5021 RVA: 0x0005A5B0 File Offset: 0x000587B0
 			public ConsumingManaWidgets(ConsumingMana value, List<BattleManaWidget> unpooled, List<BattleManaWidget> pooled)
 			{
 				this.Value = value;
 				this.UnpooledWidgets = unpooled;
 				this.PooledWidgets = pooled;
 			}
-
-			// Token: 0x0600139E RID: 5022 RVA: 0x0005A5E0 File Offset: 0x000587E0
 			public override string ToString()
 			{
 				ManaGroup manaGroup = BattleManaPanel.ConsumingManaWidgets.<ToString>g__MergeWidgetsMana|10_0(this.UnpooledWidgets);
@@ -1396,8 +1211,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 				return this.Value.ToString();
 			}
-
-			// Token: 0x0600139F RID: 5023 RVA: 0x0005A658 File Offset: 0x00058858
 			[CompilerGenerated]
 			internal static ManaGroup <ToString>g__MergeWidgetsMana|10_0(IEnumerable<BattleManaWidget> widgets)
 			{
@@ -1411,32 +1224,13 @@ namespace LBoL.Presentation.UI.Panels
 				return empty;
 			}
 		}
-
-		// Token: 0x020001F5 RID: 501
 		private sealed class CardCostSnapshot
 		{
-			// Token: 0x170003EC RID: 1004
-			// (get) Token: 0x060013A0 RID: 5024 RVA: 0x0005A6C4 File Offset: 0x000588C4
 			public Card Card { get; }
-
-			// Token: 0x170003ED RID: 1005
-			// (get) Token: 0x060013A1 RID: 5025 RVA: 0x0005A6CC File Offset: 0x000588CC
 			public bool IsXCost { get; }
-
-			// Token: 0x170003EE RID: 1006
-			// (get) Token: 0x060013A2 RID: 5026 RVA: 0x0005A6D4 File Offset: 0x000588D4
 			public ManaGroup Cost { get; }
-
-			// Token: 0x170003EF RID: 1007
-			// (get) Token: 0x060013A3 RID: 5027 RVA: 0x0005A6DC File Offset: 0x000588DC
 			public ManaGroup? KickerTotalCost { get; }
-
-			// Token: 0x170003F0 RID: 1008
-			// (get) Token: 0x060013A4 RID: 5028 RVA: 0x0005A6E4 File Offset: 0x000588E4
-			// (set) Token: 0x060013A5 RID: 5029 RVA: 0x0005A6EC File Offset: 0x000588EC
 			public bool KickerPaying { get; set; }
-
-			// Token: 0x060013A6 RID: 5030 RVA: 0x0005A6F8 File Offset: 0x000588F8
 			public CardCostSnapshot(Card card)
 			{
 				this.Card = card;
@@ -1456,9 +1250,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 				this.KickerTotalCost = default(ManaGroup?);
 			}
-
-			// Token: 0x170003F1 RID: 1009
-			// (get) Token: 0x060013A7 RID: 5031 RVA: 0x0005A764 File Offset: 0x00058964
 			public bool IsPseudoEmpty
 			{
 				get
@@ -1466,8 +1257,6 @@ namespace LBoL.Presentation.UI.Panels
 					return !this.IsXCost && this.Cost.IsEmpty;
 				}
 			}
-
-			// Token: 0x060013A8 RID: 5032 RVA: 0x0005A78C File Offset: 0x0005898C
 			public override string ToString()
 			{
 				if (!this.IsXCost)
@@ -1477,11 +1266,8 @@ namespace LBoL.Presentation.UI.Panels
 				return "CardCost: X";
 			}
 		}
-
-		// Token: 0x020001F6 RID: 502
 		private sealed class ManaCollection
 		{
-			// Token: 0x060013A9 RID: 5033 RVA: 0x0005A7C8 File Offset: 0x000589C8
 			public ManaCollection(BattleManaPanel parent, bool pooled, Vector2 origin, Vector2 delta, Vector2 highlightDelta, Vector2 pendingUseDelta)
 			{
 				this._parent = parent;
@@ -1493,9 +1279,6 @@ namespace LBoL.Presentation.UI.Panels
 				this._normalWidgets = parent.CreateManaWidgetList();
 				this._highlightWidgets = parent.CreateManaWidgetList();
 			}
-
-			// Token: 0x170003F2 RID: 1010
-			// (get) Token: 0x060013AA RID: 5034 RVA: 0x0005A820 File Offset: 0x00058A20
 			public ManaGroup TotalMana
 			{
 				get
@@ -1503,9 +1286,6 @@ namespace LBoL.Presentation.UI.Panels
 					return this._totalMana;
 				}
 			}
-
-			// Token: 0x170003F3 RID: 1011
-			// (get) Token: 0x060013AB RID: 5035 RVA: 0x0005A828 File Offset: 0x00058A28
 			public ManaGroup HighlightMana
 			{
 				get
@@ -1513,9 +1293,6 @@ namespace LBoL.Presentation.UI.Panels
 					return this._highlightMana;
 				}
 			}
-
-			// Token: 0x170003F4 RID: 1012
-			// (get) Token: 0x060013AC RID: 5036 RVA: 0x0005A830 File Offset: 0x00058A30
 			public ManaGroup NormalMana
 			{
 				get
@@ -1523,8 +1300,6 @@ namespace LBoL.Presentation.UI.Panels
 					return this._totalMana - this._highlightMana;
 				}
 			}
-
-			// Token: 0x060013AD RID: 5037 RVA: 0x0005A844 File Offset: 0x00058A44
 			[Conditional("UNITY_EDITOR")]
 			private void ConsistancyTest([CallerMemberName] string callderName = null)
 			{
@@ -1551,14 +1326,10 @@ namespace LBoL.Presentation.UI.Panels
 					Debug.LogError(string.Format("{0}: highlight mana mismatch: {1} vs {2}", callderName, empty2, this._highlightMana));
 				}
 			}
-
-			// Token: 0x060013AE RID: 5038 RVA: 0x0005A998 File Offset: 0x00058B98
 			public bool ContainsNormalWidget(BattleManaWidget widget)
 			{
 				return this._normalWidgets.Contains(widget);
 			}
-
-			// Token: 0x060013AF RID: 5039 RVA: 0x0005A9A8 File Offset: 0x00058BA8
 			public void ResetAllManas(ManaGroup total, bool transition = true)
 			{
 				this._isFolded = total.Amount > 10;
@@ -1590,8 +1361,6 @@ namespace LBoL.Presentation.UI.Panels
 					}
 				}
 			}
-
-			// Token: 0x060013B0 RID: 5040 RVA: 0x0005AAC8 File Offset: 0x00058CC8
 			public void SetHighlightMana(ManaGroup highlight)
 			{
 				if (highlight == this._highlightMana)
@@ -1670,8 +1439,6 @@ namespace LBoL.Presentation.UI.Panels
 				this._parent.ReleaseManaWidgetList(this._normalWidgets);
 				this._normalWidgets = list;
 			}
-
-			// Token: 0x060013B1 RID: 5041 RVA: 0x0005ADB8 File Offset: 0x00058FB8
 			public void ClearHighlight()
 			{
 				if (this._highlightMana.IsEmpty)
@@ -1744,8 +1511,6 @@ namespace LBoL.Presentation.UI.Panels
 				this._normalWidgets = list;
 				this._highlightWidgets.Clear();
 			}
-
-			// Token: 0x060013B2 RID: 5042 RVA: 0x0005B07C File Offset: 0x0005927C
 			private void Fold()
 			{
 				if (this._isFolded)
@@ -1796,8 +1561,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 				this._isFolded = true;
 			}
-
-			// Token: 0x060013B3 RID: 5043 RVA: 0x0005B2EC File Offset: 0x000594EC
 			private void Unfold()
 			{
 				if (!this._isFolded)
@@ -1841,8 +1604,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 				this._isFolded = false;
 			}
-
-			// Token: 0x060013B4 RID: 5044 RVA: 0x0005B4D0 File Offset: 0x000596D0
 			private void AdjustAll()
 			{
 				Vector2 vector = this._origin;
@@ -1858,8 +1619,6 @@ namespace LBoL.Presentation.UI.Panels
 					vector += this._deltaPosition;
 				}
 			}
-
-			// Token: 0x060013B5 RID: 5045 RVA: 0x0005B5A0 File Offset: 0x000597A0
 			public void AddSingleNormalMana(BattleManaWidget widget)
 			{
 				ManaColor color = widget.ManaColor;
@@ -1896,8 +1655,6 @@ namespace LBoL.Presentation.UI.Panels
 				this._normalWidgets.Insert(num4, widget);
 				this.AdjustAll();
 			}
-
-			// Token: 0x060013B6 RID: 5046 RVA: 0x0005B754 File Offset: 0x00059954
 			public void AddNormalMana(ManaGroup adding, [MaybeNull] IReadOnlyList<BattleManaWidget> sourceWidgets, [MaybeNull] IList<BattleManaWidget> result)
 			{
 				Vector2 vector = this._origin;
@@ -2021,8 +1778,6 @@ namespace LBoL.Presentation.UI.Panels
 					vector += this._deltaPosition;
 				}
 			}
-
-			// Token: 0x060013B7 RID: 5047 RVA: 0x0005BBC0 File Offset: 0x00059DC0
 			public BattleManaWidget ExtractSingleNormalMana(BattleManaWidget widget)
 			{
 				if (!this._normalWidgets.Contains(widget))
@@ -2069,8 +1824,6 @@ namespace LBoL.Presentation.UI.Panels
 				this._totalMana[manaColor2] = num;
 				return widget;
 			}
-
-			// Token: 0x060013B8 RID: 5048 RVA: 0x0005BCA0 File Offset: 0x00059EA0
 			public void RemoveNormalMana(ManaGroup removing, [MaybeNull] IList<BattleManaWidget> result)
 			{
 				ManaGroup normalMana = this.NormalMana;
@@ -2170,8 +1923,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 				this.AdjustAll();
 			}
-
-			// Token: 0x060013B9 RID: 5049 RVA: 0x0005BF98 File Offset: 0x0005A198
 			public List<BattleManaWidget> Prepay()
 			{
 				List<BattleManaWidget> highlightWidgets = this._highlightWidgets;
@@ -2190,38 +1941,16 @@ namespace LBoL.Presentation.UI.Panels
 				}
 				return highlightWidgets;
 			}
-
-			// Token: 0x04000F6B RID: 3947
 			private readonly BattleManaPanel _parent;
-
-			// Token: 0x04000F6C RID: 3948
 			private readonly Vector2 _origin;
-
-			// Token: 0x04000F6D RID: 3949
 			private readonly Vector2 _deltaPosition;
-
-			// Token: 0x04000F6E RID: 3950
 			private readonly Vector2 _highlightDeltaPosition;
-
-			// Token: 0x04000F6F RID: 3951
 			private readonly Vector2 _pendingUseDeltaPosition;
-
-			// Token: 0x04000F70 RID: 3952
 			private readonly bool _isPooled;
-
-			// Token: 0x04000F71 RID: 3953
 			private List<BattleManaWidget> _normalWidgets;
-
-			// Token: 0x04000F72 RID: 3954
 			private List<BattleManaWidget> _highlightWidgets;
-
-			// Token: 0x04000F73 RID: 3955
 			private ManaGroup _totalMana;
-
-			// Token: 0x04000F74 RID: 3956
 			private ManaGroup _highlightMana;
-
-			// Token: 0x04000F75 RID: 3957
 			private bool _isFolded;
 		}
 	}

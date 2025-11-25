@@ -8,14 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.StatusEffects.Cirno
 {
-	// Token: 0x020000DF RID: 223
 	[UsedImplicitly]
 	public sealed class FrostArmor : StatusEffect
 	{
-		// Token: 0x06000320 RID: 800 RVA: 0x00008658 File Offset: 0x00006858
 		private void CheckAchievement()
 		{
 			if (base.Level >= 99 && base.Owner is PlayerUnit && base.GameRun.IsAutoSeed && base.GameRun.JadeBoxes.Empty<JadeBox>())
@@ -23,8 +20,6 @@ namespace LBoL.EntityLib.StatusEffects.Cirno
 				base.GameRun.AchievementHandler.UnlockAchievement(AchievementKey.FrostArmor);
 			}
 		}
-
-		// Token: 0x06000321 RID: 801 RVA: 0x000086B0 File Offset: 0x000068B0
 		protected override void OnAdded(Unit unit)
 		{
 			this.React(new CastBlockShieldAction(base.Owner, base.Level, 0, BlockShieldType.Direct, false));
@@ -32,8 +27,6 @@ namespace LBoL.EntityLib.StatusEffects.Cirno
 			base.ReactOwnerEvent<DamageEventArgs>(base.Owner.DamageReceived, new EventSequencedReactor<DamageEventArgs>(this.OnDamageReceived));
 			this.CheckAchievement();
 		}
-
-		// Token: 0x06000322 RID: 802 RVA: 0x0000871C File Offset: 0x0000691C
 		private IEnumerable<BattleAction> OnTurnStarted(UnitEventArgs args)
 		{
 			base.NotifyActivating();
@@ -46,8 +39,6 @@ namespace LBoL.EntityLib.StatusEffects.Cirno
 			}
 			yield break;
 		}
-
-		// Token: 0x06000323 RID: 803 RVA: 0x0000872C File Offset: 0x0000692C
 		private IEnumerable<BattleAction> OnDamageReceived(DamageEventArgs args)
 		{
 			DamageInfo damageInfo = args.DamageInfo;
@@ -62,8 +53,6 @@ namespace LBoL.EntityLib.StatusEffects.Cirno
 			}
 			yield break;
 		}
-
-		// Token: 0x06000324 RID: 804 RVA: 0x00008743 File Offset: 0x00006943
 		public override bool Stack(StatusEffect other)
 		{
 			bool flag = base.Stack(other);
@@ -74,9 +63,6 @@ namespace LBoL.EntityLib.StatusEffects.Cirno
 			}
 			return flag;
 		}
-
-		// Token: 0x1700005C RID: 92
-		// (get) Token: 0x06000325 RID: 805 RVA: 0x00008774 File Offset: 0x00006974
 		public override string UnitEffectName
 		{
 			get

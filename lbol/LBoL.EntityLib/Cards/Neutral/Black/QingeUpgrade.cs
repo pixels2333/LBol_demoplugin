@@ -8,20 +8,15 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
-
 namespace LBoL.EntityLib.Cards.Neutral.Black
 {
-	// Token: 0x02000338 RID: 824
 	[UsedImplicitly]
 	public sealed class QingeUpgrade : Card
 	{
-		// Token: 0x06000C05 RID: 3077 RVA: 0x00017AB1 File Offset: 0x00015CB1
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			base.ReactBattleEvent<DieEventArgs>(base.Battle.EnemyDied, new EventSequencedReactor<DieEventArgs>(this.OnEnemyDied));
 		}
-
-		// Token: 0x06000C06 RID: 3078 RVA: 0x00017AD0 File Offset: 0x00015CD0
 		private IEnumerable<BattleAction> OnEnemyDied(DieEventArgs args)
 		{
 			if (args.DieSource == this && !args.Unit.HasStatusEffect<Servant>())

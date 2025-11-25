@@ -5,19 +5,14 @@ using DG.Tweening.Plugins.Options;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.UI.Extensions;
-
 namespace LBoL.Presentation.UI.Transitions
 {
-	// Token: 0x0200007E RID: 126
 	public class BossExhibitTransition : UiTransition
 	{
-		// Token: 0x06000686 RID: 1670 RVA: 0x0001C0A4 File Offset: 0x0001A2A4
 		public void Awake()
 		{
 			base.GetComponentInChildren<UILineConnector>().enabled = true;
 		}
-
-		// Token: 0x06000687 RID: 1671 RVA: 0x0001C0B4 File Offset: 0x0001A2B4
 		public override void Animate(Transform target, bool isOut, Action onComplete)
 		{
 			target.DOKill(false);
@@ -112,47 +107,27 @@ namespace LBoL.Presentation.UI.Transitions
 				.SetUpdate(true)
 				.SetLink(gameObject);
 		}
-
-		// Token: 0x06000688 RID: 1672 RVA: 0x0001C657 File Offset: 0x0001A857
 		public override void Kill(Transform target)
 		{
 			target.DOKill(false);
 		}
-
-		// Token: 0x0400040A RID: 1034
 		[Header("组件引用")]
 		[SerializeField]
 		private Transform ring;
-
-		// Token: 0x0400040B RID: 1035
 		[SerializeField]
 		private Transform circle;
-
-		// Token: 0x0400040C RID: 1036
 		[SerializeField]
 		private Transform balance;
-
-		// Token: 0x0400040D RID: 1037
 		[SerializeField]
 		private Transform trayLeft;
-
-		// Token: 0x0400040E RID: 1038
 		[SerializeField]
 		private Transform trayRight;
-
-		// Token: 0x0400040F RID: 1039
 		[SerializeField]
 		private Transform lightImage;
-
-		// Token: 0x04000410 RID: 1040
 		[SerializeField]
 		private Transform lightImage2;
-
-		// Token: 0x04000411 RID: 1041
 		[SerializeField]
 		private Transform rainbow;
-
-		// Token: 0x04000412 RID: 1042
 		[SerializeField]
 		private UILineRenderer line;
 	}

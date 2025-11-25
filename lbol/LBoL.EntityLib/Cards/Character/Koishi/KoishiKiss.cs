@@ -8,14 +8,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.Cards.Character.Koishi
 {
-	// Token: 0x02000475 RID: 1141
 	[UsedImplicitly]
 	public sealed class KoishiKiss : Card
 	{
-		// Token: 0x06000F52 RID: 3922 RVA: 0x0001B7E1 File Offset: 0x000199E1
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.AttackAction(selector, null);

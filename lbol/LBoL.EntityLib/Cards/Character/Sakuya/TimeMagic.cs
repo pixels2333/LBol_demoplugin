@@ -10,14 +10,11 @@ using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
 using LBoL.EntityLib.StatusEffects.Sakuya;
-
 namespace LBoL.EntityLib.Cards.Character.Sakuya
 {
-	// Token: 0x020003C0 RID: 960
 	[UsedImplicitly]
 	public sealed class TimeMagic : Card
 	{
-		// Token: 0x06000D8A RID: 3466 RVA: 0x0001969A File Offset: 0x0001789A
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			Card[] array = base.Battle.RollCardsWithoutManaLimit(new CardWeightTable(RarityWeightTable.NonCommon, OwnerWeightTable.AllOnes, CardTypeWeightTable.CanBeLoot, false), base.Value2, (CardConfig config) => config.Id != "TimeMagic");

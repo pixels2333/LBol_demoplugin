@@ -9,20 +9,15 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.StatusEffects.Cirno
 {
-	// Token: 0x020000DE RID: 222
 	[UsedImplicitly]
 	public sealed class FriendDrawSe : StatusEffect
 	{
-		// Token: 0x0600031D RID: 797 RVA: 0x00008619 File Offset: 0x00006819
 		protected override void OnAdded(Unit unit)
 		{
 			base.ReactOwnerEvent<CardUsingEventArgs>(base.Battle.CardUsed, new EventSequencedReactor<CardUsingEventArgs>(this.OnCardUsed));
 		}
-
-		// Token: 0x0600031E RID: 798 RVA: 0x00008638 File Offset: 0x00006838
 		private IEnumerable<BattleAction> OnCardUsed(CardUsingEventArgs args)
 		{
 			if (base.Battle.BattleShouldEnd)

@@ -11,14 +11,11 @@ using LBoL.Core.Units;
 using LBoL.EntityLib.EnemyUnits.Normal;
 using LBoL.EntityLib.StatusEffects.Enemy;
 using UnityEngine;
-
 namespace LBoL.EntityLib.Cards.Enemy
 {
-	// Token: 0x02000363 RID: 867
 	[UsedImplicitly]
 	public sealed class LoveLetter : Card
 	{
-		// Token: 0x06000C81 RID: 3201 RVA: 0x0001843F File Offset: 0x0001663F
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			List<EnemyUnit> list = Enumerable.ToList<EnemyUnit>(Enumerable.Where<EnemyUnit>(base.Battle.EnemyGroup, (EnemyUnit u) => u is LoveGirl && u.IsAlive));

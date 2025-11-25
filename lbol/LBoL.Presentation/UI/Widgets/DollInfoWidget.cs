@@ -10,21 +10,14 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-
 namespace LBoL.Presentation.UI.Widgets
 {
-	// Token: 0x02000051 RID: 81
 	public class DollInfoWidget : MonoBehaviour, IPointerDownHandler, IEventSystemHandler, IPointerUpHandler, IPointerEnterHandler, IPointerExitHandler
 	{
-		// Token: 0x060004B7 RID: 1207 RVA: 0x000138F3 File Offset: 0x00011AF3
 		private void Awake()
 		{
 			this._scenePositionTier = base.GetComponent<ScenePositionTier>() ?? base.gameObject.AddComponent<ScenePositionTier>();
 		}
-
-		// Token: 0x170000CC RID: 204
-		// (get) Token: 0x060004B8 RID: 1208 RVA: 0x00013910 File Offset: 0x00011B10
-		// (set) Token: 0x060004B9 RID: 1209 RVA: 0x00013918 File Offset: 0x00011B18
 		public Doll Doll
 		{
 			get
@@ -37,10 +30,6 @@ namespace LBoL.Presentation.UI.Widgets
 				this.Refresh();
 			}
 		}
-
-		// Token: 0x170000CD RID: 205
-		// (get) Token: 0x060004BA RID: 1210 RVA: 0x00013927 File Offset: 0x00011B27
-		// (set) Token: 0x060004BB RID: 1211 RVA: 0x00013934 File Offset: 0x00011B34
 		public Transform TargetTransform
 		{
 			get
@@ -52,8 +41,6 @@ namespace LBoL.Presentation.UI.Widgets
 				this._scenePositionTier.TargetTransform = value;
 			}
 		}
-
-		// Token: 0x060004BC RID: 1212 RVA: 0x00013944 File Offset: 0x00011B44
 		public void Refresh()
 		{
 			if (this._doll == null)
@@ -101,8 +88,6 @@ namespace LBoL.Presentation.UI.Widgets
 			this.magicText.gameObject.SetActive(true);
 			this.magicText.text = this._doll.Magic.ToString() + "/" + this._doll.MaxMagic.ToString();
 		}
-
-		// Token: 0x060004BD RID: 1213 RVA: 0x00013B00 File Offset: 0x00011D00
 		private int GetMagicIconIndex(int molecule, int denominator)
 		{
 			switch (denominator)
@@ -159,8 +144,6 @@ namespace LBoL.Presentation.UI.Widgets
 			}
 			return -1;
 		}
-
-		// Token: 0x060004BE RID: 1214 RVA: 0x00013B9C File Offset: 0x00011D9C
 		public void OnPointerEnter(PointerEventData eventData)
 		{
 			AudioManager.Button(2);
@@ -176,8 +159,6 @@ namespace LBoL.Presentation.UI.Widgets
 				}
 			}
 		}
-
-		// Token: 0x060004BF RID: 1215 RVA: 0x00013C38 File Offset: 0x00011E38
 		public void OnPointerExit(PointerEventData eventData)
 		{
 			if (this.Doll.TargetType != TargetType.SingleEnemy)
@@ -188,8 +169,6 @@ namespace LBoL.Presentation.UI.Widgets
 				}
 			}
 		}
-
-		// Token: 0x060004C0 RID: 1216 RVA: 0x00013C9C File Offset: 0x00011E9C
 		public void OnPointerDown(PointerEventData eventData)
 		{
 			if (eventData.button == PointerEventData.InputButton.Left && !UiManager.GetPanel<PlayBoard>().IsTempLockedFromMinimize)
@@ -197,8 +176,6 @@ namespace LBoL.Presentation.UI.Widgets
 				this.StartUsingDoll(true);
 			}
 		}
-
-		// Token: 0x060004C1 RID: 1217 RVA: 0x00013CB9 File Offset: 0x00011EB9
 		public void OnPointerUp(PointerEventData eventData)
 		{
 			if (eventData.button == PointerEventData.InputButton.Left)
@@ -206,14 +183,10 @@ namespace LBoL.Presentation.UI.Widgets
 				UiManager.GetPanel<PlayBoard>().OnPointerUp(eventData);
 			}
 		}
-
-		// Token: 0x060004C2 RID: 1218 RVA: 0x00013CCE File Offset: 0x00011ECE
 		public void UseDollFromKey()
 		{
 			this.StartUsingDoll(false);
 		}
-
-		// Token: 0x060004C3 RID: 1219 RVA: 0x00013CD8 File Offset: 0x00011ED8
 		private void StartUsingDoll(bool fromClick)
 		{
 			if (this._pendingUse || !this.Doll.Usable || !this.Doll.Owner.IsInTurn)
@@ -261,46 +234,26 @@ namespace LBoL.Presentation.UI.Widgets
 				unitView.SelectingVisible = false;
 			}
 		}
-
-		// Token: 0x060004C4 RID: 1220 RVA: 0x00013E3C File Offset: 0x0001203C
 		public void CancelUse()
 		{
 			this._pendingUse = false;
 		}
-
-		// Token: 0x060004C5 RID: 1221 RVA: 0x00013E45 File Offset: 0x00012045
 		public void ConsumeMagic()
 		{
 			this._pendingUse = false;
 		}
-
-		// Token: 0x04000288 RID: 648
 		[SerializeField]
 		private Image magicIcon;
-
-		// Token: 0x04000289 RID: 649
 		[SerializeField]
 		private TextMeshProUGUI magicText;
-
-		// Token: 0x0400028A RID: 650
 		[SerializeField]
 		private TextMeshProUGUI upCounterText;
-
-		// Token: 0x0400028B RID: 651
 		[SerializeField]
 		private TextMeshProUGUI downCounterText;
-
-		// Token: 0x0400028C RID: 652
 		[SerializeField]
 		private List<Sprite> magicSprites;
-
-		// Token: 0x0400028D RID: 653
 		private ScenePositionTier _scenePositionTier;
-
-		// Token: 0x0400028E RID: 654
 		private Doll _doll;
-
-		// Token: 0x0400028F RID: 655
 		private bool _pendingUse;
 	}
 }

@@ -8,15 +8,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
-
 namespace LBoL.EntityLib.Cards.Character.Marisa
 {
-	// Token: 0x02000435 RID: 1077
 	[UsedImplicitly]
 	public sealed class PatchouliFriend : Card
 	{
-		// Token: 0x1700019C RID: 412
-		// (get) Token: 0x06000EB3 RID: 3763 RVA: 0x0001AD79 File Offset: 0x00018F79
 		[UsedImplicitly]
 		public int Power
 		{
@@ -29,9 +25,6 @@ namespace LBoL.EntityLib.Cards.Character.Marisa
 				return 5;
 			}
 		}
-
-		// Token: 0x1700019D RID: 413
-		// (get) Token: 0x06000EB4 RID: 3764 RVA: 0x0001AD86 File Offset: 0x00018F86
 		[UsedImplicitly]
 		public int PassiveColor
 		{
@@ -40,14 +33,10 @@ namespace LBoL.EntityLib.Cards.Character.Marisa
 				return base.PassiveCost;
 			}
 		}
-
-		// Token: 0x06000EB5 RID: 3765 RVA: 0x0001AD8E File Offset: 0x00018F8E
 		public override IEnumerable<BattleAction> OnTurnStartedInHand()
 		{
 			return this.GetPassiveActions();
 		}
-
-		// Token: 0x06000EB6 RID: 3766 RVA: 0x0001AD96 File Offset: 0x00018F96
 		public override IEnumerable<BattleAction> GetPassiveActions()
 		{
 			if (!base.Summoned || base.Battle.BattleShouldEnd)
@@ -69,8 +58,6 @@ namespace LBoL.EntityLib.Cards.Character.Marisa
 			}
 			yield break;
 		}
-
-		// Token: 0x06000EB7 RID: 3767 RVA: 0x0001ADA6 File Offset: 0x00018FA6
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (precondition == null || ((MiniSelectCardInteraction)precondition).SelectedCard.FriendToken == FriendToken.Active)

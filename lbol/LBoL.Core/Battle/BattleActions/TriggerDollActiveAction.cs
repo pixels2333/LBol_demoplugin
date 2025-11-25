@@ -1,13 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using LBoL.Core.Units;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x020001AC RID: 428
 	public sealed class TriggerDollActiveAction : EventBattleAction<DollTriggeredEventArgs>
 	{
-		// Token: 0x06000F55 RID: 3925 RVA: 0x00029450 File Offset: 0x00027650
 		public TriggerDollActiveAction(Doll doll, bool remove = true)
 		{
 			base.Args = new DollTriggeredEventArgs
@@ -16,8 +13,6 @@ namespace LBoL.Core.Battle.BattleActions
 				Remove = remove
 			};
 		}
-
-		// Token: 0x06000F56 RID: 3926 RVA: 0x00029471 File Offset: 0x00027671
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			List<DamageAction> damageActions = new List<DamageAction>();

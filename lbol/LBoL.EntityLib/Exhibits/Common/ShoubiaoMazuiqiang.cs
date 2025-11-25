@@ -6,20 +6,15 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.Exhibits.Common
 {
-	// Token: 0x02000192 RID: 402
 	[UsedImplicitly]
 	public sealed class ShoubiaoMazuiqiang : Exhibit
 	{
-		// Token: 0x060005AD RID: 1453 RVA: 0x0000DA18 File Offset: 0x0000BC18
 		protected override void OnEnterBattle()
 		{
 			base.ReactBattleEvent<GameEventArgs>(base.Battle.BattleStarted, new EventSequencedReactor<GameEventArgs>(this.OnBattleStarted));
 		}
-
-		// Token: 0x060005AE RID: 1454 RVA: 0x0000DA37 File Offset: 0x0000BC37
 		private IEnumerable<BattleAction> OnBattleStarted(GameEventArgs args)
 		{
 			foreach (EnemyUnit enemyUnit in base.Battle.EnemyGroup)
@@ -41,8 +36,6 @@ namespace LBoL.EntityLib.Exhibits.Common
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x060005AF RID: 1455 RVA: 0x0000DA47 File Offset: 0x0000BC47
 		protected override void OnLeaveBattle()
 		{
 			base.Blackout = false;

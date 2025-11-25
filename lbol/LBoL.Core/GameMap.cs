@@ -6,26 +6,17 @@ using LBoL.Base;
 using LBoL.Base.Extensions;
 using LBoL.Core.Stations;
 using UnityEngine;
-
 namespace LBoL.Core
 {
-	// Token: 0x02000040 RID: 64
 	public class GameMap
 	{
-		// Token: 0x060001DC RID: 476 RVA: 0x00004C3B File Offset: 0x00002E3B
 		private GameMap(int maxLevels, int maxLevelNotes, GameMap.UiType type, [CanBeNull] string bossId)
 		{
 			this.Type = type;
 			this.BossId = bossId;
 			this.Nodes = new MapNode[maxLevels, maxLevelNotes];
 		}
-
-		// Token: 0x17000099 RID: 153
-		// (get) Token: 0x060001DD RID: 477 RVA: 0x00004C6A File Offset: 0x00002E6A
 		public MapNode[,] Nodes { get; }
-
-		// Token: 0x1700009A RID: 154
-		// (get) Token: 0x060001DE RID: 478 RVA: 0x00004C72 File Offset: 0x00002E72
 		public IEnumerable<MapNode> AllNodes
 		{
 			get
@@ -33,32 +24,11 @@ namespace LBoL.Core
 				return Enumerable.Where<MapNode>(Enumerable.Cast<MapNode>(this.Nodes), (MapNode node) => node != null);
 			}
 		}
-
-		// Token: 0x1700009B RID: 155
-		// (get) Token: 0x060001DF RID: 479 RVA: 0x00004CA3 File Offset: 0x00002EA3
-		// (set) Token: 0x060001E0 RID: 480 RVA: 0x00004CAB File Offset: 0x00002EAB
 		public MapNode StartNode { get; private set; }
-
-		// Token: 0x1700009C RID: 156
-		// (get) Token: 0x060001E1 RID: 481 RVA: 0x00004CB4 File Offset: 0x00002EB4
-		// (set) Token: 0x060001E2 RID: 482 RVA: 0x00004CBC File Offset: 0x00002EBC
 		public MapNode EndNode { get; private set; }
-
-		// Token: 0x1700009D RID: 157
-		// (get) Token: 0x060001E3 RID: 483 RVA: 0x00004CC5 File Offset: 0x00002EC5
-		// (set) Token: 0x060001E4 RID: 484 RVA: 0x00004CCD File Offset: 0x00002ECD
 		public MapNode BossNode { get; private set; }
-
-		// Token: 0x1700009E RID: 158
-		// (get) Token: 0x060001E5 RID: 485 RVA: 0x00004CD6 File Offset: 0x00002ED6
 		public GameMap.UiType Type { get; }
-
-		// Token: 0x1700009F RID: 159
-		// (get) Token: 0x060001E6 RID: 486 RVA: 0x00004CDE File Offset: 0x00002EDE
 		public string BossId { get; }
-
-		// Token: 0x170000A0 RID: 160
-		// (get) Token: 0x060001E7 RID: 487 RVA: 0x00004CE6 File Offset: 0x00002EE6
 		public int Levels
 		{
 			get
@@ -66,9 +36,6 @@ namespace LBoL.Core
 				return this.Nodes.GetLength(0);
 			}
 		}
-
-		// Token: 0x170000A1 RID: 161
-		// (get) Token: 0x060001E8 RID: 488 RVA: 0x00004CF4 File Offset: 0x00002EF4
 		public int Width
 		{
 			get
@@ -76,14 +43,7 @@ namespace LBoL.Core
 				return this.Nodes.GetLength(1);
 			}
 		}
-
-		// Token: 0x170000A2 RID: 162
-		// (get) Token: 0x060001E9 RID: 489 RVA: 0x00004D02 File Offset: 0x00002F02
-		// (set) Token: 0x060001EA RID: 490 RVA: 0x00004D0A File Offset: 0x00002F0A
 		public MapNode VisitingNode { get; private set; }
-
-		// Token: 0x170000A3 RID: 163
-		// (get) Token: 0x060001EB RID: 491 RVA: 0x00004D13 File Offset: 0x00002F13
 		public IReadOnlyList<MapNode> Path
 		{
 			get
@@ -91,8 +51,6 @@ namespace LBoL.Core
 				return this._path.AsReadOnly();
 			}
 		}
-
-		// Token: 0x060001EC RID: 492 RVA: 0x00004D20 File Offset: 0x00002F20
 		public void EnterNode(MapNode node, bool freeMove, bool forced)
 		{
 			if (!forced && node.Status != MapNodeStatus.Active && node.Status != MapNodeStatus.CrossActive)
@@ -163,8 +121,6 @@ namespace LBoL.Core
 			this.VisitingNode = node;
 			this._path.Add(node);
 		}
-
-		// Token: 0x060001ED RID: 493 RVA: 0x00004F08 File Offset: 0x00003108
 		internal void SetAdjacentNodesStatus(GameRunMapMode mapMode)
 		{
 			if (this.VisitingNode == null || this.VisitingNode == this.EndNode)
@@ -221,8 +177,6 @@ namespace LBoL.Core
 				}
 			}
 		}
-
-		// Token: 0x060001EE RID: 494 RVA: 0x000050A4 File Offset: 0x000032A4
 		public void RestorePath(IEnumerable<MapNode> nodes)
 		{
 			foreach (MapNode mapNode in nodes)
@@ -231,8 +185,6 @@ namespace LBoL.Core
 				this.EnterNode(mapNode, true, true);
 			}
 		}
-
-		// Token: 0x060001EF RID: 495 RVA: 0x000050F8 File Offset: 0x000032F8
 		public static GameMap CreateSingleRoute([CanBeNull] string bossId, params StationType[] types)
 		{
 			GameMap gameMap = new GameMap(types.Length + 1, 1, GameMap.UiType.SingleRoute, bossId);
@@ -271,8 +223,6 @@ namespace LBoL.Core
 			}
 			return gameMap;
 		}
-
-		// Token: 0x060001F0 RID: 496 RVA: 0x00005204 File Offset: 0x00003404
 		public static GameMap CreateThreeRoute([CanBeNull] string bossId, params StationType[] types)
 		{
 			int num = Mathf.CeilToInt((float)types.Length / 3f);
@@ -315,8 +265,6 @@ namespace LBoL.Core
 			}
 			return gameMap;
 		}
-
-		// Token: 0x060001F1 RID: 497 RVA: 0x000053A4 File Offset: 0x000035A4
 		public static GameMap CreateFourRoute([CanBeNull] string bossId, params StationType[] types)
 		{
 			int num = Mathf.CeilToInt((float)types.Length / 4f);
@@ -363,8 +311,6 @@ namespace LBoL.Core
 			}
 			return gameMap;
 		}
-
-		// Token: 0x060001F2 RID: 498 RVA: 0x0000554C File Offset: 0x0000374C
 		public static GameMap CreateNormalMap(RandomGen rng, [CanBeNull] string bossId, bool isSelectingBoss)
 		{
 			GameMap gameMap = new GameMap(17, 5, GameMap.UiType.NormalGame, bossId);
@@ -439,8 +385,6 @@ namespace LBoL.Core
 			gameMap.BossNode = (gameMap.EndNode = gameMap.Nodes[16, 0]);
 			return gameMap;
 		}
-
-		// Token: 0x060001F3 RID: 499 RVA: 0x00005834 File Offset: 0x00003A34
 		private static StationType[,] GetAct1(RandomGen rng)
 		{
 			StationType[,] array = new StationType[4, 4];
@@ -501,8 +445,6 @@ namespace LBoL.Core
 			}
 			return array;
 		}
-
-		// Token: 0x060001F4 RID: 500 RVA: 0x0000597C File Offset: 0x00003B7C
 		private static StationType[,] GetAct2(RandomGen rng)
 		{
 			StationType[,] array = new StationType[4, 4];
@@ -567,8 +509,6 @@ namespace LBoL.Core
 			}
 			return array;
 		}
-
-		// Token: 0x060001F5 RID: 501 RVA: 0x00005AF8 File Offset: 0x00003CF8
 		private static StationType[,] GetAct3(RandomGen rng)
 		{
 			StationType[,] array = new StationType[4, 4];
@@ -630,8 +570,6 @@ namespace LBoL.Core
 			}
 			return array;
 		}
-
-		// Token: 0x060001F6 RID: 502 RVA: 0x00005C58 File Offset: 0x00003E58
 		private static void CreateSideWays(GameMap map, RandomGen rng, int xFloor, int xCeil)
 		{
 			List<int> list = new List<int>();
@@ -657,18 +595,11 @@ namespace LBoL.Core
 				}
 			}
 		}
-
-		// Token: 0x0400010C RID: 268
 		private readonly List<MapNode> _path = new List<MapNode>();
-
-		// Token: 0x020001CF RID: 463
 		public enum UiType
 		{
-			// Token: 0x04000736 RID: 1846
 			SingleRoute,
-			// Token: 0x04000737 RID: 1847
 			ThreeRoute,
-			// Token: 0x04000738 RID: 1848
 			NormalGame
 		}
 	}

@@ -6,15 +6,11 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Neutral.Blue
 {
-	// Token: 0x02000317 RID: 791
 	[UsedImplicitly]
 	public sealed class GuijiZaoxingYuan : Card
 	{
-		// Token: 0x17000152 RID: 338
-		// (get) Token: 0x06000BB1 RID: 2993 RVA: 0x00017543 File Offset: 0x00015743
 		public override bool RemoveFromBattleAfterPlay
 		{
 			get
@@ -22,8 +18,6 @@ namespace LBoL.EntityLib.Cards.Neutral.Blue
 				return true;
 			}
 		}
-
-		// Token: 0x06000BB2 RID: 2994 RVA: 0x00017546 File Offset: 0x00015746
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.DefenseAction(true);

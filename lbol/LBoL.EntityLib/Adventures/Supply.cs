@@ -10,13 +10,10 @@ using LBoL.EntityLib.Exhibits.Adventure;
 using LBoL.EntityLib.Exhibits.Common;
 using LBoL.EntityLib.JadeBoxes;
 using Yarn;
-
 namespace LBoL.EntityLib.Adventures
 {
-	// Token: 0x02000503 RID: 1283
 	public sealed class Supply : Adventure
 	{
-		// Token: 0x060010DC RID: 4316 RVA: 0x0001DC4C File Offset: 0x0001BE4C
 		protected override void InitVariables(IVariableStorage storage)
 		{
 			int num;
@@ -54,8 +51,6 @@ namespace LBoL.EntityLib.Adventures
 			}
 			storage.SetValue("$bothFlag", flag);
 		}
-
-		// Token: 0x060010DD RID: 4317 RVA: 0x0001DDB4 File Offset: 0x0001BFB4
 		[RuntimeCommand("getDialogues", "")]
 		[UsedImplicitly]
 		public void GetDialogues()

@@ -18,14 +18,10 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
-
 namespace LBoL.Presentation.UI.Panels
 {
-	// Token: 0x02000098 RID: 152
 	public class GameResultPanel : UiPanel<GameResultData>
 	{
-		// Token: 0x17000150 RID: 336
-		// (get) Token: 0x060007D9 RID: 2009 RVA: 0x000246C6 File Offset: 0x000228C6
 		public override PanelLayer Layer
 		{
 			get
@@ -33,10 +29,6 @@ namespace LBoL.Presentation.UI.Panels
 				return PanelLayer.Bottom;
 			}
 		}
-
-		// Token: 0x17000151 RID: 337
-		// (get) Token: 0x060007DA RID: 2010 RVA: 0x000246C9 File Offset: 0x000228C9
-		// (set) Token: 0x060007DB RID: 2011 RVA: 0x000246D1 File Offset: 0x000228D1
 		public bool ResultVisible
 		{
 			get
@@ -49,10 +41,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.resultTitle.gameObject.SetActive(value);
 			}
 		}
-
-		// Token: 0x17000152 RID: 338
-		// (get) Token: 0x060007DC RID: 2012 RVA: 0x000246EB File Offset: 0x000228EB
-		// (set) Token: 0x060007DD RID: 2013 RVA: 0x000246F3 File Offset: 0x000228F3
 		public bool DesVisible
 		{
 			get
@@ -65,10 +53,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.resultDescription.gameObject.SetActive(value);
 			}
 		}
-
-		// Token: 0x17000153 RID: 339
-		// (get) Token: 0x060007DE RID: 2014 RVA: 0x0002470D File Offset: 0x0002290D
-		// (set) Token: 0x060007DF RID: 2015 RVA: 0x00024715 File Offset: 0x00022915
 		public bool ReturnVisible
 		{
 			get
@@ -82,8 +66,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.tabToggleRoot.gameObject.SetActive(value);
 			}
 		}
-
-		// Token: 0x060007E0 RID: 2016 RVA: 0x00024740 File Offset: 0x00022940
 		public override async UniTask CustomLocalizationAsync()
 		{
 			this._winString = "GameResult.Win".Localize(true);
@@ -95,8 +77,6 @@ namespace LBoL.Presentation.UI.Panels
 			Dictionary<string, GameResultPanel.StringTableEntry> dictionary = await Localization.LoadFileAsync<GameResultPanel.StringTableEntry>("BluePoint");
 			this._stringTable = dictionary;
 		}
-
-		// Token: 0x060007E1 RID: 2017 RVA: 0x00024784 File Offset: 0x00022984
 		public void Awake()
 		{
 			this.ResultVisible = false;
@@ -172,16 +152,12 @@ namespace LBoL.Presentation.UI.Panels
 				cardWidget.GetComponent<ShowingCard>().SetScale(1.2f, 1.4f);
 			}
 		}
-
-		// Token: 0x060007E2 RID: 2018 RVA: 0x00024898 File Offset: 0x00022A98
 		private void RefreshExp()
 		{
 			this._curMaxExp = ExpHelper.GetExpForLevel(this._curLevel);
 			this.expText.text = string.Format("{0}/{1}", this._curExp, this._curMaxExp);
 			this.expSlider.fillAmount = (float)this._curExp / (float)this._curMaxExp;
 		}
-
-		// Token: 0x060007E3 RID: 2019 RVA: 0x000248FC File Offset: 0x00022AFC
 		protected override void OnShowing(GameResultData payload)
 		{
 			this.scoreGroup.gameObject.SetActive(false);
@@ -302,14 +278,10 @@ namespace LBoL.Presentation.UI.Panels
 				particleSystem.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
 			}
 		}
-
-		// Token: 0x060007E4 RID: 2020 RVA: 0x00024E04 File Offset: 0x00023004
 		protected override void OnShown()
 		{
 			base.StartCoroutine(this.Runner());
 		}
-
-		// Token: 0x060007E5 RID: 2021 RVA: 0x00024E13 File Offset: 0x00023013
 		protected override void OnHiding()
 		{
 			if (GameMaster.Status == GameMaster.GameMasterStatus.MainMenu)
@@ -317,8 +289,6 @@ namespace LBoL.Presentation.UI.Panels
 				AudioManager.EnterLayer0();
 			}
 		}
-
-		// Token: 0x060007E6 RID: 2022 RVA: 0x00024E24 File Offset: 0x00023024
 		private void Win(GameResultType resultType)
 		{
 			AudioManager.Victory(resultType == GameResultType.TrueEnd);
@@ -341,8 +311,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			textMeshProUGUI.text = text;
 		}
-
-		// Token: 0x060007E7 RID: 2023 RVA: 0x00024E9C File Offset: 0x0002309C
 		private void Lose()
 		{
 			AudioManager.Fail(GameMaster.Status == GameMaster.GameMasterStatus.MainMenu);
@@ -359,8 +327,6 @@ namespace LBoL.Presentation.UI.Panels
 				componentsInChildren2[i].material = this.grayMaterial;
 			}
 		}
-
-		// Token: 0x060007E8 RID: 2024 RVA: 0x00024F28 File Offset: 0x00023128
 		private IEnumerator Runner()
 		{
 			GameResultPanel.<>c__DisplayClass77_0 CS$<>8__locals1 = new GameResultPanel.<>c__DisplayClass77_0();
@@ -548,8 +514,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.tabToggleRoot.GetComponent<CanvasGroup>().DOFade(1f, 0.5f).From(0f, true, false);
 			yield break;
 		}
-
-		// Token: 0x060007E9 RID: 2025 RVA: 0x00024F38 File Offset: 0x00023138
 		private void ShowLevelUpPanel(int level, bool instant = false)
 		{
 			List<Card> list = new List<Card>();
@@ -644,233 +608,114 @@ namespace LBoL.Presentation.UI.Panels
 				particleSystem.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
 			}
 		}
-
-		// Token: 0x04000552 RID: 1362
 		private bool _resultVisible;
-
-		// Token: 0x04000553 RID: 1363
 		private bool _desVisible;
-
-		// Token: 0x04000554 RID: 1364
 		private bool _returnVisible;
-
-		// Token: 0x04000555 RID: 1365
 		[Header("总体")]
 		[FormerlySerializedAs("resultText")]
 		[SerializeField]
 		private TextMeshProUGUI resultTitle;
-
-		// Token: 0x04000556 RID: 1366
 		[FormerlySerializedAs("descriptionText")]
 		[SerializeField]
 		private TextMeshProUGUI resultDescription;
-
-		// Token: 0x04000557 RID: 1367
 		[SerializeField]
 		private Button returnButton;
-
-		// Token: 0x04000558 RID: 1368
 		[SerializeField]
 		private Image portrait;
-
-		// Token: 0x04000559 RID: 1369
 		[SerializeField]
 		private Image shadow;
-
-		// Token: 0x0400055A RID: 1370
 		[Header("计分详情组件")]
 		[SerializeField]
 		private CanvasGroup scoreGroup;
-
-		// Token: 0x0400055B RID: 1371
 		[SerializeField]
 		private CanvasGroup detailRoot;
-
-		// Token: 0x0400055C RID: 1372
 		[FormerlySerializedAs("bgButton")]
 		[SerializeField]
 		private Button skipButton;
-
-		// Token: 0x0400055D RID: 1373
 		[FormerlySerializedAs("scoreContent")]
 		[SerializeField]
 		private Transform scoreDetailContent;
-
-		// Token: 0x0400055E RID: 1374
 		[SerializeField]
 		private ScoreWidget scoreTemplate;
-
-		// Token: 0x0400055F RID: 1375
 		[FormerlySerializedAs("totalScore")]
 		[SerializeField]
 		private TextMeshProUGUI totalScoreText;
-
-		// Token: 0x04000560 RID: 1376
 		[SerializeField]
 		private TextMeshProUGUI deltaScoreText;
-
-		// Token: 0x04000561 RID: 1377
 		[Header("经验面板组件")]
 		[SerializeField]
 		private CanvasGroup expRoot;
-
-		// Token: 0x04000562 RID: 1378
 		[SerializeField]
 		private Image expSlider;
-
-		// Token: 0x04000563 RID: 1379
 		[SerializeField]
 		private ParticleSystem expParticle;
-
-		// Token: 0x04000564 RID: 1380
 		[SerializeField]
 		private TextMeshProUGUI expText;
-
-		// Token: 0x04000565 RID: 1381
 		[SerializeField]
 		private CardPackWidget cardPackTemplate;
-
-		// Token: 0x04000566 RID: 1382
 		[SerializeField]
 		private Transform cardPackRoot;
-
-		// Token: 0x04000567 RID: 1383
 		[SerializeField]
 		private Vector2 cardPackStartPos;
-
-		// Token: 0x04000568 RID: 1384
 		[SerializeField]
 		private Vector2 cardPackSpacing;
-
-		// Token: 0x04000569 RID: 1385
 		[Header("升级面板组件")]
 		[SerializeField]
 		private Transform levelUpRoot;
-
-		// Token: 0x0400056A RID: 1386
 		[SerializeField]
 		private Button levelUpBgButton;
-
-		// Token: 0x0400056B RID: 1387
 		[SerializeField]
 		private List<CardWidget> levelUpCards;
-
-		// Token: 0x0400056C RID: 1388
 		[SerializeField]
 		private List<ParticleSystem> levelUpParticles;
-
-		// Token: 0x0400056D RID: 1389
 		[SerializeField]
 		private MuseumExhibitWidget levelUpExhibit;
-
-		// Token: 0x0400056E RID: 1390
 		[SerializeField]
 		private List<Image> levelUpCardMasks;
-
-		// Token: 0x0400056F RID: 1391
 		[SerializeField]
 		private Image levelUpExhibitMask;
-
-		// Token: 0x04000570 RID: 1392
 		[SerializeField]
 		private Image exhibitImage;
-
-		// Token: 0x04000571 RID: 1393
 		[SerializeField]
 		private GameObject sideTip;
-
-		// Token: 0x04000572 RID: 1394
 		[SerializeField]
 		private string fakeCardId;
-
-		// Token: 0x04000573 RID: 1395
 		[Header("切换面板组件")]
 		[SerializeField]
 		private Transform tabToggleRoot;
-
-		// Token: 0x04000574 RID: 1396
 		[SerializeField]
 		private Button tabDetail;
-
-		// Token: 0x04000575 RID: 1397
 		[SerializeField]
 		private Button tabFold;
-
-		// Token: 0x04000576 RID: 1398
 		[Header("杂项")]
 		[SerializeField]
 		private AssociationList<string, Sprite> characterPortraits;
-
-		// Token: 0x04000577 RID: 1399
 		[SerializeField]
 		private AssociationList<string, Sprite> characterDefeatPortraits;
-
-		// Token: 0x04000578 RID: 1400
 		[SerializeField]
 		private Material grayMaterial;
-
-		// Token: 0x04000579 RID: 1401
 		[SerializeField]
 		private Transform grayGroup;
-
-		// Token: 0x0400057A RID: 1402
 		private const float Delay = 1f;
-
-		// Token: 0x0400057B RID: 1403
 		private string _winString;
-
-		// Token: 0x0400057C RID: 1404
 		private string _loseString;
-
-		// Token: 0x0400057D RID: 1405
 		private string _normalString;
-
-		// Token: 0x0400057E RID: 1406
 		private string _trueEndFailString;
-
-		// Token: 0x0400057F RID: 1407
 		private string _trueEndString;
-
-		// Token: 0x04000580 RID: 1408
 		private string _badString;
-
-		// Token: 0x04000581 RID: 1409
 		private string _returnString;
-
-		// Token: 0x04000582 RID: 1410
 		private List<CardPackWidget> _cardPackWidgets = new List<CardPackWidget>();
-
-		// Token: 0x04000583 RID: 1411
 		private List<ScoreWidget> _scoreWidgets = new List<ScoreWidget>();
-
-		// Token: 0x04000584 RID: 1412
 		private Dictionary<string, GameResultPanel.StringTableEntry> _stringTable;
-
-		// Token: 0x04000585 RID: 1413
 		private Sequence _curRunner;
-
-		// Token: 0x04000586 RID: 1414
 		private int _deltaExp;
-
-		// Token: 0x04000587 RID: 1415
 		private int _curExp;
-
-		// Token: 0x04000588 RID: 1416
 		private int _curMaxExp;
-
-		// Token: 0x04000589 RID: 1417
 		private int _curLevel;
-
-		// Token: 0x0400058A RID: 1418
 		private float _expMultiplier;
-
-		// Token: 0x0200024E RID: 590
 		private struct StringTableEntry
 		{
-			// Token: 0x0400108A RID: 4234
 			public string Name;
-
-			// Token: 0x0400108B RID: 4235
 			public string Description;
 		}
 	}

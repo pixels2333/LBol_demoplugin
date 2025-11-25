@@ -15,14 +15,10 @@ using LBoL.Presentation.I10N;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-
 namespace LBoL.Presentation.UI.Widgets
 {
-	// Token: 0x02000054 RID: 84
 	public class EntityTooltipWidget : MonoBehaviour
 	{
-		// Token: 0x170000CF RID: 207
-		// (get) Token: 0x060004CE RID: 1230 RVA: 0x00013F2B File Offset: 0x0001212B
 		public RectTransform RectTransform
 		{
 			get
@@ -30,8 +26,6 @@ namespace LBoL.Presentation.UI.Widgets
 				return (RectTransform)base.transform;
 			}
 		}
-
-		// Token: 0x060004CF RID: 1231 RVA: 0x00013F38 File Offset: 0x00012138
 		private void Awake()
 		{
 			Vector2 sizeDelta = this.root.sizeDelta;
@@ -42,8 +36,6 @@ namespace LBoL.Presentation.UI.Widgets
 			this.dwDescriptionTemplate.gameObject.SetActive(false);
 			this.extraTextRoot.gameObject.SetActive(false);
 		}
-
-		// Token: 0x060004D0 RID: 1232 RVA: 0x00013FF9 File Offset: 0x000121F9
 		private void OnEnable()
 		{
 			if (!this.instantShow)
@@ -52,14 +44,10 @@ namespace LBoL.Presentation.UI.Widgets
 					.SetUpdate(true);
 			}
 		}
-
-		// Token: 0x060004D1 RID: 1233 RVA: 0x00014035 File Offset: 0x00012235
 		private void OnDisable()
 		{
 			this.canvasGroup.DOKill(false);
 		}
-
-		// Token: 0x060004D2 RID: 1234 RVA: 0x00014044 File Offset: 0x00012244
 		private bool SetContent(string title, Rarity rarity, IEnumerable<Keyword> keyWords, IEnumerable<IDisplayWord> displayWords, [CanBeNull] string flvText = null, [CanBeNull] string mainText = null)
 		{
 			bool flag = false;
@@ -74,8 +62,6 @@ namespace LBoL.Presentation.UI.Widgets
 			this.root.sizeDelta = new Vector2(num, (num2 > this.minHeight) ? num2 : this.minHeight);
 			return flag;
 		}
-
-		// Token: 0x060004D3 RID: 1235 RVA: 0x000140B4 File Offset: 0x000122B4
 		private float InternalSetContent(string title, Rarity rarity, IEnumerable<Keyword> keyWords, IEnumerable<IDisplayWord> displayWords, string flvText, string mainText)
 		{
 			float num = this._initHeight;
@@ -158,8 +144,6 @@ namespace LBoL.Presentation.UI.Widgets
 			dwOffsetBase.y -= num2 + 10f;
 			return num;
 		}
-
-		// Token: 0x060004D4 RID: 1236 RVA: 0x000144D8 File Offset: 0x000126D8
 		private float ResetWidth(float width)
 		{
 			float num = this._initHeight;
@@ -184,8 +168,6 @@ namespace LBoL.Presentation.UI.Widgets
 			dwOffsetBase.y -= num2 + 10f;
 			return num;
 		}
-
-		// Token: 0x060004D5 RID: 1237 RVA: 0x000145F0 File Offset: 0x000127F0
 		public void SetCard(Card card, bool topLeftAlign = false)
 		{
 			this.mainDescription.enabled = card.DetailText != null;
@@ -325,8 +307,6 @@ namespace LBoL.Presentation.UI.Widgets
 			}
 			this.RectTransform.sizeDelta = this.root.sizeDelta + new Vector2(0f, num);
 		}
-
-		// Token: 0x060004D6 RID: 1238 RVA: 0x00014A08 File Offset: 0x00012C08
 		public void SetStatusEffect(StatusEffect effect)
 		{
 			string text = effect.Name;
@@ -372,8 +352,6 @@ namespace LBoL.Presentation.UI.Widgets
 			this.root.localPosition = Vector3.zero;
 			this.RectTransform.sizeDelta = this.root.sizeDelta;
 		}
-
-		// Token: 0x060004D7 RID: 1239 RVA: 0x00014B78 File Offset: 0x00012D78
 		public void SetExhibit(Exhibit exhibit)
 		{
 			bool flag = this.SetContent(exhibit.Name, exhibit.Config.Rarity, Enumerable.Empty<Keyword>(), exhibit.EnumerateDisplayWords(GameMaster.ShowVerboseKeywords), exhibit.FlavorText, exhibit.Description);
@@ -381,8 +359,6 @@ namespace LBoL.Presentation.UI.Widgets
 			this.root.localPosition = Vector3.zero;
 			this.RectTransform.sizeDelta = this.root.sizeDelta;
 		}
-
-		// Token: 0x060004D8 RID: 1240 RVA: 0x00014C00 File Offset: 0x00012E00
 		public void SetUltimateSkill(UltimateSkill skill)
 		{
 			string text = skill.Description;
@@ -398,8 +374,6 @@ namespace LBoL.Presentation.UI.Widgets
 			this.root.localPosition = Vector3.zero;
 			this.RectTransform.sizeDelta = this.root.sizeDelta;
 		}
-
-		// Token: 0x060004D9 RID: 1241 RVA: 0x00014D28 File Offset: 0x00012F28
 		public void SetDoll(Doll doll)
 		{
 			this.SetContent(doll.Name, Rarity.Common, Enumerable.Empty<Keyword>(), doll.EnumerateDisplayWords(GameMaster.ShowVerboseKeywords), null, doll.Description);
@@ -407,8 +381,6 @@ namespace LBoL.Presentation.UI.Widgets
 			this.root.localPosition = Vector3.zero;
 			this.RectTransform.sizeDelta = this.root.sizeDelta;
 		}
-
-		// Token: 0x060004DA RID: 1242 RVA: 0x00014D94 File Offset: 0x00012F94
 		public void SetAchievement(string title, string des)
 		{
 			this.SetContent(title, Rarity.Common, Enumerable.Empty<Keyword>(), ArraySegment<IDisplayWord>.Empty, null, des);
@@ -416,89 +388,43 @@ namespace LBoL.Presentation.UI.Widgets
 			this.root.localPosition = Vector3.zero;
 			this.RectTransform.sizeDelta = this.root.sizeDelta;
 		}
-
-		// Token: 0x04000293 RID: 659
 		[SerializeField]
 		private RectTransform root;
-
-		// Token: 0x04000294 RID: 660
 		[SerializeField]
 		private CanvasGroup canvasGroup;
-
-		// Token: 0x04000295 RID: 661
 		[SerializeField]
 		private Image rarityBar;
-
-		// Token: 0x04000296 RID: 662
 		[SerializeField]
 		private TextMeshProUGUI titleText;
-
-		// Token: 0x04000297 RID: 663
 		[SerializeField]
 		private TextMeshProUGUI rarityText;
-
-		// Token: 0x04000298 RID: 664
 		[SerializeField]
 		private TextMeshProUGUI mainDescription;
-
-		// Token: 0x04000299 RID: 665
 		[SerializeField]
 		private TextMeshProUGUI dwNameTemplate;
-
-		// Token: 0x0400029A RID: 666
 		[SerializeField]
 		private TextMeshProUGUI dwDescriptionTemplate;
-
-		// Token: 0x0400029B RID: 667
 		[SerializeField]
 		private TextMeshProUGUI flavorText;
-
-		// Token: 0x0400029C RID: 668
 		[SerializeField]
 		private RectTransform extraTextRoot;
-
-		// Token: 0x0400029D RID: 669
 		[SerializeField]
 		private TextMeshProUGUI upgradeText;
-
-		// Token: 0x0400029E RID: 670
 		[SerializeField]
 		private TextMeshProUGUI poolText;
-
-		// Token: 0x0400029F RID: 671
 		[SerializeField]
 		private float minHeight;
-
-		// Token: 0x040002A0 RID: 672
 		[SerializeField]
 		private AssociationList<Rarity, Sprite> raritySpriteTable;
-
-		// Token: 0x040002A1 RID: 673
 		private float _initWidth;
-
-		// Token: 0x040002A2 RID: 674
 		private float _initHeight;
-
-		// Token: 0x040002A3 RID: 675
 		private Vector2 _dwOffsetBase;
-
-		// Token: 0x040002A4 RID: 676
 		public bool withExtraHeight = true;
-
-		// Token: 0x040002A5 RID: 677
 		private const float FadeInDuration = 0.1f;
-
-		// Token: 0x040002A6 RID: 678
 		private const float FadeInDelay = 0.2f;
-
-		// Token: 0x040002A7 RID: 679
 		[Header("Appearance")]
 		public bool instantShow;
-
-		// Token: 0x040002A8 RID: 680
 		private const float MaxHeight = 900f;
-
-		// Token: 0x040002A9 RID: 681
 		private readonly List<TextMeshProUGUI> _dws = new List<TextMeshProUGUI>();
 	}
 }

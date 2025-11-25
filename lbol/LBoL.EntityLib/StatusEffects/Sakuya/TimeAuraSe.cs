@@ -8,13 +8,10 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.StatusEffects.Sakuya
 {
-	// Token: 0x02000023 RID: 35
 	public sealed class TimeAuraSe : StatusEffect
 	{
-		// Token: 0x06000054 RID: 84 RVA: 0x000028CC File Offset: 0x00000ACC
 		private void CheckAchievement()
 		{
 			if (base.Level >= 200 && base.Owner is PlayerUnit && base.GameRun.IsAutoSeed && base.GameRun.JadeBoxes.Empty<JadeBox>())
@@ -22,15 +19,11 @@ namespace LBoL.EntityLib.StatusEffects.Sakuya
 				base.GameRun.AchievementHandler.UnlockAchievement(AchievementKey.TimeAura);
 			}
 		}
-
-		// Token: 0x06000055 RID: 85 RVA: 0x00002924 File Offset: 0x00000B24
 		protected override void OnAdded(Unit unit)
 		{
 			base.ReactOwnerEvent<UnitEventArgs>(base.Owner.TurnEnding, new EventSequencedReactor<UnitEventArgs>(this.OnOwnerTurnEnding));
 			this.CheckAchievement();
 		}
-
-		// Token: 0x06000056 RID: 86 RVA: 0x00002949 File Offset: 0x00000B49
 		public override bool Stack(StatusEffect other)
 		{
 			bool flag = base.Stack(other);
@@ -40,8 +33,6 @@ namespace LBoL.EntityLib.StatusEffects.Sakuya
 			}
 			return flag;
 		}
-
-		// Token: 0x06000057 RID: 87 RVA: 0x0000295B File Offset: 0x00000B5B
 		private IEnumerable<BattleAction> OnOwnerTurnEnding(UnitEventArgs args)
 		{
 			if (!base.Battle.BattleShouldEnd && base.Battle.EnemyGroup.Alives != null)

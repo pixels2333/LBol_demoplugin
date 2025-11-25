@@ -17,14 +17,10 @@ using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine.UI.Extensions;
-
 namespace LBoL.Presentation.UI.Panels
 {
-	// Token: 0x0200008C RID: 140
 	public sealed class CardDetailPanel : UiPanel<CardDetailPayload>, IInputActionHandler, IScrollHandler, IEventSystemHandler
 	{
-		// Token: 0x17000132 RID: 306
-		// (get) Token: 0x06000714 RID: 1812 RVA: 0x0002089E File Offset: 0x0001EA9E
 		public override PanelLayer Layer
 		{
 			get
@@ -32,10 +28,6 @@ namespace LBoL.Presentation.UI.Panels
 				return PanelLayer.Topmost;
 			}
 		}
-
-		// Token: 0x17000133 RID: 307
-		// (get) Token: 0x06000715 RID: 1813 RVA: 0x000208A1 File Offset: 0x0001EAA1
-		// (set) Token: 0x06000716 RID: 1814 RVA: 0x000208AC File Offset: 0x0001EAAC
 		private CardWidget CenterCardStyle
 		{
 			get
@@ -48,8 +40,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.cardStyleIllustratorText.text = this.GetIllustratorText((this._cardStyleDic[value] == "") ? value.Card.Config.Illustrator : this._cardStyleDic[value]);
 			}
 		}
-
-		// Token: 0x06000717 RID: 1815 RVA: 0x00020908 File Offset: 0x0001EB08
 		public void Awake()
 		{
 			this.bg.onClick.AddListener(new UnityAction(base.Hide));
@@ -99,13 +89,9 @@ namespace LBoL.Presentation.UI.Panels
 			Object.Destroy(this.saveImageButton.gameObject);
 			this._canvasGroup = base.GetComponent<CanvasGroup>();
 		}
-
-		// Token: 0x06000718 RID: 1816 RVA: 0x00020A8C File Offset: 0x0001EC8C
 		public override void OnLocaleChanged()
 		{
 		}
-
-		// Token: 0x06000719 RID: 1817 RVA: 0x00020A90 File Offset: 0x0001EC90
 		protected override void OnShowing(CardDetailPayload payload)
 		{
 			foreach (CardWidget cardWidget in this.relativeCardWidgets)
@@ -122,29 +108,21 @@ namespace LBoL.Presentation.UI.Panels
 			this._canvasGroup.interactable = true;
 			UiManager.PushActionHandler(this);
 		}
-
-		// Token: 0x0600071A RID: 1818 RVA: 0x00020B6C File Offset: 0x0001ED6C
 		protected override void OnShown()
 		{
 		}
-
-		// Token: 0x0600071B RID: 1819 RVA: 0x00020B6E File Offset: 0x0001ED6E
 		protected override void OnHiding()
 		{
 			AudioManager.Card(4);
 			this._canvasGroup.interactable = false;
 			UiManager.PopActionHandler(this);
 		}
-
-		// Token: 0x0600071C RID: 1820 RVA: 0x00020B88 File Offset: 0x0001ED88
 		protected override void OnHided()
 		{
 			this._sourceCard = null;
 			this._card = null;
 			this._upgradedCard = null;
 		}
-
-		// Token: 0x0600071D RID: 1821 RVA: 0x00020BA0 File Offset: 0x0001EDA0
 		private void StartCardAnim(Component from, Component to)
 		{
 			this.subWidgetGroup.DOKill(false);
@@ -163,8 +141,6 @@ namespace LBoL.Presentation.UI.Panels
 			{
 			});
 		}
-
-		// Token: 0x0600071E RID: 1822 RVA: 0x00020CC4 File Offset: 0x0001EEC4
 		private void SetData(Card card, bool bySwitch)
 		{
 			if (card == null)
@@ -266,8 +242,6 @@ namespace LBoL.Presentation.UI.Panels
 				widget.transform.localScale = new Vector3(1.2f, 1.2f, 1.2f);
 			}
 		}
-
-		// Token: 0x0600071F RID: 1823 RVA: 0x000212C0 File Offset: 0x0001F4C0
 		private void OnCardStyleClick(CardWidget widget)
 		{
 			GridLayoutGroup component = this.cardStyleParent.GetComponent<GridLayoutGroup>();
@@ -281,8 +255,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			widget.transform.DOScale(1.5f, 0.2f);
 		}
-
-		// Token: 0x06000720 RID: 1824 RVA: 0x000213D4 File Offset: 0x0001F5D4
 		private void RefreshIllustrator()
 		{
 			this.showCardStyleButton.gameObject.SetActive(this._card.Config.SubIllustrator.Count > 0);
@@ -302,8 +274,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.illustratorText.text = ((!this._card.Config.Illustrator.IsNullOrEmpty()) ? this.GetIllustratorText(this._card.Config.Illustrator) : "");
 			this.illustratorText.gameObject.SetActive(true);
 		}
-
-		// Token: 0x06000721 RID: 1825 RVA: 0x000214C5 File Offset: 0x0001F6C5
 		private string GetIllustratorText(string id)
 		{
 			StringBuilder stringBuilder = new StringBuilder();
@@ -312,8 +282,6 @@ namespace LBoL.Presentation.UI.Panels
 			stringBuilder.Append(id);
 			return stringBuilder.ToString();
 		}
-
-		// Token: 0x06000722 RID: 1826 RVA: 0x000214F8 File Offset: 0x0001F6F8
 		public void ShowRelativeCard(RecordCardCell self)
 		{
 			this.tempCardRoot.DOKill(false);
@@ -330,8 +298,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.SetData(self.Card.IsUpgraded ? this._upgradedCard : this._card, false);
 			this.StartCardAnim(self.GetComponent<RectTransform>(), this.cardDetailWidget);
 		}
-
-		// Token: 0x06000723 RID: 1827 RVA: 0x000215DC File Offset: 0x0001F7DC
 		public void ShowRelativeCard(CardWidget self)
 		{
 			this.tempCardRoot.DOKill(false);
@@ -348,14 +314,10 @@ namespace LBoL.Presentation.UI.Panels
 			this.SetData(self.Card.IsUpgraded ? this._upgradedCard : this._card, false);
 			this.StartCardAnim(self.GetComponent<RectTransform>(), this.cardDetailWidget);
 		}
-
-		// Token: 0x06000724 RID: 1828 RVA: 0x000216BF File Offset: 0x0001F8BF
 		void IInputActionHandler.OnCancel()
 		{
 			base.Hide();
 		}
-
-		// Token: 0x06000725 RID: 1829 RVA: 0x000216C7 File Offset: 0x0001F8C7
 		void IInputActionHandler.OnRightClickCancel()
 		{
 			if (this._preventRightClickHide)
@@ -365,8 +327,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			base.Hide();
 		}
-
-		// Token: 0x06000726 RID: 1830 RVA: 0x000216E0 File Offset: 0x0001F8E0
 		public void OnScroll(PointerEventData eventData)
 		{
 			if (!this.cardStylePanelRoot.gameObject.activeSelf)
@@ -385,121 +345,59 @@ namespace LBoL.Presentation.UI.Panels
 				this.OnCardStyleClick(valueTuple.Item2.Key);
 			}
 		}
-
-		// Token: 0x04000493 RID: 1171
 		[Header("资源引用")]
 		[SerializeField]
 		private Button bg;
-
-		// Token: 0x04000494 RID: 1172
 		[SerializeField]
 		private CardWidget cardDetailWidget;
-
-		// Token: 0x04000495 RID: 1173
 		[SerializeField]
 		private TextMeshProUGUI illustratorText;
-
-		// Token: 0x04000496 RID: 1174
 		[SerializeField]
 		private CanvasGroup subWidgetGroup;
-
-		// Token: 0x04000497 RID: 1175
 		[SerializeField]
 		private RectTransform tooltipParent;
-
-		// Token: 0x04000498 RID: 1176
 		[SerializeField]
 		private EntityTooltipWidget tooltipTemplate;
-
-		// Token: 0x04000499 RID: 1177
 		[SerializeField]
 		private List<CardWidget> relativeCardWidgets;
-
-		// Token: 0x0400049A RID: 1178
 		[SerializeField]
 		private RecordCardCell cardCellTemplate;
-
-		// Token: 0x0400049B RID: 1179
 		[SerializeField]
 		private Transform relativeCellLayout;
-
-		// Token: 0x0400049C RID: 1180
 		[SerializeField]
 		private CanvasGroup tempCardRoot;
-
-		// Token: 0x0400049D RID: 1181
 		[SerializeField]
 		private SwitchWidget upgradeSwitch;
-
-		// Token: 0x0400049E RID: 1182
 		[SerializeField]
 		private RectTransform cardStylePanelRoot;
-
-		// Token: 0x0400049F RID: 1183
 		[SerializeField]
 		private Button cardStylePanelBg;
-
-		// Token: 0x040004A0 RID: 1184
 		[SerializeField]
 		private TextMeshProUGUI cardStyleIllustratorText;
-
-		// Token: 0x040004A1 RID: 1185
 		[SerializeField]
 		private Button cardStyleConfirmButton;
-
-		// Token: 0x040004A2 RID: 1186
 		[SerializeField]
 		private Button showCardStyleButton;
-
-		// Token: 0x040004A3 RID: 1187
 		[SerializeField]
 		private RectTransform cardStyleParent;
-
-		// Token: 0x040004A4 RID: 1188
 		[Header("动画参数")]
 		[SerializeField]
 		private float animDuration = 0.6f;
-
-		// Token: 0x040004A5 RID: 1189
 		[Header("Debug Only")]
 		[SerializeField]
 		private Button removeCardButton;
-
-		// Token: 0x040004A6 RID: 1190
 		[SerializeField]
 		private Button saveImageButton;
-
-		// Token: 0x040004A7 RID: 1191
 		private EntityTooltipWidget _currentTooltip;
-
-		// Token: 0x040004A8 RID: 1192
 		private Card _sourceCard;
-
-		// Token: 0x040004A9 RID: 1193
 		private Card _card;
-
-		// Token: 0x040004AA RID: 1194
 		private Card _upgradedCard;
-
-		// Token: 0x040004AB RID: 1195
 		private CanvasGroup _canvasGroup;
-
-		// Token: 0x040004AC RID: 1196
 		private readonly Dictionary<CardWidget, string> _cardStyleDic = new Dictionary<CardWidget, string>();
-
-		// Token: 0x040004AD RID: 1197
 		private CardWidget _centerCardStyle;
-
-		// Token: 0x040004AE RID: 1198
 		private float _maxTooltipWidth;
-
-		// Token: 0x040004AF RID: 1199
 		private float _maxTooltipHeight;
-
-		// Token: 0x040004B0 RID: 1200
 		private const int MaxRelativeCardCount = 10;
-
-		// Token: 0x040004B1 RID: 1201
 		private bool _preventRightClickHide;
 	}
 }

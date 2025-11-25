@@ -7,14 +7,11 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Neutral.TwoColor
 {
-	// Token: 0x02000297 RID: 663
 	[UsedImplicitly]
 	public sealed class LifeGame : Card
 	{
-		// Token: 0x06000A5D RID: 2653 RVA: 0x000159FF File Offset: 0x00013BFF
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			List<Card> list = new List<Card>();

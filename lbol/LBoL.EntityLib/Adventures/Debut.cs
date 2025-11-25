@@ -8,13 +8,10 @@ using LBoL.Core.Cards;
 using LBoL.Core.JadeBoxes;
 using LBoL.Core.Randoms;
 using Yarn;
-
 namespace LBoL.EntityLib.Adventures
 {
-	// Token: 0x02000500 RID: 1280
 	public sealed class Debut : Adventure
 	{
-		// Token: 0x060010CE RID: 4302 RVA: 0x0001D424 File Offset: 0x0001B624
 		protected override void InitVariables(IVariableStorage storage)
 		{
 			int num = 20;
@@ -44,8 +41,6 @@ namespace LBoL.EntityLib.Adventures
 			storage.SetValue("$huiyeFlag", base.GameRun.KaguyaInDebut);
 			storage.SetValue("$twoColorStart", base.GameRun.HasJadeBox<TwoColorStart>());
 		}
-
-		// Token: 0x060010CF RID: 4303 RVA: 0x0001D628 File Offset: 0x0001B828
 		[RuntimeCommand("rollBonus", "")]
 		[UsedImplicitly]
 		public void RollBonus()
@@ -87,8 +82,6 @@ namespace LBoL.EntityLib.Adventures
 				}
 			}
 		}
-
-		// Token: 0x060010D0 RID: 4304 RVA: 0x0001D803 File Offset: 0x0001BA03
 		[RuntimeCommand("exchangeExhibit", "")]
 		[UsedImplicitly]
 		public IEnumerator ExchangeExhibit(int optionIndex = -1)
@@ -101,17 +94,9 @@ namespace LBoL.EntityLib.Adventures
 			});
 			yield break;
 		}
-
-		// Token: 0x04000114 RID: 276
 		private Exhibit _exhibit;
-
-		// Token: 0x04000115 RID: 277
 		private int[] _bonusNos;
-
-		// Token: 0x04000116 RID: 278
 		private readonly string[] _optionTitles = new string[6];
-
-		// Token: 0x04000117 RID: 279
 		private const int Money = 100;
 	}
 }

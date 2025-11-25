@@ -8,14 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
-
 namespace LBoL.EntityLib.Cards.Character.Reimu
 {
-	// Token: 0x0200040B RID: 1035
 	[UsedImplicitly]
 	public sealed class ZhujiThreeGod : Card
 	{
-		// Token: 0x06000E4C RID: 3660 RVA: 0x0001A573 File Offset: 0x00018773
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			DrawManyCardAction drawAction = new DrawManyCardAction(base.Value1);

@@ -9,14 +9,11 @@ using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
 using LBoL.Core.Units;
 using UnityEngine;
-
 namespace LBoL.EntityLib.Exhibits.Shining
 {
-	// Token: 0x0200013D RID: 317
 	[UsedImplicitly]
 	public sealed class ShijieSuipian : ShiningExhibit
 	{
-		// Token: 0x0600045B RID: 1115 RVA: 0x0000BA05 File Offset: 0x00009C05
 		protected override IEnumerator SpecialGain(PlayerUnit player)
 		{
 			this.OnGain(player);

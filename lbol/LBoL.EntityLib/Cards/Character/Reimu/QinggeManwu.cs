@@ -7,14 +7,11 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Character.Reimu
 {
-	// Token: 0x020003E6 RID: 998
 	[UsedImplicitly]
 	public sealed class QinggeManwu : Card
 	{
-		// Token: 0x06000DF6 RID: 3574 RVA: 0x00019F3D File Offset: 0x0001813D
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			List<Card> upgraded = null;

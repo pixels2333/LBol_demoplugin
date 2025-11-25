@@ -2,23 +2,15 @@
 using System.Collections.Generic;
 using System.Linq;
 using LBoL.Core.Cards;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x0200015E RID: 350
 	public class AddCardsToHandAction : EventBattleAction<CardsEventArgs>
 	{
-		// Token: 0x170004D5 RID: 1237
-		// (get) Token: 0x06000DC6 RID: 3526 RVA: 0x00025DB5 File Offset: 0x00023FB5
 		public AddCardsType PresentationType { get; }
-
-		// Token: 0x06000DC7 RID: 3527 RVA: 0x00025DBD File Offset: 0x00023FBD
 		public AddCardsToHandAction(params Card[] cards)
 			: this(cards, AddCardsType.Normal)
 		{
 		}
-
-		// Token: 0x06000DC8 RID: 3528 RVA: 0x00025DC7 File Offset: 0x00023FC7
 		public AddCardsToHandAction(IEnumerable<Card> cards, AddCardsType presentationType = AddCardsType.Normal)
 		{
 			base.Args = new CardsEventArgs
@@ -27,8 +19,6 @@ namespace LBoL.Core.Battle.BattleActions
 			};
 			this.PresentationType = presentationType;
 		}
-
-		// Token: 0x06000DC9 RID: 3529 RVA: 0x00025DED File Offset: 0x00023FED
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			for (;;)

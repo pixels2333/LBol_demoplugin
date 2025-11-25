@@ -5,21 +5,16 @@ using LBoL.Base.Extensions;
 using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
-
 namespace LBoL.EntityLib.Exhibits.Common
 {
-	// Token: 0x0200018D RID: 397
 	[UsedImplicitly]
 	public sealed class Shaoyao : Exhibit
 	{
-		// Token: 0x0600059A RID: 1434 RVA: 0x0000D890 File Offset: 0x0000BA90
 		protected override void OnEnterBattle()
 		{
 			this._remainTimes = base.Value3;
 			base.ReactBattleEvent<ManaEventArgs>(base.Battle.ManaConsumed, new EventSequencedReactor<ManaEventArgs>(this.OnManaConsumed));
 		}
-
-		// Token: 0x0600059B RID: 1435 RVA: 0x0000D8BB File Offset: 0x0000BABB
 		private IEnumerable<BattleAction> OnManaConsumed(ManaEventArgs args)
 		{
 			if (this._remainTimes > 0)
@@ -45,15 +40,11 @@ namespace LBoL.EntityLib.Exhibits.Common
 			}
 			yield break;
 		}
-
-		// Token: 0x0600059C RID: 1436 RVA: 0x0000D8D2 File Offset: 0x0000BAD2
 		protected override void OnLeaveBattle()
 		{
 			base.Counter = 0;
 			base.Blackout = false;
 		}
-
-		// Token: 0x0400003F RID: 63
 		private int _remainTimes;
 	}
 }

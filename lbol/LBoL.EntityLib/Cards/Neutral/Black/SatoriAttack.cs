@@ -8,14 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Cards;
 using LBoL.Core.Intentions;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.Cards.Neutral.Black
 {
-	// Token: 0x0200033B RID: 827
 	[UsedImplicitly]
 	public sealed class SatoriAttack : Card
 	{
-		// Token: 0x06000C0F RID: 3087 RVA: 0x00017B7B File Offset: 0x00015D7B
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			int attackCount = 0;

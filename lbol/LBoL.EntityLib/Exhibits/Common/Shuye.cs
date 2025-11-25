@@ -6,20 +6,15 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.StatusEffects;
-
 namespace LBoL.EntityLib.Exhibits.Common
 {
-	// Token: 0x02000195 RID: 405
 	[UsedImplicitly]
 	public sealed class Shuye : Exhibit
 	{
-		// Token: 0x060005BB RID: 1467 RVA: 0x0000DB13 File Offset: 0x0000BD13
 		protected override void OnEnterBattle()
 		{
 			base.ReactBattleEvent<ManaEventArgs>(base.Battle.ManaConsumed, new EventSequencedReactor<ManaEventArgs>(this.OnManaConsumed));
 		}
-
-		// Token: 0x060005BC RID: 1468 RVA: 0x0000DB32 File Offset: 0x0000BD32
 		private IEnumerable<BattleAction> OnManaConsumed(ManaEventArgs args)
 		{
 			base.Counter += args.Value.Green;
@@ -35,8 +30,6 @@ namespace LBoL.EntityLib.Exhibits.Common
 			}
 			yield break;
 		}
-
-		// Token: 0x060005BD RID: 1469 RVA: 0x0000DB49 File Offset: 0x0000BD49
 		protected override void OnLeaveBattle()
 		{
 			base.Counter = 0;

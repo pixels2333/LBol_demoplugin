@@ -9,14 +9,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Neutral.White
 {
-	// Token: 0x0200027A RID: 634
 	[UsedImplicitly]
 	public sealed class RingoJinghua : Card
 	{
-		// Token: 0x06000A0B RID: 2571 RVA: 0x000152F4 File Offset: 0x000134F4
 		public override Interaction Precondition()
 		{
 			if (this.IsUpgraded)
@@ -38,8 +35,6 @@ namespace LBoL.EntityLib.Cards.Neutral.White
 				return null;
 			}
 		}
-
-		// Token: 0x06000A0C RID: 2572 RVA: 0x0001539D File Offset: 0x0001359D
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (precondition != null)

@@ -5,25 +5,13 @@ using LBoL.Base.Extensions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x020001A7 RID: 423
 	public sealed class StartPlayerTurnAction : SimpleAction
 	{
-		// Token: 0x17000528 RID: 1320
-		// (get) Token: 0x06000F37 RID: 3895 RVA: 0x00029024 File Offset: 0x00027224
 		public UnitEventArgs Args { get; }
-
-		// Token: 0x17000529 RID: 1321
-		// (get) Token: 0x06000F38 RID: 3896 RVA: 0x0002902C File Offset: 0x0002722C
 		public Unit Unit { get; }
-
-		// Token: 0x1700052A RID: 1322
-		// (get) Token: 0x06000F39 RID: 3897 RVA: 0x00029034 File Offset: 0x00027234
 		public bool IsExtra { get; }
-
-		// Token: 0x06000F3A RID: 3898 RVA: 0x0002903C File Offset: 0x0002723C
 		internal StartPlayerTurnAction(Unit unit, bool isExtra)
 		{
 			this.Unit = unit;
@@ -34,8 +22,6 @@ namespace LBoL.Core.Battle.BattleActions
 				CanCancel = false
 			};
 		}
-
-		// Token: 0x06000F3B RID: 3899 RVA: 0x0002906B File Offset: 0x0002726B
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			yield return base.CreatePhase("Viewer", delegate
@@ -123,9 +109,6 @@ namespace LBoL.Core.Battle.BattleActions
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x1700052B RID: 1323
-		// (get) Token: 0x06000F3C RID: 3900 RVA: 0x0002907B File Offset: 0x0002727B
 		public override bool IsModified
 		{
 			get
@@ -133,9 +116,6 @@ namespace LBoL.Core.Battle.BattleActions
 				return this.Args.IsModified;
 			}
 		}
-
-		// Token: 0x1700052C RID: 1324
-		// (get) Token: 0x06000F3D RID: 3901 RVA: 0x00029088 File Offset: 0x00027288
 		public override string[] Modifiers
 		{
 			get
@@ -143,9 +123,6 @@ namespace LBoL.Core.Battle.BattleActions
 				return this.Args.Modifiers;
 			}
 		}
-
-		// Token: 0x1700052D RID: 1325
-		// (get) Token: 0x06000F3E RID: 3902 RVA: 0x00029095 File Offset: 0x00027295
 		public override bool IsCanceled
 		{
 			get
@@ -153,14 +130,10 @@ namespace LBoL.Core.Battle.BattleActions
 				return false;
 			}
 		}
-
-		// Token: 0x06000F3F RID: 3903 RVA: 0x00029098 File Offset: 0x00027298
 		public override void ClearModifiers()
 		{
 			this.Args.ClearModifiers();
 		}
-
-		// Token: 0x06000F40 RID: 3904 RVA: 0x000290A5 File Offset: 0x000272A5
 		public override string ExportDebugDetails()
 		{
 			return this.Args.ExportDebugDetails();

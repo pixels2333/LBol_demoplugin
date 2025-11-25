@@ -2,13 +2,10 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-
 namespace LBoL.Base
 {
-	// Token: 0x02000018 RID: 24
 	public class PriorityQueue<TElement, TPriority>
 	{
-		// Token: 0x060000A1 RID: 161 RVA: 0x00004850 File Offset: 0x00002A50
 		private void Grow(int minCapacity)
 		{
 			int num = Math.Max(this._nodes.Length * 2, this._nodes.Length + 4);
@@ -18,8 +15,6 @@ namespace LBoL.Base
 			}
 			Array.Resize<ValueTuple<TElement, TPriority>>(ref this._nodes, num);
 		}
-
-		// Token: 0x060000A2 RID: 162 RVA: 0x00004889 File Offset: 0x00002A89
 		public int EnsureCapacity(int capacity)
 		{
 			if (capacity < 0)
@@ -32,8 +27,6 @@ namespace LBoL.Base
 			}
 			return this._nodes.Length;
 		}
-
-		// Token: 0x060000A3 RID: 163 RVA: 0x000048C0 File Offset: 0x00002AC0
 		public void TrimExcess()
 		{
 			int num = (int)((double)this._nodes.Length * 0.9);
@@ -42,8 +35,6 @@ namespace LBoL.Base
 				Array.Resize<ValueTuple<TElement, TPriority>>(ref this._nodes, this._size);
 			}
 		}
-
-		// Token: 0x060000A4 RID: 164 RVA: 0x000048FC File Offset: 0x00002AFC
 		public void Clear()
 		{
 			if (RuntimeHelpers.IsReferenceOrContainsReferences<ValueTuple<TElement, TPriority>>())
@@ -52,29 +43,21 @@ namespace LBoL.Base
 			}
 			this._size = 0;
 		}
-
-		// Token: 0x060000A5 RID: 165 RVA: 0x0000491E File Offset: 0x00002B1E
 		[MethodImpl(256)]
 		private static int GetParent(int index)
 		{
 			return index - 1 >> 1;
 		}
-
-		// Token: 0x060000A6 RID: 166 RVA: 0x00004925 File Offset: 0x00002B25
 		[MethodImpl(256)]
 		private static int GetLeft(int index)
 		{
 			return (index << 1) + 1;
 		}
-
-		// Token: 0x060000A7 RID: 167 RVA: 0x0000492C File Offset: 0x00002B2C
 		[MethodImpl(256)]
 		private static int GetRight(int index)
 		{
 			return (index << 1) + 2;
 		}
-
-		// Token: 0x060000A8 RID: 168 RVA: 0x00004934 File Offset: 0x00002B34
 		private void Adjust(int index)
 		{
 			for (;;)
@@ -103,14 +86,10 @@ namespace LBoL.Base
 				nodes[num2] = valueTuple2;
 			}
 		}
-
-		// Token: 0x060000A9 RID: 169 RVA: 0x00004A16 File Offset: 0x00002C16
 		public PriorityQueue([MaybeNull] IComparer<TPriority> comparer = null)
 		{
 			this._comparer = comparer ?? Comparer<TPriority>.Default;
 		}
-
-		// Token: 0x060000AA RID: 170 RVA: 0x00004A3C File Offset: 0x00002C3C
 		public void Enqueue(TElement element, TPriority priority)
 		{
 			if (this._nodes.Length == this._size)
@@ -127,8 +106,6 @@ namespace LBoL.Base
 			}
 			this._nodes[num] = new ValueTuple<TElement, TPriority>(element, priority);
 		}
-
-		// Token: 0x060000AB RID: 171 RVA: 0x00004AD6 File Offset: 0x00002CD6
 		public TElement Peek()
 		{
 			if (this._size == 0)
@@ -137,8 +114,6 @@ namespace LBoL.Base
 			}
 			return this._nodes[0].Item1;
 		}
-
-		// Token: 0x060000AC RID: 172 RVA: 0x00004AFC File Offset: 0x00002CFC
 		public bool TryPeek([MaybeNullWhen(false)] out TElement element, [MaybeNullWhen(false)] out TPriority priority)
 		{
 			if (this._size == 0)
@@ -152,8 +127,6 @@ namespace LBoL.Base
 			priority = valueTuple.Item2;
 			return true;
 		}
-
-		// Token: 0x060000AD RID: 173 RVA: 0x00004B48 File Offset: 0x00002D48
 		public TElement Dequeue()
 		{
 			if (this._size == 0)
@@ -170,8 +143,6 @@ namespace LBoL.Base
 			this.Adjust(0);
 			return item;
 		}
-
-		// Token: 0x060000AE RID: 174 RVA: 0x00004BCC File Offset: 0x00002DCC
 		public bool TryDequeue([MaybeNullWhen(false)] out TElement element, [MaybeNullWhen(false)] out TPriority priority)
 		{
 			if (this._size == 0)
@@ -192,15 +163,9 @@ namespace LBoL.Base
 			this.Adjust(0);
 			return true;
 		}
-
-		// Token: 0x0400009E RID: 158
 		private int _size;
-
-		// Token: 0x0400009F RID: 159
 		[TupleElementNames(new string[] { "Element", "Priority" })]
 		private ValueTuple<TElement, TPriority>[] _nodes = Array.Empty<ValueTuple<TElement, TPriority>>();
-
-		// Token: 0x040000A0 RID: 160
 		private readonly IComparer<TPriority> _comparer;
 	}
 }

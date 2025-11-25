@@ -11,15 +11,11 @@ using LBoL.Core.Cards;
 using LBoL.Core.Units;
 using LBoL.EntityLib.Cards.Character.Sakuya;
 using LBoL.EntityLib.StatusEffects.Cirno;
-
 namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 {
-	// Token: 0x020004DD RID: 1245
 	[UsedImplicitly]
 	public sealed class MaidFriend : Card
 	{
-		// Token: 0x170001D3 RID: 467
-		// (get) Token: 0x06001084 RID: 4228 RVA: 0x0001D0D3 File Offset: 0x0001B2D3
 		protected override int AdditionalDamage
 		{
 			get
@@ -27,14 +23,10 @@ namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 				return base.GetSeLevel<MaidFriendSe>();
 			}
 		}
-
-		// Token: 0x06001085 RID: 4229 RVA: 0x0001D0DB File Offset: 0x0001B2DB
 		public override IEnumerable<BattleAction> OnTurnEndingInHand()
 		{
 			return this.GetPassiveActions();
 		}
-
-		// Token: 0x06001086 RID: 4230 RVA: 0x0001D0E3 File Offset: 0x0001B2E3
 		public override IEnumerable<BattleAction> GetPassiveActions()
 		{
 			if (!base.Summoned || base.Battle.BattleShouldEnd)
@@ -60,8 +52,6 @@ namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 			}
 			yield break;
 		}
-
-		// Token: 0x06001087 RID: 4231 RVA: 0x0001D0F3 File Offset: 0x0001B2F3
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (precondition == null || ((MiniSelectCardInteraction)precondition).SelectedCard.FriendToken == FriendToken.Active)

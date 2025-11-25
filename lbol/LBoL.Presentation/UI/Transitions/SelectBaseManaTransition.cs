@@ -4,13 +4,10 @@ using DG.Tweening.Core;
 using DG.Tweening.Plugins.Options;
 using UnityEngine;
 using UnityEngine.UI;
-
 namespace LBoL.Presentation.UI.Transitions
 {
-	// Token: 0x02000083 RID: 131
 	public class SelectBaseManaTransition : UiTransition
 	{
-		// Token: 0x060006A5 RID: 1701 RVA: 0x0001CF20 File Offset: 0x0001B120
 		public override void Animate(Transform target, bool isOut, Action onComplete)
 		{
 			target.DOKill(false);
@@ -43,38 +40,22 @@ namespace LBoL.Presentation.UI.Transitions
 					onComplete.Invoke();
 				});
 		}
-
-		// Token: 0x060006A6 RID: 1702 RVA: 0x0001D146 File Offset: 0x0001B346
 		public override void Kill(Transform target)
 		{
 			target.DOKill(false);
 		}
-
-		// Token: 0x0400042D RID: 1069
 		[SerializeField]
 		private Image ring1;
-
-		// Token: 0x0400042E RID: 1070
 		[SerializeField]
 		private Image ring2;
-
-		// Token: 0x0400042F RID: 1071
 		[SerializeField]
 		private Image ring3;
-
-		// Token: 0x04000430 RID: 1072
 		[SerializeField]
 		private Image ring4;
-
-		// Token: 0x04000431 RID: 1073
 		[SerializeField]
 		private ParticleSystem particle;
-
-		// Token: 0x04000432 RID: 1074
 		[SerializeField]
 		private Transform ringGroup;
-
-		// Token: 0x04000433 RID: 1075
 		[SerializeField]
 		private float fadeTime;
 	}

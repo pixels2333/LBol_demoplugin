@@ -9,14 +9,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.EntityLib.Cards.Neutral.NoColor;
-
 namespace LBoL.EntityLib.Cards.Enemy
 {
-	// Token: 0x02000366 RID: 870
 	[UsedImplicitly]
 	public sealed class MoonTipsBag : Card
 	{
-		// Token: 0x06000C88 RID: 3208 RVA: 0x000184D6 File Offset: 0x000166D6
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			List<Card> list = new List<Card>();

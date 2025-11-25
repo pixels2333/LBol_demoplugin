@@ -11,14 +11,11 @@ using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
 using UnityEngine;
 using Yarn;
-
 namespace LBoL.EntityLib.Adventures.FirstPlace
 {
-	// Token: 0x02000521 RID: 1313
 	[AdventureInfo(WeighterType = typeof(ShinmyoumaruForge.ShinmyoumaruForgeWeighter))]
 	public sealed class ShinmyoumaruForge : Adventure
 	{
-		// Token: 0x06001136 RID: 4406 RVA: 0x0001FD6C File Offset: 0x0001DF6C
 		protected override void InitVariables(IVariableStorage storage)
 		{
 			bool flag = Enumerable.Count<Card>(base.GameRun.BaseDeck, (Card c) => c.CanUpgrade && c.IsBasic) > 0;
@@ -32,8 +29,6 @@ namespace LBoL.EntityLib.Adventures.FirstPlace
 			int num = Mathf.FloorToInt((float)base.GameRun.Player.MaxHp * 0.2f);
 			storage.SetValue("$loseMax", (float)num);
 		}
-
-		// Token: 0x06001137 RID: 4407 RVA: 0x0001FE80 File Offset: 0x0001E080
 		[RuntimeCommand("upgradeBasic", "")]
 		[UsedImplicitly]
 		public IEnumerator UpgradeBasic(string description)
@@ -55,8 +50,6 @@ namespace LBoL.EntityLib.Adventures.FirstPlace
 			yield return new WaitForSeconds(1f);
 			yield break;
 		}
-
-		// Token: 0x06001138 RID: 4408 RVA: 0x0001FE96 File Offset: 0x0001E096
 		[RuntimeCommand("removeNonBasic", "")]
 		[UsedImplicitly]
 		public IEnumerator RemoveNonBasic(string description, bool canCancel = false)
@@ -74,8 +67,6 @@ namespace LBoL.EntityLib.Adventures.FirstPlace
 			}
 			yield break;
 		}
-
-		// Token: 0x06001139 RID: 4409 RVA: 0x0001FEB3 File Offset: 0x0001E0B3
 		[RuntimeCommand("replaceBasic", "")]
 		[UsedImplicitly]
 		public IEnumerator ReplaceBasic(string description)
@@ -115,20 +106,11 @@ namespace LBoL.EntityLib.Adventures.FirstPlace
 			}
 			yield break;
 		}
-
-		// Token: 0x04000144 RID: 324
 		private const int UpgradeCount = 5;
-
-		// Token: 0x04000145 RID: 325
 		private const int ReplaceCount = 3;
-
-		// Token: 0x04000146 RID: 326
 		private const float LoseRatio = 0.2f;
-
-		// Token: 0x02000A7A RID: 2682
 		private class ShinmyoumaruForgeWeighter : IAdventureWeighter
 		{
-			// Token: 0x06003785 RID: 14213 RVA: 0x00086D51 File Offset: 0x00084F51
 			public float WeightFor(Type type, GameRunController gameRun)
 			{
 				return (float)((Enumerable.Count<Card>(gameRun.BaseDeck, (Card c) => c.IsBasic) > 0) ? 1 : 0);

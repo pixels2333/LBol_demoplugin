@@ -8,15 +8,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.EntityLib.StatusEffects.Koishi;
-
 namespace LBoL.EntityLib.Cards.Character.Koishi
 {
-	// Token: 0x02000480 RID: 1152
 	[UsedImplicitly]
 	public sealed class KokoroFriend : Card
 	{
-		// Token: 0x170001AC RID: 428
-		// (get) Token: 0x06000F6C RID: 3948 RVA: 0x0001B9BD File Offset: 0x00019BBD
 		[UsedImplicitly]
 		public override FriendCostInfo FriendU
 		{
@@ -25,14 +21,10 @@ namespace LBoL.EntityLib.Cards.Character.Koishi
 				return new FriendCostInfo(base.UltimateCost, FriendCostType.Active);
 			}
 		}
-
-		// Token: 0x06000F6D RID: 3949 RVA: 0x0001B9CB File Offset: 0x00019BCB
 		public override IEnumerable<BattleAction> OnTurnEndingInHand()
 		{
 			return this.GetPassiveActions();
 		}
-
-		// Token: 0x06000F6E RID: 3950 RVA: 0x0001B9D3 File Offset: 0x00019BD3
 		public override IEnumerable<BattleAction> GetPassiveActions()
 		{
 			if (!base.Summoned || base.Battle.BattleShouldEnd)
@@ -54,8 +46,6 @@ namespace LBoL.EntityLib.Cards.Character.Koishi
 			}
 			yield break;
 		}
-
-		// Token: 0x06000F6F RID: 3951 RVA: 0x0001B9E3 File Offset: 0x00019BE3
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (precondition == null || ((MiniSelectCardInteraction)precondition).SelectedCard.FriendToken == FriendToken.Active)

@@ -10,15 +10,11 @@ using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.EntityLib.StatusEffects.Basic;
-
 namespace LBoL.EntityLib.Cards.Character.Sakuya
 {
-	// Token: 0x0200039F RID: 927
 	[UsedImplicitly]
 	public sealed class PrivateVision : Card
 	{
-		// Token: 0x1700017B RID: 379
-		// (get) Token: 0x06000D3B RID: 3387 RVA: 0x000191C1 File Offset: 0x000173C1
 		public override bool DiscardCard
 		{
 			get
@@ -26,8 +22,6 @@ namespace LBoL.EntityLib.Cards.Character.Sakuya
 				return true;
 			}
 		}
-
-		// Token: 0x06000D3C RID: 3388 RVA: 0x000191C4 File Offset: 0x000173C4
 		public override Interaction Precondition()
 		{
 			List<Card> list = Enumerable.ToList<Card>(Enumerable.Where<Card>(base.Battle.HandZone, (Card hand) => hand != this));
@@ -41,8 +35,6 @@ namespace LBoL.EntityLib.Cards.Character.Sakuya
 			}
 			return new SelectHandInteraction(1, 1, list);
 		}
-
-		// Token: 0x06000D3D RID: 3389 RVA: 0x0001921C File Offset: 0x0001741C
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (precondition != null)
@@ -70,8 +62,6 @@ namespace LBoL.EntityLib.Cards.Character.Sakuya
 			}
 			yield break;
 		}
-
-		// Token: 0x04000104 RID: 260
 		private Card oneTargetHand;
 	}
 }

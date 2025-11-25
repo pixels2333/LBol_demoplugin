@@ -3,13 +3,10 @@ using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using YamlDotNet.RepresentationModel;
-
 namespace LBoL.Core
 {
-	// Token: 0x0200000B RID: 11
 	public static class EntityNameTable
 	{
-		// Token: 0x0600003C RID: 60 RVA: 0x00002964 File Offset: 0x00000B64
 		public static async UniTask ReloadExtraLocalizationAsync()
 		{
 			try
@@ -48,8 +45,6 @@ namespace LBoL.Core
 				EntityNameTable._extraTable = null;
 			}
 		}
-
-		// Token: 0x0600003D RID: 61 RVA: 0x000029A0 File Offset: 0x00000BA0
 		internal static string TryGet(string qualifiedId, string @case)
 		{
 			string text;
@@ -59,8 +54,6 @@ namespace LBoL.Core
 			}
 			return null;
 		}
-
-		// Token: 0x0400005B RID: 91
 		private static Dictionary<string, string> _extraTable;
 	}
 }

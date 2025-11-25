@@ -10,14 +10,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.EntityLib.Cards.Neutral.Green.Morphs;
-
 namespace LBoL.EntityLib.Cards.Neutral.Green
 {
-	// Token: 0x020002FB RID: 763
 	[UsedImplicitly]
 	public sealed class LimaoSchool : Card
 	{
-		// Token: 0x06000B5B RID: 2907 RVA: 0x00016DAD File Offset: 0x00014FAD
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			List<Card> list = new List<Card>();
@@ -55,8 +52,6 @@ namespace LBoL.EntityLib.Cards.Neutral.Green
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x06000B5C RID: 2908 RVA: 0x00016DC0 File Offset: 0x00014FC0
 		public LimaoSchool()
 		{
 			List<Type> list = new List<Type>();
@@ -67,8 +62,6 @@ namespace LBoL.EntityLib.Cards.Neutral.Green
 			this._types = list;
 			base..ctor();
 		}
-
-		// Token: 0x040000F8 RID: 248
 		private readonly List<Type> _types;
 	}
 }

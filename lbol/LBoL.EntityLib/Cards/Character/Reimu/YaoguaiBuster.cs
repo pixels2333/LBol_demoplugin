@@ -7,14 +7,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.Cards.Character.Reimu
 {
-	// Token: 0x02000405 RID: 1029
 	[UsedImplicitly]
 	public sealed class YaoguaiBuster : Card
 	{
-		// Token: 0x06000E3D RID: 3645 RVA: 0x0001A499 File Offset: 0x00018699
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (this.IsUpgraded)

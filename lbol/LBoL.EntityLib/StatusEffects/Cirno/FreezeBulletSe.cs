@@ -7,20 +7,15 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.StatusEffects.Cirno
 {
-	// Token: 0x020000DD RID: 221
 	public sealed class FreezeBulletSe : StatusEffect
 	{
-		// Token: 0x06000319 RID: 793 RVA: 0x000085AE File Offset: 0x000067AE
 		protected override void OnAdded(Unit unit)
 		{
 			base.ReactOwnerEvent<StatisticalDamageEventArgs>(base.Owner.StatisticalTotalDamageReceived, new EventSequencedReactor<StatisticalDamageEventArgs>(this.OnStatisticalDamageReceived));
 			base.ReactOwnerEvent<UnitEventArgs>(base.Owner.TurnStarted, new EventSequencedReactor<UnitEventArgs>(this.OnOwnerTurnStarted));
 		}
-
-		// Token: 0x0600031A RID: 794 RVA: 0x000085EA File Offset: 0x000067EA
 		private IEnumerable<BattleAction> OnStatisticalDamageReceived(StatisticalDamageEventArgs args)
 		{
 			if (args.DamageSource != base.Owner && args.DamageSource.IsAlive)
@@ -53,8 +48,6 @@ namespace LBoL.EntityLib.StatusEffects.Cirno
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x0600031B RID: 795 RVA: 0x00008601 File Offset: 0x00006801
 		private IEnumerable<BattleAction> OnOwnerTurnStarted(UnitEventArgs args)
 		{
 			yield return new RemoveStatusEffectAction(this, true, 0.1f);

@@ -6,21 +6,16 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.StatusEffects.Enemy
 {
-	// Token: 0x020000A3 RID: 163
 	[UsedImplicitly]
 	public sealed class FirepowerIsJustice : StatusEffect
 	{
-		// Token: 0x06000248 RID: 584 RVA: 0x00006B54 File Offset: 0x00004D54
 		protected override void OnAdded(Unit unit)
 		{
 			base.ReactOwnerEvent<StatusEffectApplyEventArgs>(base.Battle.Player.StatusEffectAdded, new EventSequencedReactor<StatusEffectApplyEventArgs>(this.OnPlayerStatusEffectAdded));
 			base.ReactOwnerEvent<StatusEffectApplyEventArgs>(base.Owner.StatusEffectAdding, new EventSequencedReactor<StatusEffectApplyEventArgs>(this.OnOwnerStatusEffectAdding));
 		}
-
-		// Token: 0x06000249 RID: 585 RVA: 0x00006BA0 File Offset: 0x00004DA0
 		private IEnumerable<BattleAction> OnPlayerStatusEffectAdded(StatusEffectApplyEventArgs args)
 		{
 			if (args.Effect is TempFirepower)
@@ -49,8 +44,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy
 			}
 			yield break;
 		}
-
-		// Token: 0x0600024A RID: 586 RVA: 0x00006BB7 File Offset: 0x00004DB7
 		private IEnumerable<BattleAction> OnOwnerStatusEffectAdding(StatusEffectApplyEventArgs args)
 		{
 			StatusEffect effect = args.Effect;

@@ -8,14 +8,11 @@ using LBoL.Core.Units;
 using LBoL.EntityLib.Adventures.Common;
 using LBoL.EntityLib.Adventures.Shared12;
 using LBoL.EntityLib.Adventures.Stage1;
-
 namespace LBoL.EntityLib.Stages.NormalStages
 {
-	// Token: 0x02000100 RID: 256
 	[UsedImplicitly]
 	public sealed class BambooForest : NormalStageBase
 	{
-		// Token: 0x06000398 RID: 920 RVA: 0x00009750 File Offset: 0x00007950
 		public BambooForest()
 		{
 			base.Level = 1;
@@ -97,8 +94,6 @@ namespace LBoL.EntityLib.Stages.NormalStages
 				}
 			};
 		}
-
-		// Token: 0x06000399 RID: 921 RVA: 0x00009974 File Offset: 0x00007B74
 		public override void InitExtraFlags(ProfileSaveData userProfile)
 		{
 			if (!userProfile.EnemyGroupRevealed.Contains("Sanyue"))
@@ -118,8 +113,6 @@ namespace LBoL.EntityLib.Stages.NormalStages
 				base.ExtraFlags.Add("Force17");
 			}
 		}
-
-		// Token: 0x0600039A RID: 922 RVA: 0x00009A10 File Offset: 0x00007C10
 		public override EnemyGroupEntry GetEnemies(Station station)
 		{
 			switch (station.Act)
@@ -151,8 +144,6 @@ namespace LBoL.EntityLib.Stages.NormalStages
 			}
 			return base.GetEnemies(station);
 		}
-
-		// Token: 0x0600039B RID: 923 RVA: 0x00009B04 File Offset: 0x00007D04
 		public override EnemyGroupEntry GetEliteEnemies(Station station)
 		{
 			if (base.ExtraFlags.Contains("ForceSanyue"))
@@ -169,20 +160,10 @@ namespace LBoL.EntityLib.Stages.NormalStages
 			}
 			return base.GetEliteEnemies(station);
 		}
-
-		// Token: 0x04000034 RID: 52
 		private const float W = 1.2f;
-
-		// Token: 0x04000035 RID: 53
 		private const string ForceSanyueFlag = "ForceSanyue";
-
-		// Token: 0x04000036 RID: 54
 		private const string Force11Flag = "Force11";
-
-		// Token: 0x04000037 RID: 55
 		private const string Force14Flag = "Force14";
-
-		// Token: 0x04000038 RID: 56
 		private const string Force17Flag = "Force17";
 	}
 }

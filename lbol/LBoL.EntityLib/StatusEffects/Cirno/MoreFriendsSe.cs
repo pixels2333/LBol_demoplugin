@@ -10,20 +10,15 @@ using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.StatusEffects.Cirno
 {
-	// Token: 0x020000E6 RID: 230
 	[UsedImplicitly]
 	public sealed class MoreFriendsSe : StatusEffect
 	{
-		// Token: 0x06000339 RID: 825 RVA: 0x00008975 File Offset: 0x00006B75
 		protected override void OnAdded(Unit unit)
 		{
 			base.ReactOwnerEvent<UnitEventArgs>(base.Owner.TurnStarted, new EventSequencedReactor<UnitEventArgs>(this.OnOwnerTurnStarted));
 		}
-
-		// Token: 0x0600033A RID: 826 RVA: 0x00008994 File Offset: 0x00006B94
 		private IEnumerable<BattleAction> OnOwnerTurnStarted(UnitEventArgs args)
 		{
 			if (base.Battle.BattleShouldEnd)

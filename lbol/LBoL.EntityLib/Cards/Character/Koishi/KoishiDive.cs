@@ -8,14 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Character.Koishi
 {
-	// Token: 0x0200046D RID: 1133
 	[UsedImplicitly]
 	public sealed class KoishiDive : Card
 	{
-		// Token: 0x06000F40 RID: 3904 RVA: 0x0001B6CE File Offset: 0x000198CE
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return new DreamCardsAction(base.Value1, 0);

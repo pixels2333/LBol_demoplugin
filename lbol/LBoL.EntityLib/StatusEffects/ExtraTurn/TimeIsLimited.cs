@@ -8,15 +8,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.StatusEffects.ExtraTurn
 {
-	// Token: 0x02000085 RID: 133
 	[UsedImplicitly]
 	public sealed class TimeIsLimited : StatusEffect
 	{
-		// Token: 0x17000031 RID: 49
-		// (get) Token: 0x060001DA RID: 474 RVA: 0x00005A53 File Offset: 0x00003C53
 		[UsedImplicitly]
 		public ManaGroup Mana
 		{
@@ -25,8 +21,6 @@ namespace LBoL.EntityLib.StatusEffects.ExtraTurn
 				return ManaGroup.Anys(base.Level);
 			}
 		}
-
-		// Token: 0x060001DB RID: 475 RVA: 0x00005A60 File Offset: 0x00003C60
 		protected override void OnAdded(Unit unit)
 		{
 			foreach (Card card in base.Battle.EnumerateAllCards())
@@ -40,8 +34,6 @@ namespace LBoL.EntityLib.StatusEffects.ExtraTurn
 			base.HandleOwnerEvent<CardTransformEventArgs>(base.Battle.CardTransformed, new GameEventHandler<CardTransformEventArgs>(this.OnCardTransformed));
 			base.ReactOwnerEvent<GameEventArgs>(base.Battle.AllEnemyTurnStarting, new EventSequencedReactor<GameEventArgs>(this.OnAllEnemyTurnStarting));
 		}
-
-		// Token: 0x060001DC RID: 476 RVA: 0x00005B70 File Offset: 0x00003D70
 		public override bool Stack(StatusEffect other)
 		{
 			bool flag = base.Stack(other);
@@ -54,8 +46,6 @@ namespace LBoL.EntityLib.StatusEffects.ExtraTurn
 			}
 			return flag;
 		}
-
-		// Token: 0x060001DD RID: 477 RVA: 0x00005BE4 File Offset: 0x00003DE4
 		protected override void OnRemoved(Unit unit)
 		{
 			foreach (Card card in base.Battle.EnumerateAllCards())
@@ -63,8 +53,6 @@ namespace LBoL.EntityLib.StatusEffects.ExtraTurn
 				card.AuraCost -= this.Mana;
 			}
 		}
-
-		// Token: 0x060001DE RID: 478 RVA: 0x00005C44 File Offset: 0x00003E44
 		private void OnAddCard(CardsEventArgs args)
 		{
 			Card[] cards = args.Cards;
@@ -73,8 +61,6 @@ namespace LBoL.EntityLib.StatusEffects.ExtraTurn
 				cards[i].AuraCost += this.Mana;
 			}
 		}
-
-		// Token: 0x060001DF RID: 479 RVA: 0x00005C80 File Offset: 0x00003E80
 		private void OnAddCardToDraw(CardsAddingToDrawZoneEventArgs args)
 		{
 			Card[] cards = args.Cards;
@@ -83,14 +69,10 @@ namespace LBoL.EntityLib.StatusEffects.ExtraTurn
 				cards[i].AuraCost += this.Mana;
 			}
 		}
-
-		// Token: 0x060001E0 RID: 480 RVA: 0x00005CBB File Offset: 0x00003EBB
 		private void OnCardTransformed(CardTransformEventArgs args)
 		{
 			args.DestinationCard.AuraCost += this.Mana;
 		}
-
-		// Token: 0x060001E1 RID: 481 RVA: 0x00005CD9 File Offset: 0x00003ED9
 		private IEnumerable<BattleAction> OnAllEnemyTurnStarting(GameEventArgs args)
 		{
 			yield return new RemoveStatusEffectAction(this, true, 0.1f);

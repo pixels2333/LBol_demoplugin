@@ -7,20 +7,15 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.UltimateSkills
 {
-	// Token: 0x02000010 RID: 16
 	[UsedImplicitly]
 	public sealed class SakuyaUltU : UltimateSkill
 	{
-		// Token: 0x0600001C RID: 28 RVA: 0x000022D4 File Offset: 0x000004D4
 		public SakuyaUltU()
 		{
 			base.TargetType = TargetType.Self;
 		}
-
-		// Token: 0x0600001D RID: 29 RVA: 0x000022E3 File Offset: 0x000004E3
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector)
 		{
 			yield return PerformAction.Spell(base.Owner, "The World");

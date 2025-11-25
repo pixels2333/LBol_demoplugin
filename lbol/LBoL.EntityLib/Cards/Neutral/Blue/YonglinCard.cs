@@ -7,14 +7,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.EntityLib.StatusEffects.Neutral.Blue;
-
 namespace LBoL.EntityLib.Cards.Neutral.Blue
 {
-	// Token: 0x02000328 RID: 808
 	[UsedImplicitly]
 	public sealed class YonglinCard : Card
 	{
-		// Token: 0x06000BE0 RID: 3040 RVA: 0x00017829 File Offset: 0x00015A29
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.BuffAction<YonglinCardSe>(base.Value1, 0, 0, 0, 0.2f);

@@ -1,13 +1,10 @@
 ﻿using System;
 using LBoL.Base;
 using UnityEngine;
-
 namespace LBoL.Presentation.Effect
 {
-	// Token: 0x02000104 RID: 260
 	public class ManaFlyEffect : MonoBehaviour
 	{
-		// Token: 0x06000E69 RID: 3689 RVA: 0x00044E0C File Offset: 0x0004300C
 		private void Awake()
 		{
 			Gradient gradient = new Gradient
@@ -24,8 +21,6 @@ namespace LBoL.Presentation.Effect
 			};
 			this._pColor = new ParticleSystem.MinMaxGradient(gradient);
 		}
-
-		// Token: 0x06000E6A RID: 3690 RVA: 0x00044EE8 File Offset: 0x000430E8
 		public void SetColor(ManaColor manaColor)
 		{
 			ParticleSystem[] array = this.particleSystems;
@@ -44,16 +39,10 @@ namespace LBoL.Presentation.Effect
 				}
 			}
 		}
-
-		// Token: 0x04000ACC RID: 2764
 		[SerializeField]
 		private ParticleSystem[] particleSystems;
-
-		// Token: 0x04000ACD RID: 2765
 		[SerializeField]
 		private AssociationList<ManaColor, Color> colorTable;
-
-		// Token: 0x04000ACE RID: 2766
 		private ParticleSystem.MinMaxGradient _pColor;
 	}
 }

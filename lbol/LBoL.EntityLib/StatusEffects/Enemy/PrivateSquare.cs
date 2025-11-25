@@ -8,22 +8,17 @@ using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.Cards.Enemy;
-
 namespace LBoL.EntityLib.StatusEffects.Enemy
 {
-	// Token: 0x020000BE RID: 190
 	[UsedImplicitly]
 	public sealed class PrivateSquare : StatusEffect
 	{
-		// Token: 0x0600029A RID: 666 RVA: 0x0000736C File Offset: 0x0000556C
 		protected override void OnAdded(Unit unit)
 		{
 			base.Count = base.Limit;
 			base.ReactOwnerEvent<CardUsingEventArgs>(base.Battle.CardUsed, new EventSequencedReactor<CardUsingEventArgs>(this.OnCardUsed));
 			base.ReactOwnerEvent<CardUsingEventArgs>(base.Battle.CardPlayed, new EventSequencedReactor<CardUsingEventArgs>(this.OnCardPlayed));
 		}
-
-		// Token: 0x0600029B RID: 667 RVA: 0x000073BF File Offset: 0x000055BF
 		private IEnumerable<BattleAction> OnCardUsed(CardUsingEventArgs args)
 		{
 			if (base.Battle.BattleShouldEnd && base.Battle.Player.IsInTurn)
@@ -61,8 +56,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy
 			}
 			yield break;
 		}
-
-		// Token: 0x0600029C RID: 668 RVA: 0x000073D6 File Offset: 0x000055D6
 		private IEnumerable<BattleAction> OnCardPlayed(CardUsingEventArgs args)
 		{
 			if (base.Battle.BattleShouldEnd)

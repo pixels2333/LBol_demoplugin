@@ -1,33 +1,14 @@
 ﻿using System;
 using UnityEngine;
-
 namespace LBoL.Presentation.UI
 {
-	// Token: 0x0200002C RID: 44
 	[ExecuteAlways]
 	public sealed class TooltipPositioner : MonoBehaviour
 	{
-		// Token: 0x17000086 RID: 134
-		// (get) Token: 0x06000334 RID: 820 RVA: 0x0000DF0F File Offset: 0x0000C10F
-		// (set) Token: 0x06000335 RID: 821 RVA: 0x0000DF17 File Offset: 0x0000C117
 		public RectTransform TargetTransform { get; set; }
-
-		// Token: 0x17000087 RID: 135
-		// (get) Token: 0x06000336 RID: 822 RVA: 0x0000DF20 File Offset: 0x0000C120
-		// (set) Token: 0x06000337 RID: 823 RVA: 0x0000DF28 File Offset: 0x0000C128
 		public TooltipPosition[] TooltipPositions { get; set; }
-
-		// Token: 0x17000088 RID: 136
-		// (get) Token: 0x06000338 RID: 824 RVA: 0x0000DF31 File Offset: 0x0000C131
-		// (set) Token: 0x06000339 RID: 825 RVA: 0x0000DF39 File Offset: 0x0000C139
 		public Vector2 TooltipSize { get; set; }
-
-		// Token: 0x17000089 RID: 137
-		// (get) Token: 0x0600033A RID: 826 RVA: 0x0000DF42 File Offset: 0x0000C142
-		// (set) Token: 0x0600033B RID: 827 RVA: 0x0000DF4A File Offset: 0x0000C14A
 		public float Gap { get; set; }
-
-		// Token: 0x0600033C RID: 828 RVA: 0x0000DF54 File Offset: 0x0000C154
 		private Vector2 GetAlignedPositionX(TooltipAlignment alignment, bool top)
 		{
 			Vector2 vector;
@@ -67,8 +48,6 @@ namespace LBoL.Presentation.UI
 			}
 			return vector;
 		}
-
-		// Token: 0x0600033D RID: 829 RVA: 0x0000E158 File Offset: 0x0000C358
 		private Vector2 GetAlignedPositionY(TooltipAlignment alignment, bool left)
 		{
 			Vector2 vector;
@@ -108,8 +87,6 @@ namespace LBoL.Presentation.UI
 			}
 			return vector;
 		}
-
-		// Token: 0x0600033E RID: 830 RVA: 0x0000E35C File Offset: 0x0000C55C
 		private TooltipPositioner.PlaceResult TryPlaceTooltip(Rect rect, TooltipPosition position)
 		{
 			Vector2 vector;
@@ -138,14 +115,10 @@ namespace LBoL.Presentation.UI
 				Fit = flag
 			};
 		}
-
-		// Token: 0x0600033F RID: 831 RVA: 0x0000E475 File Offset: 0x0000C675
 		private void Awake()
 		{
 			this._parentRectTrans = (RectTransform)base.transform.parent;
 		}
-
-		// Token: 0x06000340 RID: 832 RVA: 0x0000E490 File Offset: 0x0000C690
 		private void LateUpdate()
 		{
 			if (this.TooltipPositions == null)
@@ -162,8 +135,6 @@ namespace LBoL.Presentation.UI
 			}
 			Object.Destroy(this);
 		}
-
-		// Token: 0x06000341 RID: 833 RVA: 0x0000E4E0 File Offset: 0x0000C6E0
 		public void ForceUpdateTo(RectTransform trans)
 		{
 			Rect rect = this._parentRectTrans.rect;
@@ -184,20 +155,11 @@ namespace LBoL.Presentation.UI
 			}
 			base.transform.localPosition = placeResult.Position;
 		}
-
-		// Token: 0x04000178 RID: 376
 		private RectTransform _parentRectTrans;
-
-		// Token: 0x0400017D RID: 381
 		private readonly Vector3[] _corners = new Vector3[4];
-
-		// Token: 0x020001C0 RID: 448
 		private struct PlaceResult
 		{
-			// Token: 0x04000EB9 RID: 3769
 			public bool Fit;
-
-			// Token: 0x04000EBA RID: 3770
 			public Vector2 Position;
 		}
 	}

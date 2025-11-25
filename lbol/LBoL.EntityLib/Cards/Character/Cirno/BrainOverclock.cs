@@ -6,14 +6,11 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Character.Cirno
 {
-	// Token: 0x0200049B RID: 1179
 	[UsedImplicitly]
 	public sealed class BrainOverclock : Card
 	{
-		// Token: 0x06000FC2 RID: 4034 RVA: 0x0001C0E6 File Offset: 0x0001A2E6
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return new GainManaAction(base.Mana);

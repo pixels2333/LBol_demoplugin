@@ -2,13 +2,10 @@
 using System.Collections.Generic;
 using LBoL.Core.Battle;
 using LBoL.Core.StatusEffects;
-
 namespace LBoL.EntityLib.Cards.Neutral.Colorless.YijiSkills
 {
-	// Token: 0x0200030D RID: 781
 	public sealed class YijiEarthSpike : OptionCard
 	{
-		// Token: 0x06000B96 RID: 2966 RVA: 0x00017385 File Offset: 0x00015585
 		public override IEnumerable<BattleAction> TakeEffectActions()
 		{
 			yield return base.AttackAction(base.Battle.AllAliveEnemies);

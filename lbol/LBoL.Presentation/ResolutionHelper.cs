@@ -3,19 +3,14 @@ using System.Collections.Generic;
 using LBoL.Base.Extensions;
 using LBoL.Core;
 using UnityEngine;
-
 namespace LBoL.Presentation
 {
-	// Token: 0x0200000F RID: 15
 	public static class ResolutionHelper
 	{
-		// Token: 0x06000166 RID: 358 RVA: 0x000076B3 File Offset: 0x000058B3
 		public static bool IsValidAspect(Vector2Int size)
 		{
 			return ResolutionHelper.Resolutions.Contains(size);
 		}
-
-		// Token: 0x06000167 RID: 359 RVA: 0x000076C0 File Offset: 0x000058C0
 		public static IReadOnlyList<Vector2Int> GetAvailableResolutions()
 		{
 			DisplayInfo mainWindowDisplayInfo = Screen.mainWindowDisplayInfo;
@@ -29,8 +24,6 @@ namespace LBoL.Presentation
 			}
 			return list.AsReadOnly();
 		}
-
-		// Token: 0x06000168 RID: 360 RVA: 0x00007744 File Offset: 0x00005944
 		public static IReadOnlyList<FrameSetting> GetAvailableFrameSettings()
 		{
 			DisplayInfo mainWindowDisplayInfo = Screen.mainWindowDisplayInfo;
@@ -51,8 +44,6 @@ namespace LBoL.Presentation
 			}
 			return list.AsReadOnly();
 		}
-
-		// Token: 0x06000169 RID: 361 RVA: 0x00007810 File Offset: 0x00005A10
 		public static string LocalizeTextForFrameSetting(FrameSetting frameSetting)
 		{
 			if (frameSetting.VsyncCount == 0 && frameSetting.FrameRate == -1)
@@ -65,8 +56,6 @@ namespace LBoL.Presentation
 			}
 			return "Setting.NonVsync".LocalizeFormat(new object[] { frameSetting.FrameRate });
 		}
-
-		// Token: 0x0600016A RID: 362 RVA: 0x00007880 File Offset: 0x00005A80
 		// Note: this type is marked as 'beforefieldinit'.
 		static ResolutionHelper()
 		{
@@ -91,11 +80,7 @@ namespace LBoL.Presentation
 			list2.Add(30);
 			ResolutionHelper.FrameRates = list2;
 		}
-
-		// Token: 0x04000064 RID: 100
 		private static readonly List<Vector2Int> Resolutions;
-
-		// Token: 0x04000065 RID: 101
 		private static readonly List<int> FrameRates;
 	}
 }

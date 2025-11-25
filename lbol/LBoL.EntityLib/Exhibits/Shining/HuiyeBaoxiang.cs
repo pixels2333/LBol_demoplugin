@@ -10,14 +10,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.Exhibits.Shining
 {
-	// Token: 0x0200012D RID: 301
 	[UsedImplicitly]
 	public sealed class HuiyeBaoxiang : ShiningExhibit
 	{
-		// Token: 0x06000421 RID: 1057 RVA: 0x0000B377 File Offset: 0x00009577
 		protected override IEnumerator SpecialGain(PlayerUnit player)
 		{
 			base.OnGain(player);
@@ -38,14 +35,10 @@ namespace LBoL.EntityLib.Exhibits.Shining
 			base.GameRun.AddDeckCards(list3, false, null);
 			yield break;
 		}
-
-		// Token: 0x06000422 RID: 1058 RVA: 0x0000B38D File Offset: 0x0000958D
 		protected override void OnEnterBattle()
 		{
 			base.ReactBattleEvent<UnitEventArgs>(base.Owner.TurnStarted, new EventSequencedReactor<UnitEventArgs>(this.OnOwnerTurnStarted));
 		}
-
-		// Token: 0x06000423 RID: 1059 RVA: 0x0000B3AC File Offset: 0x000095AC
 		private IEnumerable<BattleAction> OnOwnerTurnStarted(UnitEventArgs args)
 		{
 			base.NotifyActivating();

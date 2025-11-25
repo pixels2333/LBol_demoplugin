@@ -7,14 +7,10 @@ using LBoL.Presentation.Effect;
 using Spine;
 using Spine.Unity;
 using UnityEngine;
-
 namespace LBoL.Presentation.Units.SpecialUnits
 {
-	// Token: 0x0200001B RID: 27
 	public class KokoroUnitController : MonoBehaviour
 	{
-		// Token: 0x1700007A RID: 122
-		// (get) Token: 0x060002E5 RID: 741 RVA: 0x0000CF85 File Offset: 0x0000B185
 		public global::Spine.AnimationState TopMuskState
 		{
 			get
@@ -22,8 +18,6 @@ namespace LBoL.Presentation.Units.SpecialUnits
 				return this.topMusk.state;
 			}
 		}
-
-		// Token: 0x060002E6 RID: 742 RVA: 0x0000CF94 File Offset: 0x0000B194
 		private void ClearEffect()
 		{
 			foreach (MuskData muskData in this._muskData)
@@ -40,8 +34,6 @@ namespace LBoL.Presentation.Units.SpecialUnits
 				this._topMuskData.EffectWidget = null;
 			}
 		}
-
-		// Token: 0x060002E7 RID: 743 RVA: 0x0000D030 File Offset: 0x0000B230
 		public void SwitchToColor(SkirtColor skirtColor)
 		{
 			this.ClearEffect();
@@ -53,8 +45,6 @@ namespace LBoL.Presentation.Units.SpecialUnits
 			this._topMuskData.EffectWidget = EffectManager.CreateEffect("Qin" + skirtColor.ToString(), this.topEffectPoint, true);
 			this._topMuskData.EffectWidget.SetSortingOrder(1);
 		}
-
-		// Token: 0x060002E8 RID: 744 RVA: 0x0000D104 File Offset: 0x0000B304
 		private void Start()
 		{
 			foreach (SkeletonAnimation skeletonAnimation in this.musks.Keys)
@@ -83,8 +73,6 @@ namespace LBoL.Presentation.Units.SpecialUnits
 				this.AllMuskStates.Add(muskData2.Skeleton.state);
 			}
 		}
-
-		// Token: 0x060002E9 RID: 745 RVA: 0x0000D2B0 File Offset: 0x0000B4B0
 		private void OnEvent(TrackEntry trackEntry, global::Spine.Event e)
 		{
 			string name = e.Data.Name;
@@ -130,26 +118,14 @@ namespace LBoL.Presentation.Units.SpecialUnits
 				}
 			}
 		}
-
-		// Token: 0x04000130 RID: 304
 		[SerializeField]
 		private AssociationList<SkeletonAnimation, Transform> musks;
-
-		// Token: 0x04000131 RID: 305
 		[SerializeField]
 		private SkeletonAnimation topMusk;
-
-		// Token: 0x04000132 RID: 306
 		[SerializeField]
 		private Transform topEffectPoint;
-
-		// Token: 0x04000133 RID: 307
 		private readonly List<MuskData> _muskData = new List<MuskData>();
-
-		// Token: 0x04000134 RID: 308
 		private MuskData _topMuskData;
-
-		// Token: 0x04000135 RID: 309
 		public List<global::Spine.AnimationState> AllMuskStates = new List<global::Spine.AnimationState>();
 	}
 }

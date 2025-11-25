@@ -2,14 +2,11 @@
 using JetBrains.Annotations;
 using LBoL.Core.Battle;
 using LBoL.Core.Units;
-
 namespace LBoL.Core.StatusEffects
 {
-	// Token: 0x020000A8 RID: 168
 	[UsedImplicitly]
 	public sealed class SpiritNegative : StatusEffect, IOpposing<Spirit>
 	{
-		// Token: 0x0600079A RID: 1946 RVA: 0x000166C8 File Offset: 0x000148C8
 		public OpposeResult Oppose(Spirit other)
 		{
 			if (base.Level < other.Level)
@@ -24,8 +21,6 @@ namespace LBoL.Core.StatusEffects
 			base.Level -= other.Level;
 			return OpposeResult.KeepSelf;
 		}
-
-		// Token: 0x0600079B RID: 1947 RVA: 0x0001671C File Offset: 0x0001491C
 		protected override void OnAdded(Unit unit)
 		{
 			base.HandleOwnerEvent<BlockShieldEventArgs>(base.Owner.BlockShieldGaining, delegate(BlockShieldEventArgs args)

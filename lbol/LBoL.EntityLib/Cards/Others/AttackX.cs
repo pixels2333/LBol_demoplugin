@@ -9,20 +9,15 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
 using UnityEngine;
-
 namespace LBoL.EntityLib.Cards.Others
 {
-	// Token: 0x0200026B RID: 619
 	[UsedImplicitly]
 	public sealed class AttackX : Card
 	{
-		// Token: 0x060009E4 RID: 2532 RVA: 0x00015069 File Offset: 0x00013269
 		public override ManaGroup GetXCostFromPooled(ManaGroup pooledMana)
 		{
 			return pooledMana;
 		}
-
-		// Token: 0x060009E5 RID: 2533 RVA: 0x0001506C File Offset: 0x0001326C
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			int num = base.SynergyAmount(consumingMana, ManaColor.Any, 1);
@@ -53,11 +48,7 @@ namespace LBoL.EntityLib.Cards.Others
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x040000EA RID: 234
 		private const string UpGun = "推进之银up";
-
-		// Token: 0x040000EB RID: 235
 		private const string DownGun = "推进之银down";
 	}
 }

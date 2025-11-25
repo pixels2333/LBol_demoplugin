@@ -18,14 +18,10 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
-
 namespace LBoL.Presentation.UI.Panels
 {
-	// Token: 0x020000AD RID: 173
 	public class RewardPanel : UiPanel<ShowRewardContent>
 	{
-		// Token: 0x1700017C RID: 380
-		// (get) Token: 0x06000981 RID: 2433 RVA: 0x000306CD File Offset: 0x0002E8CD
 		public override PanelLayer Layer
 		{
 			get
@@ -33,9 +29,6 @@ namespace LBoL.Presentation.UI.Panels
 				return PanelLayer.Top;
 			}
 		}
-
-		// Token: 0x1700017D RID: 381
-		// (get) Token: 0x06000982 RID: 2434 RVA: 0x000306D0 File Offset: 0x0002E8D0
 		public Vector3 AbandonPos
 		{
 			get
@@ -43,10 +36,6 @@ namespace LBoL.Presentation.UI.Panels
 				return this.abandon.transform.position;
 			}
 		}
-
-		// Token: 0x1700017E RID: 382
-		// (get) Token: 0x06000983 RID: 2435 RVA: 0x000306E2 File Offset: 0x0002E8E2
-		// (set) Token: 0x06000984 RID: 2436 RVA: 0x000306EF File Offset: 0x0002E8EF
 		private bool RewardVisible
 		{
 			get
@@ -58,10 +47,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.rewardRoot.SetActive(value);
 			}
 		}
-
-		// Token: 0x1700017F RID: 383
-		// (get) Token: 0x06000985 RID: 2437 RVA: 0x000306FD File Offset: 0x0002E8FD
-		// (set) Token: 0x06000986 RID: 2438 RVA: 0x0003070A File Offset: 0x0002E90A
 		private bool CardVisible
 		{
 			get
@@ -73,20 +58,14 @@ namespace LBoL.Presentation.UI.Panels
 				this.selectCardRoot.SetActive(value);
 			}
 		}
-
-		// Token: 0x06000987 RID: 2439 RVA: 0x00030718 File Offset: 0x0002E918
 		protected override void OnEnterGameRun()
 		{
 			base.GameRun.InteractionViewer.Register<RewardInteraction>(new InteractionViewer<RewardInteraction>(this.ViewReward));
 		}
-
-		// Token: 0x06000988 RID: 2440 RVA: 0x00030736 File Offset: 0x0002E936
 		protected override void OnLeaveGameRun()
 		{
 			base.GameRun.InteractionViewer.Unregister<RewardInteraction>(new InteractionViewer<RewardInteraction>(this.ViewReward));
 		}
-
-		// Token: 0x06000989 RID: 2441 RVA: 0x00030754 File Offset: 0x0002E954
 		private IEnumerator ViewReward(RewardInteraction interaction)
 		{
 			ShowRewardContent showRewardContent = new ShowRewardContent
@@ -106,8 +85,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x0600098A RID: 2442 RVA: 0x0003076C File Offset: 0x0002E96C
 		public override void OnLocaleChanged()
 		{
 			this._defaultHeaders = "Reward.Headers".LocalizeStrings(true);
@@ -116,8 +93,6 @@ namespace LBoL.Presentation.UI.Panels
 			this._abandonMoneyString = "Reward.AbandonMoney".Localize(true);
 			this._abandonMaxHpString = "Reward.AbandonMaxHp".Localize(true);
 		}
-
-		// Token: 0x0600098B RID: 2443 RVA: 0x000307D0 File Offset: 0x0002E9D0
 		protected override void OnShowing(ShowRewardContent showRewardContent)
 		{
 			this.specialBg.gameObject.SetActive(false);
@@ -189,8 +164,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.RewardVisible = true;
 			this.CardVisible = false;
 		}
-
-		// Token: 0x0600098C RID: 2444 RVA: 0x00030A30 File Offset: 0x0002EC30
 		private IEnumerator CoGainExhibit(Exhibit rewardExhibit, int indexOf)
 		{
 			this._isGainingExhibit = true;
@@ -204,8 +177,6 @@ namespace LBoL.Presentation.UI.Panels
 			this._isGainingExhibit = false;
 			yield break;
 		}
-
-		// Token: 0x0600098D RID: 2445 RVA: 0x00030A50 File Offset: 0x0002EC50
 		protected override void OnHided()
 		{
 			base.transform.DOKill(false);
@@ -218,8 +189,6 @@ namespace LBoL.Presentation.UI.Panels
 				this._bufferedCardWidget = null;
 			}
 		}
-
-		// Token: 0x0600098E RID: 2446 RVA: 0x00030AB0 File Offset: 0x0002ECB0
 		private void RefreshNextButtonText()
 		{
 			if (this._rewardWidgets.Count > 0)
@@ -229,8 +198,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			UiManager.GetPanel<VnPanel>().SetNextButton(true, new int?(base.GameRun.CurrentStation.IsStageEnd ? 1 : 0), null);
 		}
-
-		// Token: 0x0600098F RID: 2447 RVA: 0x00030B05 File Offset: 0x0002ED05
 		private IEnumerator CoAcquireReward(Station station, RewardWidget rewardWidget)
 		{
 			StationReward stationReward = rewardWidget.StationReward;
@@ -293,8 +260,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.RefreshNextButtonText();
 			yield break;
 		}
-
-		// Token: 0x06000990 RID: 2448 RVA: 0x00030B24 File Offset: 0x0002ED24
 		public Vector3 OnGainExhibitReward(Exhibit exhibit)
 		{
 			RewardWidget rewardWidget = this._rewardWidgets.Find((RewardWidget widget) => widget.StationReward.Exhibit == exhibit);
@@ -304,8 +269,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.ResetAllPositions(true);
 			return position;
 		}
-
-		// Token: 0x06000991 RID: 2449 RVA: 0x00030B80 File Offset: 0x0002ED80
 		private void ShowCardSelection(Station station, RewardWidget rewardWidget)
 		{
 			RewardPanel.<>c__DisplayClass52_0 CS$<>8__locals1 = new RewardPanel.<>c__DisplayClass52_0();
@@ -405,8 +368,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.RewardVisible = false;
 			this.CardVisible = true;
 		}
-
-		// Token: 0x06000992 RID: 2450 RVA: 0x00030FF4 File Offset: 0x0002F1F4
 		private void SetHeader(RewardPanel.HeaderStatus status)
 		{
 			TextMeshProUGUI textMeshProUGUI = this.header;
@@ -425,8 +386,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			textMeshProUGUI.text = text;
 		}
-
-		// Token: 0x06000993 RID: 2451 RVA: 0x00031054 File Offset: 0x0002F254
 		private void CardSelectAbandon(RewardWidget rewardWidget, List<CardWidget> cardWidgets)
 		{
 			this._rewardWidgets.Remove(rewardWidget);
@@ -444,8 +403,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.CardSelectReturn();
 			this.ResetAllPositions(true);
 		}
-
-		// Token: 0x06000994 RID: 2452 RVA: 0x000310F8 File Offset: 0x0002F2F8
 		private void CardSelectReturn()
 		{
 			this.RewardVisible = true;
@@ -462,8 +419,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.RefreshNextButtonText();
 			this.ResetAllPositions(true);
 		}
-
-		// Token: 0x06000995 RID: 2453 RVA: 0x0003117C File Offset: 0x0002F37C
 		private void ResetAllPositions(bool approaching = true)
 		{
 			if (this._rewardWidgets.Count > 0)
@@ -484,8 +439,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 			}
 		}
-
-		// Token: 0x06000996 RID: 2454 RVA: 0x00031244 File Offset: 0x0002F444
 		public CardWidget ExtractBufferedCard()
 		{
 			if (!this._bufferedCardWidget)
@@ -498,128 +451,60 @@ namespace LBoL.Presentation.UI.Panels
 			bufferedCardWidget.HideTooltip();
 			return bufferedCardWidget;
 		}
-
-		// Token: 0x06000997 RID: 2455 RVA: 0x00031272 File Offset: 0x0002F472
 		public CardWidget CloneCardWidget(CardWidget c)
 		{
 			CardWidget cardWidget = Object.Instantiate<CardWidget>(c, base.transform);
 			cardWidget.Card = c.Card;
 			return cardWidget;
 		}
-
-		// Token: 0x04000701 RID: 1793
 		[SerializeField]
 		private GameObject rewardRoot;
-
-		// Token: 0x04000702 RID: 1794
 		[SerializeField]
 		private RewardWidget rewardTemplate;
-
-		// Token: 0x04000703 RID: 1795
 		[SerializeField]
 		private Transform rewardLayout;
-
-		// Token: 0x04000704 RID: 1796
 		[SerializeField]
 		private GameObject selectCardRoot;
-
-		// Token: 0x04000705 RID: 1797
 		[SerializeField]
 		private Transform selectCardLayout;
-
-		// Token: 0x04000706 RID: 1798
 		[SerializeField]
 		private CardWidget cardWidget;
-
-		// Token: 0x04000707 RID: 1799
 		[SerializeField]
 		private Button returnButton;
-
-		// Token: 0x04000708 RID: 1800
 		[SerializeField]
 		private Button abandonButton;
-
-		// Token: 0x04000709 RID: 1801
 		[SerializeField]
 		private TextMeshProUGUI header;
-
-		// Token: 0x0400070A RID: 1802
 		[SerializeField]
 		private TextMeshProUGUI abandon;
-
-		// Token: 0x0400070B RID: 1803
 		[SerializeField]
 		private TextMeshProUGUI abandonMoney;
-
-		// Token: 0x0400070C RID: 1804
 		[SerializeField]
 		private GameObject bg;
-
-		// Token: 0x0400070D RID: 1805
 		[SerializeField]
 		private GameObject specialBg;
-
-		// Token: 0x0400070E RID: 1806
 		[SerializeField]
 		private Button nextButton;
-
-		// Token: 0x0400070F RID: 1807
 		private IList<string> _defaultHeaders;
-
-		// Token: 0x04000710 RID: 1808
 		private string _cardHeader;
-
-		// Token: 0x04000711 RID: 1809
 		private string _abandonString;
-
-		// Token: 0x04000712 RID: 1810
 		private string _abandonMoneyString;
-
-		// Token: 0x04000713 RID: 1811
 		private string _abandonMaxHpString;
-
-		// Token: 0x04000714 RID: 1812
 		private readonly List<RewardWidget> _rewardWidgets = new List<RewardWidget>();
-
-		// Token: 0x04000715 RID: 1813
 		private bool _isGainingExhibit;
-
-		// Token: 0x04000716 RID: 1814
 		private CardWidget _bufferedCardWidget;
-
-		// Token: 0x04000717 RID: 1815
 		private const float XStart = -2300f;
-
-		// Token: 0x04000718 RID: 1816
 		private readonly float[] _xDistance = new float[] { 800f, 800f, 800f, 750f, 700f };
-
-		// Token: 0x04000719 RID: 1817
 		private const float StartDelay = 0.1f;
-
-		// Token: 0x0400071A RID: 1818
 		private const float FlyInTime = 0.45f;
-
-		// Token: 0x0400071B RID: 1819
 		private const float PauseTime = 0.1f;
-
-		// Token: 0x0400071C RID: 1820
 		private const float FlipTime = 0.35f;
-
-		// Token: 0x0400071D RID: 1821
 		private const float CreateInterval = 0.05f;
-
-		// Token: 0x0400071E RID: 1822
 		private const float FlipInterval = 0.05f;
-
-		// Token: 0x0400071F RID: 1823
 		private const float Scale = 1.2f;
-
-		// Token: 0x02000297 RID: 663
 		private enum HeaderStatus
 		{
-			// Token: 0x0400119A RID: 4506
 			Default,
-			// Token: 0x0400119B RID: 4507
 			Card
 		}
 	}

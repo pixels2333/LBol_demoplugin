@@ -7,14 +7,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.EntityLib.StatusEffects.Neutral.TwoColor;
-
 namespace LBoL.EntityLib.Cards.Neutral.Blue
 {
-	// Token: 0x02000321 RID: 801
 	[UsedImplicitly]
 	public sealed class SeeFengshui : Card
 	{
-		// Token: 0x06000BCC RID: 3020 RVA: 0x000176E8 File Offset: 0x000158E8
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return new ApplyStatusEffectAction<SeeFengshuiSe>(base.Battle.Player, new int?(base.Value1), default(int?), default(int?), default(int?), 0f, true);

@@ -8,14 +8,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
-
 namespace LBoL.EntityLib.Cards.Tool
 {
-	// Token: 0x02000267 RID: 615
 	[UsedImplicitly]
 	public sealed class ToolRandomTool : Card
 	{
-		// Token: 0x060009DC RID: 2524 RVA: 0x00014FFB File Offset: 0x000131FB
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			Card[] array = base.Battle.RollCards(new CardWeightTable(RarityWeightTable.BattleCard, OwnerWeightTable.Valid, CardTypeWeightTable.OnlyTool, false), base.Value1, null);

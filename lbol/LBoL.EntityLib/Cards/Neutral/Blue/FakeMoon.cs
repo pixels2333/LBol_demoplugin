@@ -8,14 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Neutral.Blue
 {
-	// Token: 0x02000314 RID: 788
 	[UsedImplicitly]
 	public sealed class FakeMoon : Card
 	{
-		// Token: 0x06000BA7 RID: 2983 RVA: 0x00017490 File Offset: 0x00015690
 		public override Interaction Precondition()
 		{
 			List<Card> list = Enumerable.ToList<Card>(Enumerable.Where<Card>(base.Battle.HandZone, (Card hand) => hand != this && hand.CanBeDuplicated));
@@ -25,8 +22,6 @@ namespace LBoL.EntityLib.Cards.Neutral.Blue
 			}
 			return new SelectHandInteraction(1, 1, list);
 		}
-
-		// Token: 0x06000BA8 RID: 2984 RVA: 0x000174D2 File Offset: 0x000156D2
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (precondition != null)

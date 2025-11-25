@@ -7,14 +7,10 @@ using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.EnemyUnits.Opponent;
 using LBoL.EntityLib.StatusEffects.Enemy;
-
 namespace LBoL.EntityLib.Cards.Enemy
 {
-	// Token: 0x0200036D RID: 877
 	public sealed class SakuyaLock : Card
 	{
-		// Token: 0x17000167 RID: 359
-		// (get) Token: 0x06000C99 RID: 3225 RVA: 0x00018634 File Offset: 0x00016834
 		protected override int AdditionalValue1
 		{
 			get

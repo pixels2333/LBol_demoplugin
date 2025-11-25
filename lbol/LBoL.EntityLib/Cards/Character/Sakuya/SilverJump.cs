@@ -7,14 +7,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
-
 namespace LBoL.EntityLib.Cards.Character.Sakuya
 {
-	// Token: 0x020003BB RID: 955
 	[UsedImplicitly]
 	public sealed class SilverJump : Card
 	{
-		// Token: 0x06000D7F RID: 3455 RVA: 0x00019611 File Offset: 0x00017811
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.DebuffAction<Vulnerable>(selector.SelectedEnemy, 0, base.Value1, 0, 0, true, 0.2f);

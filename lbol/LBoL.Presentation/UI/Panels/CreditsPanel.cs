@@ -12,13 +12,10 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
-
 namespace LBoL.Presentation.UI.Panels
 {
-	// Token: 0x02000091 RID: 145
 	public class CreditsPanel : UiPanel, IInputActionHandler
 	{
-		// Token: 0x0600079B RID: 1947 RVA: 0x00023AF8 File Offset: 0x00021CF8
 		private void Awake()
 		{
 			IEnumerable<ValueTuple<Type, CardConfig>> enumerable = Enumerable.Where<ValueTuple<Type, CardConfig>>(Library.EnumerateCardTypes(), ([TupleElementNames(new string[] { "cardType", "config" })] ValueTuple<Type, CardConfig> c) => c.Item2.DebugLevel == 0);
@@ -52,8 +49,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.returnButton.onClick.AddListener(new UnityAction(base.Hide));
 		}
-
-		// Token: 0x0600079C RID: 1948 RVA: 0x00023D24 File Offset: 0x00021F24
 		protected override void OnShowing()
 		{
 			UiManager.PushActionHandler(this);
@@ -61,16 +56,12 @@ namespace LBoL.Presentation.UI.Panels
 			this.tipText.gameObject.SetActive(true);
 			this._closer = base.StartCoroutine("Closer");
 		}
-
-		// Token: 0x0600079D RID: 1949 RVA: 0x00023D79 File Offset: 0x00021F79
 		private IEnumerator Closer()
 		{
 			yield return new WaitForSeconds(5f);
 			this.tipText.gameObject.SetActive(false);
 			yield break;
 		}
-
-		// Token: 0x0600079E RID: 1950 RVA: 0x00023D88 File Offset: 0x00021F88
 		protected override void OnShown()
 		{
 			this._mainSequence = DOTween.Sequence();
@@ -99,8 +90,6 @@ namespace LBoL.Presentation.UI.Panels
 					this.tipText.gameObject.SetActive(true);
 				});
 		}
-
-		// Token: 0x0600079F RID: 1951 RVA: 0x00023F6C File Offset: 0x0002216C
 		protected override void OnHided()
 		{
 			Sequence mainSequence = this._mainSequence;
@@ -114,20 +103,14 @@ namespace LBoL.Presentation.UI.Panels
 			this.bg1.uvRect = new Rect(0f, 0f, 1f, 1f);
 			this.bg2.uvRect = new Rect(0f, 0f, 1f, 1f);
 		}
-
-		// Token: 0x060007A0 RID: 1952 RVA: 0x0002400E File Offset: 0x0002220E
 		protected override void OnHiding()
 		{
 			UiManager.PopActionHandler(this);
 		}
-
-		// Token: 0x060007A1 RID: 1953 RVA: 0x00024016 File Offset: 0x00022216
 		void IInputActionHandler.OnCancel()
 		{
 			this.returnButton.onClick.Invoke();
 		}
-
-		// Token: 0x060007A2 RID: 1954 RVA: 0x00024028 File Offset: 0x00022228
 		void IInputActionHandler.BeginSkipDialog()
 		{
 			if (this._mainSequence != null)
@@ -135,8 +118,6 @@ namespace LBoL.Presentation.UI.Panels
 				this._mainSequence.timeScale = 5f;
 			}
 		}
-
-		// Token: 0x060007A3 RID: 1955 RVA: 0x00024042 File Offset: 0x00022242
 		void IInputActionHandler.EndSkipDialog()
 		{
 			if (this._mainSequence != null)
@@ -144,51 +125,27 @@ namespace LBoL.Presentation.UI.Panels
 				this._mainSequence.timeScale = 1f;
 			}
 		}
-
-		// Token: 0x04000507 RID: 1287
 		[SerializeField]
 		private RectTransform content;
-
-		// Token: 0x04000508 RID: 1288
 		[SerializeField]
 		private Button returnButton;
-
-		// Token: 0x04000509 RID: 1289
 		[SerializeField]
 		private TextMeshProUGUI tipText;
-
-		// Token: 0x0400050A RID: 1290
 		[SerializeField]
 		private RawImage scrollBg;
-
-		// Token: 0x0400050B RID: 1291
 		[SerializeField]
 		private RawImage bg1;
-
-		// Token: 0x0400050C RID: 1292
 		[SerializeField]
 		private RawImage bg2;
-
-		// Token: 0x0400050D RID: 1293
 		[SerializeField]
 		private float totalDuration = 40f;
-
-		// Token: 0x0400050E RID: 1294
 		[SerializeField]
 		private float totalLength;
-
-		// Token: 0x0400050F RID: 1295
 		[SerializeField]
 		private RectTransform illuLayout;
-
-		// Token: 0x04000510 RID: 1296
 		[SerializeField]
 		private TextMeshProUGUI illuName;
-
-		// Token: 0x04000511 RID: 1297
 		private Sequence _mainSequence;
-
-		// Token: 0x04000512 RID: 1298
 		private Coroutine _closer;
 	}
 }

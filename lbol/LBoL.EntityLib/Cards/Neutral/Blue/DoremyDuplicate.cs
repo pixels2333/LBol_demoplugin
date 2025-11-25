@@ -8,14 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Neutral.Blue
 {
-	// Token: 0x02000313 RID: 787
 	[UsedImplicitly]
 	public sealed class DoremyDuplicate : Card
 	{
-		// Token: 0x06000BA3 RID: 2979 RVA: 0x00017420 File Offset: 0x00015620
 		public override Interaction Precondition()
 		{
 			List<Card> list = Enumerable.ToList<Card>(Enumerable.Where<Card>(base.Battle.HandZone, (Card hand) => hand != this && hand.CanBeDuplicated));
@@ -25,8 +22,6 @@ namespace LBoL.EntityLib.Cards.Neutral.Blue
 			}
 			return new SelectHandInteraction(1, 1, list);
 		}
-
-		// Token: 0x06000BA4 RID: 2980 RVA: 0x00017462 File Offset: 0x00015662
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (precondition != null)

@@ -21,13 +21,10 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 using Yarn;
-
 namespace LBoL.Presentation.UI.Panels
 {
-	// Token: 0x020000BC RID: 188
 	public class StartGamePanel : UiPanel<StartGameData>, IInputActionHandler
 	{
-		// Token: 0x06000AB3 RID: 2739 RVA: 0x00035780 File Offset: 0x00033980
 		private void Awake()
 		{
 			this._modeTooltip = SimpleTooltipSource.CreateWithGeneralKey(this.gameModeSwitch.gameObject, "StartGame.FreeMode", "StartGame.FreeDescription").WithPosition(TooltipDirection.Bottom, TooltipAlignment.Max);
@@ -215,8 +212,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.SelectPlayer(-2, false);
 			this.SelectDifficulty(1, true);
 		}
-
-		// Token: 0x06000AB4 RID: 2740 RVA: 0x00035AD0 File Offset: 0x00033CD0
 		protected override void OnShowing(StartGameData data)
 		{
 			this._stages = data.StagesCreateFunc.Invoke();
@@ -268,15 +263,11 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.difficultyHint.SetActive(gameDifficulty == null);
 		}
-
-		// Token: 0x06000AB5 RID: 2741 RVA: 0x00035D9C File Offset: 0x00033F9C
 		protected override void OnHiding()
 		{
 			GameMaster.PlatformHandler.SetMainMenuInfo(MainMenuStatus.Idle);
 			UiManager.PopActionHandler(this);
 		}
-
-		// Token: 0x06000AB6 RID: 2742 RVA: 0x00035DB0 File Offset: 0x00033FB0
 		public override void OnLocaleChanged()
 		{
 			base.OnLocaleChanged();
@@ -286,8 +277,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.JadeBoxLocalize();
 		}
-
-		// Token: 0x06000AB7 RID: 2743 RVA: 0x00035E14 File Offset: 0x00034014
 		void IInputActionHandler.OnConfirm()
 		{
 			if (this.seedPanelRoot.gameObject.activeSelf)
@@ -305,8 +294,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.difficultyConfirmButton.onClick.Invoke();
 			}
 		}
-
-		// Token: 0x06000AB8 RID: 2744 RVA: 0x00035E94 File Offset: 0x00034094
 		void IInputActionHandler.OnCancel()
 		{
 			VnPanel panel = UiManager.GetPanel<VnPanel>();
@@ -338,8 +325,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.returnButton.onClick.Invoke();
 			}
 		}
-
-		// Token: 0x06000AB9 RID: 2745 RVA: 0x00035F54 File Offset: 0x00034154
 		void IInputActionHandler.OnNavigate(NavigateDirection dir)
 		{
 			if (this._currentPanelPhase == 2)
@@ -366,20 +351,14 @@ namespace LBoL.Presentation.UI.Panels
 				}
 			}
 		}
-
-		// Token: 0x06000ABA RID: 2746 RVA: 0x00035FF6 File Offset: 0x000341F6
 		public void BeginSkipDialog()
 		{
 			UiManager.GetPanel<VnPanel>().UserSkipDialog(true);
 		}
-
-		// Token: 0x06000ABB RID: 2747 RVA: 0x00036003 File Offset: 0x00034203
 		public void EndSkipDialog()
 		{
 			UiManager.GetPanel<VnPanel>().UserSkipDialog(false);
 		}
-
-		// Token: 0x06000ABC RID: 2748 RVA: 0x00036010 File Offset: 0x00034210
 		private void SelectPlayer(int index, bool instant = false)
 		{
 			if (this.gameModeSwitch.IsOn)
@@ -567,8 +546,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.RefreshConfirm();
 		}
-
-		// Token: 0x06000ABD RID: 2749 RVA: 0x000368B4 File Offset: 0x00034AB4
 		private void SelectType(int index)
 		{
 			this._selectedType = index;
@@ -598,8 +575,6 @@ namespace LBoL.Presentation.UI.Panels
 			ManaGroup manaGroup2 = manaGroup;
 			this.characterStatusWidget.SetSetup(initialMana + manaGroup2, (index == 0) ? this._player.Config.DifficultyA : this._player.Config.DifficultyB);
 		}
-
-		// Token: 0x06000ABE RID: 2750 RVA: 0x000369C0 File Offset: 0x00034BC0
 		private void SelectDifficulty(int index, bool immediate = false)
 		{
 			if (this._player != null)
@@ -713,8 +688,6 @@ namespace LBoL.Presentation.UI.Panels
 			this._selectedDifficulty = StartGamePanel.Difficulties[index];
 			this.RefreshDifficultyConfirm();
 		}
-
-		// Token: 0x06000ABF RID: 2751 RVA: 0x00036CC4 File Offset: 0x00034EC4
 		private void RefreshConfirm()
 		{
 			if (this._playerIndex < 0)
@@ -746,8 +719,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.characterConfirmButton.interactable = flag;
 		}
-
-		// Token: 0x06000AC0 RID: 2752 RVA: 0x00036DA4 File Offset: 0x00034FA4
 		private void RefreshDifficultyConfirm()
 		{
 			bool flag = !this.gameModeSwitch.IsOn && !this._isDifficultyLock;
@@ -762,16 +733,12 @@ namespace LBoL.Presentation.UI.Panels
 				this._confirmTooltip.SetWithGeneralKey("StartGame.NeedClear", null);
 			}
 		}
-
-		// Token: 0x06000AC1 RID: 2753 RVA: 0x00036E21 File Offset: 0x00035021
 		public void UI_ReplayOpening()
 		{
 			VnPanel panel = UiManager.GetPanel<VnPanel>();
 			panel.ResetComic();
 			panel.RunDialog("Opening", new DialogStorage(), new global::Yarn.Library(), null, null, null, null);
 		}
-
-		// Token: 0x06000AC2 RID: 2754 RVA: 0x00036E48 File Offset: 0x00035048
 		private void ConfirmSelectCharacter()
 		{
 			GameRunRecordSaveData gameRunRecordSaveData = Enumerable.LastOrDefault<GameRunRecordSaveData>(GameMaster.GetGameRunHistory());
@@ -815,13 +782,7 @@ namespace LBoL.Presentation.UI.Panels
 				this.characterPanelRoot.gameObject.SetActive(false);
 			}).SetUpdate(true).SetTarget(this.characterPanelRoot);
 		}
-
-		// Token: 0x170001B2 RID: 434
-		// (get) Token: 0x06000AC3 RID: 2755 RVA: 0x00037028 File Offset: 0x00035228
-		// (set) Token: 0x06000AC4 RID: 2756 RVA: 0x00037030 File Offset: 0x00035230
 		private StartGamePanel.PuzzleToggleState ToggleStatus { get; set; }
-
-		// Token: 0x06000AC5 RID: 2757 RVA: 0x0003703C File Offset: 0x0003523C
 		private void InitialForPuzzle()
 		{
 			this.ToggleStatus = StartGamePanel.PuzzleToggleState.None;
@@ -890,8 +851,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 			});
 		}
-
-		// Token: 0x06000AC6 RID: 2758 RVA: 0x0003711C File Offset: 0x0003531C
 		private void SetPuzzleStatus()
 		{
 			int num = 0;
@@ -910,14 +869,10 @@ namespace LBoL.Presentation.UI.Panels
 				puzzleToggleWidget.Toggle.isOn = false;
 			}
 		}
-
-		// Token: 0x06000AC7 RID: 2759 RVA: 0x000371E4 File Offset: 0x000353E4
 		private void InitialForSeed()
 		{
 			this._setSeed = false;
 		}
-
-		// Token: 0x06000AC8 RID: 2760 RVA: 0x000371F0 File Offset: 0x000353F0
 		private void OnSeedButtonClicked()
 		{
 			this.seedPanelRoot.SetActive(true);
@@ -928,8 +883,6 @@ namespace LBoL.Presentation.UI.Panels
 				.SetUpdate(true);
 			this.seedInputText.text = this._seedString ?? "";
 		}
-
-		// Token: 0x06000AC9 RID: 2761 RVA: 0x0003725C File Offset: 0x0003545C
 		private void OnSeedConfirmButtonClicked()
 		{
 			if (this.seedInputText.text == "")
@@ -951,14 +904,10 @@ namespace LBoL.Presentation.UI.Panels
 			this._seedString = this.seedInputText.text;
 			this.CloseSeedPanel(new bool?(true));
 		}
-
-		// Token: 0x06000ACA RID: 2762 RVA: 0x00037340 File Offset: 0x00035540
 		private void OnSeedCancelButtonClicked()
 		{
 			this.CloseSeedPanel(default(bool?));
 		}
-
-		// Token: 0x06000ACB RID: 2763 RVA: 0x0003735C File Offset: 0x0003555C
 		private void CloseSeedPanel(bool? setSeed)
 		{
 			this.seedCanvasGroup.interactable = false;
@@ -985,9 +934,6 @@ namespace LBoL.Presentation.UI.Panels
 			})
 				.SetUpdate(true);
 		}
-
-		// Token: 0x170001B3 RID: 435
-		// (get) Token: 0x06000ACC RID: 2764 RVA: 0x000373C2 File Offset: 0x000355C2
 		private int ActiveJadeBoxCount
 		{
 			get
@@ -995,8 +941,6 @@ namespace LBoL.Presentation.UI.Panels
 				return Enumerable.Count<JadeBoxToggle>(this._jadeBoxToggles.Values, (JadeBoxToggle toggle) => toggle.IsOn);
 			}
 		}
-
-		// Token: 0x06000ACD RID: 2765 RVA: 0x000373F4 File Offset: 0x000355F4
 		private void InitialForJadeBox()
 		{
 			this.jadeBoxContent.DestroyChildren();
@@ -1031,8 +975,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.SetNoClearHint();
 		}
-
-		// Token: 0x06000ACE RID: 2766 RVA: 0x0003752C File Offset: 0x0003572C
 		private void JadeBoxLocalize()
 		{
 			foreach (JadeBoxToggle jadeBoxToggle in this._jadeBoxToggles.Values)
@@ -1040,8 +982,6 @@ namespace LBoL.Presentation.UI.Panels
 				jadeBoxToggle.Refresh();
 			}
 		}
-
-		// Token: 0x06000ACF RID: 2767 RVA: 0x00037584 File Offset: 0x00035784
 		private void SetJadeBoxStatus()
 		{
 			bool flag = Singleton<GameMaster>.Instance.CurrentProfileLevel >= 10;
@@ -1050,8 +990,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.jadeBoxLockImage.gameObject.SetActive(!flag);
 			this.jadeBoxText.color = (flag ? Color.white : new Color(1f, 1f, 1f, 0.2f));
 		}
-
-		// Token: 0x06000AD0 RID: 2768 RVA: 0x00037600 File Offset: 0x00035800
 		private void OnJadeBoxButtonClicked()
 		{
 			this.jadeBoxPanelRoot.SetActive(true);
@@ -1062,8 +1000,6 @@ namespace LBoL.Presentation.UI.Panels
 				.SetUpdate(true);
 			this.RefreshJadeBoxIcon();
 		}
-
-		// Token: 0x06000AD1 RID: 2769 RVA: 0x00037658 File Offset: 0x00035858
 		private void RefreshJadeBoxIcon()
 		{
 			this.jadeBoxCount.text = "StartGame.JadeBoxSelectedCount".LocalizeFormat(new object[] { this.ActiveJadeBoxCount, 3 });
@@ -1094,8 +1030,6 @@ namespace LBoL.Presentation.UI.Panels
 				keyValuePair3.Value.Toggle.enabled = true;
 			}
 		}
-
-		// Token: 0x06000AD2 RID: 2770 RVA: 0x00037828 File Offset: 0x00035A28
 		private void OnJadeBoxReTurnButtonClicked()
 		{
 			this.jadeBoxCanvasGroup.interactable = false;
@@ -1118,425 +1052,197 @@ namespace LBoL.Presentation.UI.Panels
 			})
 				.SetUpdate(true);
 		}
-
-		// Token: 0x06000AD3 RID: 2771 RVA: 0x0003787A File Offset: 0x00035A7A
 		private void SetNoClearHint()
 		{
 			this.noClearHint.gameObject.SetActive(this._setSeed || this.ActiveJadeBoxCount > 0);
 		}
-
-		// Token: 0x0400081F RID: 2079
 		[Header("全局")]
 		[SerializeField]
 		private CanvasGroup backgroundManaPanel;
-
-		// Token: 0x04000820 RID: 2080
 		[SerializeField]
 		private Transform backgroundRotationRoot;
-
-		// Token: 0x04000821 RID: 2081
 		[SerializeField]
 		private CanvasGroup basicGroup;
-
-		// Token: 0x04000822 RID: 2082
 		[SerializeField]
 		private Transform backgroundOuterRing;
-
-		// Token: 0x04000823 RID: 2083
 		[SerializeField]
 		private Transform backgroundInnerRing;
-
-		// Token: 0x04000824 RID: 2084
 		[SerializeField]
 		private Transform backgroundManaGroup;
-
-		// Token: 0x04000825 RID: 2085
 		[SerializeField]
 		private AssociationList<ManaColor, Transform> backgroundManaList;
-
-		// Token: 0x04000826 RID: 2086
 		[SerializeField]
 		private CanvasGroup nonBasicGroup;
-
-		// Token: 0x04000827 RID: 2087
 		[SerializeField]
 		private AssociationList<ManaColor, Sprite> nonBasicManaSprites;
-
-		// Token: 0x04000828 RID: 2088
 		[SerializeField]
 		private Image nonBasicLeftColor;
-
-		// Token: 0x04000829 RID: 2089
 		[SerializeField]
 		private Image nonBasicRightColor;
-
-		// Token: 0x0400082A RID: 2090
 		[SerializeField]
 		private Button returnButton;
-
-		// Token: 0x0400082B RID: 2091
 		[Header("角色面板")]
 		[SerializeField]
 		private CanvasGroup characterPanelRoot;
-
-		// Token: 0x0400082C RID: 2092
 		[SerializeField]
 		private CanvasGroup characterPanelTopRoot;
-
-		// Token: 0x0400082D RID: 2093
 		[SerializeField]
 		private CanvasGroup characterPanelBottomRoot;
-
-		// Token: 0x0400082E RID: 2094
 		[SerializeField]
 		private CanvasGroup characterSetupRoot;
-
-		// Token: 0x0400082F RID: 2095
 		[SerializeField]
 		private List<CanvasGroup> characterStandPicList;
-
-		// Token: 0x04000830 RID: 2096
 		[SerializeField]
 		private Image mainStandPicShadow;
-
-		// Token: 0x04000831 RID: 2097
 		[SerializeField]
 		private Image mainStandPic;
-
-		// Token: 0x04000832 RID: 2098
 		[SerializeField]
 		private StartStatusWidget characterStatusWidget;
-
-		// Token: 0x04000833 RID: 2099
 		[SerializeField]
 		private List<StartSetupWidget> characterSetupList;
-
-		// Token: 0x04000834 RID: 2100
 		[SerializeField]
 		private TextMeshProUGUI characterHint;
-
-		// Token: 0x04000835 RID: 2101
 		[SerializeField]
 		private GameObject characterHintRoot;
-
-		// Token: 0x04000836 RID: 2102
 		[SerializeField]
 		private DeckHolder deckHolder;
-
-		// Token: 0x04000837 RID: 2103
 		[SerializeField]
 		private Button deckReturnButton;
-
-		// Token: 0x04000838 RID: 2104
 		[SerializeField]
 		private Button characterLeftButton;
-
-		// Token: 0x04000839 RID: 2105
 		[SerializeField]
 		private Button characterRightButton;
-
-		// Token: 0x0400083A RID: 2106
 		[SerializeField]
 		private SwitchWidget gameModeSwitch;
-
-		// Token: 0x0400083B RID: 2107
 		[SerializeField]
 		private SwitchWidget randomResultSwitch;
-
-		// Token: 0x0400083C RID: 2108
 		[SerializeField]
 		private Button characterConfirmButton;
-
-		// Token: 0x0400083D RID: 2109
 		[SerializeField]
 		private CommonButtonWidget replayOpeningButton;
-
-		// Token: 0x0400083E RID: 2110
 		[Header("难度")]
 		[SerializeField]
 		private CanvasGroup difficultyPanelRoot;
-
-		// Token: 0x0400083F RID: 2111
 		[SerializeField]
 		private Transform difficultyPanelBg;
-
-		// Token: 0x04000840 RID: 2112
 		[SerializeField]
 		private Transform difficultyPanelRotationBg;
-
-		// Token: 0x04000841 RID: 2113
 		[SerializeField]
 		private Button difficultyLeftButton;
-
-		// Token: 0x04000842 RID: 2114
 		[SerializeField]
 		private Button difficultyRightButton;
-
-		// Token: 0x04000843 RID: 2115
 		[SerializeField]
 		private Button difficultyConfirmButton;
-
-		// Token: 0x04000844 RID: 2116
 		[SerializeField]
 		private DifficultyGroup[] difficultyGroups;
-
-		// Token: 0x04000845 RID: 2117
 		[SerializeField]
 		private List<TextMeshProUGUI> difficultyText;
-
-		// Token: 0x04000846 RID: 2118
 		[SerializeField]
 		private GameObject difficultyHint;
-
-		// Token: 0x04000847 RID: 2119
 		[Header("资源")]
 		[SerializeField]
 		private AssociationList<string, Sprite> standPicList;
-
-		// Token: 0x04000848 RID: 2120
 		[SerializeField]
 		private Sprite lockedHeadPic;
-
-		// Token: 0x04000849 RID: 2121
 		[SerializeField]
 		private AssociationList<string, Sprite> headPicList;
-
-		// Token: 0x0400084A RID: 2122
 		private readonly float[] _standPicScale = new float[] { 0.75f, 0.85f, 1f, 0.85f, 0.75f };
-
-		// Token: 0x0400084B RID: 2123
 		private readonly float[] _standPicAlpha = new float[] { 1f, 1f, 1f, 1f, 1f };
-
-		// Token: 0x0400084C RID: 2124
 		private readonly float[] _standPicX = new float[] { -1550f, -800f, 0f, 800f, 1550f };
-
-		// Token: 0x0400084D RID: 2125
 		private readonly float[] _standPicY = new float[] { 200f, 200f, 120f, 200f, 200f };
-
-		// Token: 0x0400084E RID: 2126
 		private static readonly GameDifficulty[] Difficulties = EnumHelper<GameDifficulty>.GetValues();
-
-		// Token: 0x0400084F RID: 2127
 		private bool _isDifficultyLock;
-
-		// Token: 0x04000850 RID: 2128
 		private int _playerIndex;
-
-		// Token: 0x04000851 RID: 2129
 		private PlayerUnit _player;
-
-		// Token: 0x04000852 RID: 2130
 		private List<PlayerUnit> _players;
-
-		// Token: 0x04000853 RID: 2131
 		private int _selectedType;
-
-		// Token: 0x04000854 RID: 2132
 		private StartGamePanel.TypeCandidate _typeCandidate;
-
-		// Token: 0x04000855 RID: 2133
 		private StartGamePanel.TypeCandidate[] _typeCandidates;
-
-		// Token: 0x04000856 RID: 2134
 		private int _difficultyIndex = 1;
-
-		// Token: 0x04000857 RID: 2135
 		private GameDifficulty _selectedDifficulty;
-
-		// Token: 0x04000858 RID: 2136
 		private string _seedString;
-
-		// Token: 0x04000859 RID: 2137
 		private Stage[] _stages;
-
-		// Token: 0x0400085A RID: 2138
 		private Type _debutAdventure;
-
-		// Token: 0x0400085B RID: 2139
 		private readonly Dictionary<PlayerUnitConfig, CharacterButtonWidget> _playerButtons = new Dictionary<PlayerUnitConfig, CharacterButtonWidget>();
-
-		// Token: 0x0400085C RID: 2140
 		private readonly Dictionary<PuzzleFlag, PuzzleToggleWidget> _puzzleToggles = new Dictionary<PuzzleFlag, PuzzleToggleWidget>();
-
-		// Token: 0x0400085D RID: 2141
 		private readonly Dictionary<JadeBox, JadeBoxToggle> _jadeBoxToggles = new Dictionary<JadeBox, JadeBoxToggle>();
-
-		// Token: 0x0400085E RID: 2142
 		private SimpleTooltipSource _modeTooltip;
-
-		// Token: 0x0400085F RID: 2143
 		private SimpleTooltipSource _randomTooltip;
-
-		// Token: 0x04000860 RID: 2144
 		private SimpleTooltipSource _confirmTooltip;
-
-		// Token: 0x04000861 RID: 2145
 		private SimpleTooltipSource _puzzleTooltip;
-
-		// Token: 0x04000862 RID: 2146
 		private SimpleTooltipSource _jadeBoxTooltip;
-
-		// Token: 0x04000863 RID: 2147
 		private int _currentPanelPhase = 1;
-
-		// Token: 0x04000864 RID: 2148
 		private bool _showingBasicRing = true;
-
-		// Token: 0x04000865 RID: 2149
 		private Sequence _nonBasicTween;
-
-		// Token: 0x04000866 RID: 2150
 		private const float TweenTime = 0.3f;
-
-		// Token: 0x04000867 RID: 2151
 		private const float TweenMoveX = 1000f;
-
-		// Token: 0x04000868 RID: 2152
 		[Header("难题")]
 		[SerializeField]
 		private Transform puzzleContent;
-
-		// Token: 0x04000869 RID: 2153
 		[SerializeField]
 		private PuzzleToggleWidget puzzleToggleTemplate;
-
-		// Token: 0x0400086A RID: 2154
 		[SerializeField]
 		private GameObject puzzleHint;
-
-		// Token: 0x0400086B RID: 2155
 		[SerializeField]
 		private GameObject puzzleSelectAllGroup;
-
-		// Token: 0x0400086C RID: 2156
 		[SerializeField]
 		private CommonToggleWidget puzzleSelectAllToggle;
-
-		// Token: 0x0400086D RID: 2157
 		[Header("游戏种子")]
 		[SerializeField]
 		private Button seedButton;
-
-		// Token: 0x0400086E RID: 2158
 		[SerializeField]
 		private CanvasGroup seedCanvasGroup;
-
-		// Token: 0x0400086F RID: 2159
 		[SerializeField]
 		private Image seedSetImage;
-
-		// Token: 0x04000870 RID: 2160
 		[SerializeField]
 		private GameObject seedPanelRoot;
-
-		// Token: 0x04000871 RID: 2161
 		[SerializeField]
 		private Button seedConfirmButton;
-
-		// Token: 0x04000872 RID: 2162
 		[SerializeField]
 		private Button seedCancelButton;
-
-		// Token: 0x04000873 RID: 2163
 		[SerializeField]
 		private TMP_InputField seedInputText;
-
-		// Token: 0x04000874 RID: 2164
 		[SerializeField]
 		private TextMeshProUGUI seedTipText;
-
-		// Token: 0x04000875 RID: 2165
 		[Header("玉匣")]
 		[SerializeField]
 		private Button jadeBoxButton;
-
-		// Token: 0x04000876 RID: 2166
 		[SerializeField]
 		private Image jadeBoxLockImage;
-
-		// Token: 0x04000877 RID: 2167
 		[SerializeField]
 		private TextMeshProUGUI jadeBoxText;
-
-		// Token: 0x04000878 RID: 2168
 		[SerializeField]
 		private CanvasGroup jadeBoxCanvasGroup;
-
-		// Token: 0x04000879 RID: 2169
 		[SerializeField]
 		private Image jadeBoxSetImage;
-
-		// Token: 0x0400087A RID: 2170
 		[SerializeField]
 		private GameObject jadeBoxPanelRoot;
-
-		// Token: 0x0400087B RID: 2171
 		[SerializeField]
 		private Button jadeBoxReturnButton;
-
-		// Token: 0x0400087C RID: 2172
 		[SerializeField]
 		private RectTransform jadeBoxContent;
-
-		// Token: 0x0400087D RID: 2173
 		[SerializeField]
 		private JadeBoxToggle jadeBoxTemplate;
-
-		// Token: 0x0400087E RID: 2174
 		[SerializeField]
 		private TextMeshProUGUI jadeBoxCount;
-
-		// Token: 0x0400087F RID: 2175
 		private bool _setSeed;
-
-		// Token: 0x04000880 RID: 2176
 		[SerializeField]
 		private TextMeshProUGUI noClearHint;
-
-		// Token: 0x04000881 RID: 2177
 		private const float FadeTime = 0.2f;
-
-		// Token: 0x04000882 RID: 2178
 		private const float CircleTweenTime = 0.3f;
-
-		// Token: 0x04000884 RID: 2180
 		private const int JadeBoxUnlockLevel = 10;
-
-		// Token: 0x04000885 RID: 2181
 		private const int MaxJadeBox = 3;
-
-		// Token: 0x020002D1 RID: 721
 		private class TypeCandidate
 		{
-			// Token: 0x1700048C RID: 1164
-			// (get) Token: 0x06001735 RID: 5941 RVA: 0x00067DBA File Offset: 0x00065FBA
-			// (set) Token: 0x06001736 RID: 5942 RVA: 0x00067DC2 File Offset: 0x00065FC2
 			public string Name { get; set; }
-
-			// Token: 0x1700048D RID: 1165
-			// (get) Token: 0x06001737 RID: 5943 RVA: 0x00067DCB File Offset: 0x00065FCB
-			// (set) Token: 0x06001738 RID: 5944 RVA: 0x00067DD3 File Offset: 0x00065FD3
 			public UltimateSkill Us { get; set; }
-
-			// Token: 0x1700048E RID: 1166
-			// (get) Token: 0x06001739 RID: 5945 RVA: 0x00067DDC File Offset: 0x00065FDC
-			// (set) Token: 0x0600173A RID: 5946 RVA: 0x00067DE4 File Offset: 0x00065FE4
 			public Exhibit Exhibit { get; set; }
-
-			// Token: 0x1700048F RID: 1167
-			// (get) Token: 0x0600173B RID: 5947 RVA: 0x00067DED File Offset: 0x00065FED
-			// (set) Token: 0x0600173C RID: 5948 RVA: 0x00067DF5 File Offset: 0x00065FF5
 			public Card[] Deck { get; set; }
 		}
-
-		// Token: 0x020002D2 RID: 722
 		public enum PuzzleToggleState
 		{
-			// Token: 0x04001272 RID: 4722
 			All,
-			// Token: 0x04001273 RID: 4723
 			Part,
-			// Token: 0x04001274 RID: 4724
 			None
 		}
 	}

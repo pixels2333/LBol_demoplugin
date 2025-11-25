@@ -9,14 +9,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Neutral.MultiColor
 {
-	// Token: 0x020002F1 RID: 753
 	[UsedImplicitly]
 	public sealed class SanaeRestart : Card
 	{
-		// Token: 0x06000B39 RID: 2873 RVA: 0x00016A70 File Offset: 0x00014C70
 		public override Interaction Precondition()
 		{
 			List<Card> list = Enumerable.ToList<Card>(Enumerable.Where<Card>(base.Battle.HandZone, (Card card) => card != this));
@@ -26,8 +23,6 @@ namespace LBoL.EntityLib.Cards.Neutral.MultiColor
 			}
 			return null;
 		}
-
-		// Token: 0x06000B3A RID: 2874 RVA: 0x00016AB6 File Offset: 0x00014CB6
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			List<Card> list = new List<Card>();

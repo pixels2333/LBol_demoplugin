@@ -14,14 +14,10 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 using UnityEngine.UI.Extensions;
-
 namespace LBoL.Presentation.UI.Widgets
 {
-	// Token: 0x0200005F RID: 95
 	public class LifetimeWidget : MonoBehaviour
 	{
-		// Token: 0x170000E2 RID: 226
-		// (get) Token: 0x0600053E RID: 1342 RVA: 0x000166A4 File Offset: 0x000148A4
 		private float TargetHeight
 		{
 			get
@@ -29,9 +25,6 @@ namespace LBoL.Presentation.UI.Widgets
 				return (float)(this.isOnClickExpand ? (95 + 60 * (this._order + 1)) : 90);
 			}
 		}
-
-		// Token: 0x170000E3 RID: 227
-		// (get) Token: 0x0600053F RID: 1343 RVA: 0x000166C1 File Offset: 0x000148C1
 		private float TargetArrowRectZRotation
 		{
 			get
@@ -43,8 +36,6 @@ namespace LBoL.Presentation.UI.Widgets
 				return -180f;
 			}
 		}
-
-		// Token: 0x06000540 RID: 1344 RVA: 0x000166D8 File Offset: 0x000148D8
 		public void UpdateCharacterStatus(Dictionary<string, string> status)
 		{
 			this.nameTmp.text = ("Lifetime." + this._nameKey).Localize(true) + " " + (this._noDataHint ? "<sprite=\"TextIcon\" name=\"Info\">" : "");
@@ -70,8 +61,6 @@ namespace LBoL.Presentation.UI.Widgets
 				}
 			}
 		}
-
-		// Token: 0x06000541 RID: 1345 RVA: 0x00016810 File Offset: 0x00014A10
 		public void Awake()
 		{
 			this.mainButton.onClick.AddListener(new UnityAction(this.HandleButtonClick));
@@ -88,8 +77,6 @@ namespace LBoL.Presentation.UI.Widgets
 				rectTransform.gameObject.GetOrAddComponent<CanvasGroup>().alpha = 0f;
 			}
 		}
-
-		// Token: 0x06000542 RID: 1346 RVA: 0x00016924 File Offset: 0x00014B24
 		public void HandleButtonClick()
 		{
 			if (!this.isMotioning)
@@ -142,8 +129,6 @@ namespace LBoL.Presentation.UI.Widgets
 					});
 			}
 		}
-
-		// Token: 0x06000543 RID: 1347 RVA: 0x00016C2C File Offset: 0x00014E2C
 		public void Initialize(string nameKey, bool noDataHint = false, bool oldDataHint = false)
 		{
 			this._nameKey = nameKey;
@@ -168,66 +153,34 @@ namespace LBoL.Presentation.UI.Widgets
 				rectTransform.gameObject.SetActive(false);
 			}
 		}
-
-		// Token: 0x06000544 RID: 1348 RVA: 0x00016D4F File Offset: 0x00014F4F
 		public void SetTotalValue(int intValue)
 		{
 			this.valueTmp.text = intValue.ToString();
 		}
-
-		// Token: 0x06000545 RID: 1349 RVA: 0x00016D63 File Offset: 0x00014F63
 		public void SetTotalValue(string valueText)
 		{
 			this.valueTmp.text = valueText;
 		}
-
-		// Token: 0x04000300 RID: 768
 		[SerializeField]
 		private TextMeshProUGUI nameTmp;
-
-		// Token: 0x04000301 RID: 769
 		[SerializeField]
 		private TextMeshProUGUI valueTmp;
-
-		// Token: 0x04000302 RID: 770
 		[SerializeField]
 		private Button mainButton;
-
-		// Token: 0x04000303 RID: 771
 		[SerializeField]
 		private RectTransform arrowRect;
-
-		// Token: 0x04000304 RID: 772
 		[SerializeField]
 		private RectTransform characterList;
-
-		// Token: 0x04000305 RID: 773
 		[SerializeField]
 		private RectTransform characterLifetimeTemplate;
-
-		// Token: 0x04000306 RID: 774
 		private bool isOnClickExpand = true;
-
-		// Token: 0x04000307 RID: 775
 		private bool isMotioning;
-
-		// Token: 0x04000308 RID: 776
 		private const float FADE_TIME = 0.55f;
-
-		// Token: 0x04000309 RID: 777
 		[TupleElementNames(new string[] { "rect", "widget" })]
 		private Dictionary<string, ValueTuple<RectTransform, CharacterLifetimeWidget>> _characterLine = new Dictionary<string, ValueTuple<RectTransform, CharacterLifetimeWidget>>();
-
-		// Token: 0x0400030A RID: 778
 		private int _order;
-
-		// Token: 0x0400030B RID: 779
 		private RectTransform _parentRect;
-
-		// Token: 0x0400030C RID: 780
 		private string _nameKey;
-
-		// Token: 0x0400030D RID: 781
 		private bool _noDataHint;
 	}
 }

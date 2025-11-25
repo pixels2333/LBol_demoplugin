@@ -6,14 +6,11 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Cards;
 using LBoL.EntityLib.StatusEffects.Basic;
-
 namespace LBoL.EntityLib.Cards.Neutral.TwoColor
 {
-	// Token: 0x020002B6 RID: 694
 	[UsedImplicitly]
 	public sealed class XiaosanReflect : Card
 	{
-		// Token: 0x06000AAD RID: 2733 RVA: 0x00016038 File Offset: 0x00014238
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.DefenseAction(true);

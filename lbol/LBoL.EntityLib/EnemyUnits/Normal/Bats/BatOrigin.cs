@@ -9,24 +9,13 @@ using LBoL.Core.Randoms;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.StatusEffects.Basic;
-
 namespace LBoL.EntityLib.EnemyUnits.Normal.Bats
 {
-	// Token: 0x0200020D RID: 525
 	[UsedImplicitly]
 	public abstract class BatOrigin : EnemyUnit
 	{
-		// Token: 0x170000DB RID: 219
-		// (get) Token: 0x06000846 RID: 2118 RVA: 0x0001245D File Offset: 0x0001065D
-		// (set) Token: 0x06000847 RID: 2119 RVA: 0x00012465 File Offset: 0x00010665
 		private BatOrigin.MoveType Last { get; set; }
-
-		// Token: 0x170000DC RID: 220
-		// (get) Token: 0x06000848 RID: 2120 RVA: 0x0001246E File Offset: 0x0001066E
-		// (set) Token: 0x06000849 RID: 2121 RVA: 0x00012476 File Offset: 0x00010676
 		private BatOrigin.MoveType Next { get; set; }
-
-		// Token: 0x0600084A RID: 2122 RVA: 0x00012480 File Offset: 0x00010680
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			if (Enumerable.All<BatOrigin>(Enumerable.OfType<BatOrigin>(base.AllAliveEnemies), (BatOrigin enemy) => enemy.RootIndex <= base.RootIndex))
@@ -41,23 +30,17 @@ namespace LBoL.EntityLib.EnemyUnits.Normal.Bats
 			}
 			base.ReactBattleEvent<GameEventArgs>(base.Battle.BattleStarted, new Func<GameEventArgs, IEnumerable<BattleAction>>(this.OnBattleStarted));
 		}
-
-		// Token: 0x0600084B RID: 2123 RVA: 0x000124F9 File Offset: 0x000106F9
 		protected virtual IEnumerable<BattleAction> OnBattleStarted(GameEventArgs arg)
 		{
 			yield return new ApplyStatusEffectAction<Vampire>(this, default(int?), default(int?), default(int?), default(int?), 0f, true);
 			yield return new ApplyStatusEffectAction<Graze>(this, new int?(base.Count1), default(int?), default(int?), default(int?), 0f, true);
 			yield break;
 		}
-
-		// Token: 0x0600084C RID: 2124 RVA: 0x0001250C File Offset: 0x0001070C
 		public override void OnSpawn(EnemyUnit spawner)
 		{
 			this.React(new ApplyStatusEffectAction<Vampire>(this, default(int?), default(int?), default(int?), default(int?), 0f, true));
 			this.React(new ApplyStatusEffectAction<Graze>(this, new int?(base.Count1), default(int?), default(int?), default(int?), 0f, true));
 		}
-
-		// Token: 0x0600084D RID: 2125 RVA: 0x00012591 File Offset: 0x00010791
 		protected override IEnumerable<IEnemyMove> GetTurnMoves()
 		{
 			IEnemyMove enemyMove;
@@ -87,8 +70,6 @@ namespace LBoL.EntityLib.EnemyUnits.Normal.Bats
 			yield return enemyMove;
 			yield break;
 		}
-
-		// Token: 0x0600084E RID: 2126 RVA: 0x000125A4 File Offset: 0x000107A4
 		protected override void UpdateMoveCounters()
 		{
 			if (Enumerable.All<BatOrigin>(Enumerable.OfType<BatOrigin>(base.AllAliveEnemies), (BatOrigin enemy) => enemy.RootIndex <= base.RootIndex && base.EnemyMoveRng.NextFloat(0f, 1f) * (float)(Enumerable.Count<EnemyUnit>(base.AllAliveEnemies) - 1) > 0.4f))
@@ -99,8 +80,6 @@ namespace LBoL.EntityLib.EnemyUnits.Normal.Bats
 			this.Next = this._pool.Without(this.Last).Sample(base.EnemyMoveRng);
 			this.Last = this.Next;
 		}
-
-		// Token: 0x04000094 RID: 148
 		private readonly RepeatableRandomPool<BatOrigin.MoveType> _pool = new RepeatableRandomPool<BatOrigin.MoveType>
 		{
 			{
@@ -116,17 +95,11 @@ namespace LBoL.EntityLib.EnemyUnits.Normal.Bats
 				0.5f
 			}
 		};
-
-		// Token: 0x02000717 RID: 1815
 		private enum MoveType
 		{
-			// Token: 0x040009EA RID: 2538
 			Shoot,
-			// Token: 0x040009EB RID: 2539
 			DoubleShoot,
-			// Token: 0x040009EC RID: 2540
 			Defend,
-			// Token: 0x040009ED RID: 2541
 			LockOn
 		}
 	}

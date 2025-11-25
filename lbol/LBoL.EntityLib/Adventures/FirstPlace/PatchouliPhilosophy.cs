@@ -5,13 +5,10 @@ using LBoL.Base;
 using LBoL.Core;
 using LBoL.Core.Adventures;
 using LBoL.Core.Battle.Interactions;
-
 namespace LBoL.EntityLib.Adventures.FirstPlace
 {
-	// Token: 0x02000520 RID: 1312
 	public sealed class PatchouliPhilosophy : Adventure
 	{
-		// Token: 0x06001134 RID: 4404 RVA: 0x0001FD4C File Offset: 0x0001DF4C
 		[RuntimeCommand("convert", "")]
 		[UsedImplicitly]
 		public IEnumerator Convert(string desc)

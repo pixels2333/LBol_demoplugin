@@ -5,19 +5,14 @@ using DG.Tweening.Plugins.Options;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-
 namespace LBoL.Presentation.InputSystemExtend
 {
-	// Token: 0x020000ED RID: 237
 	public class GamepadScrollRectItem : GamepadBehaviour, ISelectHandler, IEventSystemHandler, IDeselectHandler
 	{
-		// Token: 0x06000DB4 RID: 3508 RVA: 0x00041F63 File Offset: 0x00040163
 		public void OnDeselect(BaseEventData eventData)
 		{
 			this.scrollRect == null;
 		}
-
-		// Token: 0x06000DB5 RID: 3509 RVA: 0x00041F74 File Offset: 0x00040174
 		public void OnSelect(BaseEventData eventData)
 		{
 			if (this.scrollRect == null)
@@ -88,14 +83,10 @@ namespace LBoL.Presentation.InputSystemExtend
 			}
 			content.DOAnchorPos(anchoredPosition, 0.2f, false).SetEase(Ease.OutCubic);
 		}
-
-		// Token: 0x06000DB6 RID: 3510 RVA: 0x00042247 File Offset: 0x00040447
 		private void Awake()
 		{
 			this.rectTransform = base.GetComponent<RectTransform>();
 		}
-
-		// Token: 0x06000DB7 RID: 3511 RVA: 0x00042258 File Offset: 0x00040458
 		protected override void Start()
 		{
 			base.Start();
@@ -111,25 +102,15 @@ namespace LBoL.Presentation.InputSystemExtend
 			}
 			this.scrollRect = componentInParent;
 		}
-
-		// Token: 0x06000DB8 RID: 3512 RVA: 0x0004229C File Offset: 0x0004049C
 		public static Vector2 GetAnchoredPositionIn(RectTransform a, RectTransform b)
 		{
 			Vector3 position = a.position;
 			return b.InverseTransformPoint(position);
 		}
-
-		// Token: 0x04000A50 RID: 2640
 		private ScrollRect scrollRect;
-
-		// Token: 0x04000A51 RID: 2641
 		private RectTransform rectTransform;
-
-		// Token: 0x04000A52 RID: 2642
 		[SerializeField]
 		private bool disableHorizontal;
-
-		// Token: 0x04000A53 RID: 2643
 		[SerializeField]
 		private bool disableVertical;
 	}

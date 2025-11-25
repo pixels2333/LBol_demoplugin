@@ -9,14 +9,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
-
 namespace LBoL.EntityLib.Cards.Neutral.MultiColor
 {
-	// Token: 0x020002EF RID: 751
 	[UsedImplicitly]
 	public sealed class PatchouliLibrary : Card
 	{
-		// Token: 0x06000B35 RID: 2869 RVA: 0x00016A3E File Offset: 0x00014C3E
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return new GainManaAction(base.Mana);

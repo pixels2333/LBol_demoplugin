@@ -2,18 +2,11 @@
 using System.Collections.Generic;
 using LBoL.Base.Extensions;
 using LBoL.Core.Cards;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x020001A0 RID: 416
 	public sealed class RetainAction : EventBattleAction<CardEventArgs>
 	{
-		// Token: 0x17000524 RID: 1316
-		// (get) Token: 0x06000F1C RID: 3868 RVA: 0x00028CBB File Offset: 0x00026EBB
-		// (set) Token: 0x06000F1D RID: 3869 RVA: 0x00028CC3 File Offset: 0x00026EC3
 		public CardTransitionType TransitionType { get; private set; }
-
-		// Token: 0x06000F1E RID: 3870 RVA: 0x00028CCC File Offset: 0x00026ECC
 		public RetainAction(Card card)
 		{
 			base.Args = new CardEventArgs
@@ -22,8 +15,6 @@ namespace LBoL.Core.Battle.BattleActions
 				CanCancel = false
 			};
 		}
-
-		// Token: 0x06000F1F RID: 3871 RVA: 0x00028CED File Offset: 0x00026EED
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			RetainAction.<>c__DisplayClass5_0 CS$<>8__locals1 = new RetainAction.<>c__DisplayClass5_0();

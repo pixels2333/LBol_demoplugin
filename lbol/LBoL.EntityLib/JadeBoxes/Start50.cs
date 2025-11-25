@@ -6,14 +6,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
-
 namespace LBoL.EntityLib.JadeBoxes
 {
-	// Token: 0x02000119 RID: 281
 	[UsedImplicitly]
 	public sealed class Start50 : JadeBox
 	{
-		// Token: 0x060003E2 RID: 994 RVA: 0x0000ACD0 File Offset: 0x00008ED0
 		protected override void OnGain(GameRunController gameRun)
 		{
 			gameRun.RemoveGamerunInitialCards();
@@ -23,14 +20,10 @@ namespace LBoL.EntityLib.JadeBoxes
 				gameRun.AddDeckCards(array, false, null);
 			}
 		}
-
-		// Token: 0x060003E3 RID: 995 RVA: 0x0000AD23 File Offset: 0x00008F23
 		protected override void OnEnterBattle()
 		{
 			base.ReactBattleEvent<UnitEventArgs>(base.Battle.Player.TurnStarted, new EventSequencedReactor<UnitEventArgs>(this.OnPlayerTurnStarted));
 		}
-
-		// Token: 0x060003E4 RID: 996 RVA: 0x0000AD47 File Offset: 0x00008F47
 		private IEnumerable<BattleAction> OnPlayerTurnStarted(UnitEventArgs args)
 		{
 			yield return ConvertManaAction.PhilosophyRandomMana(base.Battle.BattleMana, 1, base.GameRun.BattleRng);

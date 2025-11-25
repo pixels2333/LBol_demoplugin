@@ -8,14 +8,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
-
 namespace LBoL.EntityLib.Cards.Neutral.Black
 {
-	// Token: 0x02000345 RID: 837
 	[UsedImplicitly]
 	public sealed class ZoufangSnake : Card
 	{
-		// Token: 0x06000C30 RID: 3120 RVA: 0x00017EAA File Offset: 0x000160AA
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.SacrificeAction(base.Value1);

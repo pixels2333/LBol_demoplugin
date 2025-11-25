@@ -10,14 +10,11 @@ using LBoL.EntityLib.Adventures.FirstPlace;
 using LBoL.EntityLib.Cards.Neutral.Black;
 using LBoL.EntityLib.Exhibits;
 using LBoL.EntityLib.Exhibits.Common;
-
 namespace LBoL.EntityLib.Stages
 {
-	// Token: 0x020000F9 RID: 249
 	[UsedImplicitly]
 	public sealed class AllStations : Stage
 	{
-		// Token: 0x0600037D RID: 893 RVA: 0x00009008 File Offset: 0x00007208
 		public AllStations()
 		{
 			base.Level = 2;
@@ -41,21 +38,13 @@ namespace LBoL.EntityLib.Stages
 			base.TradeAdventureType = typeof(SumirekoGathering);
 			base.SentinelExhibitType = typeof(KongZhanpinhe);
 		}
-
-		// Token: 0x0600037E RID: 894 RVA: 0x00009130 File Offset: 0x00007330
 		public override Card[] GetShopNormalCards()
 		{
 			Card[] shopNormalCards = base.GetShopNormalCards();
 			shopNormalCards[0] = Library.CreateCard<HinaAttack>();
 			return shopNormalCards;
 		}
-
-		// Token: 0x17000062 RID: 98
-		// (get) Token: 0x0600037F RID: 895 RVA: 0x00009140 File Offset: 0x00007340
-		// (set) Token: 0x06000380 RID: 896 RVA: 0x00009148 File Offset: 0x00007348
 		private bool EnsureExhibit { get; set; } = true;
-
-		// Token: 0x06000381 RID: 897 RVA: 0x00009151 File Offset: 0x00007351
 		public override Exhibit GetShopExhibit(bool shopOnly)
 		{
 			if (!base.GameRun.Player.HasExhibit<SunhuaiHufu>() && this.EnsureExhibit)
@@ -65,8 +54,6 @@ namespace LBoL.EntityLib.Stages
 			}
 			return base.GetShopExhibit(shopOnly);
 		}
-
-		// Token: 0x06000382 RID: 898 RVA: 0x00009181 File Offset: 0x00007381
 		public override Exhibit GetEliteEnemyExhibit()
 		{
 			if (!base.GameRun.Player.HasExhibit<SunhuaiHufu>() && this.EnsureExhibit)
@@ -76,14 +63,10 @@ namespace LBoL.EntityLib.Stages
 			}
 			return base.GetEliteEnemyExhibit();
 		}
-
-		// Token: 0x06000383 RID: 899 RVA: 0x000091B0 File Offset: 0x000073B0
 		public override void InitBoss(RandomGen rng)
 		{
 			base.Boss = Library.GetEnemyGroupEntry(base.BossPool.SampleOrDefault(rng));
 		}
-
-		// Token: 0x06000384 RID: 900 RVA: 0x000091C9 File Offset: 0x000073C9
 		public override GameMap CreateMap()
 		{
 			return GameMap.CreateFourRoute(base.Boss.Id, new StationType[]

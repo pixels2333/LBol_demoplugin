@@ -9,20 +9,15 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
-
 namespace LBoL.EntityLib.Cards.Neutral.White
 {
-	// Token: 0x02000274 RID: 628
 	[UsedImplicitly]
 	public sealed class HuiyeMarblePhantasm : Card
 	{
-		// Token: 0x060009F8 RID: 2552 RVA: 0x0001516E File Offset: 0x0001336E
 		public override ManaGroup GetXCostFromPooled(ManaGroup pooledMana)
 		{
 			return pooledMana;
 		}
-
-		// Token: 0x060009F9 RID: 2553 RVA: 0x00015171 File Offset: 0x00013371
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			int num = consumingMana.Amount;

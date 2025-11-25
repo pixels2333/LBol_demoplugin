@@ -33,13 +33,10 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Yarn;
-
 namespace LBoL.Presentation
 {
-	// Token: 0x0200000A RID: 10
 	public class GameMaster : Singleton<GameMaster>, IGameRunAchievementHandler, IGameRunVisualTrigger
 	{
-		// Token: 0x06000081 RID: 129 RVA: 0x000038DC File Offset: 0x00001ADC
 		public static void IncreaseStats(ProfileStatsKey key)
 		{
 			ProfileSaveData currentProfile = Singleton<GameMaster>.Instance.CurrentProfile;
@@ -66,8 +63,6 @@ namespace LBoL.Presentation
 				Debug.LogError("Cannot increase profile stats while profile is null");
 			}
 		}
-
-		// Token: 0x06000082 RID: 130 RVA: 0x00003938 File Offset: 0x00001B38
 		public static void UnlockAchievement(string key)
 		{
 			GameMaster.PlatformHandler.SetAchievement(key);
@@ -88,14 +83,10 @@ namespace LBoL.Presentation
 				Debug.LogError("Cannot unlock achievement while profile is null");
 			}
 		}
-
-		// Token: 0x06000083 RID: 131 RVA: 0x000039A3 File Offset: 0x00001BA3
 		public static void UnlockAchievement(AchievementKey achievementKey)
 		{
 			GameMaster.UnlockAchievement(achievementKey.ToString());
 		}
-
-		// Token: 0x06000084 RID: 132 RVA: 0x000039B8 File Offset: 0x00001BB8
 		public static void ClearAchievement(string key)
 		{
 			GameMaster.PlatformHandler.ClearAchievement(key);
@@ -108,8 +99,6 @@ namespace LBoL.Presentation
 			}
 			Debug.LogError("Cannot clear achievement while profile is null");
 		}
-
-		// Token: 0x06000085 RID: 133 RVA: 0x00003A00 File Offset: 0x00001C00
 		public static void ClearAllAchievements()
 		{
 			ProfileSaveData currentProfile = Singleton<GameMaster>.Instance.CurrentProfile;
@@ -125,8 +114,6 @@ namespace LBoL.Presentation
 			}
 			Debug.LogError("Cannot clear achievement while profile is null");
 		}
-
-		// Token: 0x06000086 RID: 134 RVA: 0x00003A88 File Offset: 0x00001C88
 		public static void UnlockAllAchievements()
 		{
 			ProfileSaveData currentProfile = Singleton<GameMaster>.Instance.CurrentProfile;
@@ -147,31 +134,16 @@ namespace LBoL.Presentation
 			}
 			Debug.LogError("Cannot unlock achievement while profile is null");
 		}
-
-		// Token: 0x06000087 RID: 135 RVA: 0x00003B28 File Offset: 0x00001D28
 		void IGameRunAchievementHandler.IncreaseStats(ProfileStatsKey statsKey)
 		{
 			GameMaster.IncreaseStats(statsKey);
 		}
-
-		// Token: 0x06000088 RID: 136 RVA: 0x00003B30 File Offset: 0x00001D30
 		void IGameRunAchievementHandler.UnlockAchievement(AchievementKey achievementKey)
 		{
 			GameMaster.UnlockAchievement(achievementKey);
 		}
-
-		// Token: 0x17000015 RID: 21
-		// (get) Token: 0x06000089 RID: 137 RVA: 0x00003B38 File Offset: 0x00001D38
-		// (set) Token: 0x0600008A RID: 138 RVA: 0x00003B40 File Offset: 0x00001D40
 		public GameRunController CurrentGameRun { get; private set; }
-
-		// Token: 0x17000016 RID: 22
-		// (get) Token: 0x0600008B RID: 139 RVA: 0x00003B49 File Offset: 0x00001D49
-		// (set) Token: 0x0600008C RID: 140 RVA: 0x00003B50 File Offset: 0x00001D50
 		public static bool ShowPoseAnimation { get; set; }
-
-		// Token: 0x17000017 RID: 23
-		// (get) Token: 0x0600008D RID: 141 RVA: 0x00003B58 File Offset: 0x00001D58
 		public int CurrentGameRunPlayedSeconds
 		{
 			get
@@ -183,9 +155,6 @@ namespace LBoL.Presentation
 				return (DateTime.Now - this._currentGameRunStartTime).TotalSeconds.CeilingToInt() + this.CurrentGameRun.PlayedSeconds;
 			}
 		}
-
-		// Token: 0x17000018 RID: 24
-		// (get) Token: 0x0600008E RID: 142 RVA: 0x00003BA1 File Offset: 0x00001DA1
 		public static bool ShowRandomResult
 		{
 			get
@@ -193,9 +162,6 @@ namespace LBoL.Presentation
 				return Singleton<GameMaster>.Instance.CurrentGameRun != null && Singleton<GameMaster>.Instance.CurrentGameRun.ShowRandomResult;
 			}
 		}
-
-		// Token: 0x17000019 RID: 25
-		// (get) Token: 0x0600008F RID: 143 RVA: 0x00003BC0 File Offset: 0x00001DC0
 		public static PlatformHandler PlatformHandler
 		{
 			get
@@ -203,8 +169,6 @@ namespace LBoL.Presentation
 				return PlatformHandlerRunner.Instance.PlatformHandler;
 			}
 		}
-
-		// Token: 0x06000090 RID: 144 RVA: 0x00003BCC File Offset: 0x00001DCC
 		private static void ShowErrorDialog(string error)
 		{
 			UiManager.GetDialog<MessageDialog>().Show(new MessageContent
@@ -213,8 +177,6 @@ namespace LBoL.Presentation
 				Icon = MessageIcon.Error
 			});
 		}
-
-		// Token: 0x06000091 RID: 145 RVA: 0x00003BEB File Offset: 0x00001DEB
 		private static void ShowErrorDialogWithKey(string errorKey)
 		{
 			UiManager.GetDialog<MessageDialog>().Show(new MessageContent
@@ -223,8 +185,6 @@ namespace LBoL.Presentation
 				Icon = MessageIcon.Error
 			});
 		}
-
-		// Token: 0x06000092 RID: 146 RVA: 0x00003C0A File Offset: 0x00001E0A
 		private static void ShowWarningDialogWithKey(string warningKey, [MaybeNull] string warningSubTextKey = null)
 		{
 			UiManager.GetDialog<MessageDialog>().Show(new MessageContent
@@ -234,19 +194,11 @@ namespace LBoL.Presentation
 				Icon = MessageIcon.Warning
 			});
 		}
-
-		// Token: 0x06000093 RID: 147 RVA: 0x00003C30 File Offset: 0x00001E30
 		public static void StartupEnterMainMenu(int? saveIndex)
 		{
 			Singleton<GameMaster>.Instance.StartCoroutine(Singleton<GameMaster>.Instance.CoStartupEnterMainMenu(saveIndex));
 		}
-
-		// Token: 0x1700001A RID: 26
-		// (get) Token: 0x06000094 RID: 148 RVA: 0x00003C48 File Offset: 0x00001E48
-		// (set) Token: 0x06000095 RID: 149 RVA: 0x00003C4F File Offset: 0x00001E4F
 		public static bool ShowCardId { get; set; }
-
-		// Token: 0x06000096 RID: 150 RVA: 0x00003C57 File Offset: 0x00001E57
 		private IEnumerator CoStartupEnterMainMenu(int? saveIndex)
 		{
 			AsyncOperation loadAsync = SceneManager.LoadSceneAsync("GameRun");
@@ -279,8 +231,6 @@ namespace LBoL.Presentation
 			GameMaster.ShowCardId = false;
 			yield break;
 		}
-
-		// Token: 0x06000097 RID: 151 RVA: 0x00003C70 File Offset: 0x00001E70
 		public static void RequestAbandonGameRun(bool skipResult = false)
 		{
 			GameRunSaveData gameRunSaveData = Singleton<GameMaster>.Instance.GameRunSaveData;
@@ -316,8 +266,6 @@ namespace LBoL.Presentation
 				UiManager.GetPanel<MainMenuPanel>().RefreshProfile();
 			}
 		}
-
-		// Token: 0x06000098 RID: 152 RVA: 0x00003D70 File Offset: 0x00001F70
 		private static IEnumerator CoAbandonGameRun(GameRunSaveData saveData, int previousTotalExp, GameMaster.GameStatisticData data)
 		{
 			GameResultPanel panel = UiManager.GetPanel<GameResultPanel>();
@@ -334,14 +282,10 @@ namespace LBoL.Presentation
 			yield return new WaitWhile(() => panel.IsVisible);
 			yield break;
 		}
-
-		// Token: 0x06000099 RID: 153 RVA: 0x00003D90 File Offset: 0x00001F90
 		public static void StartGame(GameDifficulty difficulty, PuzzleFlag puzzles, PlayerUnit player, PlayerType playerType, Exhibit initExhibit, int? initMoneyOverride, IEnumerable<Card> deck, IEnumerable<Stage> stages, Type debutAdventureType, IEnumerable<JadeBox> jadeBoxes, GameMode gameMode = GameMode.FreeMode, bool showRandomResult = true)
 		{
 			GameMaster.StartGame(default(ulong?), difficulty, puzzles, player, playerType, initExhibit, initMoneyOverride, deck, stages, debutAdventureType, jadeBoxes, gameMode, showRandomResult);
 		}
-
-		// Token: 0x0600009A RID: 154 RVA: 0x00003DC0 File Offset: 0x00001FC0
 		public static void StartGame(ulong? seed, GameDifficulty difficulty, PuzzleFlag puzzles, PlayerUnit player, PlayerType playerType, Exhibit initExhibit, int? initMoneyOverride, IEnumerable<Card> deck, IEnumerable<Stage> stages, Type debutAdventureType, IEnumerable<JadeBox> jadeBoxes, GameMode gameMode = GameMode.FreeMode, bool showRandomResult = true)
 		{
 			if (Singleton<GameMaster>.Instance.CurrentGameRun != null)
@@ -377,8 +321,6 @@ namespace LBoL.Presentation
 			currentProfileSaveData.HasClearBonus = false;
 			Singleton<GameMaster>.Instance.SaveProfile();
 		}
-
-		// Token: 0x0600009B RID: 155 RVA: 0x00003EAC File Offset: 0x000020AC
 		public static void RestoreGameRun(GameRunSaveData saveData)
 		{
 			if (Singleton<GameMaster>.Instance.CurrentGameRun != null)
@@ -393,8 +335,6 @@ namespace LBoL.Presentation
 			}
 			Singleton<GameMaster>.Instance.StartCoroutine(Singleton<GameMaster>.Instance.CoRestoreGameRun(saveData));
 		}
-
-		// Token: 0x0600009C RID: 156 RVA: 0x00003EF9 File Offset: 0x000020F9
 		private IEnumerator CoNewGameRun(GameRunController gameRun)
 		{
 			yield return this.CoSetupGameRun(gameRun);
@@ -403,8 +343,6 @@ namespace LBoL.Presentation
 			GameMaster.ShowPoseAnimation = true;
 			yield break;
 		}
-
-		// Token: 0x0600009D RID: 157 RVA: 0x00003F0F File Offset: 0x0000210F
 		private IEnumerator CoRestoreGameRun(GameRunSaveData saveData)
 		{
 			if (saveData.Timing == SaveTiming.EnterMapNode && saveData.EnteringNode == null)
@@ -465,8 +403,6 @@ namespace LBoL.Presentation
 			GameMaster.PlatformHandler.SetGameRunInfo(gameRun);
 			yield break;
 		}
-
-		// Token: 0x0600009E RID: 158 RVA: 0x00003F25 File Offset: 0x00002125
 		private IEnumerator CoSetupGameRun(GameRunController gameRun)
 		{
 			this.CurrentGameRun = gameRun;
@@ -492,8 +428,6 @@ namespace LBoL.Presentation
 			UiManager.EnterGameRun(gameRun);
 			yield break;
 		}
-
-		// Token: 0x0600009F RID: 159 RVA: 0x00003F3C File Offset: 0x0000213C
 		public static void RequestEnterNextStage()
 		{
 			if (Singleton<GameMaster>.Instance.CurrentGameRun == null)
@@ -505,8 +439,6 @@ namespace LBoL.Presentation
 			nextButton.gameObject.SetActive(false);
 			Singleton<GameMaster>.Instance.StartCoroutine(Singleton<GameMaster>.Instance.CoEnterNextStage());
 		}
-
-		// Token: 0x060000A0 RID: 160 RVA: 0x00003F91 File Offset: 0x00002191
 		private IEnumerator CoEnterNextStage()
 		{
 			GameRunController gameRun = this.CurrentGameRun;
@@ -530,8 +462,6 @@ namespace LBoL.Presentation
 			yield return this.CoEnterMapNode(startNode, false, true);
 			yield break;
 		}
-
-		// Token: 0x060000A1 RID: 161 RVA: 0x00003FA0 File Offset: 0x000021A0
 		public static void RequestEnterMapNode(int x, int y)
 		{
 			GameRunController currentGameRun = Singleton<GameMaster>.Instance.CurrentGameRun;
@@ -552,8 +482,6 @@ namespace LBoL.Presentation
 			}
 			throw new InvalidOperationException(string.Format("Cannot enter map node ({0}, {1}) with status == {2}", x, y, mapNode.Status));
 		}
-
-		// Token: 0x060000A2 RID: 162 RVA: 0x00004044 File Offset: 0x00002244
 		public static void TeleportToBossNode()
 		{
 			GameRunController currentGameRun = Singleton<GameMaster>.Instance.CurrentGameRun;
@@ -568,8 +496,6 @@ namespace LBoL.Presentation
 			}
 			Singleton<GameMaster>.Instance.StartCoroutine(Singleton<GameMaster>.Instance.CoTeleportToNode(bossNode));
 		}
-
-		// Token: 0x060000A3 RID: 163 RVA: 0x00004098 File Offset: 0x00002298
 		private IEnumerator CoTeleportToNode(MapNode mapNode)
 		{
 			yield return UiManager.ShowLoading(0.2f).ToCoroutine(null);
@@ -579,8 +505,6 @@ namespace LBoL.Presentation
 			yield return this.CoEnterMapNode(mapNode, false, true);
 			yield break;
 		}
-
-		// Token: 0x060000A4 RID: 164 RVA: 0x000040AE File Offset: 0x000022AE
 		private IEnumerator CoEnterMapNode(MapNode mapNode, bool forced, bool save)
 		{
 			GameRunController gameRun = this.CurrentGameRun;
@@ -603,8 +527,6 @@ namespace LBoL.Presentation
 			yield return this.RunInnerStation(enteringStation);
 			yield break;
 		}
-
-		// Token: 0x060000A5 RID: 165 RVA: 0x000040D4 File Offset: 0x000022D4
 		private void PlayMusic(StationType stationType, int stageLevel, string enemyId, bool eternalStageMusic)
 		{
 			switch (stationType)
@@ -667,8 +589,6 @@ namespace LBoL.Presentation
 				throw new ArgumentOutOfRangeException();
 			}
 		}
-
-		// Token: 0x060000A6 RID: 166 RVA: 0x000041B4 File Offset: 0x000023B4
 		private void PlayMusicFromSave(StationType stationType, int stageLevel)
 		{
 			if (stationType == StationType.Boss)
@@ -678,8 +598,6 @@ namespace LBoL.Presentation
 			}
 			AudioManager.EnterStage(stageLevel, true);
 		}
-
-		// Token: 0x060000A7 RID: 167 RVA: 0x000041C9 File Offset: 0x000023C9
 		private IEnumerator CoLeaveStation(Station station)
 		{
 			if (station != null)
@@ -688,8 +606,6 @@ namespace LBoL.Presentation
 			}
 			yield break;
 		}
-
-		// Token: 0x060000A8 RID: 168 RVA: 0x000041DF File Offset: 0x000023DF
 		private IEnumerator CoEnterStation(Station station)
 		{
 			yield return this.SwitchToStation(station);
@@ -728,8 +644,6 @@ namespace LBoL.Presentation
 			this.SaveProfile();
 			yield break;
 		}
-
-		// Token: 0x060000A9 RID: 169 RVA: 0x000041F5 File Offset: 0x000023F5
 		private IEnumerator CoEnterBattleStationFromFinishingSave(BattleStation battleStation, SaveTiming saveTiming)
 		{
 			yield return this.SwitchToStationFromSave(battleStation);
@@ -742,8 +656,6 @@ namespace LBoL.Presentation
 			yield return this.BattleStationFlowFromEndSave(battleStation, saveTiming);
 			yield break;
 		}
-
-		// Token: 0x060000AA RID: 170 RVA: 0x00004212 File Offset: 0x00002412
 		private IEnumerator CoEnterAdventureFromSave(Station station, AdventureSaveData saveData)
 		{
 			yield return this.SwitchToStationFromSave(station);
@@ -772,8 +684,6 @@ namespace LBoL.Presentation
 			}
 			yield break;
 		}
-
-		// Token: 0x060000AB RID: 171 RVA: 0x00004230 File Offset: 0x00002430
 		public static void GameRunFailCheck()
 		{
 			GameRunController currentGameRun = Singleton<GameMaster>.Instance.CurrentGameRun;
@@ -790,8 +700,6 @@ namespace LBoL.Presentation
 				Debug.LogError("GameRunFailCheck invoked without game-run");
 			}
 		}
-
-		// Token: 0x060000AC RID: 172 RVA: 0x00004268 File Offset: 0x00002468
 		private static void EndGameProcedure(GameRunController gameRun)
 		{
 			Debug.Log(string.Format("[GameMaster] End game procedure, status = {0}", gameRun.Status));
@@ -814,8 +722,6 @@ namespace LBoL.Presentation
 				DebugExp = gameStatisticData.DebugExp
 			}));
 		}
-
-		// Token: 0x060000AD RID: 173 RVA: 0x00004359 File Offset: 0x00002559
 		private static IEnumerator CoShowResultAndLeaveGameRun(GameResultData data)
 		{
 			UiManager.GetPanel<UltimateSkillPanel>().Hide();
@@ -825,13 +731,7 @@ namespace LBoL.Presentation
 			GameMaster.LeaveGameRun();
 			yield break;
 		}
-
-		// Token: 0x1700001B RID: 27
-		// (get) Token: 0x060000AE RID: 174 RVA: 0x00004368 File Offset: 0x00002568
-		// (set) Token: 0x060000AF RID: 175 RVA: 0x0000436F File Offset: 0x0000256F
 		public static int? TempDebugExp { get; set; }
-
-		// Token: 0x060000B0 RID: 176 RVA: 0x00004378 File Offset: 0x00002578
 		private static GameMaster.GameStatisticData EndGameStatistics(GameRunController gameRun, GameResultType resultType)
 		{
 			GameMaster.<>c__DisplayClass60_0 CS$<>8__locals1;
@@ -1035,16 +935,12 @@ namespace LBoL.Presentation
 				DebugExp = num7
 			};
 		}
-
-		// Token: 0x060000B1 RID: 177 RVA: 0x000049E4 File Offset: 0x00002BE4
 		public static void LeaveGameRun()
 		{
 			GameDirector.StopLoreChat();
 			Singleton<GameMaster>.Instance.StopAllCoroutines();
 			Singleton<GameMaster>.Instance.StartCoroutine(Singleton<GameMaster>.Instance.CoLeaveGameRun());
 		}
-
-		// Token: 0x060000B2 RID: 178 RVA: 0x00004A0A File Offset: 0x00002C0A
 		private IEnumerator CoLeaveGameRun()
 		{
 			if (this.CurrentGameRun == null)
@@ -1070,8 +966,6 @@ namespace LBoL.Presentation
 			yield return UiManager.HideLoading(0.5f).ToCoroutine(null);
 			yield break;
 		}
-
-		// Token: 0x060000B3 RID: 179 RVA: 0x00004A1C File Offset: 0x00002C1C
 		public static void RequestReenterStation()
 		{
 			GameMaster instance = Singleton<GameMaster>.Instance;
@@ -1095,8 +989,6 @@ namespace LBoL.Presentation
 			}
 			Debug.LogError("Cannot reenter station while not in station");
 		}
-
-		// Token: 0x060000B4 RID: 180 RVA: 0x00004AA4 File Offset: 0x00002CA4
 		public static void RequestSaveGameRunInAdventure(AdventureSaveData advSaveData)
 		{
 			GameMaster instance = Singleton<GameMaster>.Instance;
@@ -1118,8 +1010,6 @@ namespace LBoL.Presentation
 			gameRunSaveData.AdventureState = advSaveData;
 			instance.SaveGameRun(gameRunSaveData, true);
 		}
-
-		// Token: 0x060000B5 RID: 181 RVA: 0x00004B21 File Offset: 0x00002D21
 		private IEnumerator CoReenterStation(GameRunSaveData saveData)
 		{
 			yield return UiManager.ShowLoading(0.5f).ToCoroutine(null);
@@ -1180,8 +1070,6 @@ namespace LBoL.Presentation
 			yield return UiManager.HideLoading(0.5f).ToCoroutine(null);
 			yield break;
 		}
-
-		// Token: 0x060000B6 RID: 182 RVA: 0x00004B38 File Offset: 0x00002D38
 		private void ShowMainMenu()
 		{
 			if (this._currentSaveIndex == null)
@@ -1197,8 +1085,6 @@ namespace LBoL.Presentation
 			}
 			GameMaster.PlatformHandler.SetMainMenuInfo(MainMenuStatus.Idle);
 		}
-
-		// Token: 0x060000B7 RID: 183 RVA: 0x00004B87 File Offset: 0x00002D87
 		public static IEnumerator BattleFlow(EnemyGroup enemyGroup)
 		{
 			GameRunController gameRun = Singleton<GameMaster>.Instance.CurrentGameRun;
@@ -1265,8 +1151,6 @@ namespace LBoL.Presentation
 			}
 			yield break;
 		}
-
-		// Token: 0x060000B8 RID: 184 RVA: 0x00004B96 File Offset: 0x00002D96
 		private static IEnumerator AdventureFlow(Station station)
 		{
 			IAdventureStation adventureStation = station as IAdventureStation;
@@ -1322,8 +1206,6 @@ namespace LBoL.Presentation
 			station.Finish();
 			yield break;
 		}
-
-		// Token: 0x060000B9 RID: 185 RVA: 0x00004BA5 File Offset: 0x00002DA5
 		private static IEnumerator AdventureRestoreFlow(Station station, AdventureSaveData saveData)
 		{
 			IAdventureStation adventureStation = station as IAdventureStation;
@@ -1376,8 +1258,6 @@ namespace LBoL.Presentation
 			station.Finish();
 			yield break;
 		}
-
-		// Token: 0x060000BA RID: 186 RVA: 0x00004BBC File Offset: 0x00002DBC
 		private static UniTask LoadSharedUiTo(IList<Type> ui)
 		{
 			GameMaster.<LoadSharedUiTo>d__70 <LoadSharedUiTo>d__;
@@ -1387,8 +1267,6 @@ namespace LBoL.Presentation
 			<LoadSharedUiTo>d__.<>t__builder.Start<GameMaster.<LoadSharedUiTo>d__70>(ref <LoadSharedUiTo>d__);
 			return <LoadSharedUiTo>d__.<>t__builder.Task;
 		}
-
-		// Token: 0x060000BB RID: 187 RVA: 0x00004C00 File Offset: 0x00002E00
 		private static async UniTask LoadMainMenuUiAsync()
 		{
 			UiManager.ClearActionHandler();
@@ -1406,8 +1284,6 @@ namespace LBoL.Presentation
 			await GameMaster.LoadSharedUiTo(GameMaster.MainMenuUiList);
 			UiManager.PushActionHandler(new GameMaster.MainMenuInputActionHandler());
 		}
-
-		// Token: 0x060000BC RID: 188 RVA: 0x00004C3C File Offset: 0x00002E3C
 		private static void UnloadMainMenuUi()
 		{
 			foreach (Type type in GameMaster.MainMenuUiList)
@@ -1416,8 +1292,6 @@ namespace LBoL.Presentation
 			}
 			GameMaster.MainMenuUiList.Clear();
 		}
-
-		// Token: 0x060000BD RID: 189 RVA: 0x00004C98 File Offset: 0x00002E98
 		private static async UniTask CoLoadGameRunUi()
 		{
 			UiManager.ClearActionHandler();
@@ -1447,8 +1321,6 @@ namespace LBoL.Presentation
 			await GameMaster.LoadSharedUiTo(GameMaster.GameRunUiList);
 			UiManager.PushActionHandler(new GameMaster.GameRunInputActionHandler());
 		}
-
-		// Token: 0x060000BE RID: 190 RVA: 0x00004CD4 File Offset: 0x00002ED4
 		private static void UnloadGameRunUi()
 		{
 			foreach (Type type in GameMaster.GameRunUiList)
@@ -1457,8 +1329,6 @@ namespace LBoL.Presentation
 			}
 			GameMaster.GameRunUiList.Clear();
 		}
-
-		// Token: 0x060000BF RID: 191 RVA: 0x00004D30 File Offset: 0x00002F30
 		public static void RegisterExtraAdventureHandlers(Type adventureType, IAdventureHandler handlerInstance)
 		{
 			List<IAdventureHandler> list;
@@ -1469,14 +1339,10 @@ namespace LBoL.Presentation
 			}
 			list.Add(handlerInstance);
 		}
-
-		// Token: 0x060000C0 RID: 192 RVA: 0x00004D65 File Offset: 0x00002F65
 		public static void RegisterExtraAdventureHandlers<TAdventure>(IAdventureHandler handlerInstance) where TAdventure : Adventure
 		{
 			GameMaster.RegisterExtraAdventureHandlers(typeof(TAdventure), handlerInstance);
 		}
-
-		// Token: 0x060000C1 RID: 193 RVA: 0x00004D78 File Offset: 0x00002F78
 		public static void UnregisterExtraAdventureHandlers(Type adventureType, IAdventureHandler handlerInstance)
 		{
 			List<IAdventureHandler> list;
@@ -1485,14 +1351,10 @@ namespace LBoL.Presentation
 				list.Remove(handlerInstance);
 			}
 		}
-
-		// Token: 0x060000C2 RID: 194 RVA: 0x00004D9C File Offset: 0x00002F9C
 		public static void UnregisterExtraAdventureHandlers<TAdventure>(IAdventureHandler handlerInstance) where TAdventure : Adventure
 		{
 			GameMaster.UnregisterExtraAdventureHandlers(typeof(TAdventure), handlerInstance);
 		}
-
-		// Token: 0x060000C3 RID: 195 RVA: 0x00004DB0 File Offset: 0x00002FB0
 		public static bool OnWantsToQuit()
 		{
 			if (GameMaster._quitConfirmed)
@@ -1511,21 +1373,15 @@ namespace LBoL.Presentation
 			dialog.Show(messageContent);
 			return false;
 		}
-
-		// Token: 0x060000C4 RID: 196 RVA: 0x00004E0D File Offset: 0x0000300D
 		public static void QuitGame()
 		{
 			GameMaster._quitConfirmed = true;
 			Application.Quit();
 		}
-
-		// Token: 0x060000C5 RID: 197 RVA: 0x00004E1A File Offset: 0x0000301A
 		private static void SetTurboMode(bool turboMode)
 		{
 			Time.timeScale = (turboMode ? 2f : 1f);
 		}
-
-		// Token: 0x060000C6 RID: 198 RVA: 0x00004E30 File Offset: 0x00003030
 		public static void DebugGainExhibit(Exhibit exhibit)
 		{
 			GameRunController currentGameRun = Singleton<GameMaster>.Instance.CurrentGameRun;
@@ -1540,13 +1396,7 @@ namespace LBoL.Presentation
 				}));
 			}
 		}
-
-		// Token: 0x1700001C RID: 28
-		// (get) Token: 0x060000C7 RID: 199 RVA: 0x00004E8B File Offset: 0x0000308B
-		// (set) Token: 0x060000C8 RID: 200 RVA: 0x00004E92 File Offset: 0x00003092
 		public static bool ShowAllCardsInMuseum { get; set; }
-
-		// Token: 0x060000C9 RID: 201 RVA: 0x00004E9C File Offset: 0x0000309C
 		public static void InitializePlayerPrefs(Texture2D cursorTexture)
 		{
 			GameMaster.CursorTexture = cursorTexture;
@@ -1572,18 +1422,8 @@ namespace LBoL.Presentation
 				Application.targetFrameRate = PlayerPrefs.GetInt("TargetFrameRate");
 			}
 		}
-
-		// Token: 0x1700001D RID: 29
-		// (get) Token: 0x060000CA RID: 202 RVA: 0x00004F34 File Offset: 0x00003134
-		// (set) Token: 0x060000CB RID: 203 RVA: 0x00004F3B File Offset: 0x0000313B
 		private static Texture2D CursorTexture { get; set; }
-
-		// Token: 0x1700001E RID: 30
-		// (get) Token: 0x060000CC RID: 204 RVA: 0x00004F43 File Offset: 0x00003143
-		// (set) Token: 0x060000CD RID: 205 RVA: 0x00004F4A File Offset: 0x0000314A
 		public static bool UseLbolCursor { get; private set; }
-
-		// Token: 0x060000CE RID: 206 RVA: 0x00004F52 File Offset: 0x00003152
 		public static void SetCursor(bool isOn)
 		{
 			if (isOn)
@@ -1597,10 +1437,6 @@ namespace LBoL.Presentation
 			GameMaster.UseLbolCursor = isOn;
 			PlayerPrefs.SetInt("UseLbolCursor", isOn ? 1 : 0);
 		}
-
-		// Token: 0x1700001F RID: 31
-		// (get) Token: 0x060000CF RID: 207 RVA: 0x00004F8C File Offset: 0x0000318C
-		// (set) Token: 0x060000D0 RID: 208 RVA: 0x00004F93 File Offset: 0x00003193
 		public static bool IsAnimatingEnvironmentEnabled
 		{
 			get
@@ -1617,48 +1453,31 @@ namespace LBoL.Presentation
 				PlayerPrefs.SetInt("IsAnimatingEnvironmentEnabled", value ? 1 : 0);
 			}
 		}
-
-		// Token: 0x17000020 RID: 32
-		// (get) Token: 0x060000D1 RID: 209 RVA: 0x00004FB5 File Offset: 0x000031B5
-		// (set) Token: 0x060000D2 RID: 210 RVA: 0x00004FBC File Offset: 0x000031BC
 		public static GameMaster.GameMasterStatus Status { get; set; }
-
-		// Token: 0x060000D3 RID: 211 RVA: 0x00004FC4 File Offset: 0x000031C4
 		public void OnGainMaxHp(int deltaMaxHp, bool triggerVisual)
 		{
 			UiManager.GetPanel<SystemBoard>().OnMaxHpChanged();
 			GameDirector.Player.OnMaxHpChanged();
 		}
-
-		// Token: 0x060000D4 RID: 212 RVA: 0x00004FDA File Offset: 0x000031DA
 		public void OnLoseMaxHp(int deltaMaxHp, bool triggerVisual)
 		{
 			UiManager.GetPanel<SystemBoard>().OnMaxHpChanged();
 			GameDirector.Player.OnMaxHpChanged();
 		}
-
-		// Token: 0x060000D5 RID: 213 RVA: 0x00004FF0 File Offset: 0x000031F0
 		public void OnSetHpAndMaxHp(int hp, int maxHp, bool triggerVisual)
 		{
 			UiManager.GetPanel<SystemBoard>().OnMaxHpChanged();
 			GameDirector.Player.OnMaxHpChanged();
 		}
-
-		// Token: 0x060000D6 RID: 214 RVA: 0x00005006 File Offset: 0x00003206
 		public void OnEnemySetHpAndMaxHp(int index, int hp, int maxHp, bool triggerVisual)
 		{
 			GameDirector.GetEnemyByRootIndex(index).OnMaxHpChanged();
 		}
-
-		// Token: 0x060000D7 RID: 215 RVA: 0x00005013 File Offset: 0x00003213
 		public void OnDamage(DamageInfo damage, bool triggerVisual)
 		{
 			UiManager.GetPanel<SystemBoard>().OnHpChanged();
 			GameDirector.Player.OnDamageReceived(damage);
 		}
-
-		// Token: 0x17000021 RID: 33
-		// (get) Token: 0x060000D8 RID: 216 RVA: 0x0000502A File Offset: 0x0000322A
 		private static UnitView PlayerView
 		{
 			get
@@ -1666,8 +1485,6 @@ namespace LBoL.Presentation
 				return Singleton<GameDirector>.Instance.PlayerUnitView;
 			}
 		}
-
-		// Token: 0x060000D9 RID: 217 RVA: 0x00005038 File Offset: 0x00003238
 		public void OnHeal(int amount, bool triggerVisual, string audioName)
 		{
 			if (triggerVisual)
@@ -1687,8 +1504,6 @@ namespace LBoL.Presentation
 			UiManager.GetPanel<SystemBoard>().OnHpChanged();
 			GameDirector.Player.OnHealingReceived(amount);
 		}
-
-		// Token: 0x060000DA RID: 218 RVA: 0x000050C4 File Offset: 0x000032C4
 		public void OnGainMoney(int value, bool triggerVisual, [MaybeNull] VisualSourceData sourceData)
 		{
 			VisualSourceType? visualSourceType = ((sourceData != null) ? new VisualSourceType?(sourceData.SourceType) : default(VisualSourceType?));
@@ -1727,38 +1542,26 @@ namespace LBoL.Presentation
 			}
 			UiManager.GetPanel<SystemBoard>().OnMoneyChanged();
 		}
-
-		// Token: 0x060000DB RID: 219 RVA: 0x0000521D File Offset: 0x0000341D
 		public void OnConsumeMoney(int value)
 		{
 			UiManager.GetPanel<SystemBoard>().OnMoneyChanged();
 		}
-
-		// Token: 0x060000DC RID: 220 RVA: 0x00005229 File Offset: 0x00003429
 		public void OnLoseMoney(int value)
 		{
 			UiManager.GetPanel<SystemBoard>().OnMoneyChanged();
 		}
-
-		// Token: 0x060000DD RID: 221 RVA: 0x00005235 File Offset: 0x00003435
 		public void OnGainPower(int value, bool triggerVisual)
 		{
 			UiManager.GetPanel<UltimateSkillPanel>().GainPower(value);
 		}
-
-		// Token: 0x060000DE RID: 222 RVA: 0x00005242 File Offset: 0x00003442
 		public void OnConsumePower(int value, bool triggerVisual)
 		{
 			UiManager.GetPanel<UltimateSkillPanel>().ConsumePower(value);
 		}
-
-		// Token: 0x060000DF RID: 223 RVA: 0x0000524F File Offset: 0x0000344F
 		public void OnLosePower(int value, bool triggerVisual)
 		{
 			UiManager.GetPanel<UltimateSkillPanel>().LosePower(value);
 		}
-
-		// Token: 0x060000E0 RID: 224 RVA: 0x0000525C File Offset: 0x0000345C
 		public void OnAddDeckCards(Card[] cards, bool triggerVisual, [MaybeNull] VisualSourceData sourceData)
 		{
 			UiManager.GetPanel<SystemBoard>().OnDeckChanged();
@@ -1784,8 +1587,6 @@ namespace LBoL.Presentation
 			}
 			UiManager.GetPanel<GameRunVisualPanel>().PlayAddToDeckEffect(cards, null, 0.5f + 0.2f * (float)cards.Length);
 		}
-
-		// Token: 0x060000E1 RID: 225 RVA: 0x00005338 File Offset: 0x00003538
 		public void OnRemoveDeckCards(Card[] cards, bool triggerVisual)
 		{
 			UiManager.GetPanel<SystemBoard>().OnDeckChanged();
@@ -1799,14 +1600,10 @@ namespace LBoL.Presentation
 				UiManager.GetPanel<GameRunVisualPanel>().ViewRemoveDeckCards(cards);
 			}
 		}
-
-		// Token: 0x060000E2 RID: 226 RVA: 0x00005372 File Offset: 0x00003572
 		public void OnUpgradeDeckCards(Card[] cards, bool triggerVisual)
 		{
 			UiManager.GetPanel<GameRunVisualPanel>().PlayUpgradeDeckCardsEffect(cards, 1f + (float)cards.Length * 0.3f);
 		}
-
-		// Token: 0x060000E3 RID: 227 RVA: 0x0000538F File Offset: 0x0000358F
 		public IEnumerator OnGainExhibit(Exhibit exhibit, bool triggerVisual, [MaybeNull] VisualSourceData sourceData)
 		{
 			SystemBoard panel = UiManager.GetPanel<SystemBoard>();
@@ -1856,35 +1653,22 @@ namespace LBoL.Presentation
 			}
 			yield break;
 		}
-
-		// Token: 0x060000E4 RID: 228 RVA: 0x000053AC File Offset: 0x000035AC
 		public void OnLoseExhibit(Exhibit exhibit, bool triggerVisual)
 		{
 			UiManager.GetPanel<SystemBoard>().OnExhibitRemoved(exhibit);
 		}
-
-		// Token: 0x060000E5 RID: 229 RVA: 0x000053B9 File Offset: 0x000035B9
 		public void OnSetBaseMana(ManaGroup mana, bool triggerVisual)
 		{
 		}
-
-		// Token: 0x060000E6 RID: 230 RVA: 0x000053BB File Offset: 0x000035BB
 		public void OnGainBaseMana(ManaGroup mana, bool triggerVisual)
 		{
 		}
-
-		// Token: 0x060000E7 RID: 231 RVA: 0x000053BD File Offset: 0x000035BD
 		public void OnLoseBaseMana(ManaGroup mana, bool triggerVisual)
 		{
 		}
-
-		// Token: 0x060000E8 RID: 232 RVA: 0x000053BF File Offset: 0x000035BF
 		public void CustomVisual(string visualName, bool triggerVisual)
 		{
 		}
-
-		// Token: 0x17000022 RID: 34
-		// (get) Token: 0x060000E9 RID: 233 RVA: 0x000053C1 File Offset: 0x000035C1
 		public static string SysFileName
 		{
 			get
@@ -1892,27 +1676,18 @@ namespace LBoL.Presentation
 				return "sys.sav";
 			}
 		}
-
-		// Token: 0x060000EA RID: 234 RVA: 0x000053C8 File Offset: 0x000035C8
 		private static string GetProfileFileName(int index)
 		{
 			return string.Format("save{0}.sav", index);
 		}
-
-		// Token: 0x060000EB RID: 235 RVA: 0x000053DA File Offset: 0x000035DA
 		private static string GetGameRunFileName(int index)
 		{
 			return string.Format("game{0}.sav", index);
 		}
-
-		// Token: 0x060000EC RID: 236 RVA: 0x000053EC File Offset: 0x000035EC
 		private static string GetHistoryFileName(int index)
 		{
 			return string.Format("history{0}.sav", index);
 		}
-
-		// Token: 0x17000023 RID: 35
-		// (get) Token: 0x060000ED RID: 237 RVA: 0x000053FE File Offset: 0x000035FE
 		public int? CurrentSaveIndex
 		{
 			get
@@ -1920,9 +1695,6 @@ namespace LBoL.Presentation
 				return this._currentSaveIndex;
 			}
 		}
-
-		// Token: 0x17000024 RID: 36
-		// (get) Token: 0x060000EE RID: 238 RVA: 0x00005406 File Offset: 0x00003606
 		public ProfileSaveData CurrentProfile
 		{
 			get
@@ -1930,9 +1702,6 @@ namespace LBoL.Presentation
 				return this._currentProfileSaveData;
 			}
 		}
-
-		// Token: 0x17000025 RID: 37
-		// (get) Token: 0x060000EF RID: 239 RVA: 0x0000540E File Offset: 0x0000360E
 		public int CurrentProfileLevel
 		{
 			get
@@ -1944,13 +1713,7 @@ namespace LBoL.Presentation
 				return ExpHelper.GetLevelForTotalExp(this._currentProfileSaveData.Exp);
 			}
 		}
-
-		// Token: 0x17000026 RID: 38
-		// (get) Token: 0x060000F0 RID: 240 RVA: 0x0000542A File Offset: 0x0000362A
-		// (set) Token: 0x060000F1 RID: 241 RVA: 0x00005432 File Offset: 0x00003632
 		public GameRunSaveData GameRunSaveData { get; private set; }
-
-		// Token: 0x060000F2 RID: 242 RVA: 0x0000543C File Offset: 0x0000363C
 		public static void DebugAddExp(int exp)
 		{
 			ProfileSaveData currentProfileSaveData = Singleton<GameMaster>.Instance._currentProfileSaveData;
@@ -1963,8 +1726,6 @@ namespace LBoL.Presentation
 			currentProfileSaveData.BluePoint += exp;
 			Singleton<GameMaster>.Instance.SaveProfile();
 		}
-
-		// Token: 0x060000F3 RID: 243 RVA: 0x0000549C File Offset: 0x0000369C
 		public static void SaveSys()
 		{
 			SysSaveData sysSaveData = new SysSaveData
@@ -1974,8 +1735,6 @@ namespace LBoL.Presentation
 			};
 			GameMaster.WriteSaveData(GameMaster.SysFileName, SaveDataHelper.SerializeSys(sysSaveData, true));
 		}
-
-		// Token: 0x060000F4 RID: 244 RVA: 0x000054EC File Offset: 0x000036EC
 		public static ProfileSaveData CreateAndSelectProfile(int index, string name)
 		{
 			ProfileSaveData profileSaveData = new ProfileSaveData
@@ -1996,8 +1755,6 @@ namespace LBoL.Presentation
 			UiManager.GetPanel<MuseumPanel>().Initialization();
 			return profileSaveData;
 		}
-
-		// Token: 0x060000F5 RID: 245 RVA: 0x00005590 File Offset: 0x00003790
 		public static ProfileSaveData SetProfileName(int index, string name)
 		{
 			int? currentSaveIndex = Singleton<GameMaster>.Instance._currentSaveIndex;
@@ -2019,8 +1776,6 @@ namespace LBoL.Presentation
 			}
 			return null;
 		}
-
-		// Token: 0x060000F6 RID: 246 RVA: 0x0000562C File Offset: 0x0000382C
 		public static void SelectProfile(int? index)
 		{
 			if (index != null)
@@ -2102,8 +1857,6 @@ namespace LBoL.Presentation
 			}
 			GameMaster.SetTurboMode(false);
 		}
-
-		// Token: 0x060000F7 RID: 247 RVA: 0x00005888 File Offset: 0x00003A88
 		public static void DeleteProfile(int index)
 		{
 			GameMaster.DeleteSaveData(GameMaster.GetProfileFileName(index));
@@ -2119,8 +1872,6 @@ namespace LBoL.Presentation
 			UiManager.GetPanel<MainMenuPanel>().RefreshProfile();
 			GameMaster.SaveSys();
 		}
-
-		// Token: 0x060000F8 RID: 248 RVA: 0x00005910 File Offset: 0x00003B10
 		private static void WriteSaveData(string filename, byte[] data)
 		{
 			try
@@ -2138,8 +1889,6 @@ namespace LBoL.Presentation
 				Debug.LogException(ex);
 			}
 		}
-
-		// Token: 0x060000F9 RID: 249 RVA: 0x00005970 File Offset: 0x00003B70
 		private static void DeleteSaveData(string filename)
 		{
 			try
@@ -2152,8 +1901,6 @@ namespace LBoL.Presentation
 				Debug.LogException(ex);
 			}
 		}
-
-		// Token: 0x060000FA RID: 250 RVA: 0x000059BC File Offset: 0x00003BBC
 		private static bool TryDeleteSaveData(string filename, bool backup)
 		{
 			bool flag;
@@ -2180,8 +1927,6 @@ namespace LBoL.Presentation
 			}
 			return flag;
 		}
-
-		// Token: 0x060000FB RID: 251 RVA: 0x00005A1C File Offset: 0x00003C1C
 		private void AppendGameRunHistory(GameRunRecordSaveData record, int bluePoint)
 		{
 			int? currentSaveIndex = this.CurrentSaveIndex;
@@ -2220,8 +1965,6 @@ namespace LBoL.Presentation
 			}
 			Debug.LogError("[GameMaster] Cannot save game-run history while profile not selected.");
 		}
-
-		// Token: 0x060000FC RID: 252 RVA: 0x00005B10 File Offset: 0x00003D10
 		private void SaveProfile()
 		{
 			if (this.CurrentSaveIndex == null)
@@ -2241,8 +1984,6 @@ namespace LBoL.Presentation
 			currentProfileSaveData.GameRevision = VersionInfo.Current.Revision;
 			GameMaster.WriteSaveData(GameMaster.GetProfileFileName(this.CurrentSaveIndex.Value), SaveDataHelper.SerializeProfile(currentProfileSaveData, true));
 		}
-
-		// Token: 0x060000FD RID: 253 RVA: 0x00005BA0 File Offset: 0x00003DA0
 		private void SaveProfileWithEndingGameRun(GameRunController gameRun, int bluePoint, GameRunRecordSaveData gameRunRecord)
 		{
 			if (this.CurrentSaveIndex == null)
@@ -2413,8 +2154,6 @@ namespace LBoL.Presentation
 			this.GameRunSaveData = null;
 			this.AppendGameRunHistory(gameRunRecord, bluePoint);
 		}
-
-		// Token: 0x060000FE RID: 254 RVA: 0x000060A8 File Offset: 0x000042A8
 		private void SaveProfileWithSettings(GameSettingsSaveData settings)
 		{
 			if (this.CurrentSaveIndex == null)
@@ -2431,8 +2170,6 @@ namespace LBoL.Presentation
 			currentProfileSaveData.Settings = settings;
 			GameMaster.WriteSaveData(GameMaster.GetProfileFileName(this.CurrentSaveIndex.Value), SaveDataHelper.SerializeProfile(currentProfileSaveData, true));
 		}
-
-		// Token: 0x060000FF RID: 255 RVA: 0x0000610C File Offset: 0x0000430C
 		public static bool TryLoadProfileSaveData(int index, out ProfileSaveData saveData)
 		{
 			string profileFileName = GameMaster.GetProfileFileName(index);
@@ -2457,8 +2194,6 @@ namespace LBoL.Presentation
 			}
 			return flag;
 		}
-
-		// Token: 0x06000100 RID: 256 RVA: 0x0000618C File Offset: 0x0000438C
 		public static GameMaster.GameRunSaveDataLoadResult TryLoadGameRunSaveData(int index, out GameRunSaveData saveData)
 		{
 			string gameRunFileName = GameMaster.GetGameRunFileName(index);
@@ -2491,8 +2226,6 @@ namespace LBoL.Presentation
 			}
 			return gameRunSaveDataLoadResult;
 		}
-
-		// Token: 0x06000101 RID: 257 RVA: 0x0000620C File Offset: 0x0000440C
 		private static bool IsVersionMatches(GameRunSaveData saveData)
 		{
 			SemVer semVer;
@@ -2514,8 +2247,6 @@ namespace LBoL.Presentation
 			}
 			return true;
 		}
-
-		// Token: 0x06000102 RID: 258 RVA: 0x00006270 File Offset: 0x00004470
 		private void SaveGameRun(GameRunSaveData data, bool normalSave = true)
 		{
 			data.SaveTimestamp = Utils.ToIso8601Timestamp(DateTime.Now);
@@ -2538,8 +2269,6 @@ namespace LBoL.Presentation
 				UiManager.GetPanel<SystemBoard>().ShowGameSaveHint();
 			}
 		}
-
-		// Token: 0x06000103 RID: 259 RVA: 0x0000630C File Offset: 0x0000450C
 		private static void RevealCardRecursive(ProfileSaveData profile, string id)
 		{
 			if (id.EndsWith('+'))
@@ -2564,8 +2293,6 @@ namespace LBoL.Presentation
 				}
 			}
 		}
-
-		// Token: 0x06000104 RID: 260 RVA: 0x000063CC File Offset: 0x000045CC
 		public static void RevealCard(string cardId)
 		{
 			ProfileSaveData currentProfile = Singleton<GameMaster>.Instance.CurrentProfile;
@@ -2575,8 +2302,6 @@ namespace LBoL.Presentation
 			}
 			GameMaster.RevealCardRecursive(currentProfile, cardId);
 		}
-
-		// Token: 0x06000105 RID: 261 RVA: 0x000063EC File Offset: 0x000045EC
 		public static void RevealExhibit(string exhibitId)
 		{
 			ProfileSaveData currentProfile = Singleton<GameMaster>.Instance.CurrentProfile;
@@ -2595,8 +2320,6 @@ namespace LBoL.Presentation
 				GameMaster.RevealCardRecursive(currentProfile, text);
 			}
 		}
-
-		// Token: 0x06000106 RID: 262 RVA: 0x00006488 File Offset: 0x00004688
 		public static void RevealEnemyGroup(string enemyGroupId)
 		{
 			ProfileSaveData currentProfile = Singleton<GameMaster>.Instance.CurrentProfile;
@@ -2611,8 +2334,6 @@ namespace LBoL.Presentation
 				enemyGroupRevealed.Insert(num, enemyGroupId);
 			}
 		}
-
-		// Token: 0x06000107 RID: 263 RVA: 0x000064DB File Offset: 0x000046DB
 		public static bool ShouldShowHint(string key)
 		{
 			ProfileSaveData currentProfile = Singleton<GameMaster>.Instance.CurrentProfile;
@@ -2622,8 +2343,6 @@ namespace LBoL.Presentation
 			}
 			return !currentProfile.HintStatus.ShownHints.Contains(key);
 		}
-
-		// Token: 0x06000108 RID: 264 RVA: 0x00006508 File Offset: 0x00004708
 		public static void MarkHintAsShown(string key)
 		{
 			ProfileSaveData currentProfile = Singleton<GameMaster>.Instance.CurrentProfile;
@@ -2636,8 +2355,6 @@ namespace LBoL.Presentation
 				Singleton<GameMaster>.Instance.SaveProfile();
 			}
 		}
-
-		// Token: 0x06000109 RID: 265 RVA: 0x0000653E File Offset: 0x0000473E
 		public static void ResetHints()
 		{
 			ProfileSaveData currentProfile = Singleton<GameMaster>.Instance.CurrentProfile;
@@ -2649,8 +2366,6 @@ namespace LBoL.Presentation
 			currentProfile.HintStatus.ShownHints.Clear();
 			Singleton<GameMaster>.Instance.SaveProfile();
 		}
-
-		// Token: 0x0600010A RID: 266 RVA: 0x00006580 File Offset: 0x00004780
 		public static List<GameRunRecordSaveData> GetGameRunHistory()
 		{
 			int? currentSaveIndex = Singleton<GameMaster>.Instance.CurrentSaveIndex;
@@ -2674,8 +2389,6 @@ namespace LBoL.Presentation
 			Debug.LogError("[GameMaster] Cannot get game-run history while profile is null");
 			return new List<GameRunRecordSaveData>();
 		}
-
-		// Token: 0x0600010B RID: 267 RVA: 0x00006624 File Offset: 0x00004824
 		public static void UnlockDifficulty()
 		{
 			ProfileSaveData currentProfileSaveData = Singleton<GameMaster>.Instance._currentProfileSaveData;
@@ -2705,8 +2418,6 @@ namespace LBoL.Presentation
 			}
 			Singleton<GameMaster>.Instance.SaveProfile();
 		}
-
-		// Token: 0x0600010C RID: 268 RVA: 0x00006712 File Offset: 0x00004912
 		private void TriggerSettingsChanged(GameSettingsSaveData settings)
 		{
 			this.SaveProfileWithSettings(settings);
@@ -2717,8 +2428,6 @@ namespace LBoL.Presentation
 			}
 			settingsChanged.Invoke(settings);
 		}
-
-		// Token: 0x0600010D RID: 269 RVA: 0x0000672C File Offset: 0x0000492C
 		private GameSettingsSaveData TryGetGameSettings()
 		{
 			ProfileSaveData currentProfileSaveData = this._currentProfileSaveData;
@@ -2729,10 +2438,6 @@ namespace LBoL.Presentation
 			}
 			return currentProfileSaveData.Settings;
 		}
-
-		// Token: 0x17000027 RID: 39
-		// (get) Token: 0x0600010E RID: 270 RVA: 0x00006755 File Offset: 0x00004955
-		// (set) Token: 0x0600010F RID: 271 RVA: 0x0000676C File Offset: 0x0000496C
 		public static bool IsTurboMode
 		{
 			get
@@ -2748,10 +2453,6 @@ namespace LBoL.Presentation
 				Singleton<GameMaster>.Instance.TriggerSettingsChanged(gameSettingsSaveData);
 			}
 		}
-
-		// Token: 0x17000028 RID: 40
-		// (get) Token: 0x06000110 RID: 272 RVA: 0x0000679C File Offset: 0x0000499C
-		// (set) Token: 0x06000111 RID: 273 RVA: 0x000067B4 File Offset: 0x000049B4
 		public static bool ShowVerboseKeywords
 		{
 			get
@@ -2766,10 +2467,6 @@ namespace LBoL.Presentation
 				Singleton<GameMaster>.Instance.TriggerSettingsChanged(gameSettingsSaveData);
 			}
 		}
-
-		// Token: 0x17000029 RID: 41
-		// (get) Token: 0x06000112 RID: 274 RVA: 0x000067DE File Offset: 0x000049DE
-		// (set) Token: 0x06000113 RID: 275 RVA: 0x000067F8 File Offset: 0x000049F8
 		public static bool ShowIllustrator
 		{
 			get
@@ -2784,10 +2481,6 @@ namespace LBoL.Presentation
 				Singleton<GameMaster>.Instance.TriggerSettingsChanged(gameSettingsSaveData);
 			}
 		}
-
-		// Token: 0x1700002A RID: 42
-		// (get) Token: 0x06000114 RID: 276 RVA: 0x00006822 File Offset: 0x00004A22
-		// (set) Token: 0x06000115 RID: 277 RVA: 0x0000683C File Offset: 0x00004A3C
 		public static bool IsLargeTooltips
 		{
 			get
@@ -2802,10 +2495,6 @@ namespace LBoL.Presentation
 				Singleton<GameMaster>.Instance.TriggerSettingsChanged(gameSettingsSaveData);
 			}
 		}
-
-		// Token: 0x1700002B RID: 43
-		// (get) Token: 0x06000116 RID: 278 RVA: 0x00006866 File Offset: 0x00004A66
-		// (set) Token: 0x06000117 RID: 279 RVA: 0x00006888 File Offset: 0x00004A88
 		public static bool PreferWideTooltips
 		{
 			get
@@ -2824,10 +2513,6 @@ namespace LBoL.Presentation
 				Singleton<GameMaster>.Instance.TriggerSettingsChanged(gameSettingsSaveData);
 			}
 		}
-
-		// Token: 0x1700002C RID: 44
-		// (get) Token: 0x06000118 RID: 280 RVA: 0x000068B2 File Offset: 0x00004AB2
-		// (set) Token: 0x06000119 RID: 281 RVA: 0x000068CC File Offset: 0x00004ACC
 		public static bool RightClickCancel
 		{
 			get
@@ -2842,10 +2527,6 @@ namespace LBoL.Presentation
 				Singleton<GameMaster>.Instance.TriggerSettingsChanged(gameSettingsSaveData);
 			}
 		}
-
-		// Token: 0x1700002D RID: 45
-		// (get) Token: 0x0600011A RID: 282 RVA: 0x000068F6 File Offset: 0x00004AF6
-		// (set) Token: 0x0600011B RID: 283 RVA: 0x00006910 File Offset: 0x00004B10
 		public static bool IsLoopOrder
 		{
 			get
@@ -2860,10 +2541,6 @@ namespace LBoL.Presentation
 				Singleton<GameMaster>.Instance.TriggerSettingsChanged(gameSettingsSaveData);
 			}
 		}
-
-		// Token: 0x1700002E RID: 46
-		// (get) Token: 0x0600011C RID: 284 RVA: 0x0000693A File Offset: 0x00004B3A
-		// (set) Token: 0x0600011D RID: 285 RVA: 0x00006954 File Offset: 0x00004B54
 		public static bool SingleEnemyAutoSelect
 		{
 			get
@@ -2878,10 +2555,6 @@ namespace LBoL.Presentation
 				Singleton<GameMaster>.Instance.TriggerSettingsChanged(gameSettingsSaveData);
 			}
 		}
-
-		// Token: 0x1700002F RID: 47
-		// (get) Token: 0x0600011E RID: 286 RVA: 0x0000697E File Offset: 0x00004B7E
-		// (set) Token: 0x0600011F RID: 287 RVA: 0x00006998 File Offset: 0x00004B98
 		public static QuickPlayLevel QuickPlayLevel
 		{
 			get
@@ -2901,10 +2574,6 @@ namespace LBoL.Presentation
 				Singleton<GameMaster>.Instance.TriggerSettingsChanged(gameSettingsSaveData);
 			}
 		}
-
-		// Token: 0x17000030 RID: 48
-		// (get) Token: 0x06000120 RID: 288 RVA: 0x000069CC File Offset: 0x00004BCC
-		// (set) Token: 0x06000121 RID: 289 RVA: 0x000069E4 File Offset: 0x00004BE4
 		public static bool ShowXCostEmptyUseWarning
 		{
 			get
@@ -2919,10 +2588,6 @@ namespace LBoL.Presentation
 				Singleton<GameMaster>.Instance.TriggerSettingsChanged(gameSettingsSaveData);
 			}
 		}
-
-		// Token: 0x17000031 RID: 49
-		// (get) Token: 0x06000122 RID: 290 RVA: 0x00006A0E File Offset: 0x00004C0E
-		// (set) Token: 0x06000123 RID: 291 RVA: 0x00006A28 File Offset: 0x00004C28
 		public static bool ShowShortcut
 		{
 			get
@@ -2937,10 +2602,6 @@ namespace LBoL.Presentation
 				Singleton<GameMaster>.Instance.TriggerSettingsChanged(gameSettingsSaveData);
 			}
 		}
-
-		// Token: 0x17000032 RID: 50
-		// (get) Token: 0x06000124 RID: 292 RVA: 0x00006A52 File Offset: 0x00004C52
-		// (set) Token: 0x06000125 RID: 293 RVA: 0x00006A6C File Offset: 0x00004C6C
 		public static bool ShowCardOrder
 		{
 			get
@@ -2955,10 +2616,6 @@ namespace LBoL.Presentation
 				Singleton<GameMaster>.Instance.TriggerSettingsChanged(gameSettingsSaveData);
 			}
 		}
-
-		// Token: 0x17000033 RID: 51
-		// (get) Token: 0x06000126 RID: 294 RVA: 0x00006A96 File Offset: 0x00004C96
-		// (set) Token: 0x06000127 RID: 295 RVA: 0x00006AB0 File Offset: 0x00004CB0
 		public static bool ShowReload
 		{
 			get
@@ -2973,10 +2630,6 @@ namespace LBoL.Presentation
 				Singleton<GameMaster>.Instance.TriggerSettingsChanged(gameSettingsSaveData);
 			}
 		}
-
-		// Token: 0x17000034 RID: 52
-		// (get) Token: 0x06000128 RID: 296 RVA: 0x00006ADA File Offset: 0x00004CDA
-		// (set) Token: 0x06000129 RID: 297 RVA: 0x00006AF4 File Offset: 0x00004CF4
 		public static bool Shake
 		{
 			get
@@ -2991,10 +2644,6 @@ namespace LBoL.Presentation
 				Singleton<GameMaster>.Instance.TriggerSettingsChanged(gameSettingsSaveData);
 			}
 		}
-
-		// Token: 0x17000035 RID: 53
-		// (get) Token: 0x0600012A RID: 298 RVA: 0x00006B1E File Offset: 0x00004D1E
-		// (set) Token: 0x0600012B RID: 299 RVA: 0x00006B38 File Offset: 0x00004D38
 		public static bool CostMoreLeft
 		{
 			get
@@ -3009,10 +2658,6 @@ namespace LBoL.Presentation
 				Singleton<GameMaster>.Instance.TriggerSettingsChanged(gameSettingsSaveData);
 			}
 		}
-
-		// Token: 0x17000036 RID: 54
-		// (get) Token: 0x0600012C RID: 300 RVA: 0x00006B62 File Offset: 0x00004D62
-		// (set) Token: 0x0600012D RID: 301 RVA: 0x00006B7C File Offset: 0x00004D7C
 		public static HintLevel HintLevel
 		{
 			get
@@ -3032,10 +2677,6 @@ namespace LBoL.Presentation
 				Singleton<GameMaster>.Instance.TriggerSettingsChanged(gameSettingsSaveData);
 			}
 		}
-
-		// Token: 0x17000037 RID: 55
-		// (get) Token: 0x0600012E RID: 302 RVA: 0x00006BB0 File Offset: 0x00004DB0
-		// (set) Token: 0x0600012F RID: 303 RVA: 0x00006BC8 File Offset: 0x00004DC8
 		public static bool DefaultShowRandomResult
 		{
 			get
@@ -3050,9 +2691,6 @@ namespace LBoL.Presentation
 				Singleton<GameMaster>.Instance.TriggerSettingsChanged(gameSettingsSaveData);
 			}
 		}
-
-		// Token: 0x17000038 RID: 56
-		// (get) Token: 0x06000130 RID: 304 RVA: 0x00006BF2 File Offset: 0x00004DF2
 		public static bool ShowDetailedHint
 		{
 			get
@@ -3060,9 +2698,6 @@ namespace LBoL.Presentation
 				return GameMaster.HintLevel == HintLevel.Detailed;
 			}
 		}
-
-		// Token: 0x17000039 RID: 57
-		// (get) Token: 0x06000131 RID: 305 RVA: 0x00006BFC File Offset: 0x00004DFC
 		public static bool ShowBriefHint
 		{
 			get
@@ -3071,9 +2706,6 @@ namespace LBoL.Presentation
 				return hintLevel == HintLevel.Detailed || hintLevel == HintLevel.Brief;
 			}
 		}
-
-		// Token: 0x1700003A RID: 58
-		// (get) Token: 0x06000132 RID: 306 RVA: 0x00006C1F File Offset: 0x00004E1F
 		public static bool EnableKeyboard
 		{
 			get
@@ -3081,8 +2713,6 @@ namespace LBoL.Presentation
 				return true;
 			}
 		}
-
-		// Token: 0x06000133 RID: 307 RVA: 0x00006C24 File Offset: 0x00004E24
 		public static void SaveKeyboardBindings(string actionId, string inputPath)
 		{
 			GameSettingsSaveData gameSettingsSaveData = Singleton<GameMaster>.Instance.TryGetGameSettings();
@@ -3097,8 +2727,6 @@ namespace LBoL.Presentation
 			Singleton<GameMaster>.Instance.SaveProfile();
 			Singleton<GameMaster>.Instance.TriggerSettingsChanged(gameSettingsSaveData);
 		}
-
-		// Token: 0x06000134 RID: 308 RVA: 0x00006C70 File Offset: 0x00004E70
 		public static void ClearKeyboardBindings()
 		{
 			GameSettingsSaveData gameSettingsSaveData = Singleton<GameMaster>.Instance.TryGetGameSettings();
@@ -3107,8 +2735,6 @@ namespace LBoL.Presentation
 			Singleton<GameMaster>.Instance.TriggerSettingsChanged(gameSettingsSaveData);
 			UiManager.LoadKeyboardBindings(gameSettingsSaveData.KeyboardBindings);
 		}
-
-		// Token: 0x06000135 RID: 309 RVA: 0x00006CB4 File Offset: 0x00004EB4
 		public static void SetPreferredCardIllustrator(string cardId, string illustratorId)
 		{
 			GameSettingsSaveData gameSettingsSaveData = Singleton<GameMaster>.Instance.TryGetGameSettings();
@@ -3138,14 +2764,10 @@ namespace LBoL.Presentation
 			Singleton<GameMaster>.Instance.SaveProfile();
 			Singleton<GameMaster>.Instance.TriggerSettingsChanged(gameSettingsSaveData);
 		}
-
-		// Token: 0x06000136 RID: 310 RVA: 0x00006D63 File Offset: 0x00004F63
 		public static string GetPreferredCardIllustrator(Card card)
 		{
 			return GameMaster.GetPreferredCardIllustrator(card.Id);
 		}
-
-		// Token: 0x06000137 RID: 311 RVA: 0x00006D70 File Offset: 0x00004F70
 		private static string GetPreferredCardIllustrator(string cardId)
 		{
 			GameSettingsSaveData gameSettingsSaveData = Singleton<GameMaster>.Instance.TryGetGameSettings();
@@ -3172,13 +2794,7 @@ namespace LBoL.Presentation
 			Singleton<GameMaster>.Instance.SaveProfile();
 			return null;
 		}
-
-		// Token: 0x14000002 RID: 2
-		// (add) Token: 0x06000138 RID: 312 RVA: 0x00006DE8 File Offset: 0x00004FE8
-		// (remove) Token: 0x06000139 RID: 313 RVA: 0x00006E1C File Offset: 0x0000501C
 		public static event Action<GameSettingsSaveData> SettingsChanged;
-
-		// Token: 0x0600013A RID: 314 RVA: 0x00006E4F File Offset: 0x0000504F
 		private IEnumerator RunStationDialog(List<StationDialogSource> dialogSource)
 		{
 			if (dialogSource.Count > 0)
@@ -3192,8 +2808,6 @@ namespace LBoL.Presentation
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x0600013B RID: 315 RVA: 0x00006E65 File Offset: 0x00005065
 		private IEnumerator SwitchToStation(Station station)
 		{
 			yield return Environment.Instance.LoadEnvironment(station.Stage.Id, station.Level);
@@ -3261,8 +2875,6 @@ namespace LBoL.Presentation
 			}
 			yield break;
 		}
-
-		// Token: 0x0600013C RID: 316 RVA: 0x00006E7B File Offset: 0x0000507B
 		private IEnumerator SwitchToStationFromSave(Station station)
 		{
 			yield return Environment.Instance.LoadEnvironment(station.Stage.Id, station.Level);
@@ -3273,20 +2885,14 @@ namespace LBoL.Presentation
 			}
 			yield break;
 		}
-
-		// Token: 0x0600013D RID: 317 RVA: 0x00006E8A File Offset: 0x0000508A
 		private void ClickOnEirin()
 		{
 			Debug.Log("Eirin Clicked.");
 		}
-
-		// Token: 0x0600013E RID: 318 RVA: 0x00006E96 File Offset: 0x00005096
 		private void ClickOnKaguya()
 		{
 			Debug.Log("Kaguya Clicked.");
 		}
-
-		// Token: 0x0600013F RID: 319 RVA: 0x00006EA2 File Offset: 0x000050A2
 		private IEnumerator RunInnerStation(Station station)
 		{
 			yield return this.RunStationDialog(station.PreDialogs);
@@ -3374,8 +2980,6 @@ namespace LBoL.Presentation
 			}
 			yield break;
 		}
-
-		// Token: 0x06000140 RID: 320 RVA: 0x00006EB8 File Offset: 0x000050B8
 		private IEnumerator EndStationFlow(Station station, bool skipBossReward = false)
 		{
 			if (station.IsStageEnd)
@@ -3463,8 +3067,6 @@ namespace LBoL.Presentation
 			}
 			yield break;
 		}
-
-		// Token: 0x06000141 RID: 321 RVA: 0x00006ED0 File Offset: 0x000050D0
 		private void LeaveStation(Station station)
 		{
 			UiManager.Hide<RewardPanel>(true);
@@ -3518,8 +3120,6 @@ namespace LBoL.Presentation
 				throw new ArgumentOutOfRangeException();
 			}
 		}
-
-		// Token: 0x06000142 RID: 322 RVA: 0x00006FCD File Offset: 0x000051CD
 		private IEnumerator PreloadEnemyGroup(EnemyGroup group)
 		{
 			GameDirector.MovePlayer(group.PlayerRootV2);
@@ -3532,8 +3132,6 @@ namespace LBoL.Presentation
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x06000143 RID: 323 RVA: 0x00006FDC File Offset: 0x000051DC
 		private IEnumerator BattleStationFlow(BattleStation battleStation)
 		{
 			GameDirector.RevealPlayer(false);
@@ -3566,15 +3164,11 @@ namespace LBoL.Presentation
 			this.SaveGameRun(gameRunSaveData, true);
 			yield break;
 		}
-
-		// Token: 0x06000144 RID: 324 RVA: 0x00006FF2 File Offset: 0x000051F2
 		private IEnumerator BattleStationFlowFromEndSave(BattleStation battleStation, SaveTiming saveTiming)
 		{
 			yield return this.EndStationFlow(battleStation, saveTiming == SaveTiming.AfterBossReward);
 			yield break;
 		}
-
-		// Token: 0x06000145 RID: 325 RVA: 0x0000700F File Offset: 0x0000520F
 		private IEnumerator BattleAdvTestStationFlow(BattleAdvTestStation station)
 		{
 			SelectDebugPanel panel = UiManager.GetPanel<SelectDebugPanel>();
@@ -3642,8 +3236,6 @@ namespace LBoL.Presentation
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x06000146 RID: 326 RVA: 0x0000701E File Offset: 0x0000521E
 		private IEnumerator GapStationFlow(GapStation gapStation)
 		{
 			yield return UiManager.GetPanel<GapOptionsPanel>().WaitUntilOptionSelected();
@@ -3651,8 +3243,6 @@ namespace LBoL.Presentation
 			gapStation.Finish();
 			yield break;
 		}
-
-		// Token: 0x06000147 RID: 327 RVA: 0x00007034 File Offset: 0x00005234
 		private IEnumerator SelectStationFlow(SelectStation selectStation)
 		{
 			EnemyUnit[] opponents = selectStation.Opponents;
@@ -3687,14 +3277,10 @@ namespace LBoL.Presentation
 			UiManager.GetPanel<MapPanel>().FinalWidget.SetBoss(id);
 			yield break;
 		}
-
-		// Token: 0x06000148 RID: 328 RVA: 0x0000704A File Offset: 0x0000524A
 		private void ClearUnitLayer()
 		{
 			GameDirector.ClearEnemies();
 		}
-
-		// Token: 0x0600014B RID: 331 RVA: 0x00007090 File Offset: 0x00005290
 		[CompilerGenerated]
 		internal static void <EndGameStatistics>g__AddStatData|60_0(string id, ref GameMaster.<>c__DisplayClass60_0 A_1)
 		{
@@ -3713,8 +3299,6 @@ namespace LBoL.Presentation
 			}
 			Debug.LogError("[GameResult] Cannot find BluePointConfig." + id + " or its BluePoint is not set");
 		}
-
-		// Token: 0x0600014C RID: 332 RVA: 0x00007114 File Offset: 0x00005314
 		[CompilerGenerated]
 		internal static void <EndGameStatistics>g__AddCountableStatData|60_1(string id, int count, ref GameMaster.<>c__DisplayClass60_0 A_2)
 		{
@@ -3734,108 +3318,55 @@ namespace LBoL.Presentation
 			}
 			Debug.LogError("[GameResult] Cannot find BluePointConfig." + id + " or its BluePoint is not set");
 		}
-
-		// Token: 0x0600014D RID: 333 RVA: 0x000071A1 File Offset: 0x000053A1
 		[CompilerGenerated]
 		internal static UniTask <LoadSharedUiTo>g__LoadShared|70_0<T>(bool show = false, ref GameMaster.<>c__DisplayClass70_0 A_1) where T : UiPanelBase
 		{
 			A_1.ui.Add(typeof(T));
 			return UiManager.LoadPanelAsync<T>(show);
 		}
-
-		// Token: 0x0600014E RID: 334 RVA: 0x000071C3 File Offset: 0x000053C3
 		[CompilerGenerated]
 		internal static UniTask <LoadMainMenuUiAsync>g__Load|72_0<T>(bool show = false) where T : UiPanelBase
 		{
 			GameMaster.MainMenuUiList.Add(typeof(T));
 			return UiManager.LoadPanelAsync<T>("MainMenu", show);
 		}
-
-		// Token: 0x0600014F RID: 335 RVA: 0x000071E9 File Offset: 0x000053E9
 		[CompilerGenerated]
 		internal static UniTask <CoLoadGameRunUi>g__Load|75_0<T>(bool show = false) where T : UiPanelBase
 		{
 			GameMaster.GameRunUiList.Add(typeof(T));
 			return UiManager.LoadPanelAsync<T>("GameRun", show);
 		}
-
-		// Token: 0x0400003A RID: 58
 		private DateTime _currentGameRunStartTime;
-
-		// Token: 0x0400003D RID: 61
 		private static readonly List<Type> MainMenuUiList = new List<Type>();
-
-		// Token: 0x0400003E RID: 62
 		private static readonly List<Type> GameRunUiList = new List<Type>();
-
-		// Token: 0x0400003F RID: 63
 		private static readonly Dictionary<Type, List<IAdventureHandler>> ExtraAdventureHandlers = new Dictionary<Type, List<IAdventureHandler>>();
-
-		// Token: 0x04000040 RID: 64
 		private static bool _quitConfirmed;
-
-		// Token: 0x04000043 RID: 67
 		private static readonly Vector2 CursorHotpot = new Vector2(4f, 2f);
-
-		// Token: 0x04000044 RID: 68
 		private const string UseLbolCursorName = "UseLbolCursor";
-
-		// Token: 0x04000046 RID: 70
 		private const string AnimatingEnvironmentName = "IsAnimatingEnvironmentEnabled";
-
-		// Token: 0x04000047 RID: 71
 		private static bool _isAnimatingEnvironmentEnabled;
-
-		// Token: 0x04000048 RID: 72
 		public const string VsyncCountName = "VsyncCount";
-
-		// Token: 0x04000049 RID: 73
 		public const string TargetFrameRateName = "TargetFrameRate";
-
-		// Token: 0x0400004B RID: 75
 		private const bool SaveCompressed = true;
-
-		// Token: 0x0400004C RID: 76
 		private const int MaxHistory = 50;
-
-		// Token: 0x0400004D RID: 77
 		private int? _currentSaveIndex;
-
-		// Token: 0x0400004E RID: 78
 		[MaybeNull]
 		private ProfileSaveData _currentProfileSaveData;
-
-		// Token: 0x0200012A RID: 298
 		private class GameStatisticData
 		{
-			// Token: 0x04000C30 RID: 3120
 			public int BluePoint;
-
-			// Token: 0x04000C31 RID: 3121
 			public List<ScoreData> ScoreDatas;
-
-			// Token: 0x04000C32 RID: 3122
 			public float DifficultyMultipler;
-
-			// Token: 0x04000C33 RID: 3123
 			public int DebugExp;
 		}
-
-		// Token: 0x0200012B RID: 299
 		public enum GameMasterStatus
 		{
-			// Token: 0x04000C35 RID: 3125
 			GameEntry,
-			// Token: 0x04000C36 RID: 3126
 			MainMenu,
-			// Token: 0x04000C37 RID: 3127
 			InGame
 		}
-
-		// Token: 0x0200012C RID: 300
 		public sealed class MainMenuInputActionHandler : IInputActionHandler
 		{
-			// Token: 0x06001042 RID: 4162 RVA: 0x0004C970 File Offset: 0x0004AB70
 			public void OnCancel()
 			{
 				VnPanel panel = UiManager.GetPanel<VnPanel>();
@@ -3865,8 +3396,6 @@ namespace LBoL.Presentation
 				}
 				panel2.UI_ShowMainMenu();
 			}
-
-			// Token: 0x06001043 RID: 4163 RVA: 0x0004C9F4 File Offset: 0x0004ABF4
 			public void OnRightClickCancel()
 			{
 				VnPanel panel = UiManager.GetPanel<VnPanel>();
@@ -3894,24 +3423,17 @@ namespace LBoL.Presentation
 					panel2.UI_ShowMainMenu();
 				}
 			}
-
-			// Token: 0x06001044 RID: 4164 RVA: 0x0004CA6F File Offset: 0x0004AC6F
 			public void BeginSkipDialog()
 			{
 				UiManager.GetPanel<VnPanel>().UserSkipDialog(true);
 			}
-
-			// Token: 0x06001045 RID: 4165 RVA: 0x0004CA7C File Offset: 0x0004AC7C
 			public void EndSkipDialog()
 			{
 				UiManager.GetPanel<VnPanel>().UserSkipDialog(false);
 			}
 		}
-
-		// Token: 0x0200012D RID: 301
 		private sealed class GameRunInputActionHandler : IInputActionHandler
 		{
-			// Token: 0x06001047 RID: 4167 RVA: 0x0004CA91 File Offset: 0x0004AC91
 			public void OnNavigate(NavigateDirection dir)
 			{
 				if (UiManager.GetPanel<VnPanel>().HandleNavigateAction(dir))
@@ -3920,8 +3442,6 @@ namespace LBoL.Presentation
 				}
 				UiManager.GetPanel<PlayBoard>().HandleNavigateFromKey(dir);
 			}
-
-			// Token: 0x06001048 RID: 4168 RVA: 0x0004CAAD File Offset: 0x0004ACAD
 			public void OnConfirm()
 			{
 				if (UiManager.GetPanel<VnPanel>().HandleConfirmAction())
@@ -3930,8 +3450,6 @@ namespace LBoL.Presentation
 				}
 				UiManager.GetPanel<PlayBoard>().HandleConfirmAction();
 			}
-
-			// Token: 0x06001049 RID: 4169 RVA: 0x0004CAC7 File Offset: 0x0004ACC7
 			public void OnCancel()
 			{
 				if (UiManager.GetPanel<VnPanel>().HandleCancelAction())
@@ -3944,8 +3462,6 @@ namespace LBoL.Presentation
 				}
 				UiManager.GetPanel<SettingPanel>().Show(SettingsPanelType.InGame);
 			}
-
-			// Token: 0x0600104A RID: 4170 RVA: 0x0004CAEE File Offset: 0x0004ACEE
 			public void OnRightClickCancel()
 			{
 				if (UiManager.GetPanel<VnPanel>().HandleCancelAction())
@@ -3954,32 +3470,22 @@ namespace LBoL.Presentation
 				}
 				UiManager.GetPanel<PlayBoard>().HandleCancelAction();
 			}
-
-			// Token: 0x0600104B RID: 4171 RVA: 0x0004CB08 File Offset: 0x0004AD08
 			public void BeginSkipDialog()
 			{
 				UiManager.GetPanel<VnPanel>().UserSkipDialog(true);
 			}
-
-			// Token: 0x0600104C RID: 4172 RVA: 0x0004CB15 File Offset: 0x0004AD15
 			public void EndSkipDialog()
 			{
 				UiManager.GetPanel<VnPanel>().UserSkipDialog(false);
 			}
-
-			// Token: 0x0600104D RID: 4173 RVA: 0x0004CB22 File Offset: 0x0004AD22
 			public void BeginShowEnemyMoveOrder()
 			{
 				GameDirector.SetEnemyMoveOrderVisible(true);
 			}
-
-			// Token: 0x0600104E RID: 4174 RVA: 0x0004CB2A File Offset: 0x0004AD2A
 			public void EndShowEnemyMoveOrder()
 			{
 				GameDirector.SetEnemyMoveOrderVisible(false);
 			}
-
-			// Token: 0x0600104F RID: 4175 RVA: 0x0004CB32 File Offset: 0x0004AD32
 			public void OnSelect(int i)
 			{
 				if (UiManager.GetPanel<VnPanel>().HandleSelectionFromKey(i))
@@ -3988,56 +3494,38 @@ namespace LBoL.Presentation
 				}
 				UiManager.GetPanel<PlayBoard>().HandleSelectionFromKey(i);
 			}
-
-			// Token: 0x06001050 RID: 4176 RVA: 0x0004CB4D File Offset: 0x0004AD4D
 			public void OnPoolMana(ManaColor color)
 			{
 				UiManager.GetPanel<PlayBoard>().HandlePoolMana(color);
 			}
-
-			// Token: 0x06001051 RID: 4177 RVA: 0x0004CB5A File Offset: 0x0004AD5A
 			public void OnUseUs()
 			{
 				UiManager.GetPanel<PlayBoard>().HandleUseUsFromKey();
 			}
-
-			// Token: 0x06001052 RID: 4178 RVA: 0x0004CB66 File Offset: 0x0004AD66
 			public void OnEndTurn()
 			{
 				UiManager.GetPanel<PlayBoard>().HandleEndTurnFromKey();
 			}
-
-			// Token: 0x06001053 RID: 4179 RVA: 0x0004CB72 File Offset: 0x0004AD72
 			public void OnToggleMap()
 			{
 				UiManager.GetPanel<SystemBoard>().ToggleMapPanel();
 			}
-
-			// Token: 0x06001054 RID: 4180 RVA: 0x0004CB7E File Offset: 0x0004AD7E
 			public void OnToggleBaseDeck()
 			{
 				UiManager.GetPanel<SystemBoard>().ShowBaseDeck();
 			}
-
-			// Token: 0x06001055 RID: 4181 RVA: 0x0004CB8A File Offset: 0x0004AD8A
 			public void OnToggleDrawZone()
 			{
 				UiManager.GetPanel<PlayBoard>().ShowDrawZone();
 			}
-
-			// Token: 0x06001056 RID: 4182 RVA: 0x0004CB96 File Offset: 0x0004AD96
 			public void OnToggleDiscardZone()
 			{
 				UiManager.GetPanel<PlayBoard>().ShowDiscardZone();
 			}
-
-			// Token: 0x06001057 RID: 4183 RVA: 0x0004CBA2 File Offset: 0x0004ADA2
 			public void OnToggleExileZone()
 			{
 				UiManager.GetPanel<PlayBoard>().ShowExileZone();
 			}
-
-			// Token: 0x06001058 RID: 4184 RVA: 0x0004CBAE File Offset: 0x0004ADAE
 			public void OnToggleMinimize()
 			{
 				if (UiManager.GetPanel<SelectCardPanel>().SwitchMinimized())
@@ -4047,17 +3535,11 @@ namespace LBoL.Presentation
 				UiManager.GetPanel<SelectBaseManaPanel>().SwitchMinimized();
 			}
 		}
-
-		// Token: 0x0200012E RID: 302
 		public enum GameRunSaveDataLoadResult
 		{
-			// Token: 0x04000C39 RID: 3129
 			Success,
-			// Token: 0x04000C3A RID: 3130
 			NotFound,
-			// Token: 0x04000C3B RID: 3131
 			VersionMismatch,
-			// Token: 0x04000C3C RID: 3132
 			Failed
 		}
 	}

@@ -8,21 +8,16 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
 using LBoL.EntityLib.StatusEffects.Cirno;
-
 namespace LBoL.EntityLib.UltimateSkills
 {
-	// Token: 0x02000007 RID: 7
 	[UsedImplicitly]
 	public sealed class CirnoUltU : UltimateSkill
 	{
-		// Token: 0x0600000B RID: 11 RVA: 0x0000215F File Offset: 0x0000035F
 		public CirnoUltU()
 		{
 			base.TargetType = TargetType.AllEnemies;
 			base.GunName = "完美冻结";
 		}
-
-		// Token: 0x0600000C RID: 12 RVA: 0x00002179 File Offset: 0x00000379
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector)
 		{
 			yield return new DamageAction(base.Owner, selector.GetUnits(base.Battle), this.Damage, base.GunName, GunType.Single);

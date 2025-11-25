@@ -4,13 +4,10 @@ using Cysharp.Threading.Tasks;
 using UnityEngine;
 using YamlDotNet.Helpers;
 using YamlDotNet.RepresentationModel;
-
 namespace LBoL.Core
 {
-	// Token: 0x02000006 RID: 6
 	public static class Achievements
 	{
-		// Token: 0x06000006 RID: 6 RVA: 0x000020F8 File Offset: 0x000002F8
 		public static async UniTask ReloadLocalizationAsync()
 		{
 			Achievements._table.Clear();
@@ -83,8 +80,6 @@ namespace LBoL.Core
 				Debug.LogError("[Localization] failed to load Achievement.yaml: " + ex.Message);
 			}
 		}
-
-		// Token: 0x06000007 RID: 7 RVA: 0x00002134 File Offset: 0x00000334
 		public static IDisplayWord GetAchievementDisplayWord(string key)
 		{
 			Achievements.AchievementDisplayWord achievementDisplayWord;
@@ -94,35 +89,18 @@ namespace LBoL.Core
 			}
 			return new Achievements.AchievementDisplayWord(key, achievementDisplayWord.Name, achievementDisplayWord.Description);
 		}
-
-		// Token: 0x0400004D RID: 77
 		private static Dictionary<string, Achievements.AchievementDisplayWord> _table = new Dictionary<string, Achievements.AchievementDisplayWord>();
-
-		// Token: 0x020001C0 RID: 448
 		private sealed class AchievementDisplayWord : IDisplayWord, IEquatable<IDisplayWord>
 		{
-			// Token: 0x06000FE0 RID: 4064 RVA: 0x0002A62C File Offset: 0x0002882C
 			public AchievementDisplayWord(string key, string name, string description)
 			{
 				this.Key = key;
 				this.Name = name;
 				this.Description = description;
 			}
-
-			// Token: 0x1700055B RID: 1371
-			// (get) Token: 0x06000FE1 RID: 4065 RVA: 0x0002A65A File Offset: 0x0002885A
 			private string Key { get; }
-
-			// Token: 0x1700055C RID: 1372
-			// (get) Token: 0x06000FE2 RID: 4066 RVA: 0x0002A662 File Offset: 0x00028862
 			public string Name { get; }
-
-			// Token: 0x1700055D RID: 1373
-			// (get) Token: 0x06000FE3 RID: 4067 RVA: 0x0002A66A File Offset: 0x0002886A
 			public string Description { get; }
-
-			// Token: 0x1700055E RID: 1374
-			// (get) Token: 0x06000FE4 RID: 4068 RVA: 0x0002A672 File Offset: 0x00028872
 			public bool IsVerbose
 			{
 				get
@@ -130,8 +108,6 @@ namespace LBoL.Core
 					return false;
 				}
 			}
-
-			// Token: 0x06000FE5 RID: 4069 RVA: 0x0002A678 File Offset: 0x00028878
 			public bool Equals(IDisplayWord other)
 			{
 				Achievements.AchievementDisplayWord achievementDisplayWord = other as Achievements.AchievementDisplayWord;
