@@ -19,36 +19,83 @@ public class BattleController_Patch
 
     private static IServiceProvider serviceProvider = ModService.ServiceProvider;
     private static INetworkClient networkClient => serviceProvider?.GetRequiredService<INetworkClient>();
-    //TODO:可能需要在伤害结算前添加给予伤害的action
+    /// <summary>
+    /// 伤害同步补丁 - 在伤害应用后同步本地玩家的状态
+    /// 重要: 只同步本地玩家的状态变化，避免同步所有玩家造成冲突
+    /// </summary>
     [HarmonyPatch(typeof(BattleController), "Damage")]
     [HarmonyPostfix]
     public static void Damage_Postfix(BattleController __instance, DamageInfo damageinfo, Unit target)
     {
-        // 向服务器上传player的血量信息
+        try
+        {
+            // 参数验证 - DamageInfo是struct，不能直接与null比较
+            if (target == null || __instance == null)
+            {
+                Plugin.Logger?.LogWarning("[DamageSync] Damage_Postfix received null parameter");
+                return;
+            }
 
-        if (serviceProvider == null)
-        {
-            // 在这里可以添加日志或错误处理，以防服务未被正确初始化
-            return;
-        }
-        if (networkClient == null)
-        {
-            // 在这里可以添加日志或错误处理，以防网络客户端未被正确初始化
-            return;
-        }
-        var json = JsonSerializer.Serialize(new
-        {
-            //TODO:传输更多的伤害信息
-            Damage=damageinfo.Damage.ToString(),
-            DamageType = damageinfo.DamageType.ToString(),
-            Hp = target.Hp.ToString(),
-            Block = target.Block.ToString(),
-            Shield = target.Shield.ToString(),
-            Status = target.Status.ToString()
-        });
-        //TODO:请求应该添加用户id
-        networkClient.SendRequest("UpdateHealthAfterDamage", json);
+            // 服务验证
+            if (serviceProvider == null)
+            {
+                Plugin.Logger?.LogDebug("[DamageSync] ServiceProvider not initialized");
+                return;
+            }
 
+            var networkClient = serviceProvider.GetService<INetworkClient>();
+            if (networkClient == null || !networkClient.IsConnected)
+            {
+                Plugin.Logger?.LogDebug("[DamageSync] Network client not available");
+                return;
+            }
+
+            // 只同步玩家单位的伤害 - 使用模式匹配减少嵌套
+            if (target is not PlayerUnit playerTarget)
+            {
+                return;
+            }
+
+            // 确保是本地玩家
+            var battle = __instance;
+            if (battle.Player == null || battle.Player != playerTarget)
+            {
+                return;
+            }
+
+            // 构建伤害信息 - 直接访问damageinfo属性
+            var damageData = new
+            {
+                TotalDamage = damageinfo.Amount, // 总伤害值
+                HpDamage = damageinfo.Damage,    // 实际HP伤害
+                BlockedDamage = damageinfo.DamageBlocked, // 被格挡
+                ShieldedDamage = damageinfo.DamageShielded, // 被护盾吸收
+                damageinfo.DamageType, // 简化成员名称
+                damageinfo.IsGrazed,
+                damageinfo.IsAccuracy,
+                damageinfo.OverDamage,
+                TargetState = new
+                {
+                    playerTarget.Id,
+                    playerTarget.Hp,
+                    playerTarget.MaxHp,
+                    playerTarget.Block,
+                    playerTarget.Shield,
+                    Status = playerTarget.Status.ToString(),
+                    playerTarget.IsAlive
+                },
+                Timestamp = DateTime.Now.Ticks
+            };
+
+            var json = JsonSerializer.Serialize(damageData);
+            networkClient.SendRequest("OnPlayerDamage", json);
+
+            Plugin.Logger?.LogInfo($"[DamageSync] Player took {damageinfo.Amount:F1} damage (HP: {damageinfo.Damage:F1}, Block: {damageinfo.DamageBlocked:F1}, Shield: {damageinfo.DamageShielded:F1}). Remaining HP: {playerTarget.Hp}/{playerTarget.MaxHp}");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[DamageSync] Error in Damage_Postfix: {ex.Message}\n{ex.StackTrace}");
+        }
     }
 
 
@@ -119,14 +166,18 @@ public class BattleController_Patch
     [HarmonyPostfix]
     public static void Heal_Postfix(BattleController __instance, Unit target)
     {
-        //向服务器上传player的血量信息
+        // 向服务器上传player的血量信息
 
         if (serviceProvider == null)
         {
             // 在这里可以添加日志或错误处理，以防服务未被正确初始化
             return;
         }
-        // var networkClient = serviceProvider.GetRequiredService<INetworkClient>();
+        if (networkClient == null)
+        {
+            // 在这里可以添加日志或错误处理，以防网络客户端未被正确初始化
+            return;
+        }
         var json = JsonSerializer.Serialize(new
         {
             Hp = target.Hp.ToString(),
@@ -134,7 +185,7 @@ public class BattleController_Patch
             Shield = target.Shield.ToString(),
             Status = target.Status.ToString()
         });
-
-
-
-    }}
+        //TODO:请求应该添加用户id
+        networkClient.SendRequest("UpdateHealthAfterHeal", json);
+    }
+}

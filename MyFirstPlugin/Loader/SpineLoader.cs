@@ -83,7 +83,7 @@ public class SpineLoader
                 );
         
         Logger.LogInfo($"当前图片纹理名称: {currentPageName}\n");
-        // string texturePath = Path.Combine(atlasDir, currentPageName);
+        string texturePath = Path.Combine(atlasDir, currentPageName);
         Logger.LogInfo($"尝试加载纹理图片: {texturePath}\n");
 
         try
