@@ -6,13 +6,10 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.EntityLib.StatusEffects.Others;
-
 namespace LBoL.EntityLib.Cards.Enemy
 {
-	// Token: 0x02000362 RID: 866
 	public sealed class LarvaCure : Card
 	{
-		// Token: 0x06000C7F RID: 3199 RVA: 0x00018427 File Offset: 0x00016627
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (base.Battle.Player.HasStatusEffect<Poison>())

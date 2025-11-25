@@ -6,20 +6,15 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.StatusEffects;
-
 namespace LBoL.EntityLib.Exhibits.Common
 {
-	// Token: 0x020001B5 RID: 437
 	[UsedImplicitly]
 	public sealed class ZhuQingting : Exhibit
 	{
-		// Token: 0x0600064B RID: 1611 RVA: 0x0000E97C File Offset: 0x0000CB7C
 		protected override void OnEnterBattle()
 		{
 			base.ReactBattleEvent<UnitEventArgs>(base.Battle.Player.TurnStarted, new EventSequencedReactor<UnitEventArgs>(this.OnPlayerTurnStarted));
 		}
-
-		// Token: 0x0600064C RID: 1612 RVA: 0x0000E9A0 File Offset: 0x0000CBA0
 		private IEnumerable<BattleAction> OnPlayerTurnStarted(UnitEventArgs args)
 		{
 			base.Counter++;

@@ -8,14 +8,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.Cards.Character.Reimu
 {
-	// Token: 0x020003DB RID: 987
 	[UsedImplicitly]
 	public sealed class Jinfuzhen : Card
 	{
-		// Token: 0x06000DD9 RID: 3545 RVA: 0x00019C85 File Offset: 0x00017E85
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			EnemyUnit target = selector.SelectedEnemy;

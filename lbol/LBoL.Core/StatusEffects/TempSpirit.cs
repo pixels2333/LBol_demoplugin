@@ -3,14 +3,11 @@ using JetBrains.Annotations;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Units;
-
 namespace LBoL.Core.StatusEffects
 {
-	// Token: 0x020000B1 RID: 177
 	[UsedImplicitly]
 	public sealed class TempSpirit : StatusEffect, IOpposing<TempSpiritNegative>
 	{
-		// Token: 0x06000814 RID: 2068 RVA: 0x00017DE0 File Offset: 0x00015FE0
 		public OpposeResult Oppose(TempSpiritNegative other)
 		{
 			if (base.Level < other.Level)
@@ -25,8 +22,6 @@ namespace LBoL.Core.StatusEffects
 			base.Level -= other.Level;
 			return OpposeResult.KeepSelf;
 		}
-
-		// Token: 0x06000815 RID: 2069 RVA: 0x00017E34 File Offset: 0x00016034
 		protected override void OnAdded(Unit unit)
 		{
 			base.HandleOwnerEvent<UnitEventArgs>(unit.TurnEnded, delegate(UnitEventArgs _)

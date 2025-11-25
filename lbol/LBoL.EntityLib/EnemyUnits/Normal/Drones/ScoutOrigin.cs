@@ -9,27 +9,20 @@ using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.Cards.Enemy;
 using LBoL.EntityLib.StatusEffects.Enemy;
-
 namespace LBoL.EntityLib.EnemyUnits.Normal.Drones
 {
-	// Token: 0x02000207 RID: 519
 	[UsedImplicitly]
 	public abstract class ScoutOrigin : Drone
 	{
-		// Token: 0x06000829 RID: 2089 RVA: 0x000120F4 File Offset: 0x000102F4
 		protected override void EnterBattle()
 		{
 			this.Next = (Enumerable.All<ScoutOrigin>(Enumerable.OfType<ScoutOrigin>(base.AllAliveEnemies), (ScoutOrigin enemy) => enemy.RootIndex <= base.RootIndex) ? ScoutOrigin.MoveType.LockOn : ScoutOrigin.MoveType.Shoot);
 		}
-
-		// Token: 0x0600082A RID: 2090 RVA: 0x0001212B File Offset: 0x0001032B
 		protected override void Stun()
 		{
 			this.Next = ScoutOrigin.MoveType.Stun;
 			base.UpdateTurnMoves();
 		}
-
-		// Token: 0x0600082B RID: 2091 RVA: 0x0001213A File Offset: 0x0001033A
 		private IEnumerable<BattleAction> LockOn()
 		{
 			yield return new EnemyMoveAction(this, base.GetMove(2), true);
@@ -43,8 +36,6 @@ namespace LBoL.EntityLib.EnemyUnits.Normal.Drones
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x0600082C RID: 2092 RVA: 0x0001214A File Offset: 0x0001034A
 		protected override IEnumerable<IEnemyMove> GetTurnMoves()
 		{
 			switch (this.Next)
@@ -68,8 +59,6 @@ namespace LBoL.EntityLib.EnemyUnits.Normal.Drones
 			}
 			yield break;
 		}
-
-		// Token: 0x0600082D RID: 2093 RVA: 0x0001215C File Offset: 0x0001035C
 		protected override void UpdateMoveCounters()
 		{
 			if (base.HasStatusEffect<Emi>())
@@ -93,21 +82,9 @@ namespace LBoL.EntityLib.EnemyUnits.Normal.Drones
 			}
 			this.Next = this._pool.Without(this.Last).Sample(base.EnemyMoveRng);
 		}
-
-		// Token: 0x170000D7 RID: 215
-		// (get) Token: 0x0600082E RID: 2094 RVA: 0x0001220B File Offset: 0x0001040B
-		// (set) Token: 0x0600082F RID: 2095 RVA: 0x00012213 File Offset: 0x00010413
 		private ScoutOrigin.MoveType Last { get; set; }
-
-		// Token: 0x170000D8 RID: 216
-		// (get) Token: 0x06000830 RID: 2096 RVA: 0x0001221C File Offset: 0x0001041C
-		// (set) Token: 0x06000831 RID: 2097 RVA: 0x00012224 File Offset: 0x00010424
 		private ScoutOrigin.MoveType Next { get; set; }
-
-		// Token: 0x04000089 RID: 137
 		private bool _forceDefendWithTerminator = true;
-
-		// Token: 0x0400008C RID: 140
 		private readonly RepeatableRandomPool<ScoutOrigin.MoveType> _pool = new RepeatableRandomPool<ScoutOrigin.MoveType>
 		{
 			{
@@ -119,17 +96,11 @@ namespace LBoL.EntityLib.EnemyUnits.Normal.Drones
 				1f
 			}
 		};
-
-		// Token: 0x0200070E RID: 1806
 		private enum MoveType
 		{
-			// Token: 0x040009C2 RID: 2498
 			Shoot,
-			// Token: 0x040009C3 RID: 2499
 			Defend,
-			// Token: 0x040009C4 RID: 2500
 			LockOn,
-			// Token: 0x040009C5 RID: 2501
 			Stun
 		}
 	}

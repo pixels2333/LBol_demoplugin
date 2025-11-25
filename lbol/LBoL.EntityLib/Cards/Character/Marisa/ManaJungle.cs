@@ -8,20 +8,15 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.EntityLib.Cards.Neutral.NoColor;
 using UnityEngine;
-
 namespace LBoL.EntityLib.Cards.Character.Marisa
 {
-	// Token: 0x02000427 RID: 1063
 	[UsedImplicitly]
 	public sealed class ManaJungle : Card
 	{
-		// Token: 0x06000E92 RID: 3730 RVA: 0x0001AA71 File Offset: 0x00018C71
 		public override IEnumerable<BattleAction> OnDraw()
 		{
 			return this.EnterHandReactor(true);
 		}
-
-		// Token: 0x06000E93 RID: 3731 RVA: 0x0001AA7A File Offset: 0x00018C7A
 		public override IEnumerable<BattleAction> OnMove(CardZone srcZone, CardZone dstZone)
 		{
 			if (dstZone != CardZone.Hand)
@@ -30,8 +25,6 @@ namespace LBoL.EntityLib.Cards.Character.Marisa
 			}
 			return this.EnterHandReactor(true);
 		}
-
-		// Token: 0x06000E94 RID: 3732 RVA: 0x0001AA89 File Offset: 0x00018C89
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			if (base.Zone == CardZone.Hand)
@@ -39,14 +32,10 @@ namespace LBoL.EntityLib.Cards.Character.Marisa
 				base.React(this.EnterHandReactor(true));
 			}
 		}
-
-		// Token: 0x06000E95 RID: 3733 RVA: 0x0001AAA1 File Offset: 0x00018CA1
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			return this.EnterHandReactor(false);
 		}
-
-		// Token: 0x06000E96 RID: 3734 RVA: 0x0001AAAA File Offset: 0x00018CAA
 		private IEnumerable<BattleAction> EnterHandReactor(bool ensureInHand = true)
 		{
 			if (base.Battle.BattleShouldEnd)

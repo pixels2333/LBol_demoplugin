@@ -5,13 +5,10 @@ using LBoL.Base;
 using LBoL.Core;
 using LBoL.Core.Adventures;
 using LBoL.Core.Battle.Interactions;
-
 namespace LBoL.EntityLib.Adventures.FirstPlace
 {
-	// Token: 0x0200051E RID: 1310
 	public sealed class JunkoColorless : Adventure
 	{
-		// Token: 0x06001130 RID: 4400 RVA: 0x0001FC47 File Offset: 0x0001DE47
 		[RuntimeCommand("convert", "")]
 		[UsedImplicitly]
 		public IEnumerator Convert(string desc)

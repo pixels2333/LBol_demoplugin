@@ -10,14 +10,11 @@ using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.Cards.Enemy;
-
 namespace LBoL.EntityLib.StatusEffects.Enemy
 {
-	// Token: 0x020000CA RID: 202
 	[UsedImplicitly]
 	public sealed class SuwakoHex : StatusEffect
 	{
-		// Token: 0x060002BA RID: 698 RVA: 0x00007742 File Offset: 0x00005942
 		protected override string GetBaseDescription()
 		{
 			if (!this._active)
@@ -26,8 +23,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy
 			}
 			return base.GetBaseDescription();
 		}
-
-		// Token: 0x060002BB RID: 699 RVA: 0x0000775C File Offset: 0x0000595C
 		protected override void OnAdded(Unit unit)
 		{
 			this._active = true;
@@ -37,8 +32,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy
 			});
 			base.ReactOwnerEvent<UnitEventArgs>(base.Battle.Player.TurnStarted, new EventSequencedReactor<UnitEventArgs>(this.OnPlayerTurnStarted));
 		}
-
-		// Token: 0x060002BC RID: 700 RVA: 0x000077AF File Offset: 0x000059AF
 		private IEnumerable<BattleAction> OnPlayerTurnStarted(UnitEventArgs args)
 		{
 			if (base.Battle.BattleShouldEnd || !this._active)
@@ -63,8 +56,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy
 			}
 			yield break;
 		}
-
-		// Token: 0x0400001F RID: 31
 		private bool _active;
 	}
 }

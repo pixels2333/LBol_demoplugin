@@ -1,27 +1,12 @@
 ﻿using System;
-
 namespace LBoL.Core
 {
-	// Token: 0x02000078 RID: 120
 	public sealed class SemVer : IEquatable<SemVer>
 	{
-		// Token: 0x17000194 RID: 404
-		// (get) Token: 0x06000546 RID: 1350 RVA: 0x00011ABF File Offset: 0x0000FCBF
 		public int Major { get; }
-
-		// Token: 0x17000195 RID: 405
-		// (get) Token: 0x06000547 RID: 1351 RVA: 0x00011AC7 File Offset: 0x0000FCC7
 		public int Minor { get; }
-
-		// Token: 0x17000196 RID: 406
-		// (get) Token: 0x06000548 RID: 1352 RVA: 0x00011ACF File Offset: 0x0000FCCF
 		public int Patch { get; }
-
-		// Token: 0x17000197 RID: 407
-		// (get) Token: 0x06000549 RID: 1353 RVA: 0x00011AD7 File Offset: 0x0000FCD7
 		public int? CommitCount { get; }
-
-		// Token: 0x0600054A RID: 1354 RVA: 0x00011AE0 File Offset: 0x0000FCE0
 		public SemVer(int major, int minor, int patch, int? commitCount)
 		{
 			this.Major = major;
@@ -29,8 +14,6 @@ namespace LBoL.Core
 			this.Patch = patch;
 			this.CommitCount = commitCount;
 		}
-
-		// Token: 0x0600054B RID: 1355 RVA: 0x00011B18 File Offset: 0x0000FD18
 		public static bool TryParse(string str, out SemVer semVer)
 		{
 			semVer = null;
@@ -95,8 +78,6 @@ namespace LBoL.Core
 			semVer = new SemVer(num2, num5, num7, num8);
 			return true;
 		}
-
-		// Token: 0x0600054C RID: 1356 RVA: 0x00011C50 File Offset: 0x0000FE50
 		public override string ToString()
 		{
 			if (this.CommitCount != null)
@@ -105,14 +86,10 @@ namespace LBoL.Core
 			}
 			return string.Format("{0}.{1}.{2}", this.Major, this.Minor, this.Patch);
 		}
-
-		// Token: 0x0600054D RID: 1357 RVA: 0x00011CE1 File Offset: 0x0000FEE1
 		public bool EqualsWithoutCount(SemVer other)
 		{
 			return other != null && (this == other || (this.Major == other.Major && this.Minor == other.Minor && this.Patch == other.Patch));
 		}
-
-		// Token: 0x0600054E RID: 1358 RVA: 0x00011D1C File Offset: 0x0000FF1C
 		public bool Equals(SemVer other)
 		{
 			if (other == null)
@@ -131,8 +108,6 @@ namespace LBoL.Core
 			}
 			return false;
 		}
-
-		// Token: 0x0600054F RID: 1359 RVA: 0x00011D90 File Offset: 0x0000FF90
 		public override bool Equals(object obj)
 		{
 			if (this != obj)
@@ -142,8 +117,6 @@ namespace LBoL.Core
 			}
 			return true;
 		}
-
-		// Token: 0x06000550 RID: 1360 RVA: 0x00011DB6 File Offset: 0x0000FFB6
 		public override int GetHashCode()
 		{
 			return HashCode.Combine<int, int, int, int?>(this.Major, this.Minor, this.Patch, this.CommitCount);

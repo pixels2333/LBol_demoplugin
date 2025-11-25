@@ -6,20 +6,15 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.StatusEffects.Reimu
 {
-	// Token: 0x0200002E RID: 46
 	[UsedImplicitly]
 	public sealed class MomentPowerSe : StatusEffect
 	{
-		// Token: 0x06000081 RID: 129 RVA: 0x00002DEA File Offset: 0x00000FEA
 		protected override void OnAdded(Unit unit)
 		{
 			base.ReactOwnerEvent<StatusEffectApplyEventArgs>(base.Owner.StatusEffectAdding, new EventSequencedReactor<StatusEffectApplyEventArgs>(this.OnSeAdding));
 		}
-
-		// Token: 0x06000082 RID: 130 RVA: 0x00002E09 File Offset: 0x00001009
 		private IEnumerable<BattleAction> OnSeAdding(StatusEffectApplyEventArgs args)
 		{
 			StatusEffect se = args.Effect;

@@ -8,14 +8,11 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Neutral.NoColor
 {
-	// Token: 0x020002DE RID: 734
 	[UsedImplicitly]
 	public sealed class MoonPurify : Card
 	{
-		// Token: 0x06000B14 RID: 2836 RVA: 0x00016794 File Offset: 0x00014994
 		public override Interaction Precondition()
 		{
 			if (!this.IsUpgraded)
@@ -29,8 +26,6 @@ namespace LBoL.EntityLib.Cards.Neutral.NoColor
 			}
 			return new SelectHandInteraction(1, 1, list);
 		}
-
-		// Token: 0x06000B15 RID: 2837 RVA: 0x000167E0 File Offset: 0x000149E0
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (this.IsUpgraded)

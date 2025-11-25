@@ -9,14 +9,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.DebugCards
 {
-	// Token: 0x0200037B RID: 891
 	[UsedImplicitly]
 	public sealed class DebugRemoveHand : Card
 	{
-		// Token: 0x06000CBD RID: 3261 RVA: 0x000188DC File Offset: 0x00016ADC
 		public override Interaction Precondition()
 		{
 			List<Card> list = Enumerable.ToList<Card>(Enumerable.Where<Card>(base.Battle.HandZone, (Card card) => card != this));
@@ -26,8 +23,6 @@ namespace LBoL.EntityLib.Cards.DebugCards
 			}
 			return null;
 		}
-
-		// Token: 0x06000CBE RID: 3262 RVA: 0x00018922 File Offset: 0x00016B22
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			SelectHandInteraction selectHandInteraction = (SelectHandInteraction)precondition;

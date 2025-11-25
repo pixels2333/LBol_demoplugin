@@ -10,21 +10,16 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
 using LBoL.EntityLib.StatusEffects.Cirno;
-
 namespace LBoL.EntityLib.Cards.Character.Cirno
 {
-	// Token: 0x020004C4 RID: 1220
 	[UsedImplicitly]
 	public sealed class IceLaser : Card
 	{
-		// Token: 0x06001032 RID: 4146 RVA: 0x0001CB42 File Offset: 0x0001AD42
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			base.HandleBattleEvent<DamageEventArgs>(base.Battle.Player.DamageDealt, new GameEventHandler<DamageEventArgs>(this.OnPlayerDamageDealt), (GameEventPriority)0);
 			this._coldingEnemies = new List<Unit>();
 		}
-
-		// Token: 0x06001033 RID: 4147 RVA: 0x0001CB74 File Offset: 0x0001AD74
 		private void OnPlayerDamageDealt(DamageEventArgs args)
 		{
 			if (args.ActionSource == this && !args.DamageInfo.IsGrazed)
@@ -33,8 +28,6 @@ namespace LBoL.EntityLib.Cards.Character.Cirno
 				this._coldingEnemies.Add(target);
 			}
 		}
-
-		// Token: 0x06001034 RID: 4148 RVA: 0x0001CBAD File Offset: 0x0001ADAD
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.AttackAction(selector, null);
@@ -89,8 +82,6 @@ namespace LBoL.EntityLib.Cards.Character.Cirno
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x0400010F RID: 271
 		private List<Unit> _coldingEnemies;
 	}
 }

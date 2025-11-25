@@ -7,15 +7,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.EntityLib.Cards.Enemy;
-
 namespace LBoL.EntityLib.Cards.Neutral.White
 {
-	// Token: 0x02000279 RID: 633
 	[UsedImplicitly]
 	public sealed class PrismriverWhite : Card
 	{
-		// Token: 0x1700012A RID: 298
-		// (get) Token: 0x06000A07 RID: 2567 RVA: 0x000152B9 File Offset: 0x000134B9
 		[UsedImplicitly]
 		public int Light
 		{
@@ -24,8 +20,6 @@ namespace LBoL.EntityLib.Cards.Neutral.White
 				return 1;
 			}
 		}
-
-		// Token: 0x06000A08 RID: 2568 RVA: 0x000152BC File Offset: 0x000134BC
 		protected override string GetBaseDescription()
 		{
 			if (base.DebutActive || !this.IsUpgraded)
@@ -34,8 +28,6 @@ namespace LBoL.EntityLib.Cards.Neutral.White
 			}
 			return base.GetExtraDescription1;
 		}
-
-		// Token: 0x06000A09 RID: 2569 RVA: 0x000152DB File Offset: 0x000134DB
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return new GainManaAction(base.Mana);

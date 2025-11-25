@@ -1,13 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using LBoL.Core.Cards;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x020001A5 RID: 421
 	public sealed class StartBattleAction : SimpleAction
 	{
-		// Token: 0x06000F2D RID: 3885 RVA: 0x00028E3F File Offset: 0x0002703F
 		internal StartBattleAction()
 		{
 			this._args = new GameEventArgs
@@ -15,8 +12,6 @@ namespace LBoL.Core.Battle.BattleActions
 				CanCancel = false
 			};
 		}
-
-		// Token: 0x06000F2E RID: 3886 RVA: 0x00028E59 File Offset: 0x00027059
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			yield return base.CreateEventPhase<GameEventArgs>("BattleStarting", this._args, base.Battle.BattleStarting);
@@ -48,8 +43,6 @@ namespace LBoL.Core.Battle.BattleActions
 			yield return base.CreateEventPhase<GameEventArgs>("BattleStarted", this._args, base.Battle.BattleStarted);
 			yield break;
 		}
-
-		// Token: 0x0400069F RID: 1695
 		private readonly GameEventArgs _args;
 	}
 }

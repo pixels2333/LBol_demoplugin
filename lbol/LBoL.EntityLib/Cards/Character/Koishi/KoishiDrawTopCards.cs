@@ -8,15 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Character.Koishi
 {
-	// Token: 0x02000471 RID: 1137
 	[UsedImplicitly]
 	public sealed class KoishiDrawTopCards : Card
 	{
-		// Token: 0x170001A7 RID: 423
-		// (get) Token: 0x06000F47 RID: 3911 RVA: 0x0001B71E File Offset: 0x0001991E
 		[UsedImplicitly]
 		public int DrawCount
 		{
@@ -25,8 +21,6 @@ namespace LBoL.EntityLib.Cards.Character.Koishi
 				return Math.Max(0, base.Value1 - 1);
 			}
 		}
-
-		// Token: 0x06000F48 RID: 3912 RVA: 0x0001B72E File Offset: 0x0001992E
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (base.Battle.BattleShouldEnd)

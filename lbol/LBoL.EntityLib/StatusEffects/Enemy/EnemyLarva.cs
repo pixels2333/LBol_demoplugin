@@ -10,13 +10,10 @@ using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.Cards.Enemy;
 using LBoL.EntityLib.StatusEffects.Others;
-
 namespace LBoL.EntityLib.StatusEffects.Enemy
 {
-	// Token: 0x0200009E RID: 158
 	public sealed class EnemyLarva : StatusEffect
 	{
-		// Token: 0x06000236 RID: 566 RVA: 0x000068AC File Offset: 0x00004AAC
 		protected override void OnAdded(Unit unit)
 		{
 			this.React(PerformAction.Sfx("FairySupport", 0f));
@@ -24,8 +21,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy
 			this.React(new AddCardsToHandAction(new Card[] { Library.CreateCard<LarvaCure>() }));
 			base.ReactOwnerEvent<StatisticalDamageEventArgs>(base.Owner.StatisticalTotalDamageReceived, new EventSequencedReactor<StatisticalDamageEventArgs>(this.OnOwnerStatisticalTotalDamageReceived));
 		}
-
-		// Token: 0x06000237 RID: 567 RVA: 0x0000693A File Offset: 0x00004B3A
 		private IEnumerable<BattleAction> OnOwnerStatisticalTotalDamageReceived(StatisticalDamageEventArgs totalArgs)
 		{
 			if (!base.Owner.IsAlive)

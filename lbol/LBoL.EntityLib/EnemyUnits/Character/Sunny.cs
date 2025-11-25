@@ -7,14 +7,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Units;
 using UnityEngine;
-
 namespace LBoL.EntityLib.EnemyUnits.Character
 {
-	// Token: 0x0200024A RID: 586
 	[UsedImplicitly]
 	public sealed class Sunny : LightFairy
 	{
-		// Token: 0x06000955 RID: 2389 RVA: 0x0001420C File Offset: 0x0001240C
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			base.OnEnterBattle(battle);
@@ -52,8 +49,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			base.ReactBattleEvent<GameEventArgs>(base.Battle.BattleStarted, new Func<GameEventArgs, IEnumerable<BattleAction>>(this.OnBattleStarted));
 		}
-
-		// Token: 0x06000956 RID: 2390 RVA: 0x000142FC File Offset: 0x000124FC
 		private IEnumerable<BattleAction> OnBattleStarted(GameEventArgs arg)
 		{
 			EnemyUnit luna = null;

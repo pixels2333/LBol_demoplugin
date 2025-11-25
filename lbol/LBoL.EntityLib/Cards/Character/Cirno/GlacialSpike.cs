@@ -8,21 +8,16 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
 using LBoL.EntityLib.StatusEffects.Cirno;
-
 namespace LBoL.EntityLib.Cards.Character.Cirno
 {
-	// Token: 0x020004BE RID: 1214
 	[UsedImplicitly]
 	public sealed class GlacialSpike : Card
 	{
-		// Token: 0x0600101A RID: 4122 RVA: 0x0001C898 File Offset: 0x0001AA98
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			base.HandleBattleEvent<DamageEventArgs>(base.Battle.Player.DamageDealt, new GameEventHandler<DamageEventArgs>(this.OnPlayerDamageDealt), (GameEventPriority)0);
 			this._coldingEnemies = new List<Unit>();
 		}
-
-		// Token: 0x0600101B RID: 4123 RVA: 0x0001C8C8 File Offset: 0x0001AAC8
 		private void OnPlayerDamageDealt(DamageEventArgs args)
 		{
 			if (args.ActionSource == this && !args.DamageInfo.IsGrazed)
@@ -31,8 +26,6 @@ namespace LBoL.EntityLib.Cards.Character.Cirno
 				this._coldingEnemies.Add(target);
 			}
 		}
-
-		// Token: 0x0600101C RID: 4124 RVA: 0x0001C901 File Offset: 0x0001AB01
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.AttackAction(selector, null);
@@ -60,8 +53,6 @@ namespace LBoL.EntityLib.Cards.Character.Cirno
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x0400010D RID: 269
 		private List<Unit> _coldingEnemies;
 	}
 }

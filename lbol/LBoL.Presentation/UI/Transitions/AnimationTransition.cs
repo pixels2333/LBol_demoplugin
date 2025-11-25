@@ -4,14 +4,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
-
 namespace LBoL.Presentation.UI.Transitions
 {
-	// Token: 0x0200007D RID: 125
 	[RequireComponent(typeof(Animator))]
 	public class AnimationTransition : UiTransition, IAnimationClipSource
 	{
-		// Token: 0x06000680 RID: 1664 RVA: 0x0001BF90 File Offset: 0x0001A190
 		public override void Animate(Transform target, bool isOut, Action onComplete)
 		{
 			if (isOut)
@@ -33,8 +30,6 @@ namespace LBoL.Presentation.UI.Transitions
 			}
 			onComplete.Invoke();
 		}
-
-		// Token: 0x06000681 RID: 1665 RVA: 0x0001C01F File Offset: 0x0001A21F
 		private IEnumerator WaitForPlayable(AnimationClipPlayable playable, float length, Action onComplete)
 		{
 			while (playable.GetTime<AnimationClipPlayable>() < (double)length)
@@ -45,8 +40,6 @@ namespace LBoL.Presentation.UI.Transitions
 			this._graph.Destroy();
 			yield break;
 		}
-
-		// Token: 0x06000682 RID: 1666 RVA: 0x0001C043 File Offset: 0x0001A243
 		public override void Kill(Transform target)
 		{
 			base.StopAllCoroutines();
@@ -56,14 +49,10 @@ namespace LBoL.Presentation.UI.Transitions
 				this._graph.Destroy();
 			}
 		}
-
-		// Token: 0x06000683 RID: 1667 RVA: 0x0001C06E File Offset: 0x0001A26E
 		public void GetAnimationClips(List<AnimationClip> results)
 		{
 			results.Add(this.clip);
 		}
-
-		// Token: 0x06000684 RID: 1668 RVA: 0x0001C07C File Offset: 0x0001A27C
 		private void OnDestroy()
 		{
 			base.StopAllCoroutines();
@@ -72,12 +61,8 @@ namespace LBoL.Presentation.UI.Transitions
 				this._graph.Destroy();
 			}
 		}
-
-		// Token: 0x04000408 RID: 1032
 		[SerializeField]
 		private AnimationClip clip;
-
-		// Token: 0x04000409 RID: 1033
 		private PlayableGraph _graph;
 	}
 }

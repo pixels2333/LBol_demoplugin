@@ -9,14 +9,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.EntityLib.StatusEffects.Koishi;
-
 namespace LBoL.EntityLib.Cards.Character.Koishi
 {
-	// Token: 0x0200048D RID: 1165
 	[UsedImplicitly]
 	public sealed class PeaceEndTurn : Card
 	{
-		// Token: 0x06000F90 RID: 3984 RVA: 0x0001BC40 File Offset: 0x00019E40
 		public override Interaction Precondition()
 		{
 			if (base.Value1 <= 0)
@@ -40,8 +37,6 @@ namespace LBoL.EntityLib.Cards.Character.Koishi
 			}
 			return new SelectCardInteraction(0, base.Value1, list, SelectedCardHandling.DoNothing);
 		}
-
-		// Token: 0x06000F91 RID: 3985 RVA: 0x0001BCBA File Offset: 0x00019EBA
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (precondition != null)

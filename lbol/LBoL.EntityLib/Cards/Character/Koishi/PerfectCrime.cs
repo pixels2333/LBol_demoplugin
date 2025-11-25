@@ -7,14 +7,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
-
 namespace LBoL.EntityLib.Cards.Character.Koishi
 {
-	// Token: 0x0200048F RID: 1167
 	[UsedImplicitly]
 	public sealed class PerfectCrime : Card
 	{
-		// Token: 0x06000F96 RID: 3990 RVA: 0x0001BCFA File Offset: 0x00019EFA
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			PerfectCrime.<>c__DisplayClass0_0 CS$<>8__locals1 = new PerfectCrime.<>c__DisplayClass0_0();

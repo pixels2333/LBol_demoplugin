@@ -1,13 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-
 namespace LBoL.Core.SaveData
 {
-	// Token: 0x020000E2 RID: 226
 	internal static class Lzss
 	{
-		// Token: 0x060008E2 RID: 2274 RVA: 0x00019CF7 File Offset: 0x00017EF7
 		public static IEnumerable<byte> Encode(IEnumerable<byte> bytes)
 		{
 			Lzss.<>c__DisplayClass4_0 CS$<>8__locals1;
@@ -141,16 +138,12 @@ namespace LBoL.Core.SaveData
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x060008E3 RID: 2275 RVA: 0x00019D07 File Offset: 0x00017F07
 		public static IEnumerable<byte> Decode(IEnumerable<byte> bytes)
 		{
 			Lzss.<Decode>d__5 <Decode>d__ = new Lzss.<Decode>d__5(-2);
 			<Decode>d__.<>3__bytes = bytes;
 			return <Decode>d__;
 		}
-
-		// Token: 0x060008E4 RID: 2276 RVA: 0x00019D18 File Offset: 0x00017F18
 		[CompilerGenerated]
 		internal static void <Encode>g__InsertNode|4_0(int node, ref Lzss.<>c__DisplayClass4_0 A_1)
 		{
@@ -213,8 +206,6 @@ namespace LBoL.Core.SaveData
 			}
 			A_1.dad[num2] = 4096;
 		}
-
-		// Token: 0x060008E5 RID: 2277 RVA: 0x00019E98 File Offset: 0x00018098
 		[CompilerGenerated]
 		internal static void <Encode>g__DeleteNode|4_1(int node, ref Lzss.<>c__DisplayClass4_0 A_1)
 		{
@@ -260,17 +251,9 @@ namespace LBoL.Core.SaveData
 			}
 			A_1.dad[node] = 4096;
 		}
-
-		// Token: 0x0400047E RID: 1150
 		private const int N = 4096;
-
-		// Token: 0x0400047F RID: 1151
 		private const int F = 18;
-
-		// Token: 0x04000480 RID: 1152
 		private const uint Threshold = 2U;
-
-		// Token: 0x04000481 RID: 1153
 		private const int Nil = 4096;
 	}
 }

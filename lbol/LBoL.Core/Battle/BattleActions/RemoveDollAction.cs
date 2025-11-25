@@ -3,13 +3,10 @@ using System.Collections.Generic;
 using LBoL.Base.Extensions;
 using LBoL.Core.Units;
 using UnityEngine;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x0200019B RID: 411
 	public sealed class RemoveDollAction : EventBattleAction<DollEventArgs>
 	{
-		// Token: 0x06000F0D RID: 3853 RVA: 0x00028A5C File Offset: 0x00026C5C
 		public RemoveDollAction(Doll doll)
 		{
 			base.Args = new DollEventArgs
@@ -17,8 +14,6 @@ namespace LBoL.Core.Battle.BattleActions
 				Doll = doll
 			};
 		}
-
-		// Token: 0x06000F0E RID: 3854 RVA: 0x00028A76 File Offset: 0x00026C76
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			RemoveDollAction.<>c__DisplayClass1_0 CS$<>8__locals1 = new RemoveDollAction.<>c__DisplayClass1_0();

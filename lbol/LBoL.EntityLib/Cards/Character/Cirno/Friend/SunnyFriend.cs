@@ -8,15 +8,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
-
 namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 {
-	// Token: 0x020004DF RID: 1247
 	[UsedImplicitly]
 	public sealed class SunnyFriend : Card
 	{
-		// Token: 0x170001D5 RID: 469
-		// (get) Token: 0x0600108F RID: 4239 RVA: 0x0001D158 File Offset: 0x0001B358
 		[UsedImplicitly]
 		public int Light
 		{
@@ -25,14 +21,10 @@ namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 				return 1;
 			}
 		}
-
-		// Token: 0x06001090 RID: 4240 RVA: 0x0001D15B File Offset: 0x0001B35B
 		public override IEnumerable<BattleAction> OnTurnEndingInHand()
 		{
 			return this.GetPassiveActions();
 		}
-
-		// Token: 0x06001091 RID: 4241 RVA: 0x0001D163 File Offset: 0x0001B363
 		public override IEnumerable<BattleAction> GetPassiveActions()
 		{
 			if (!base.Summoned || base.Battle.BattleShouldEnd)
@@ -61,8 +53,6 @@ namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x06001092 RID: 4242 RVA: 0x0001D173 File Offset: 0x0001B373
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (precondition == null || ((MiniSelectCardInteraction)precondition).SelectedCard.FriendToken == FriendToken.Active)

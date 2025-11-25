@@ -6,13 +6,10 @@ using LBoL.Base.Extensions;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-
 namespace LBoL.Presentation.UI.Widgets
 {
-	// Token: 0x0200005B RID: 91
 	public class HealthBar : MonoBehaviour
 	{
-		// Token: 0x0600051B RID: 1307 RVA: 0x00015C0C File Offset: 0x00013E0C
 		private void Awake()
 		{
 			this.blockImage.fillAmount = 0f;
@@ -21,22 +18,16 @@ namespace LBoL.Presentation.UI.Widgets
 			this.shieldParent.gameObject.SetActive(false);
 			this.blockParent.gameObject.SetActive(false);
 		}
-
-		// Token: 0x0600051C RID: 1308 RVA: 0x00015C6B File Offset: 0x00013E6B
 		private void OnDestroy()
 		{
 			DOTween.Kill(this, false);
 		}
-
-		// Token: 0x0600051D RID: 1309 RVA: 0x00015C75 File Offset: 0x00013E75
 		public void SetHp(int hp, int maxHp)
 		{
 			this.healthTmp.text = string.Format("{0}/{1}", hp, maxHp);
 			this._hp = hp;
 			this._maxHp = maxHp;
 		}
-
-		// Token: 0x0600051E RID: 1310 RVA: 0x00015CA8 File Offset: 0x00013EA8
 		public void SetShield(int shield, int block)
 		{
 			this.blockTmp.text = block.ToString();
@@ -72,8 +63,6 @@ namespace LBoL.Presentation.UI.Widgets
 			this._shield = shield;
 			this._block = block;
 		}
-
-		// Token: 0x0600051F RID: 1311 RVA: 0x00015E04 File Offset: 0x00014004
 		public void TweenHp(int hp, int maxHp, int shield, int block, bool instant = false)
 		{
 			int curHp = this._hp;
@@ -124,66 +113,32 @@ namespace LBoL.Presentation.UI.Widgets
 				.SetUpdate(true)
 				.SetTarget(this);
 		}
-
-		// Token: 0x040002DA RID: 730
 		[SerializeField]
 		private Image healthImage;
-
-		// Token: 0x040002DB RID: 731
 		[SerializeField]
 		private Image shieldImage;
-
-		// Token: 0x040002DC RID: 732
 		[SerializeField]
 		private Image blockImage;
-
-		// Token: 0x040002DD RID: 733
 		[SerializeField]
 		private TextMeshProUGUI healthTmp;
-
-		// Token: 0x040002DE RID: 734
 		[SerializeField]
 		private TextMeshProUGUI shieldTmp;
-
-		// Token: 0x040002DF RID: 735
 		[SerializeField]
 		private TextMeshProUGUI blockTmp;
-
-		// Token: 0x040002E0 RID: 736
 		[SerializeField]
 		private Transform shieldParent;
-
-		// Token: 0x040002E1 RID: 737
 		[SerializeField]
 		private Transform blockParent;
-
-		// Token: 0x040002E2 RID: 738
 		[SerializeField]
 		private CanvasGroup shieldCg;
-
-		// Token: 0x040002E3 RID: 739
 		[SerializeField]
 		private CanvasGroup blockCg;
-
-		// Token: 0x040002E4 RID: 740
 		private int _hp;
-
-		// Token: 0x040002E5 RID: 741
 		private int _maxHp;
-
-		// Token: 0x040002E6 RID: 742
 		private int _shield;
-
-		// Token: 0x040002E7 RID: 743
 		private int _block;
-
-		// Token: 0x040002E8 RID: 744
 		private const float TweenTime = 0.2f;
-
-		// Token: 0x040002E9 RID: 745
 		private const float MinPercentOfShieldAndBlock = 0.3f;
-
-		// Token: 0x040002EA RID: 746
 		private const float MaxPercentOfShieldAndBlock = 0.6f;
 	}
 }

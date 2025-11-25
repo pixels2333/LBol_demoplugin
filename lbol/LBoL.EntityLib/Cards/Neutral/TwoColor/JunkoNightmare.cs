@@ -9,14 +9,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.EntityLib.Cards.Neutral.NoColor;
-
 namespace LBoL.EntityLib.Cards.Neutral.TwoColor
 {
-	// Token: 0x02000294 RID: 660
 	[UsedImplicitly]
 	public sealed class JunkoNightmare : Card
 	{
-		// Token: 0x06000A55 RID: 2645 RVA: 0x00015950 File Offset: 0x00013B50
 		public override Interaction Precondition()
 		{
 			List<Card> list = Enumerable.ToList<Card>(Enumerable.Where<Card>(base.Battle.HandZone, (Card hand) => hand != this));
@@ -26,8 +23,6 @@ namespace LBoL.EntityLib.Cards.Neutral.TwoColor
 			}
 			return new SelectHandInteraction(0, base.Value2, list);
 		}
-
-		// Token: 0x06000A56 RID: 2646 RVA: 0x000159A0 File Offset: 0x00013BA0
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			base.CardGuns = new Guns(base.GunName, base.Value1, true);

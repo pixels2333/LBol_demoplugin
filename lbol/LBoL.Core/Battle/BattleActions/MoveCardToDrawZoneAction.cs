@@ -3,18 +3,11 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using LBoL.Base.Extensions;
 using LBoL.Core.Cards;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x02000195 RID: 405
 	public class MoveCardToDrawZoneAction : EventBattleAction<CardMovingToDrawZoneEventArgs>
 	{
-		// Token: 0x1700051B RID: 1307
-		// (get) Token: 0x06000EDE RID: 3806 RVA: 0x000282F6 File Offset: 0x000264F6
-		// (set) Token: 0x06000EDF RID: 3807 RVA: 0x000282FE File Offset: 0x000264FE
 		public CardTransitionType TransitionType { get; private set; }
-
-		// Token: 0x06000EE0 RID: 3808 RVA: 0x00028307 File Offset: 0x00026507
 		public MoveCardToDrawZoneAction([NotNull] Card card, DrawZoneTarget target)
 		{
 			base.Args = new CardMovingToDrawZoneEventArgs
@@ -24,8 +17,6 @@ namespace LBoL.Core.Battle.BattleActions
 				DrawZoneTarget = target
 			};
 		}
-
-		// Token: 0x06000EE1 RID: 3809 RVA: 0x00028334 File Offset: 0x00026534
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			MoveCardToDrawZoneAction.<>c__DisplayClass5_0 CS$<>8__locals1 = new MoveCardToDrawZoneAction.<>c__DisplayClass5_0();

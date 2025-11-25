@@ -4,18 +4,11 @@ using DG.Tweening;
 using DG.Tweening.Core;
 using DG.Tweening.Plugins.Options;
 using UnityEngine;
-
 namespace LBoL.Presentation.UI.Widgets
 {
-	// Token: 0x02000059 RID: 89
 	public class GameLogoWidget : MonoBehaviour
 	{
-		// Token: 0x170000D9 RID: 217
-		// (get) Token: 0x06000506 RID: 1286 RVA: 0x00015731 File Offset: 0x00013931
-		// (set) Token: 0x06000507 RID: 1287 RVA: 0x00015739 File Offset: 0x00013939
 		private bool Updating { get; set; }
-
-		// Token: 0x06000508 RID: 1288 RVA: 0x00015744 File Offset: 0x00013944
 		private void Start()
 		{
 			for (int i = 0; i < 5; i++)
@@ -34,8 +27,6 @@ namespace LBoL.Presentation.UI.Widgets
 				Object.Instantiate<GameObject>(this.orbParticles[4 - i], logoOrbWidget.trailParent);
 			}
 		}
-
-		// Token: 0x06000509 RID: 1289 RVA: 0x0001584C File Offset: 0x00013A4C
 		private void OnEnable()
 		{
 			this.Updating = true;
@@ -45,8 +36,6 @@ namespace LBoL.Presentation.UI.Widgets
 					.SetUpdate(true);
 			}
 		}
-
-		// Token: 0x0600050A RID: 1290 RVA: 0x000158D0 File Offset: 0x00013AD0
 		private void OnDisable()
 		{
 			this.Updating = false;
@@ -55,8 +44,6 @@ namespace LBoL.Presentation.UI.Widgets
 				transform.DOKill(false);
 			}
 		}
-
-		// Token: 0x0600050B RID: 1291 RVA: 0x0001592C File Offset: 0x00013B2C
 		private void Update()
 		{
 			if (this.Updating)
@@ -74,8 +61,6 @@ namespace LBoL.Presentation.UI.Widgets
 				}
 			}
 		}
-
-		// Token: 0x0600050C RID: 1292 RVA: 0x000159DC File Offset: 0x00013BDC
 		private Vector2 GetPosition(float phase)
 		{
 			float num = phase * 0.017453292f;
@@ -84,63 +69,33 @@ namespace LBoL.Presentation.UI.Widgets
 			vector += this.center;
 			return vector;
 		}
-
-		// Token: 0x0600050D RID: 1293 RVA: 0x00015A50 File Offset: 0x00013C50
 		private static bool IsFront(float phase)
 		{
 			return phase - (float)(Mathf.FloorToInt(phase / 360f) * 360) > 180f;
 		}
-
-		// Token: 0x040002C3 RID: 707
 		[SerializeField]
 		private Transform effectBack;
-
-		// Token: 0x040002C4 RID: 708
 		[SerializeField]
 		private Transform effectFront;
-
-		// Token: 0x040002C5 RID: 709
 		[SerializeField]
 		private Vector2 center;
-
-		// Token: 0x040002C6 RID: 710
 		[SerializeField]
 		private Vector2 size;
-
-		// Token: 0x040002C7 RID: 711
 		[SerializeField]
 		private float tilt;
-
-		// Token: 0x040002C8 RID: 712
 		[SerializeField]
 		private float speed;
-
-		// Token: 0x040002C9 RID: 713
 		[SerializeField]
 		private LogoOrbWidget orbTemplate;
-
-		// Token: 0x040002CA RID: 714
 		[SerializeField]
 		private List<Sprite> orbSprites;
-
-		// Token: 0x040002CB RID: 715
 		[SerializeField]
 		private List<Sprite> orbBorderSprites;
-
-		// Token: 0x040002CC RID: 716
 		[SerializeField]
 		private List<GameObject> orbParticles;
-
-		// Token: 0x040002CE RID: 718
 		private float _phase;
-
-		// Token: 0x040002CF RID: 719
 		private readonly bool[] _front = new bool[5];
-
-		// Token: 0x040002D0 RID: 720
 		private readonly List<Transform> orbImageTransList = new List<Transform>();
-
-		// Token: 0x040002D1 RID: 721
 		private readonly List<Transform> borderTransList = new List<Transform>();
 	}
 }

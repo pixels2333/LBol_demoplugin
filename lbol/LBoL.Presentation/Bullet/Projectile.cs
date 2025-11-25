@@ -4,54 +4,18 @@ using System.Runtime.CompilerServices;
 using LBoL.Core;
 using LBoL.Presentation.Effect;
 using UnityEngine;
-
 namespace LBoL.Presentation.Bullet
 {
-	// Token: 0x02000117 RID: 279
 	public abstract class Projectile : MonoBehaviour
 	{
-		// Token: 0x170002EE RID: 750
-		// (get) Token: 0x06000F9B RID: 3995 RVA: 0x00048D35 File Offset: 0x00046F35
-		// (set) Token: 0x06000F9C RID: 3996 RVA: 0x00048D3D File Offset: 0x00046F3D
 		protected string WidgetEffect { get; set; }
-
-		// Token: 0x170002EF RID: 751
-		// (get) Token: 0x06000F9D RID: 3997 RVA: 0x00048D46 File Offset: 0x00046F46
-		// (set) Token: 0x06000F9E RID: 3998 RVA: 0x00048D4E File Offset: 0x00046F4E
 		protected string GrazeEffect { get; set; }
-
-		// Token: 0x170002F0 RID: 752
-		// (get) Token: 0x06000F9F RID: 3999 RVA: 0x00048D57 File Offset: 0x00046F57
-		// (set) Token: 0x06000FA0 RID: 4000 RVA: 0x00048D5F File Offset: 0x00046F5F
 		protected string HitBlockEffect { get; set; }
-
-		// Token: 0x170002F1 RID: 753
-		// (get) Token: 0x06000FA1 RID: 4001 RVA: 0x00048D68 File Offset: 0x00046F68
-		// (set) Token: 0x06000FA2 RID: 4002 RVA: 0x00048D70 File Offset: 0x00046F70
 		protected string HitShieldEffect { get; set; }
-
-		// Token: 0x170002F2 RID: 754
-		// (get) Token: 0x06000FA3 RID: 4003 RVA: 0x00048D79 File Offset: 0x00046F79
-		// (set) Token: 0x06000FA4 RID: 4004 RVA: 0x00048D81 File Offset: 0x00046F81
 		protected string HitBodyEffect { get; set; }
-
-		// Token: 0x170002F3 RID: 755
-		// (get) Token: 0x06000FA5 RID: 4005 RVA: 0x00048D8A File Offset: 0x00046F8A
-		// (set) Token: 0x06000FA6 RID: 4006 RVA: 0x00048D92 File Offset: 0x00046F92
 		public bool Active { get; private set; }
-
-		// Token: 0x170002F4 RID: 756
-		// (get) Token: 0x06000FA7 RID: 4007 RVA: 0x00048D9B File Offset: 0x00046F9B
-		// (set) Token: 0x06000FA8 RID: 4008 RVA: 0x00048DA3 File Offset: 0x00046FA3
 		private bool FirstTickFlag { get; set; }
-
-		// Token: 0x170002F5 RID: 757
-		// (get) Token: 0x06000FA9 RID: 4009 RVA: 0x00048DAC File Offset: 0x00046FAC
-		// (set) Token: 0x06000FAA RID: 4010 RVA: 0x00048DB4 File Offset: 0x00046FB4
 		protected int LifeTick { get; set; }
-
-		// Token: 0x170002F6 RID: 758
-		// (get) Token: 0x06000FAB RID: 4011 RVA: 0x00048DBD File Offset: 0x00046FBD
 		protected float Timer
 		{
 			get
@@ -59,10 +23,6 @@ namespace LBoL.Presentation.Bullet
 				return (float)this.LifeTick * 0.016666668f;
 			}
 		}
-
-		// Token: 0x170002F7 RID: 759
-		// (get) Token: 0x06000FAC RID: 4012 RVA: 0x00048DCC File Offset: 0x00046FCC
-		// (set) Token: 0x06000FAD RID: 4013 RVA: 0x00048DD4 File Offset: 0x00046FD4
 		private float Speed
 		{
 			get
@@ -75,10 +35,6 @@ namespace LBoL.Presentation.Bullet
 				this.Flip = value < 0f;
 			}
 		}
-
-		// Token: 0x170002F8 RID: 760
-		// (get) Token: 0x06000FAE RID: 4014 RVA: 0x00048DEB File Offset: 0x00046FEB
-		// (set) Token: 0x06000FAF RID: 4015 RVA: 0x00048DF3 File Offset: 0x00046FF3
 		public float Angle
 		{
 			get
@@ -93,10 +49,6 @@ namespace LBoL.Presentation.Bullet
 				}
 			}
 		}
-
-		// Token: 0x170002F9 RID: 761
-		// (get) Token: 0x06000FB0 RID: 4016 RVA: 0x00048E10 File Offset: 0x00047010
-		// (set) Token: 0x06000FB1 RID: 4017 RVA: 0x00048E18 File Offset: 0x00047018
 		private float Acc
 		{
 			get
@@ -112,10 +64,6 @@ namespace LBoL.Presentation.Bullet
 				this._acc = value;
 			}
 		}
-
-		// Token: 0x170002FA RID: 762
-		// (get) Token: 0x06000FB2 RID: 4018 RVA: 0x00048E30 File Offset: 0x00047030
-		// (set) Token: 0x06000FB3 RID: 4019 RVA: 0x00048E38 File Offset: 0x00047038
 		private Vector2 AccVector
 		{
 			get
@@ -127,10 +75,6 @@ namespace LBoL.Presentation.Bullet
 				this._accVector = value;
 			}
 		}
-
-		// Token: 0x170002FB RID: 763
-		// (get) Token: 0x06000FB4 RID: 4020 RVA: 0x00048E41 File Offset: 0x00047041
-		// (set) Token: 0x06000FB5 RID: 4021 RVA: 0x00048E4E File Offset: 0x0004704E
 		private Vector2 LastVector
 		{
 			get
@@ -142,19 +86,8 @@ namespace LBoL.Presentation.Bullet
 				this._lastVector = new Vector2?(value);
 			}
 		}
-
-		// Token: 0x170002FC RID: 764
-		// (get) Token: 0x06000FB6 RID: 4022 RVA: 0x00048E5C File Offset: 0x0004705C
-		// (set) Token: 0x06000FB7 RID: 4023 RVA: 0x00048E64 File Offset: 0x00047064
 		private float AccAngle { get; set; }
-
-		// Token: 0x170002FD RID: 765
-		// (get) Token: 0x06000FB8 RID: 4024 RVA: 0x00048E6D File Offset: 0x0004706D
-		// (set) Token: 0x06000FB9 RID: 4025 RVA: 0x00048E75 File Offset: 0x00047075
 		private bool HasAcc { get; set; }
-
-		// Token: 0x170002FE RID: 766
-		// (get) Token: 0x06000FBA RID: 4026 RVA: 0x00048E7E File Offset: 0x0004707E
 		private Vector2 RUnitVector
 		{
 			get
@@ -162,19 +95,8 @@ namespace LBoL.Presentation.Bullet
 				return Quaternion.Euler(0f, 0f, this._angle) * Vector2.right;
 			}
 		}
-
-		// Token: 0x170002FF RID: 767
-		// (get) Token: 0x06000FBB RID: 4027 RVA: 0x00048EA9 File Offset: 0x000470A9
-		// (set) Token: 0x06000FBC RID: 4028 RVA: 0x00048EB1 File Offset: 0x000470B1
 		private bool VelocityUpdating { get; set; }
-
-		// Token: 0x17000300 RID: 768
-		// (get) Token: 0x06000FBD RID: 4029 RVA: 0x00048EBA File Offset: 0x000470BA
-		// (set) Token: 0x06000FBE RID: 4030 RVA: 0x00048EC2 File Offset: 0x000470C2
 		private bool Flip { get; set; }
-
-		// Token: 0x17000301 RID: 769
-		// (get) Token: 0x06000FBF RID: 4031 RVA: 0x00048ECB File Offset: 0x000470CB
 		protected Gun Gun
 		{
 			get
@@ -182,9 +104,6 @@ namespace LBoL.Presentation.Bullet
 				return this.Launcher.Gun;
 			}
 		}
-
-		// Token: 0x17000302 RID: 770
-		// (get) Token: 0x06000FC0 RID: 4032 RVA: 0x00048ED8 File Offset: 0x000470D8
 		protected Piece Piece
 		{
 			get
@@ -192,44 +111,13 @@ namespace LBoL.Presentation.Bullet
 				return this.Launcher.Piece;
 			}
 		}
-
-		// Token: 0x17000303 RID: 771
-		// (get) Token: 0x06000FC1 RID: 4033 RVA: 0x00048EE5 File Offset: 0x000470E5
-		// (set) Token: 0x06000FC2 RID: 4034 RVA: 0x00048EED File Offset: 0x000470ED
 		public Launcher Launcher { get; set; }
-
-		// Token: 0x17000304 RID: 772
-		// (get) Token: 0x06000FC3 RID: 4035 RVA: 0x00048EF6 File Offset: 0x000470F6
-		// (set) Token: 0x06000FC4 RID: 4036 RVA: 0x00048EFE File Offset: 0x000470FE
 		private Vector2 TargetPosition { get; set; }
-
-		// Token: 0x17000305 RID: 773
-		// (get) Token: 0x06000FC5 RID: 4037 RVA: 0x00048F07 File Offset: 0x00047107
-		// (set) Token: 0x06000FC6 RID: 4038 RVA: 0x00048F0F File Offset: 0x0004710F
 		private EffectWidget EffectWidget { get; set; }
-
-		// Token: 0x17000306 RID: 774
-		// (get) Token: 0x06000FC7 RID: 4039 RVA: 0x00048F18 File Offset: 0x00047118
-		// (set) Token: 0x06000FC8 RID: 4040 RVA: 0x00048F20 File Offset: 0x00047120
 		private List<BulletEvent> BulletEvents { get; set; }
-
-		// Token: 0x17000307 RID: 775
-		// (get) Token: 0x06000FC9 RID: 4041 RVA: 0x00048F29 File Offset: 0x00047129
-		// (set) Token: 0x06000FCA RID: 4042 RVA: 0x00048F31 File Offset: 0x00047131
 		private bool EventExist { get; set; }
-
-		// Token: 0x17000308 RID: 776
-		// (get) Token: 0x06000FCB RID: 4043 RVA: 0x00048F3A File Offset: 0x0004713A
-		// (set) Token: 0x06000FCC RID: 4044 RVA: 0x00048F42 File Offset: 0x00047142
 		private bool EventRemoving { get; set; }
-
-		// Token: 0x17000309 RID: 777
-		// (get) Token: 0x06000FCD RID: 4045 RVA: 0x00048F4B File Offset: 0x0004714B
-		// (set) Token: 0x06000FCE RID: 4046 RVA: 0x00048F53 File Offset: 0x00047153
 		private Vector3 Position { get; set; }
-
-		// Token: 0x1700030A RID: 778
-		// (get) Token: 0x06000FCF RID: 4047 RVA: 0x00048F5C File Offset: 0x0004715C
 		private Vector3 Velocity
 		{
 			get
@@ -237,31 +125,19 @@ namespace LBoL.Presentation.Bullet
 				return this.RUnitVector * this.Speed * 0.016666668f;
 			}
 		}
-
-		// Token: 0x1700030B RID: 779
-		// (get) Token: 0x06000FD0 RID: 4048 RVA: 0x00048F7E File Offset: 0x0004717E
-		// (set) Token: 0x06000FD1 RID: 4049 RVA: 0x00048F86 File Offset: 0x00047186
 		protected int HitRemainAmount { get; set; }
-
-		// Token: 0x06000FD2 RID: 4050 RVA: 0x00048F8F File Offset: 0x0004718F
 		private void SetVelocity()
 		{
 			base.transform.rotation = Quaternion.Euler(0f, 0f, this.Flip ? (this.Angle + 180f) : this.Angle);
 		}
-
-		// Token: 0x06000FD3 RID: 4051 RVA: 0x00048FC7 File Offset: 0x000471C7
 		private void Move()
 		{
 			this.Position += this.Velocity;
 		}
-
-		// Token: 0x06000FD4 RID: 4052 RVA: 0x00048FE0 File Offset: 0x000471E0
 		private void LateUpdate()
 		{
 			base.transform.localPosition = this.Position;
 		}
-
-		// Token: 0x06000FD5 RID: 4053 RVA: 0x00048FF4 File Offset: 0x000471F4
 		public virtual void Tick()
 		{
 			if (!this.Active)
@@ -659,8 +535,6 @@ namespace LBoL.Presentation.Bullet
 				this.VelocityUpdating = false;
 			}
 		}
-
-		// Token: 0x06000FD6 RID: 4054 RVA: 0x0004A3A0 File Offset: 0x000485A0
 		public virtual void Spawn()
 		{
 			base.transform.localPosition = new Vector3(this.Launcher.V2.x, this.Launcher.V2.y);
@@ -676,8 +550,6 @@ namespace LBoL.Presentation.Bullet
 			base.gameObject.SetActive(true);
 			this.Active = true;
 		}
-
-		// Token: 0x06000FD7 RID: 4055 RVA: 0x0004A484 File Offset: 0x00048684
 		protected virtual void FirstTick()
 		{
 			this.EffectWidget = EffectManager.CreateEffect(this.WidgetEffect, base.transform, 0f, new float?(0f), true, true);
@@ -695,13 +567,9 @@ namespace LBoL.Presentation.Bullet
 			this._rUnitVector = Quaternion.Euler(0f, 0f, this._angle) * Vector2.right;
 			this.AccVector = this.Acc * new Vector2(Mathf.Cos(this.AccAngle * 0.017453292f), Mathf.Sin(this.AccAngle * 0.017453292f));
 		}
-
-		// Token: 0x06000FD8 RID: 4056 RVA: 0x0004A5BA File Offset: 0x000487BA
 		protected virtual void Vanish()
 		{
 		}
-
-		// Token: 0x06000FD9 RID: 4057 RVA: 0x0004A5BC File Offset: 0x000487BC
 		protected virtual void Die()
 		{
 			if (this.EffectWidget != null)
@@ -733,14 +601,10 @@ namespace LBoL.Presentation.Bullet
 			}
 			this.Active = false;
 		}
-
-		// Token: 0x06000FDA RID: 4058 RVA: 0x0004A6B1 File Offset: 0x000488B1
 		protected void ModifyEffect(EffectWidget effect)
 		{
 			EffectManager.ModifyEffect(effect, this.Launcher.Scale, this.Launcher.Color);
 		}
-
-		// Token: 0x06000FDB RID: 4059 RVA: 0x0004A6D0 File Offset: 0x000488D0
 		private static float EventDataInitiProcess(float currentValue, float[][] eventNumber, int[] eventType, int groupIndex, int wayIndex, int duration)
 		{
 			if (eventType.Length == 1)
@@ -764,8 +628,6 @@ namespace LBoL.Presentation.Bullet
 			}
 			return num;
 		}
-
-		// Token: 0x06000FDC RID: 4060 RVA: 0x0004A74C File Offset: 0x0004894C
 		private static float ArrayCalcu(float[][] ps, int groupID, int wayID)
 		{
 			float num;
@@ -791,8 +653,6 @@ namespace LBoL.Presentation.Bullet
 			}
 			return num;
 		}
-
-		// Token: 0x06000FDD RID: 4061 RVA: 0x0004A808 File Offset: 0x00048A08
 		private static float RandomDataCalcu(float[] ps)
 		{
 			float num;
@@ -812,8 +672,6 @@ namespace LBoL.Presentation.Bullet
 			}
 			return num;
 		}
-
-		// Token: 0x06000FDF RID: 4063 RVA: 0x0004A860 File Offset: 0x00048A60
 		[CompilerGenerated]
 		internal static float <Tick>g__Huali|115_1(int timer, ref Projectile.<>c__DisplayClass115_0 A_1)
 		{
@@ -821,26 +679,12 @@ namespace LBoL.Presentation.Bullet
 			float num = (float)timer * delta;
 			return 0.5f * Mathf.Sin(num) * num;
 		}
-
-		// Token: 0x04000BA8 RID: 2984
 		private const float Tolerance = 0.01f;
-
-		// Token: 0x04000BAE RID: 2990
 		private float _acc;
-
-		// Token: 0x04000BAF RID: 2991
 		private float _angle;
-
-		// Token: 0x04000BB0 RID: 2992
 		private float _speed;
-
-		// Token: 0x04000BB4 RID: 2996
 		private Vector2 _accVector;
-
-		// Token: 0x04000BB5 RID: 2997
 		private Vector2? _lastVector;
-
-		// Token: 0x04000BB8 RID: 3000
 		private Vector2 _rUnitVector;
 	}
 }

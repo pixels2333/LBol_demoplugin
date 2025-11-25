@@ -2,17 +2,11 @@
 using System.Collections.Generic;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x020001A6 RID: 422
 	public sealed class StartEnemyTurnAction : SimpleAction
 	{
-		// Token: 0x17000527 RID: 1319
-		// (get) Token: 0x06000F30 RID: 3888 RVA: 0x00028F0C File Offset: 0x0002710C
 		public EnemyUnit Unit { get; }
-
-		// Token: 0x06000F31 RID: 3889 RVA: 0x00028F14 File Offset: 0x00027114
 		internal StartEnemyTurnAction(EnemyUnit enemy)
 		{
 			this.Unit = enemy;
@@ -22,8 +16,6 @@ namespace LBoL.Core.Battle.BattleActions
 				CanCancel = false
 			};
 		}
-
-		// Token: 0x06000F32 RID: 3890 RVA: 0x00028F3C File Offset: 0x0002713C
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			yield return base.CreatePhase("Viewer", delegate
@@ -72,8 +64,6 @@ namespace LBoL.Core.Battle.BattleActions
 			}, false);
 			yield break;
 		}
-
-		// Token: 0x040006A0 RID: 1696
 		private readonly UnitEventArgs _args;
 	}
 }

@@ -8,15 +8,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
-
 namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 {
-	// Token: 0x020004DC RID: 1244
 	[UsedImplicitly]
 	public sealed class LunaFriend : Card
 	{
-		// Token: 0x170001D2 RID: 466
-		// (get) Token: 0x0600107F RID: 4223 RVA: 0x0001D094 File Offset: 0x0001B294
 		[UsedImplicitly]
 		public new int Block
 		{
@@ -25,14 +21,10 @@ namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 				return base.ConfigBlock;
 			}
 		}
-
-		// Token: 0x06001080 RID: 4224 RVA: 0x0001D09C File Offset: 0x0001B29C
 		public override IEnumerable<BattleAction> OnTurnEndingInHand()
 		{
 			return this.GetPassiveActions();
 		}
-
-		// Token: 0x06001081 RID: 4225 RVA: 0x0001D0A4 File Offset: 0x0001B2A4
 		public override IEnumerable<BattleAction> GetPassiveActions()
 		{
 			if (!base.Summoned || base.Battle.BattleShouldEnd)
@@ -55,8 +47,6 @@ namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 			}
 			yield break;
 		}
-
-		// Token: 0x06001082 RID: 4226 RVA: 0x0001D0B4 File Offset: 0x0001B2B4
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (precondition == null || ((MiniSelectCardInteraction)precondition).SelectedCard.FriendToken == FriendToken.Active)

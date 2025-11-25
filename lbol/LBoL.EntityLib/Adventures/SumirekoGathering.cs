@@ -12,13 +12,10 @@ using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
 using LBoL.EntityLib.Exhibits.Adventure;
 using Yarn;
-
 namespace LBoL.EntityLib.Adventures
 {
-	// Token: 0x02000502 RID: 1282
 	public sealed class SumirekoGathering : Adventure
 	{
-		// Token: 0x060010D7 RID: 4311 RVA: 0x0001DAA0 File Offset: 0x0001BCA0
 		protected override void InitVariables(IVariableStorage storage)
 		{
 			IReadOnlyList<Card> baseDeck = base.GameRun.BaseDeck;
@@ -43,16 +40,12 @@ namespace LBoL.EntityLib.Adventures
 			}
 			storage.SetValue("$canExchange1", false);
 		}
-
-		// Token: 0x060010D8 RID: 4312 RVA: 0x0001DBF8 File Offset: 0x0001BDF8
 		[RuntimeCommand("exchange", "")]
 		[UsedImplicitly]
 		public void Exchange()
 		{
 			base.GameRun.RemoveDeckCards(new Card[] { this._rareCard }, false);
 		}
-
-		// Token: 0x060010D9 RID: 4313 RVA: 0x0001DC15 File Offset: 0x0001BE15
 		[RuntimeCommand("trade", "")]
 		[UsedImplicitly]
 		public IEnumerator Trade(int index)
@@ -65,11 +58,7 @@ namespace LBoL.EntityLib.Adventures
 			});
 			yield break;
 		}
-
-		// Token: 0x04000119 RID: 281
 		private Card _rareCard;
-
-		// Token: 0x0400011A RID: 282
 		private bool _hasRare;
 	}
 }

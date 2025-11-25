@@ -5,14 +5,11 @@ using JetBrains.Annotations;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.Exhibits.Shining
 {
-	// Token: 0x0200012B RID: 299
 	[UsedImplicitly]
 	public sealed class HouhuMen : ShiningExhibit
 	{
-		// Token: 0x0600041B RID: 1051 RVA: 0x0000B314 File Offset: 0x00009514
 		protected override IEnumerator SpecialGain(PlayerUnit player)
 		{
 			base.OnGain(player);

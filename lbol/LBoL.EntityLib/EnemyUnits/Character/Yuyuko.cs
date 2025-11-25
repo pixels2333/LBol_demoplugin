@@ -10,20 +10,12 @@ using LBoL.Core.Units;
 using LBoL.EntityLib.EnemyUnits.Normal;
 using LBoL.EntityLib.Exhibits.Adventure;
 using LBoL.EntityLib.StatusEffects.Enemy;
-
 namespace LBoL.EntityLib.EnemyUnits.Character
 {
-	// Token: 0x0200024F RID: 591
 	[UsedImplicitly]
 	public sealed class Yuyuko : EnemyUnit<IRinView>
 	{
-		// Token: 0x1700011A RID: 282
-		// (get) Token: 0x06000984 RID: 2436 RVA: 0x000147A8 File Offset: 0x000129A8
-		// (set) Token: 0x06000985 RID: 2437 RVA: 0x000147B0 File Offset: 0x000129B0
 		private Yuyuko.MoveType Next { get; set; }
-
-		// Token: 0x1700011B RID: 283
-		// (get) Token: 0x06000986 RID: 2438 RVA: 0x000147B9 File Offset: 0x000129B9
 		private string SpellCard
 		{
 			get
@@ -31,8 +23,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 				return base.GetSpellCardName(new int?(5), 6);
 			}
 		}
-
-		// Token: 0x06000987 RID: 2439 RVA: 0x000147C8 File Offset: 0x000129C8
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			if (base.Difficulty == GameDifficulty.Lunatic)
@@ -61,8 +51,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			view2.SetOrb("YuyukoTrail", 1);
 		}
-
-		// Token: 0x06000988 RID: 2440 RVA: 0x0001485B File Offset: 0x00012A5B
 		private IEnumerable<BattleAction> OnBattleStarted(GameEventArgs arg)
 		{
 			if (base.Difficulty == GameDifficulty.Lunatic)
@@ -82,8 +70,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x06000989 RID: 2441 RVA: 0x0001486B File Offset: 0x00012A6B
 		private IEnumerable<BattleAction> DefendBuff()
 		{
 			yield return new EnemyMoveAction(this, base.GetMove(2), true);
@@ -97,8 +83,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x0600098A RID: 2442 RVA: 0x0001487B File Offset: 0x00012A7B
 		private IEnumerable<BattleAction> Buff()
 		{
 			foreach (EnemyUnit enemyUnit in base.Battle.EnemyGroup.Alives)
@@ -109,8 +93,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x0600098B RID: 2443 RVA: 0x0001488B File Offset: 0x00012A8B
 		private IEnumerable<BattleAction> DebuffActions()
 		{
 			yield return new EnemyMoveAction(this, base.GetMove(3), true);
@@ -127,8 +109,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield return PerformAction.Animation(base.Battle.Player, "Hit", 0.3f, null, 0f, -1);
 			yield break;
 		}
-
-		// Token: 0x0600098C RID: 2444 RVA: 0x0001489B File Offset: 0x00012A9B
 		private IEnumerable<BattleAction> SummonActions()
 		{
 			yield return new EnemyMoveAction(this, base.GetMove(4), true);
@@ -149,8 +129,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			this._vacancy = 4;
 			yield break;
 		}
-
-		// Token: 0x0600098D RID: 2445 RVA: 0x000148AB File Offset: 0x00012AAB
 		private IEnumerable<BattleAction> SpellActions()
 		{
 			foreach (BattleAction battleAction in this.AttackActions(null, base.Gun3, base.Damage3, 1, false, "Instant"))
@@ -163,8 +141,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x0600098E RID: 2446 RVA: 0x000148BB File Offset: 0x00012ABB
 		protected override IEnumerable<IEnemyMove> GetTurnMoves()
 		{
 			switch (this.Next)
@@ -209,8 +185,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			yield break;
 		}
-
-		// Token: 0x0600098F RID: 2447 RVA: 0x000148CC File Offset: 0x00012ACC
 		protected override void UpdateMoveCounters()
 		{
 			int num = base.CountDown - 1;
@@ -249,34 +223,17 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			this.Next = moveType;
 		}
-
-		// Token: 0x040000E2 RID: 226
 		private int _attackWithDebuffTurn;
-
-		// Token: 0x040000E3 RID: 227
 		private int _vacancy;
-
-		// Token: 0x040000E4 RID: 228
 		private int _summonTurn;
-
-		// Token: 0x040000E5 RID: 229
 		private int _shootIndicator;
-
-		// Token: 0x040000E6 RID: 230
 		private int _debuffCount;
-
-		// Token: 0x0200078D RID: 1933
 		private enum MoveType
 		{
-			// Token: 0x04000C02 RID: 3074
 			Shoot,
-			// Token: 0x04000C03 RID: 3075
 			DefendBuff,
-			// Token: 0x04000C04 RID: 3076
 			Debuff,
-			// Token: 0x04000C05 RID: 3077
 			Summon,
-			// Token: 0x04000C06 RID: 3078
 			Spell
 		}
 	}

@@ -8,14 +8,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
 using LBoL.EntityLib.StatusEffects.Others;
-
 namespace LBoL.EntityLib.Cards.Neutral.Black
 {
-	// Token: 0x02000333 RID: 819
 	[UsedImplicitly]
 	public sealed class MedicineGarden : Card
 	{
-		// Token: 0x06000BF9 RID: 3065 RVA: 0x000179FB File Offset: 0x00015BFB
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			foreach (Unit unit in selector.GetUnits(base.Battle))

@@ -4,19 +4,14 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using LBoL.Core.Battle.BattleActionRecord;
 using UnityEngine;
-
 namespace LBoL.Core.Battle
 {
-	// Token: 0x0200013C RID: 316
 	internal class ActionResolver
 	{
-		// Token: 0x06000C04 RID: 3076 RVA: 0x000215CC File Offset: 0x0001F7CC
 		public ActionResolver(BattleController battle)
 		{
 			this._battle = battle;
 		}
-
-		// Token: 0x06000C05 RID: 3077 RVA: 0x000215DB File Offset: 0x0001F7DB
 		public IEnumerator<object> Resolve(BattleAction root, [MaybeNull] string recordName = null)
 		{
 			if (this._exception != null)
@@ -34,8 +29,6 @@ namespace LBoL.Core.Battle
 			}
 			yield break;
 		}
-
-		// Token: 0x06000C06 RID: 3078 RVA: 0x000215F8 File Offset: 0x0001F7F8
 		private IEnumerator<object> InternalResolve(PhaseRecord parentPhase, BattleAction action, int depth, [MaybeNull] string recordName = null)
 		{
 			if (action.Resolved)
@@ -117,8 +110,6 @@ namespace LBoL.Core.Battle
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x06000C07 RID: 3079 RVA: 0x00021624 File Offset: 0x0001F824
 		public void React(Reactor reactor, [MaybeNull] GameEntity source, ActionCause cause)
 		{
 			if (this._reactors == null)
@@ -129,17 +120,9 @@ namespace LBoL.Core.Battle
 			reactor.Cause = cause;
 			this._reactors.Add(reactor);
 		}
-
-		// Token: 0x0400057D RID: 1405
 		private const int MaxStackDepth = 99;
-
-		// Token: 0x0400057E RID: 1406
 		private readonly BattleController _battle;
-
-		// Token: 0x0400057F RID: 1407
 		private List<Reactor> _reactors;
-
-		// Token: 0x04000580 RID: 1408
 		private Exception _exception;
 	}
 }

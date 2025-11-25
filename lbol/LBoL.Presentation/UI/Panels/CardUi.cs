@@ -17,15 +17,10 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
-
 namespace LBoL.Presentation.UI.Panels
 {
-	// Token: 0x0200008D RID: 141
 	public class CardUi : MonoBehaviour
 	{
-		// Token: 0x17000134 RID: 308
-		// (get) Token: 0x0600072C RID: 1836 RVA: 0x00021880 File Offset: 0x0001FA80
-		// (set) Token: 0x0600072D RID: 1837 RVA: 0x0002189F File Offset: 0x0001FA9F
 		private BattleController Battle
 		{
 			get
@@ -42,14 +37,10 @@ namespace LBoL.Presentation.UI.Panels
 				this._battle.SetTarget(value);
 			}
 		}
-
-		// Token: 0x0600072E RID: 1838 RVA: 0x000218AD File Offset: 0x0001FAAD
 		public IEnumerable<HandCard> GetUnpendingHands()
 		{
 			return Enumerable.Where<HandCard>(this._handWidgets, (HandCard hand) => !hand.PendingUse);
 		}
-
-		// Token: 0x0600072F RID: 1839 RVA: 0x000218DC File Offset: 0x0001FADC
 		public void SetPendingCardsAlpha(float alpha)
 		{
 			foreach (HandCard handCard in this._pendingUseWidgets)
@@ -61,9 +52,6 @@ namespace LBoL.Presentation.UI.Panels
 				cardWidget.CanvasGroup.alpha = alpha;
 			}
 		}
-
-		// Token: 0x17000135 RID: 309
-		// (get) Token: 0x06000730 RID: 1840 RVA: 0x00021978 File Offset: 0x0001FB78
 		public int UnpendingHandCount
 		{
 			get
@@ -71,8 +59,6 @@ namespace LBoL.Presentation.UI.Panels
 				return Enumerable.Count<HandCard>(this._handWidgets, (HandCard hand) => !hand.PendingUse);
 			}
 		}
-
-		// Token: 0x06000731 RID: 1841 RVA: 0x000219A4 File Offset: 0x0001FBA4
 		private CardWidget CreateCardWidget(Card card, Transform parent)
 		{
 			CardWidget cardWidget = Object.Instantiate<CardWidget>(this.cardPrefab, parent);
@@ -80,20 +66,14 @@ namespace LBoL.Presentation.UI.Panels
 			cardWidget.Card = card;
 			return cardWidget;
 		}
-
-		// Token: 0x06000732 RID: 1842 RVA: 0x000219D4 File Offset: 0x0001FBD4
 		private CardWidget CreateCardWidget(Card card)
 		{
 			return this.CreateCardWidget(card, this.cardHandParent);
 		}
-
-		// Token: 0x06000733 RID: 1843 RVA: 0x000219E3 File Offset: 0x0001FBE3
 		private HandCard CreateHandWidget(Card card)
 		{
 			return this.ConvertToHand(this.CreateCardWidget(card));
 		}
-
-		// Token: 0x06000734 RID: 1844 RVA: 0x000219F4 File Offset: 0x0001FBF4
 		private HandCard ConvertToHand(CardWidget cardWidget)
 		{
 			HandCard handCard = Object.Instantiate<HandCard>(this.handCardPrefab, cardWidget.transform.parent);
@@ -119,26 +99,18 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			return handCard;
 		}
-
-		// Token: 0x06000735 RID: 1845 RVA: 0x00021B04 File Offset: 0x0001FD04
 		public HandCard FindHandWidget(Card card)
 		{
 			return Enumerable.FirstOrDefault<HandCard>(this._handWidgets, (HandCard hand) => hand.Card == card);
 		}
-
-		// Token: 0x06000736 RID: 1846 RVA: 0x00021B38 File Offset: 0x0001FD38
 		public CardWidget FindFollowPlayWidget(Card card)
 		{
 			return Enumerable.FirstOrDefault<CardWidget>(this._followPlayWidgets, (CardWidget c) => c.Card == card);
 		}
-
-		// Token: 0x06000737 RID: 1847 RVA: 0x00021B6C File Offset: 0x0001FD6C
 		public CardWidget FindViewWidget(Card card)
 		{
 			return Enumerable.FirstOrDefault<CardWidget>(this._viewWidget, (CardWidget c) => c.Card == card);
 		}
-
-		// Token: 0x06000738 RID: 1848 RVA: 0x00021BA0 File Offset: 0x0001FDA0
 		private HandCard ExtractHandWidget(Card card)
 		{
 			HandCard handCard = this.FindHandWidget(card);
@@ -162,8 +134,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			return handCard;
 		}
-
-		// Token: 0x06000739 RID: 1849 RVA: 0x00021C2C File Offset: 0x0001FE2C
 		private static void FastRemoveHand(HandCard hand)
 		{
 			hand.transform.DOLocalMoveY(-100f, 0.2f, false).SetRelative<TweenerCore<Vector3, Vector3, VectorOptions>>().SetLink(hand.gameObject)
@@ -172,8 +142,6 @@ namespace LBoL.Presentation.UI.Panels
 					Object.Destroy(hand.gameObject);
 				});
 		}
-
-		// Token: 0x0600073A RID: 1850 RVA: 0x00021C88 File Offset: 0x0001FE88
 		private static void FastRemoveCard(CardWidget card)
 		{
 			card.transform.DOLocalMoveY(-100f, 0.2f, false).SetRelative<TweenerCore<Vector3, Vector3, VectorOptions>>().SetLink(card.gameObject)
@@ -182,8 +150,6 @@ namespace LBoL.Presentation.UI.Panels
 					Object.Destroy(card.gameObject);
 				});
 		}
-
-		// Token: 0x0600073B RID: 1851 RVA: 0x00021CE4 File Offset: 0x0001FEE4
 		public void CancelUse(Card card)
 		{
 			HandCard handCard = this.FindHandWidget(card);
@@ -204,8 +170,6 @@ namespace LBoL.Presentation.UI.Panels
 				handCard.CancelUse();
 			}
 		}
-
-		// Token: 0x0600073C RID: 1852 RVA: 0x00021D60 File Offset: 0x0001FF60
 		public void CardReturnToHand(Card card)
 		{
 			HandCard handCard = this.FindHandWidget(card);
@@ -226,8 +190,6 @@ namespace LBoL.Presentation.UI.Panels
 				handCard.ReturnToHand();
 			}
 		}
-
-		// Token: 0x0600073D RID: 1853 RVA: 0x00021DD8 File Offset: 0x0001FFD8
 		public void PlaySummonEffect(Card card)
 		{
 			HandCard handCard = this.FindHandWidget(card);
@@ -242,8 +204,6 @@ namespace LBoL.Presentation.UI.Panels
 				cardWidget.Summon();
 			}
 		}
-
-		// Token: 0x0600073E RID: 1854 RVA: 0x00021E14 File Offset: 0x00020014
 		private IEnumerator InternalViewDrawCard(Card card, CardTransitionType transitionType)
 		{
 			if (transitionType == CardTransitionType.SpecialEnd)
@@ -281,8 +241,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.RefreshAll();
 			yield break;
 		}
-
-		// Token: 0x0600073F RID: 1855 RVA: 0x00021E31 File Offset: 0x00020031
 		private IEnumerator SimpleCardFlyEffect(CardZone from, CardZone to, float time = 0.2f)
 		{
 			Vector3 vector;
@@ -328,8 +286,6 @@ namespace LBoL.Presentation.UI.Panels
 			yield return new WaitForSecondsRealtime(0.05f);
 			yield break;
 		}
-
-		// Token: 0x06000740 RID: 1856 RVA: 0x00021E55 File Offset: 0x00020055
 		private IEnumerator ShowCardMoveRunner(Card card, int index, int total)
 		{
 			if (index > 10)
@@ -382,20 +338,14 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x06000741 RID: 1857 RVA: 0x00021E79 File Offset: 0x00020079
 		private IEnumerator ViewDrawCard(DrawCardAction action)
 		{
 			return this.InternalViewDrawCard(action.Args.Card, action.TransitionType);
 		}
-
-		// Token: 0x06000742 RID: 1858 RVA: 0x00021E92 File Offset: 0x00020092
 		private IEnumerator ViewDrawSelectedCard(DrawSelectedCardAction action)
 		{
 			return this.InternalViewDrawCard(action.Args.Card, action.TransitionType);
 		}
-
-		// Token: 0x06000743 RID: 1859 RVA: 0x00021EAB File Offset: 0x000200AB
 		private IEnumerator ViewDiscard(DiscardAction action)
 		{
 			Card card = action.Args.Card;
@@ -456,8 +406,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.RefreshAll();
 			yield break;
 		}
-
-		// Token: 0x06000744 RID: 1860 RVA: 0x00021EC1 File Offset: 0x000200C1
 		private IEnumerator MoveCardToDrawZone(HandCard hand)
 		{
 			CardUi.<>c__DisplayClass35_0 CS$<>8__locals1 = new CardUi.<>c__DisplayClass35_0();
@@ -475,8 +423,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.RefreshDrawCount();
 			yield break;
 		}
-
-		// Token: 0x06000745 RID: 1861 RVA: 0x00021ED7 File Offset: 0x000200D7
 		private IEnumerator MoveCardToDrawZone(CardWidget widget)
 		{
 			CardUi.<>c__DisplayClass36_0 CS$<>8__locals1 = new CardUi.<>c__DisplayClass36_0();
@@ -494,8 +440,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.RefreshDrawCount();
 			yield break;
 		}
-
-		// Token: 0x06000746 RID: 1862 RVA: 0x00021EED File Offset: 0x000200ED
 		private IEnumerator MoveCardToDiscard(HandCard hand, bool adjustCardsPosition)
 		{
 			CardUi.<>c__DisplayClass37_0 CS$<>8__locals1 = new CardUi.<>c__DisplayClass37_0();
@@ -521,8 +465,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.RefreshDiscardCount();
 			yield break;
 		}
-
-		// Token: 0x06000747 RID: 1863 RVA: 0x00021F0A File Offset: 0x0002010A
 		private IEnumerator MoveCardToDiscard(CardWidget widget)
 		{
 			CardUi.<>c__DisplayClass38_0 CS$<>8__locals1 = new CardUi.<>c__DisplayClass38_0();
@@ -540,8 +482,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.RefreshDiscardCount();
 			yield break;
 		}
-
-		// Token: 0x06000748 RID: 1864 RVA: 0x00021F20 File Offset: 0x00020120
 		private IEnumerator ViewExileCard(ExileCardAction action)
 		{
 			Card card = action.Args.Card;
@@ -697,8 +637,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x06000749 RID: 1865 RVA: 0x00021F36 File Offset: 0x00020136
 		private IEnumerator ViewRemoveCard(RemoveCardAction action)
 		{
 			Card card = action.Args.Card;
@@ -726,8 +664,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.RefreshAllZoneCount();
 			yield break;
 		}
-
-		// Token: 0x0600074A RID: 1866 RVA: 0x00021F4C File Offset: 0x0002014C
 		private IEnumerator ViewTransformCard(TransformCardAction action)
 		{
 			switch (action.Args.DestinationCard.Zone)
@@ -766,8 +702,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x0600074B RID: 1867 RVA: 0x00021F62 File Offset: 0x00020162
 		private IEnumerator ViewRetain(RetainAction action)
 		{
 			Card card = action.Args.Card;
@@ -798,8 +732,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x0600074C RID: 1868 RVA: 0x00021F78 File Offset: 0x00020178
 		private IEnumerator ViewReshuffle(ReshuffleAction action)
 		{
 			if (GameMaster.ShowBriefHint && GameMaster.ShouldShowHint("EmptyDrawZone"))
@@ -838,8 +770,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.RefreshAll();
 			yield break;
 		}
-
-		// Token: 0x0600074D RID: 1869 RVA: 0x00021F87 File Offset: 0x00020187
 		private IEnumerator ViewAddCardsToHand(AddCardsToHandAction action)
 		{
 			CardUi.<>c__DisplayClass45_0 CS$<>8__locals1 = new CardUi.<>c__DisplayClass45_0();
@@ -920,8 +850,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x0600074E RID: 1870 RVA: 0x00021F9D File Offset: 0x0002019D
 		private IEnumerator ViewAddCardsToDrawZone(AddCardsToDrawZoneAction action)
 		{
 			CardUi.<>c__DisplayClass53_0 CS$<>8__locals1 = new CardUi.<>c__DisplayClass53_0();
@@ -997,8 +925,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x0600074F RID: 1871 RVA: 0x00021FB3 File Offset: 0x000201B3
 		private IEnumerator ViewAddCardsToDiscard(AddCardsToDiscardAction action)
 		{
 			CardUi.<>c__DisplayClass54_0 CS$<>8__locals1 = new CardUi.<>c__DisplayClass54_0();
@@ -1075,8 +1001,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x06000750 RID: 1872 RVA: 0x00021FC9 File Offset: 0x000201C9
 		private IEnumerator ViewAddCardsToDeck(AddCardsToDeckAction action)
 		{
 			Vector3? vector = this._playBoard.FindActionSourceWorldPosition(action.Source);
@@ -1119,8 +1043,6 @@ namespace LBoL.Presentation.UI.Panels
 			UiManager.GetPanel<GameRunVisualPanel>().PlayAddToDeckEffect(cards, list, 0f);
 			yield break;
 		}
-
-		// Token: 0x06000751 RID: 1873 RVA: 0x00021FDF File Offset: 0x000201DF
 		private IEnumerator ViewAddCardsToExile(AddCardsToExileAction action)
 		{
 			AddCardsType presentationType = action.PresentationType;
@@ -1197,8 +1119,6 @@ namespace LBoL.Presentation.UI.Panels
 			CardUi.CheckKickerPrefer(action.Args.Cards);
 			yield break;
 		}
-
-		// Token: 0x06000752 RID: 1874 RVA: 0x00021FF5 File Offset: 0x000201F5
 		private IEnumerator ViewMoveCardToDrawZone(MoveCardToDrawZoneAction action)
 		{
 			CardTransitionType transitionType = action.TransitionType;
@@ -1235,8 +1155,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.RefreshAll();
 			yield break;
 		}
-
-		// Token: 0x06000753 RID: 1875 RVA: 0x0002200B File Offset: 0x0002020B
 		private IEnumerator ViewMoveCard(MoveCardAction action)
 		{
 			CardMovingEventArgs args = action.Args;
@@ -1369,8 +1287,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.RefreshAllZoneCount();
 			yield break;
 		}
-
-		// Token: 0x06000754 RID: 1876 RVA: 0x00022021 File Offset: 0x00020221
 		private IEnumerator ViewUpgradeCard(UpgradeCardAction action)
 		{
 			Card card = action.Card;
@@ -1414,8 +1330,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.RefreshAll();
 			yield break;
 		}
-
-		// Token: 0x06000755 RID: 1877 RVA: 0x00022037 File Offset: 0x00020237
 		private IEnumerator ViewUpgradeCards(UpgradeCardsAction action)
 		{
 			List<Card> list = new List<Card>();
@@ -1487,16 +1401,8 @@ namespace LBoL.Presentation.UI.Panels
 			this.RefreshAll();
 			yield break;
 		}
-
-		// Token: 0x17000136 RID: 310
-		// (get) Token: 0x06000756 RID: 1878 RVA: 0x0002204D File Offset: 0x0002024D
 		public List<Vector2> CardBaseV2List { get; } = new List<Vector2>();
-
-		// Token: 0x17000137 RID: 311
-		// (get) Token: 0x06000757 RID: 1879 RVA: 0x00022055 File Offset: 0x00020255
 		public List<float> CardBaseRotateList { get; } = new List<float>();
-
-		// Token: 0x06000758 RID: 1880 RVA: 0x0002205D File Offset: 0x0002025D
 		public void ConfirmUseCard(HandCard hand)
 		{
 			hand.PendingUse = true;
@@ -1504,8 +1410,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.AdjustPendingCardsLocation();
 			this.AdjustCardsPosition(false);
 		}
-
-		// Token: 0x06000759 RID: 1881 RVA: 0x00022080 File Offset: 0x00020280
 		private void AdjustPendingCardsLocation()
 		{
 			if (this._pendingUseWidgets.Count > 0)
@@ -1529,8 +1433,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 			}
 		}
-
-		// Token: 0x0600075A RID: 1882 RVA: 0x0002219C File Offset: 0x0002039C
 		private void AdjustCardsPosition(bool reOrder = false)
 		{
 			float num = this._rectTransform.rect.width / this.curvatureRatio;
@@ -1570,8 +1472,6 @@ namespace LBoL.Presentation.UI.Panels
 				handCard.HoveredRotation = Quaternion.identity;
 			}
 		}
-
-		// Token: 0x0600075B RID: 1883 RVA: 0x0002234C File Offset: 0x0002054C
 		private void ReOrderHands()
 		{
 			this._handWidgets = Enumerable.ToList<HandCard>(Enumerable.OrderBy<HandCard, int>(this._handWidgets, (HandCard hand) => this.Battle.HandZone.IndexOf(hand.Card)));
@@ -1581,8 +1481,6 @@ namespace LBoL.Presentation.UI.Panels
 				handCard.MoveToParentWhenReordering(this.cardHandParent);
 			}
 		}
-
-		// Token: 0x0600075C RID: 1884 RVA: 0x000223D0 File Offset: 0x000205D0
 		private void DelayedAdjustCardsPosition(float delay = 0.4f)
 		{
 			float num = Time.unscaledTime + delay;
@@ -1599,8 +1497,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this._nextAdjustCardTime = new float?(num2);
 		}
-
-		// Token: 0x0600075D RID: 1885 RVA: 0x00022414 File Offset: 0x00020614
 		public void RefreshAll()
 		{
 			foreach (ValueTuple<int, HandCard> valueTuple in this._handWidgets.WithIndices<HandCard>())
@@ -1612,8 +1508,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.RefreshAllCardsEdge();
 		}
-
-		// Token: 0x0600075E RID: 1886 RVA: 0x0002247C File Offset: 0x0002067C
 		public void RefreshAllCardsEdge()
 		{
 			bool flag = true;
@@ -1629,8 +1523,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this._playBoard.SetEndTurnParticle(flag);
 		}
-
-		// Token: 0x0600075F RID: 1887 RVA: 0x00022504 File Offset: 0x00020704
 		public void StartCardsEndNotify()
 		{
 			foreach (HandCard handCard in this._handWidgets)
@@ -1641,10 +1533,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 			}
 		}
-
-		// Token: 0x17000138 RID: 312
-		// (get) Token: 0x06000760 RID: 1888 RVA: 0x00022564 File Offset: 0x00020764
-		// (set) Token: 0x06000761 RID: 1889 RVA: 0x0002256C File Offset: 0x0002076C
 		public int DrawCount
 		{
 			get
@@ -1657,10 +1545,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.drawText.text = value.ToString();
 			}
 		}
-
-		// Token: 0x17000139 RID: 313
-		// (get) Token: 0x06000762 RID: 1890 RVA: 0x00022587 File Offset: 0x00020787
-		// (set) Token: 0x06000763 RID: 1891 RVA: 0x0002258F File Offset: 0x0002078F
 		public int DrawUpperCount
 		{
 			get
@@ -1673,8 +1557,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.drawUpperText.text = value.ToString();
 			}
 		}
-
-		// Token: 0x06000764 RID: 1892 RVA: 0x000225AC File Offset: 0x000207AC
 		private void RefreshDrawCount()
 		{
 			this.DrawCount = this.Battle.DrawZone.Count;
@@ -1698,10 +1580,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.HideDrawFastView();
 			}
 		}
-
-		// Token: 0x1700013A RID: 314
-		// (get) Token: 0x06000765 RID: 1893 RVA: 0x000226EE File Offset: 0x000208EE
-		// (set) Token: 0x06000766 RID: 1894 RVA: 0x000226F6 File Offset: 0x000208F6
 		public int DiscardCount
 		{
 			get
@@ -1714,10 +1592,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.discardText.text = value.ToString();
 			}
 		}
-
-		// Token: 0x1700013B RID: 315
-		// (get) Token: 0x06000767 RID: 1895 RVA: 0x00022711 File Offset: 0x00020911
-		// (set) Token: 0x06000768 RID: 1896 RVA: 0x00022719 File Offset: 0x00020919
 		public int DiscardUpperCount
 		{
 			get
@@ -1730,8 +1604,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.discardUpperText.text = value.ToString();
 			}
 		}
-
-		// Token: 0x06000769 RID: 1897 RVA: 0x00022734 File Offset: 0x00020934
 		private void RefreshDiscardCount()
 		{
 			this.DiscardCount = this.Battle.DiscardZone.Count;
@@ -1742,10 +1614,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.HideDiscardFastView();
 			}
 		}
-
-		// Token: 0x1700013C RID: 316
-		// (get) Token: 0x0600076A RID: 1898 RVA: 0x000227AF File Offset: 0x000209AF
-		// (set) Token: 0x0600076B RID: 1899 RVA: 0x000227B8 File Offset: 0x000209B8
 		public int ExileCount
 		{
 			get
@@ -1766,23 +1634,16 @@ namespace LBoL.Presentation.UI.Panels
 				this.exileText.gameObject.SetActive(false);
 			}
 		}
-
-		// Token: 0x0600076C RID: 1900 RVA: 0x00022827 File Offset: 0x00020A27
 		private void RefreshExileCount()
 		{
 			this.ExileCount = this.Battle.ExileZone.Count;
 		}
-
-		// Token: 0x0600076D RID: 1901 RVA: 0x0002283F File Offset: 0x00020A3F
 		private void RefreshAllZoneCount()
 		{
 			this.RefreshDrawCount();
 			this.RefreshDiscardCount();
 			this.RefreshExileCount();
 		}
-
-		// Token: 0x1700013D RID: 317
-		// (get) Token: 0x0600076E RID: 1902 RVA: 0x00022853 File Offset: 0x00020A53
 		public Vector3 DrawPosition
 		{
 			get
@@ -1790,9 +1651,6 @@ namespace LBoL.Presentation.UI.Panels
 				return this.drawRoot.transform.position;
 			}
 		}
-
-		// Token: 0x1700013E RID: 318
-		// (get) Token: 0x0600076F RID: 1903 RVA: 0x00022865 File Offset: 0x00020A65
 		public Vector3 DiscardPosition
 		{
 			get
@@ -1800,9 +1658,6 @@ namespace LBoL.Presentation.UI.Panels
 				return this.discardRoot.transform.position;
 			}
 		}
-
-		// Token: 0x1700013F RID: 319
-		// (get) Token: 0x06000770 RID: 1904 RVA: 0x00022877 File Offset: 0x00020A77
 		public Vector3 ExilePosition
 		{
 			get
@@ -1810,9 +1665,6 @@ namespace LBoL.Presentation.UI.Panels
 				return this.exileRoot.transform.position;
 			}
 		}
-
-		// Token: 0x17000140 RID: 320
-		// (get) Token: 0x06000771 RID: 1905 RVA: 0x00022889 File Offset: 0x00020A89
 		public Vector3 DrawLocalPosition
 		{
 			get
@@ -1820,9 +1672,6 @@ namespace LBoL.Presentation.UI.Panels
 				return this.drawRoot.transform.localPosition;
 			}
 		}
-
-		// Token: 0x17000141 RID: 321
-		// (get) Token: 0x06000772 RID: 1906 RVA: 0x0002289B File Offset: 0x00020A9B
 		public Vector3 DiscardLocalPosition
 		{
 			get
@@ -1830,9 +1679,6 @@ namespace LBoL.Presentation.UI.Panels
 				return this.discardRoot.transform.localPosition;
 			}
 		}
-
-		// Token: 0x17000142 RID: 322
-		// (get) Token: 0x06000773 RID: 1907 RVA: 0x000228AD File Offset: 0x00020AAD
 		public Vector3 ExileLocalPosition
 		{
 			get
@@ -1840,8 +1686,6 @@ namespace LBoL.Presentation.UI.Panels
 				return this.exileRoot.transform.localPosition;
 			}
 		}
-
-		// Token: 0x06000774 RID: 1908 RVA: 0x000228C0 File Offset: 0x00020AC0
 		private static void ImageBlink(Component image)
 		{
 			Transform trans = image.transform;
@@ -1853,8 +1697,6 @@ namespace LBoL.Presentation.UI.Panels
 				.SetUpdate(true)
 				.SetAutoKill(true);
 		}
-
-		// Token: 0x06000775 RID: 1909 RVA: 0x0002293C File Offset: 0x00020B3C
 		public void ShowDrawFastView()
 		{
 			if (Enumerable.Any<Card>(this.Battle.DrawZone, (Card card) => card.IsFollowCard))
@@ -1867,8 +1709,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.fastDrawViewer.Show(Enumerable.ToList<Card>(Enumerable.Where<Card>(this.Battle.DrawZoneIndexOrder, (Card card) => card.IsDreamCard)));
 			}
 		}
-
-		// Token: 0x06000776 RID: 1910 RVA: 0x00022A2C File Offset: 0x00020C2C
 		public void ShowDiscardFastView()
 		{
 			if (Enumerable.Any<Card>(this.Battle.DiscardZone, (Card card) => card.IsDreamCard))
@@ -1876,27 +1716,19 @@ namespace LBoL.Presentation.UI.Panels
 				this.fastDiscardViewer.Show(Enumerable.ToList<Card>(Enumerable.Where<Card>(this.Battle.DiscardZone, (Card card) => card.IsDreamCard)));
 			}
 		}
-
-		// Token: 0x06000777 RID: 1911 RVA: 0x00022AA9 File Offset: 0x00020CA9
 		public void HideDrawFastView()
 		{
 			this.fastDrawViewer.Hide();
 		}
-
-		// Token: 0x06000778 RID: 1912 RVA: 0x00022AB6 File Offset: 0x00020CB6
 		public void HideDiscardFastView()
 		{
 			this.fastDiscardViewer.Hide();
 		}
-
-		// Token: 0x06000779 RID: 1913 RVA: 0x00022AC3 File Offset: 0x00020CC3
 		private void HideFastViewers()
 		{
 			this.HideDrawFastView();
 			this.HideDiscardFastView();
 		}
-
-		// Token: 0x0600077A RID: 1914 RVA: 0x00022AD1 File Offset: 0x00020CD1
 		public IEnumerator ViewCardFromZone(Card card, CardZone zone)
 		{
 			Vector3 vector;
@@ -1951,8 +1783,6 @@ namespace LBoL.Presentation.UI.Panels
 			yield return new WaitForSecondsRealtime(0.5f);
 			yield break;
 		}
-
-		// Token: 0x0600077B RID: 1915 RVA: 0x00022AF0 File Offset: 0x00020CF0
 		private void ViewCard(Card card, Vector3 startPosition, Vector3 stopPosition, bool playUpgradeEffect)
 		{
 			CardWidget widget = this.CreateCardWidget(card);
@@ -1980,9 +1810,6 @@ namespace LBoL.Presentation.UI.Panels
 					Object.Destroy(widget.gameObject);
 				});
 		}
-
-		// Token: 0x17000143 RID: 323
-		// (get) Token: 0x0600077C RID: 1916 RVA: 0x00022C44 File Offset: 0x00020E44
 		private Vector3 PlayCardOffset
 		{
 			get
@@ -1990,8 +1817,6 @@ namespace LBoL.Presentation.UI.Panels
 				return new Vector3(100f * (float)(this._followPlayWidgets.Count - 1), 0f, 0f);
 			}
 		}
-
-		// Token: 0x0600077D RID: 1917 RVA: 0x00022C69 File Offset: 0x00020E69
 		private IEnumerator ViewPlayCard(PlayCardAction action)
 		{
 			Card card = action.Args.Card;
@@ -2048,8 +1873,6 @@ namespace LBoL.Presentation.UI.Panels
 			yield return new WaitForSecondsRealtime(0.3f);
 			yield break;
 		}
-
-		// Token: 0x0600077E RID: 1918 RVA: 0x00022C80 File Offset: 0x00020E80
 		private void Awake()
 		{
 			this._rectTransform = base.GetComponent<RectTransform>();
@@ -2066,8 +1889,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.CardBaseRotateList.Add(0f);
 			}
 		}
-
-		// Token: 0x0600077F RID: 1919 RVA: 0x00022D9C File Offset: 0x00020F9C
 		private void Update()
 		{
 			float? nextAdjustCardTime = this._nextAdjustCardTime;
@@ -2081,8 +1902,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 			}
 		}
-
-		// Token: 0x06000780 RID: 1920 RVA: 0x00022DDC File Offset: 0x00020FDC
 		public void EnterBattle(BattleController battle)
 		{
 			this.Battle = battle;
@@ -2111,15 +1930,11 @@ namespace LBoL.Presentation.UI.Panels
 			battle.ActionViewer.Register<PlayCardAction>(new BattleActionViewer<PlayCardAction>(this.ViewPlayCard), null);
 			battle.CardUsingCanceled.AddHandler(new GameEventHandler<CardUsingEventArgs>(this.OnCardUsingCanceled), GameEventPriority.Lowest);
 		}
-
-		// Token: 0x06000781 RID: 1921 RVA: 0x00023010 File Offset: 0x00021210
 		private void OnCardUsingCanceled(CardUsingEventArgs args)
 		{
 			this.CancelUse(args.Card);
 			UiManager.GetPanel<BattleManaPanel>().RefundFront(default(ManaGroup?));
 		}
-
-		// Token: 0x06000782 RID: 1922 RVA: 0x0002303C File Offset: 0x0002123C
 		public void LeaveBattle(BattleController battle)
 		{
 			battle.ActionViewer.Unregister<DrawCardAction>(new BattleActionViewer<DrawCardAction>(this.ViewDrawCard));
@@ -2144,8 +1959,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.ClearAll();
 			this.Battle = null;
 		}
-
-		// Token: 0x06000783 RID: 1923 RVA: 0x00023210 File Offset: 0x00021410
 		private void ClearAll()
 		{
 			this.DOKill(true);
@@ -2170,254 +1983,114 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.HideFastViewers();
 		}
-
-		// Token: 0x06000784 RID: 1924 RVA: 0x00023368 File Offset: 0x00021568
 		private static void CheckKickerPrefer(IEnumerable<Card> cards)
 		{
 			UiManager.GetPanel<BattleManaPanel>().CheckKickerPrefer(cards);
 		}
-
-		// Token: 0x040004B2 RID: 1202
 		private readonly WeakReference<BattleController> _battle = new WeakReference<BattleController>(null);
-
-		// Token: 0x040004B3 RID: 1203
 		private List<HandCard> _handWidgets = new List<HandCard>();
-
-		// Token: 0x040004B4 RID: 1204
 		private readonly List<CardWidget> _followPlayWidgets = new List<CardWidget>();
-
-		// Token: 0x040004B5 RID: 1205
 		private readonly List<CardWidget> _viewWidget = new List<CardWidget>();
-
-		// Token: 0x040004B6 RID: 1206
 		private readonly List<HandCard> _pendingUseWidgets = new List<HandCard>();
-
-		// Token: 0x040004B7 RID: 1207
 		private readonly List<HandCard> _specialReactingWidgets = new List<HandCard>();
-
-		// Token: 0x040004B8 RID: 1208
 		private RectTransform _rectTransform;
-
-		// Token: 0x040004B9 RID: 1209
 		private PlayBoard _playBoard;
-
-		// Token: 0x040004BA RID: 1210
 		private float? _nextAdjustCardTime;
-
-		// Token: 0x040004BB RID: 1211
 		private const float ReshuffleTime = 0.5f;
-
-		// Token: 0x040004BC RID: 1212
 		private const int AddCardXDistance = 600;
-
-		// Token: 0x040004BD RID: 1213
 		private const float AddCardInTime = 0.3f;
-
-		// Token: 0x040004BE RID: 1214
 		private const float AddCardStopTime = 0.3f;
-
-		// Token: 0x040004BF RID: 1215
 		private const float AddCardOutTime = 0.4f;
-
-		// Token: 0x040004C0 RID: 1216
 		private const float RotateTime = 0.2f;
-
-		// Token: 0x040004C1 RID: 1217
 		private const float AddCardInterval = 0.05f;
-
-		// Token: 0x040004C2 RID: 1218
 		private const float AddCardIntervalSlow = 0.25f;
-
-		// Token: 0x040004C5 RID: 1221
 		private const float PendingUseInterval = 50f;
-
-		// Token: 0x040004C6 RID: 1222
 		private const float PendingUseIntervalFlatMax = 200f;
-
-		// Token: 0x040004C7 RID: 1223
 		private static readonly Vector2 HalfScreenV2 = new Vector2(1920f, 1080f);
-
-		// Token: 0x040004C8 RID: 1224
 		private int _drawCount;
-
-		// Token: 0x040004C9 RID: 1225
 		private int _drawUpperCount;
-
-		// Token: 0x040004CA RID: 1226
 		private readonly Color _followColor = new Color32(byte.MaxValue, byte.MaxValue, byte.MaxValue, byte.MaxValue);
-
-		// Token: 0x040004CB RID: 1227
 		private readonly Color _dreamColor = new Color32(byte.MaxValue, byte.MaxValue, byte.MaxValue, byte.MaxValue);
-
-		// Token: 0x040004CC RID: 1228
 		private int _discardCount;
-
-		// Token: 0x040004CD RID: 1229
 		private int _discardUpperCount;
-
-		// Token: 0x040004CE RID: 1230
 		private int _exileCount;
-
-		// Token: 0x040004CF RID: 1231
 		private const float FadeInDuration = 0.1f;
-
-		// Token: 0x040004D0 RID: 1232
 		private const float FadeOutDelay = 0.8f;
-
-		// Token: 0x040004D1 RID: 1233
 		private const float WaitTime = 0.5f;
-
-		// Token: 0x040004D2 RID: 1234
 		private const float FadeOutX = 50f;
-
-		// Token: 0x040004D3 RID: 1235
 		private readonly Vector3 _rightOffset = new Vector3(300f, 400f, 0f);
-
-		// Token: 0x040004D4 RID: 1236
 		private readonly Vector3 _leftOffset = new Vector3(-300f, 400f, 0f);
-
-		// Token: 0x040004D5 RID: 1237
 		private const float ViewCardXInterval = 100f;
-
-		// Token: 0x040004D6 RID: 1238
 		[SerializeField]
 		private Transform drawRoot;
-
-		// Token: 0x040004D7 RID: 1239
 		[SerializeField]
 		private Button drawButton;
-
-		// Token: 0x040004D8 RID: 1240
 		[SerializeField]
 		private TextMeshProUGUI drawText;
-
-		// Token: 0x040004D9 RID: 1241
 		[SerializeField]
 		private CardZoneUpperCountWidget drawUpperRoot;
-
-		// Token: 0x040004DA RID: 1242
 		[SerializeField]
 		private TextMeshProUGUI drawUpperText;
-
-		// Token: 0x040004DB RID: 1243
 		[SerializeField]
 		private Transform discardRoot;
-
-		// Token: 0x040004DC RID: 1244
 		[SerializeField]
 		private Button discardButton;
-
-		// Token: 0x040004DD RID: 1245
 		[SerializeField]
 		private TextMeshProUGUI discardText;
-
-		// Token: 0x040004DE RID: 1246
 		[SerializeField]
 		private CardZoneUpperCountWidget discardUpperRoot;
-
-		// Token: 0x040004DF RID: 1247
 		[SerializeField]
 		private TextMeshProUGUI discardUpperText;
-
-		// Token: 0x040004E0 RID: 1248
 		[SerializeField]
 		private Transform exileRoot;
-
-		// Token: 0x040004E1 RID: 1249
 		[SerializeField]
 		private Button exileButton;
-
-		// Token: 0x040004E2 RID: 1250
 		[SerializeField]
 		private TextMeshProUGUI exileText;
-
-		// Token: 0x040004E3 RID: 1251
 		[SerializeField]
 		private RectTransform cardHandParent;
-
-		// Token: 0x040004E4 RID: 1252
 		[SerializeField]
 		private RectTransform cardHandReorderCache;
-
-		// Token: 0x040004E5 RID: 1253
 		[SerializeField]
 		private RectTransform cardHoveredParent;
-
-		// Token: 0x040004E6 RID: 1254
 		[SerializeField]
 		private RectTransform cardDrawPoint;
-
-		// Token: 0x040004E7 RID: 1255
 		[SerializeField]
 		private RectTransform cardPendingUsePoint;
-
-		// Token: 0x040004E8 RID: 1256
 		[SerializeField]
 		private RectTransform cardPendingUseCache;
-
-		// Token: 0x040004E9 RID: 1257
 		[SerializeField]
 		private RectTransform cardFollowPlayPoint;
-
-		// Token: 0x040004EA RID: 1258
 		[SerializeField]
 		private Transform cardEffectLayer;
-
-		// Token: 0x040004EB RID: 1259
 		[SerializeField]
 		private CardWidget cardPrefab;
-
-		// Token: 0x040004EC RID: 1260
 		[SerializeField]
 		private HandCard handCardPrefab;
-
-		// Token: 0x040004ED RID: 1261
 		[SerializeField]
 		private Transform cardFlyHelperPrefab;
-
-		// Token: 0x040004EE RID: 1262
 		[SerializeField]
 		private CardFlyBrief cardFlyBrief;
-
-		// Token: 0x040004EF RID: 1263
 		[SerializeField]
 		private GameObject cardFlyTrail;
-
-		// Token: 0x040004F0 RID: 1264
 		[SerializeField]
 		private GameObject cardUpgrade;
-
-		// Token: 0x040004F1 RID: 1265
 		[SerializeField]
 		private GameObject pileTransformEffect;
-
-		// Token: 0x040004F2 RID: 1266
 		[SerializeField]
 		[Range(0f, 1f)]
 		private float curvatureRatio = 0.8f;
-
-		// Token: 0x040004F3 RID: 1267
 		[SerializeField]
 		[Range(0f, 45f)]
 		private float deltaRotate = 4f;
-
-		// Token: 0x040004F4 RID: 1268
 		[SerializeField]
 		private int deltaX = 250;
-
-		// Token: 0x040004F5 RID: 1269
 		[SerializeField]
 		private int hoveredY = 280;
-
-		// Token: 0x040004F6 RID: 1270
 		[SerializeField]
 		private Vector2 handOffset = new Vector2(0f, -900f);
-
-		// Token: 0x040004F7 RID: 1271
 		[SerializeField]
 		private FastDeckViewer fastDrawViewer;
-
-		// Token: 0x040004F8 RID: 1272
 		[SerializeField]
 		private FastDeckViewer fastDiscardViewer;
 	}

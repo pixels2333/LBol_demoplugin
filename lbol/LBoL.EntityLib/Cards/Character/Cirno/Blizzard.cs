@@ -8,14 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.EntityLib.StatusEffects.Cirno;
-
 namespace LBoL.EntityLib.Cards.Character.Cirno
 {
-	// Token: 0x02000499 RID: 1177
 	[UsedImplicitly]
 	public sealed class Blizzard : Card
 	{
-		// Token: 0x06000FBE RID: 4030 RVA: 0x0001C0A8 File Offset: 0x0001A2A8
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.AttackAction(selector, null);

@@ -10,14 +10,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.EntityLib.StatusEffects.Neutral.TwoColor;
-
 namespace LBoL.EntityLib.Cards.Neutral.TwoColor
 {
-	// Token: 0x0200029C RID: 668
 	[UsedImplicitly]
 	public sealed class MeilingWater : Card
 	{
-		// Token: 0x06000A6A RID: 2666 RVA: 0x00015AF3 File Offset: 0x00013CF3
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.DefenseAction(true);

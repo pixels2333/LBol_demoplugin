@@ -6,14 +6,11 @@ using LBoL.Core;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.Exhibits.Common
 {
-	// Token: 0x0200015B RID: 347
 	[UsedImplicitly]
 	public sealed class Bumengwang : Exhibit
 	{
-		// Token: 0x060004C5 RID: 1221 RVA: 0x0000C46B File Offset: 0x0000A66B
 		protected override IEnumerator SpecialGain(PlayerUnit player)
 		{
 			base.OnGain(player);
@@ -33,8 +30,6 @@ namespace LBoL.EntityLib.Exhibits.Common
 			base.GameRun.GainPower(base.Value3, false);
 			yield break;
 		}
-
-		// Token: 0x060004C6 RID: 1222 RVA: 0x0000C481 File Offset: 0x0000A681
 		protected override void OnEnterBattle()
 		{
 			base.Blackout = true;

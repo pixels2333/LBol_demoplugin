@@ -8,15 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.Cards.Neutral.Red
 {
-	// Token: 0x020002D3 RID: 723
 	[UsedImplicitly]
 	public sealed class SuikaBigball : Card
 	{
-		// Token: 0x17000142 RID: 322
-		// (get) Token: 0x06000B01 RID: 2817 RVA: 0x00016694 File Offset: 0x00014894
 		public DamageInfo HalfDamage
 		{
 			get
@@ -24,8 +20,6 @@ namespace LBoL.EntityLib.Cards.Neutral.Red
 				return this.Damage.MultiplyBy(0.5f);
 			}
 		}
-
-		// Token: 0x06000B02 RID: 2818 RVA: 0x000166B4 File Offset: 0x000148B4
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			EnemyUnit target = selector.GetEnemy(base.Battle);

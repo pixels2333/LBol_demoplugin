@@ -10,15 +10,11 @@ using LBoL.Core.Randoms;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.Cards.Character.Sakuya;
-
 namespace LBoL.EntityLib.StatusEffects.Sakuya
 {
-	// Token: 0x02000013 RID: 19
 	[UsedImplicitly]
 	public sealed class BladePowerSe : StatusEffect
 	{
-		// Token: 0x17000004 RID: 4
-		// (get) Token: 0x06000024 RID: 36 RVA: 0x00002469 File Offset: 0x00000669
 		[UsedImplicitly]
 		public ManaGroup Mana
 		{
@@ -27,14 +23,10 @@ namespace LBoL.EntityLib.StatusEffects.Sakuya
 				return ManaGroup.Empty;
 			}
 		}
-
-		// Token: 0x06000025 RID: 37 RVA: 0x00002470 File Offset: 0x00000670
 		protected override void OnAdded(Unit unit)
 		{
 			base.ReactOwnerEvent<CardUsingEventArgs>(base.Battle.CardUsed, new EventSequencedReactor<CardUsingEventArgs>(this.OnCardUsed));
 		}
-
-		// Token: 0x06000026 RID: 38 RVA: 0x0000248F File Offset: 0x0000068F
 		private IEnumerable<BattleAction> OnCardUsed(CardUsingEventArgs args)
 		{
 			if (!base.Battle.BattleShouldEnd && args.Card is Knife)

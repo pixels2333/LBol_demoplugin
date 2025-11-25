@@ -9,14 +9,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Character.Cirno
 {
-	// Token: 0x020004B7 RID: 1207
 	[UsedImplicitly]
 	public sealed class FreezeToIce : Card
 	{
-		// Token: 0x06001001 RID: 4097 RVA: 0x0001C608 File Offset: 0x0001A808
 		public override Interaction Precondition()
 		{
 			if (this.IsUpgraded)
@@ -38,8 +35,6 @@ namespace LBoL.EntityLib.Cards.Character.Cirno
 				return null;
 			}
 		}
-
-		// Token: 0x06001002 RID: 4098 RVA: 0x0001C6B1 File Offset: 0x0001A8B1
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (precondition != null)

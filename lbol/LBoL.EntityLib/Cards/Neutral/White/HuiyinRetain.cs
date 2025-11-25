@@ -10,14 +10,11 @@ using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.EntityLib.StatusEffects.ExtraTurn;
-
 namespace LBoL.EntityLib.Cards.Neutral.White
 {
-	// Token: 0x02000276 RID: 630
 	[UsedImplicitly]
 	public sealed class HuiyinRetain : LimitedStopTimeCard
 	{
-		// Token: 0x06000A00 RID: 2560 RVA: 0x00015220 File Offset: 0x00013420
 		public override Interaction Precondition()
 		{
 			List<Card> list = Enumerable.ToList<Card>(base.Battle.DiscardZone);
@@ -27,8 +24,6 @@ namespace LBoL.EntityLib.Cards.Neutral.White
 			}
 			return new SelectCardInteraction(0, base.Value1, list, SelectedCardHandling.DoNothing);
 		}
-
-		// Token: 0x06000A01 RID: 2561 RVA: 0x00015257 File Offset: 0x00013457
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (precondition != null)

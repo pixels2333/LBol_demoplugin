@@ -5,14 +5,11 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Exhibits.Common
 {
-	// Token: 0x020001A1 RID: 417
 	[UsedImplicitly]
 	public sealed class Tnt : Exhibit
 	{
-		// Token: 0x060005F6 RID: 1526 RVA: 0x0000E004 File Offset: 0x0000C204
 		protected override void OnEnterBattle()
 		{
 			base.Counter = base.Value1;
@@ -25,8 +22,6 @@ namespace LBoL.EntityLib.Exhibits.Common
 				}
 			});
 		}
-
-		// Token: 0x060005F7 RID: 1527 RVA: 0x0000E061 File Offset: 0x0000C261
 		private IEnumerable<BattleAction> OnPlayerTurnStarted(GameEventArgs args)
 		{
 			if (base.Battle.BattleShouldEnd)
@@ -50,8 +45,6 @@ namespace LBoL.EntityLib.Exhibits.Common
 			}
 			yield break;
 		}
-
-		// Token: 0x060005F8 RID: 1528 RVA: 0x0000E071 File Offset: 0x0000C271
 		protected override void OnLeaveBattle()
 		{
 			base.Active = false;

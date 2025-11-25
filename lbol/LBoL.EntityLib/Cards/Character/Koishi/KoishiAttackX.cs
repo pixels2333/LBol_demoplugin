@@ -6,14 +6,11 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Character.Koishi
 {
-	// Token: 0x0200046A RID: 1130
 	[UsedImplicitly]
 	public sealed class KoishiAttackX : Card
 	{
-		// Token: 0x06000F3B RID: 3899 RVA: 0x0001B610 File Offset: 0x00019810
 		public override ManaGroup GetXCostFromPooled(ManaGroup pooledMana)
 		{
 			if (pooledMana.Amount % 2 == 0)
@@ -33,8 +30,6 @@ namespace LBoL.EntityLib.Cards.Character.Koishi
 			}
 			return pooledMana;
 		}
-
-		// Token: 0x06000F3C RID: 3900 RVA: 0x0001B698 File Offset: 0x00019898
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			int amount = base.SynergyAmount(consumingMana, ManaColor.Any, 2);

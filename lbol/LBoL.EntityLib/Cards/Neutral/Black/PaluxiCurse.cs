@@ -8,14 +8,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.Cards.Neutral.Black
 {
-	// Token: 0x02000335 RID: 821
 	[UsedImplicitly]
 	public sealed class PaluxiCurse : Card
 	{
-		// Token: 0x06000BFD RID: 3069 RVA: 0x00017A39 File Offset: 0x00015C39
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.AttackAction(selector, null);

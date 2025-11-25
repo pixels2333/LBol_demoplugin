@@ -8,15 +8,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
 using LBoL.EntityLib.EnemyUnits.Character;
-
 namespace LBoL.EntityLib.Cards.Enemy
 {
-	// Token: 0x02000369 RID: 873
 	[UsedImplicitly]
 	public sealed class Nightmare : Card
 	{
-		// Token: 0x17000166 RID: 358
-		// (get) Token: 0x06000C8C RID: 3212 RVA: 0x000184FE File Offset: 0x000166FE
 		[UsedImplicitly]
 		public int NightmareCount
 		{
@@ -29,28 +25,20 @@ namespace LBoL.EntityLib.Cards.Enemy
 				return 0;
 			}
 		}
-
-		// Token: 0x06000C8D RID: 3213 RVA: 0x0001853C File Offset: 0x0001673C
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			base.ReactBattleEvent<CardsEventArgs>(base.Battle.CardsAddedToHand, new EventSequencedReactor<CardsEventArgs>(this.OnCardAdded));
 			base.ReactBattleEvent<CardsEventArgs>(base.Battle.CardsAddedToDiscard, new EventSequencedReactor<CardsEventArgs>(this.OnCardAdded));
 			base.ReactBattleEvent<CardsAddingToDrawZoneEventArgs>(base.Battle.CardsAddedToDrawZone, new EventSequencedReactor<CardsAddingToDrawZoneEventArgs>(this.OnCardAddedToDraw));
 		}
-
-		// Token: 0x06000C8E RID: 3214 RVA: 0x000185A0 File Offset: 0x000167A0
 		private IEnumerable<BattleAction> OnCardAddedToDraw(CardsAddingToDrawZoneEventArgs args)
 		{
 			return this.CheckCard();
 		}
-
-		// Token: 0x06000C8F RID: 3215 RVA: 0x000185A8 File Offset: 0x000167A8
 		private IEnumerable<BattleAction> OnCardAdded(CardsEventArgs args)
 		{
 			return this.CheckCard();
 		}
-
-		// Token: 0x06000C90 RID: 3216 RVA: 0x000185B0 File Offset: 0x000167B0
 		public IEnumerable<BattleAction> CheckCard()
 		{
 			if (base.Battle.BattleShouldEnd)

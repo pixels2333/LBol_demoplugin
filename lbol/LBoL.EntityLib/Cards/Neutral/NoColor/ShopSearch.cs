@@ -8,14 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Neutral.NoColor
 {
-	// Token: 0x020002E4 RID: 740
 	[UsedImplicitly]
 	public sealed class ShopSearch : Card
 	{
-		// Token: 0x06000B20 RID: 2848 RVA: 0x00016880 File Offset: 0x00014A80
 		public override Interaction Precondition()
 		{
 			List<Card> list = Enumerable.ToList<Card>(Enumerable.Where<Card>(base.Battle.DrawZoneToShow, delegate(Card card)
@@ -29,8 +26,6 @@ namespace LBoL.EntityLib.Cards.Neutral.NoColor
 			}
 			return new SelectCardInteraction(base.Value1, base.Value1, list, SelectedCardHandling.DoNothing);
 		}
-
-		// Token: 0x06000B21 RID: 2849 RVA: 0x000168E0 File Offset: 0x00014AE0
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			SelectCardInteraction selectCardInteraction = (SelectCardInteraction)precondition;

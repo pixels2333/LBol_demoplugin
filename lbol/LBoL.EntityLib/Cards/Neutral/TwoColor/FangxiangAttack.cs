@@ -6,14 +6,11 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Cards;
 using LBoL.EntityLib.StatusEffects.Others;
-
 namespace LBoL.EntityLib.Cards.Neutral.TwoColor
 {
-	// Token: 0x0200028B RID: 651
 	[UsedImplicitly]
 	public sealed class FangxiangAttack : Card
 	{
-		// Token: 0x06000A3A RID: 2618 RVA: 0x00015725 File Offset: 0x00013925
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (selector.SelectedEnemy.HasStatusEffect<Poison>())

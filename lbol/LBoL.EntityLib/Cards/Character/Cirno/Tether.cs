@@ -6,14 +6,11 @@ using LBoL.Base;
 using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Character.Cirno
 {
-	// Token: 0x020004D3 RID: 1235
 	[UsedImplicitly]
 	public sealed class Tether : Card
 	{
-		// Token: 0x0600105B RID: 4187 RVA: 0x0001CE77 File Offset: 0x0001B077
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.DefenseAction(true);

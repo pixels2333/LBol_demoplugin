@@ -10,14 +10,11 @@ using LBoL.Core.Cards;
 using LBoL.Core.Units;
 using LBoL.EntityLib.EnemyUnits.Normal;
 using UnityEngine;
-
 namespace LBoL.EntityLib.Cards.Enemy
 {
-	// Token: 0x0200036A RID: 874
 	[UsedImplicitly]
 	public sealed class Payment : Card
 	{
-		// Token: 0x06000C92 RID: 3218 RVA: 0x000185C8 File Offset: 0x000167C8
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			List<EnemyUnit> list = Enumerable.ToList<EnemyUnit>(Enumerable.Where<EnemyUnit>(base.Battle.EnemyGroup, (EnemyUnit u) => u is FraudRabbit && u.IsAlive));

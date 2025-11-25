@@ -8,14 +8,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.EntityLib.StatusEffects.ExtraTurn.Partners;
-
 namespace LBoL.EntityLib.Cards.Character.Sakuya
 {
-	// Token: 0x02000399 RID: 921
 	[UsedImplicitly]
 	public sealed class LunaClock : Card
 	{
-		// Token: 0x06000D1F RID: 3359 RVA: 0x00018FB3 File Offset: 0x000171B3
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return PerformAction.Effect(base.Battle.Player, "ExtraTime", 0f, null, 0f, PerformAction.EffectBehavior.PlayOneShot, 0f);

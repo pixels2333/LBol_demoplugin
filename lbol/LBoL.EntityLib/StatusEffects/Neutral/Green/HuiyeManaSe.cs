@@ -7,20 +7,15 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.StatusEffects.Neutral.Green
 {
-	// Token: 0x0200005B RID: 91
 	public sealed class HuiyeManaSe : StatusEffect
 	{
-		// Token: 0x0600013D RID: 317 RVA: 0x0000470E File Offset: 0x0000290E
 		protected override void OnAdded(Unit unit)
 		{
 			base.Count = 0;
 			base.ReactOwnerEvent<UnitEventArgs>(base.Owner.TurnStarted, new EventSequencedReactor<UnitEventArgs>(this.OnOwnerStarted));
 		}
-
-		// Token: 0x0600013E RID: 318 RVA: 0x00004734 File Offset: 0x00002934
 		private IEnumerable<BattleAction> OnOwnerStarted(UnitEventArgs args)
 		{
 			base.NotifyActivating();

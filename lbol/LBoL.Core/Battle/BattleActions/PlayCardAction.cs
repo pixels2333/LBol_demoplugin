@@ -3,21 +3,12 @@ using System.Collections.Generic;
 using LBoL.Base;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x02000197 RID: 407
 	public sealed class PlayCardAction : BattleAction
 	{
-		// Token: 0x1700051D RID: 1309
-		// (get) Token: 0x06000EF3 RID: 3827 RVA: 0x00028565 File Offset: 0x00026765
 		public CardUsingEventArgs Args { get; }
-
-		// Token: 0x1700051E RID: 1310
-		// (get) Token: 0x06000EF4 RID: 3828 RVA: 0x0002856D File Offset: 0x0002676D
 		public CardZone SourceZone { get; }
-
-		// Token: 0x06000EF5 RID: 3829 RVA: 0x00028575 File Offset: 0x00026775
 		public PlayCardAction(Card card)
 		{
 			this.Args = new CardUsingEventArgs
@@ -27,8 +18,6 @@ namespace LBoL.Core.Battle.BattleActions
 			};
 			this.SourceZone = card.Zone;
 		}
-
-		// Token: 0x06000EF6 RID: 3830 RVA: 0x000285A6 File Offset: 0x000267A6
 		public PlayCardAction(Card card, UnitSelector selector)
 		{
 			this.Args = new CardUsingEventArgs
@@ -38,8 +27,6 @@ namespace LBoL.Core.Battle.BattleActions
 			};
 			this.SourceZone = card.Zone;
 		}
-
-		// Token: 0x06000EF7 RID: 3831 RVA: 0x000285D3 File Offset: 0x000267D3
 		public PlayCardAction(Card card, UnitSelector selector, ManaGroup consumingMana)
 		{
 			this.Args = new CardUsingEventArgs
@@ -50,25 +37,18 @@ namespace LBoL.Core.Battle.BattleActions
 			};
 			this.SourceZone = card.Zone;
 		}
-
-		// Token: 0x06000EF8 RID: 3832 RVA: 0x00028607 File Offset: 0x00026807
 		public override BattleAction SetCause(ActionCause cause)
 		{
 			base.SetCause(cause);
 			this.Args.Cause = cause;
 			return this;
 		}
-
-		// Token: 0x06000EF9 RID: 3833 RVA: 0x0002861E File Offset: 0x0002681E
 		public override BattleAction SetSource(GameEntity source)
 		{
 			base.SetSource(source);
 			this.Args.ActionSource = base.Source;
 			return this;
 		}
-
-		// Token: 0x1700051F RID: 1311
-		// (get) Token: 0x06000EFA RID: 3834 RVA: 0x0002863A File Offset: 0x0002683A
 		public override bool IsModified
 		{
 			get
@@ -76,9 +56,6 @@ namespace LBoL.Core.Battle.BattleActions
 				return this.Args.IsModified;
 			}
 		}
-
-		// Token: 0x17000520 RID: 1312
-		// (get) Token: 0x06000EFB RID: 3835 RVA: 0x00028647 File Offset: 0x00026847
 		public override string[] Modifiers
 		{
 			get
@@ -86,9 +63,6 @@ namespace LBoL.Core.Battle.BattleActions
 				return this.Args.Modifiers;
 			}
 		}
-
-		// Token: 0x17000521 RID: 1313
-		// (get) Token: 0x06000EFC RID: 3836 RVA: 0x00028654 File Offset: 0x00026854
 		public override CancelCause CancelCause
 		{
 			get
@@ -96,9 +70,6 @@ namespace LBoL.Core.Battle.BattleActions
 				return this.Args.CancelCause;
 			}
 		}
-
-		// Token: 0x17000522 RID: 1314
-		// (get) Token: 0x06000EFD RID: 3837 RVA: 0x00028661 File Offset: 0x00026861
 		public override bool IsCanceled
 		{
 			get
@@ -106,14 +77,10 @@ namespace LBoL.Core.Battle.BattleActions
 				return this.Args.IsCanceled;
 			}
 		}
-
-		// Token: 0x06000EFE RID: 3838 RVA: 0x0002866E File Offset: 0x0002686E
 		public override void ClearModifiers()
 		{
 			this.Args.ClearModifiers();
 		}
-
-		// Token: 0x06000EFF RID: 3839 RVA: 0x0002867B File Offset: 0x0002687B
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			PlayCardAction.<>c__DisplayClass22_0 CS$<>8__locals1 = new PlayCardAction.<>c__DisplayClass22_0();
@@ -242,8 +209,6 @@ namespace LBoL.Core.Battle.BattleActions
 			yield return base.CreateEventPhase<CardUsingEventArgs>("CardPlayed", this.Args, base.Battle.CardPlayed);
 			yield break;
 		}
-
-		// Token: 0x06000F00 RID: 3840 RVA: 0x0002868C File Offset: 0x0002688C
 		private void ReTargeting()
 		{
 			Card card = this.Args.Card;
@@ -296,17 +261,11 @@ namespace LBoL.Core.Battle.BattleActions
 			IL_010C:
 			throw new ArgumentOutOfRangeException();
 		}
-
-		// Token: 0x06000F01 RID: 3841 RVA: 0x000287B4 File Offset: 0x000269B4
 		public override string ExportDebugDetails()
 		{
 			return this.Args.ExportDebugDetails();
 		}
-
-		// Token: 0x04000691 RID: 1681
 		private Interaction _precondition;
-
-		// Token: 0x04000692 RID: 1682
 		private Card _twiceTokenCard;
 	}
 }

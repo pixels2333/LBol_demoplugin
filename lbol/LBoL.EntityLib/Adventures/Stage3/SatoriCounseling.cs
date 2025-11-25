@@ -13,13 +13,10 @@ using LBoL.Core.Randoms;
 using LBoL.Core.Units;
 using LBoL.EntityLib.PlayerUnits;
 using Yarn;
-
 namespace LBoL.EntityLib.Adventures.Stage3
 {
-	// Token: 0x02000507 RID: 1287
 	public sealed class SatoriCounseling : Adventure
 	{
-		// Token: 0x060010ED RID: 4333 RVA: 0x0001E4F8 File Offset: 0x0001C6F8
 		protected override void InitVariables(IVariableStorage storage)
 		{
 			EnemyUnit enemyUnit = Enumerable.FirstOrDefault<EnemyUnit>(Enumerable.First<Stage>(base.GameRun.Stages).Boss.Generate(base.GameRun), (EnemyUnit enemy) => enemy.Config.Type == EnemyType.Boss);
@@ -28,8 +25,6 @@ namespace LBoL.EntityLib.Adventures.Stage3
 				base.Storage.SetValue("$opponentName", enemyUnit.ShortNameWithColor);
 			}
 		}
-
-		// Token: 0x060010EE RID: 4334 RVA: 0x0001E563 File Offset: 0x0001C763
 		[RuntimeCommand("library", "")]
 		[UsedImplicitly]
 		public IEnumerator Library(string description)
@@ -60,8 +55,6 @@ namespace LBoL.EntityLib.Adventures.Stage3
 			this._payedPill = card2;
 			yield break;
 		}
-
-		// Token: 0x060010EF RID: 4335 RVA: 0x0001E579 File Offset: 0x0001C779
 		[RuntimeCommand("analyse", "")]
 		[UsedImplicitly]
 		public IEnumerator Analyse(bool isPlayer, bool isColorful, string description)
@@ -104,16 +97,12 @@ namespace LBoL.EntityLib.Adventures.Stage3
 			this._payedPill = selectedCard;
 			yield break;
 		}
-
-		// Token: 0x060010F0 RID: 4336 RVA: 0x0001E59D File Offset: 0x0001C79D
 		[RuntimeCommand("treat", "")]
 		[UsedImplicitly]
 		public void Treat()
 		{
 			base.GameRun.AddDeckCard(this._payedPill, true, null);
 		}
-
-		// Token: 0x04000128 RID: 296
 		private Card _payedPill;
 	}
 }

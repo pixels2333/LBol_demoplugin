@@ -6,13 +6,10 @@ using LBoL.Base.Extensions;
 using LBoL.ConfigData;
 using LBoL.Core;
 using UnityEngine;
-
 namespace LBoL.Presentation.Bullet
 {
-	// Token: 0x02000111 RID: 273
 	public class GunManager : Singleton<GunManager>
 	{
-		// Token: 0x06000F19 RID: 3865 RVA: 0x00046EC4 File Offset: 0x000450C4
 		private static GunManager GetInstance()
 		{
 			GunManager instance = Singleton<GunManager>.Instance;
@@ -22,8 +19,6 @@ namespace LBoL.Presentation.Bullet
 			}
 			throw new InvalidOperationException("GunManager is not initialized, call 'InitializeAsync()' is required");
 		}
-
-		// Token: 0x06000F1A RID: 3866 RVA: 0x00046EEC File Offset: 0x000450EC
 		public static void ClearAll()
 		{
 			foreach (Gun gun in GunManager.ActiveGuns)
@@ -46,8 +41,6 @@ namespace LBoL.Presentation.Bullet
 			GunManager.ShootingLaunchers.Clear();
 			GunManager.AttackingLasers.Clear();
 		}
-
-		// Token: 0x06000F1B RID: 3867 RVA: 0x00046FE4 File Offset: 0x000451E4
 		public void Tick()
 		{
 			if (GunManager.LoadedLaunchers.Count > 0)
@@ -111,14 +104,10 @@ namespace LBoL.Presentation.Bullet
 				}
 			}
 		}
-
-		// Token: 0x06000F1C RID: 3868 RVA: 0x000472B4 File Offset: 0x000454B4
 		public static Gun CreateGun(string gunName)
 		{
 			return GunManager.GetInstance().InternalCreateGun(gunName);
 		}
-
-		// Token: 0x06000F1D RID: 3869 RVA: 0x000472C4 File Offset: 0x000454C4
 		private Gun InternalCreateGun(string gunName)
 		{
 			GunConfig gunConfig = GunConfig.FromName(gunName);
@@ -133,14 +122,10 @@ namespace LBoL.Presentation.Bullet
 			GunManager.ActiveGuns.Add(gun);
 			return gun;
 		}
-
-		// Token: 0x06000F1E RID: 3870 RVA: 0x0004733B File Offset: 0x0004553B
 		public static Gun GunShoot(Gun gun, bool instant = false)
 		{
 			return GunManager.GetInstance().InternalGunShoot(gun, instant);
 		}
-
-		// Token: 0x06000F1F RID: 3871 RVA: 0x0004734C File Offset: 0x0004554C
 		private Gun InternalGunShoot(Gun gun, bool instant)
 		{
 			if (gun.NoPiece)
@@ -192,8 +177,6 @@ namespace LBoL.Presentation.Bullet
 			gun.ShootEnd = gun.ForceShowEndStartTime ?? ((float)num2 * 0.016666668f);
 			return gun;
 		}
-
-		// Token: 0x06000F20 RID: 3872 RVA: 0x000475A8 File Offset: 0x000457A8
 		public static void DeathRattle(Launcher launcher)
 		{
 			Gun gun = launcher.Gun;
@@ -209,8 +192,6 @@ namespace LBoL.Presentation.Bullet
 				}
 			}
 		}
-
-		// Token: 0x06000F21 RID: 3873 RVA: 0x00047668 File Offset: 0x00045868
 		private static void CalcLauncher(Gun gun, int gunStartTick, Piece piece, Launcher parentLauncher = null)
 		{
 			float num;
@@ -330,8 +311,6 @@ namespace LBoL.Presentation.Bullet
 				}
 			}
 		}
-
-		// Token: 0x06000F22 RID: 3874 RVA: 0x00047AC0 File Offset: 0x00045CC0
 		private void LauncherShoot(Launcher launcher)
 		{
 			Launcher parentLauncher = launcher.ParentLauncher;
@@ -379,8 +358,6 @@ namespace LBoL.Presentation.Bullet
 				this.SpawnProjectile(launcher);
 			}
 		}
-
-		// Token: 0x06000F23 RID: 3875 RVA: 0x00047C14 File Offset: 0x00045E14
 		private void SpawnProjectile(Launcher launcher)
 		{
 			if (launcher.Piece.Type)
@@ -414,8 +391,6 @@ namespace LBoL.Presentation.Bullet
 				return;
 			}
 		}
-
-		// Token: 0x06000F24 RID: 3876 RVA: 0x00047CF8 File Offset: 0x00045EF8
 		private static int CalculateColor(int[][] color, int groupID, int wayID)
 		{
 			switch (color.Length)
@@ -444,8 +419,6 @@ namespace LBoL.Presentation.Bullet
 				throw new ArgumentOutOfRangeException();
 			}
 		}
-
-		// Token: 0x06000F25 RID: 3877 RVA: 0x00047D78 File Offset: 0x00045F78
 		private static float ArrayCalculate(float[][] ps, int groupID, int wayID)
 		{
 			float num;
@@ -471,8 +444,6 @@ namespace LBoL.Presentation.Bullet
 			}
 			return num;
 		}
-
-		// Token: 0x06000F26 RID: 3878 RVA: 0x00047E34 File Offset: 0x00046034
 		private static int ArrayCalculate(int[][] ps, int groupID, int wayID)
 		{
 			int num;
@@ -498,8 +469,6 @@ namespace LBoL.Presentation.Bullet
 			}
 			return num;
 		}
-
-		// Token: 0x06000F27 RID: 3879 RVA: 0x00047EE0 File Offset: 0x000460E0
 		private static float ArrayWayCalculate(int[][] ps, int groupID)
 		{
 			int num;
@@ -519,8 +488,6 @@ namespace LBoL.Presentation.Bullet
 			}
 			return (float)num;
 		}
-
-		// Token: 0x06000F28 RID: 3880 RVA: 0x00047F34 File Offset: 0x00046134
 		private static float RandomDataCalcu(float[] ps)
 		{
 			float num;
@@ -540,8 +507,6 @@ namespace LBoL.Presentation.Bullet
 			}
 			return num;
 		}
-
-		// Token: 0x06000F29 RID: 3881 RVA: 0x00047F84 File Offset: 0x00046184
 		private static int RandomDataCalcu(int[] ps)
 		{
 			int num;
@@ -561,14 +526,10 @@ namespace LBoL.Presentation.Bullet
 			}
 			return num;
 		}
-
-		// Token: 0x06000F2A RID: 3882 RVA: 0x00047FCD File Offset: 0x000461CD
 		public static UniTask InitializeAsync()
 		{
 			return Singleton<GunManager>.Instance.InternalInitializeAsync();
 		}
-
-		// Token: 0x06000F2B RID: 3883 RVA: 0x00047FDC File Offset: 0x000461DC
 		private async UniTask InternalInitializeAsync()
 		{
 			if (!this._initialized)
@@ -598,32 +559,14 @@ namespace LBoL.Presentation.Bullet
 				this._initialized = true;
 			}
 		}
-
-		// Token: 0x04000B4B RID: 2891
 		private bool _initialized;
-
-		// Token: 0x04000B4C RID: 2892
 		private Gun _gunTemplate;
-
-		// Token: 0x04000B4D RID: 2893
 		private Bullet _bulletTemplate;
-
-		// Token: 0x04000B4E RID: 2894
 		private Laser _laserTemplate;
-
-		// Token: 0x04000B4F RID: 2895
 		private static readonly List<Launcher> LoadedLaunchers = new List<Launcher>();
-
-		// Token: 0x04000B50 RID: 2896
 		private static readonly List<Launcher> ShootingLaunchers = new List<Launcher>();
-
-		// Token: 0x04000B51 RID: 2897
 		private static readonly List<Gun> ActiveGuns = new List<Gun>();
-
-		// Token: 0x04000B52 RID: 2898
 		private static readonly List<Gun> DeadGuns = new List<Gun>();
-
-		// Token: 0x04000B53 RID: 2899
 		public static readonly List<Laser> AttackingLasers = new List<Laser>();
 	}
 }

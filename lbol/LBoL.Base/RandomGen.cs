@@ -1,23 +1,16 @@
 ﻿using System;
-
 namespace LBoL.Base
 {
-	// Token: 0x02000019 RID: 25
 	public sealed class RandomGen
 	{
-		// Token: 0x060000AF RID: 175 RVA: 0x00004C67 File Offset: 0x00002E67
 		public static ulong GetRandomSeed()
 		{
 			return RandomGen.InitGen.NextULong();
 		}
-
-		// Token: 0x060000B0 RID: 176 RVA: 0x00004C73 File Offset: 0x00002E73
 		public static bool IsValidSeedChar(char c)
 		{
 			return (int)c < RandomGen.ReverseTable.Length && RandomGen.ReverseTable[(int)c] != null;
 		}
-
-		// Token: 0x060000B1 RID: 177 RVA: 0x00004C94 File Offset: 0x00002E94
 		public static ulong ParseSeed(string seedStr)
 		{
 			if (seedStr.Length > RandomGen.MaxSeedSize)
@@ -47,8 +40,6 @@ namespace LBoL.Base
 			}
 			return num;
 		}
-
-		// Token: 0x060000B2 RID: 178 RVA: 0x00004D24 File Offset: 0x00002F24
 		public static bool TryParseSeed(string seedStr, out ulong result)
 		{
 			bool flag;
@@ -64,8 +55,6 @@ namespace LBoL.Base
 			}
 			return flag;
 		}
-
-		// Token: 0x060000B3 RID: 179 RVA: 0x00004D58 File Offset: 0x00002F58
 		public unsafe static string SeedToString(ulong seed)
 		{
 			int maxSeedSize = RandomGen.MaxSeedSize;
@@ -82,25 +71,15 @@ namespace LBoL.Base
 			}
 			return new string(span);
 		}
-
-		// Token: 0x17000026 RID: 38
-		// (get) Token: 0x060000B4 RID: 180 RVA: 0x00004DB9 File Offset: 0x00002FB9
-		// (set) Token: 0x060000B5 RID: 181 RVA: 0x00004DC1 File Offset: 0x00002FC1
 		public ulong State { get; private set; } = 5573589319906701683UL;
-
-		// Token: 0x060000B6 RID: 182 RVA: 0x00004DCA File Offset: 0x00002FCA
 		private RandomGen()
 		{
 		}
-
-		// Token: 0x060000B7 RID: 183 RVA: 0x00004DE1 File Offset: 0x00002FE1
 		public RandomGen(ulong seed)
 		{
 			this.State = seed + 1442695040888963407UL;
 			this.Next();
 		}
-
-		// Token: 0x060000B8 RID: 184 RVA: 0x00004E10 File Offset: 0x00003010
 		public static RandomGen FromState(ulong state)
 		{
 			return new RandomGen
@@ -108,8 +87,6 @@ namespace LBoL.Base
 				State = state
 			};
 		}
-
-		// Token: 0x060000B9 RID: 185 RVA: 0x00004E20 File Offset: 0x00003020
 		public uint Next()
 		{
 			ulong state = this.State;
@@ -118,8 +95,6 @@ namespace LBoL.Base
 			uint num2 = (uint)(state >> 59);
 			return (num >> (int)num2) | (num << (int)((uint)(-(uint)((ulong)num2))));
 		}
-
-		// Token: 0x060000BA RID: 186 RVA: 0x00004E74 File Offset: 0x00003074
 		public uint Next(uint max)
 		{
 			if (max == 0U)
@@ -136,16 +111,12 @@ namespace LBoL.Base
 			while (num3 < num2);
 			return num3 % num;
 		}
-
-		// Token: 0x060000BB RID: 187 RVA: 0x00004EA0 File Offset: 0x000030A0
 		public ulong NextULong()
 		{
 			ulong num = (ulong)this.Next();
 			ulong num2 = (ulong)this.Next();
 			return (num << 32) | num2;
 		}
-
-		// Token: 0x060000BC RID: 188 RVA: 0x00004EC4 File Offset: 0x000030C4
 		public int NextInt(int a, int b)
 		{
 			if (a > b)
@@ -155,14 +126,10 @@ namespace LBoL.Base
 			uint num = (uint)(b - a);
 			return (int)((ulong)this.Next(num) + (ulong)((long)a));
 		}
-
-		// Token: 0x060000BD RID: 189 RVA: 0x00004F01 File Offset: 0x00003101
 		public double NextDouble()
 		{
 			return this.Next() * 1.0 / 4294967296.0;
 		}
-
-		// Token: 0x060000BE RID: 190 RVA: 0x00004F1F File Offset: 0x0000311F
 		public double NextDouble(double a, double b)
 		{
 			if (a > b)
@@ -171,20 +138,14 @@ namespace LBoL.Base
 			}
 			return this.NextDouble() * (b - a);
 		}
-
-		// Token: 0x060000BF RID: 191 RVA: 0x00004F4B File Offset: 0x0000314B
 		public float NextFloat()
 		{
 			return this.Next() * 1f / 4.2949673E+09f;
 		}
-
-		// Token: 0x060000C0 RID: 192 RVA: 0x00004F61 File Offset: 0x00003161
 		public float NextFloat(float a, float b)
 		{
 			return a + this.NextFloat() * (b - a);
 		}
-
-		// Token: 0x060000C1 RID: 193 RVA: 0x00004F70 File Offset: 0x00003170
 		// Note: this type is marked as 'beforefieldinit'.
 		static RandomGen()
 		{
@@ -248,11 +209,7 @@ namespace LBoL.Base
 			RandomGen.Base = (uint)RandomGen.ForwardTable.Length;
 			RandomGen.MaxSeedSize = 13;
 		}
-
-		// Token: 0x040000A1 RID: 161
 		private static readonly RandomGen InitGen = new RandomGen((ulong)DateTime.Now.Ticks);
-
-		// Token: 0x040000A2 RID: 162
 		private static readonly char[] ForwardTable = new char[]
 		{
 			'0', '2', '3', '4', '5', '6', '7', '8', '9', 'a',
@@ -260,20 +217,10 @@ namespace LBoL.Base
 			'n', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x',
 			'y', 'z'
 		};
-
-		// Token: 0x040000A3 RID: 163
 		private static readonly uint?[] ReverseTable;
-
-		// Token: 0x040000A4 RID: 164
 		private static readonly uint Base;
-
-		// Token: 0x040000A5 RID: 165
 		public static readonly int MaxSeedSize;
-
-		// Token: 0x040000A6 RID: 166
 		private const ulong Multiplier = 6364136223846793005UL;
-
-		// Token: 0x040000A7 RID: 167
 		private const ulong Increment = 1442695040888963407UL;
 	}
 }

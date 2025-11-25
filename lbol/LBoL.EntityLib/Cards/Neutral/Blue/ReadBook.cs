@@ -10,14 +10,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
-
 namespace LBoL.EntityLib.Cards.Neutral.Blue
 {
-	// Token: 0x0200031F RID: 799
 	[UsedImplicitly]
 	public sealed class ReadBook : Card
 	{
-		// Token: 0x06000BC7 RID: 3015 RVA: 0x0001769A File Offset: 0x0001589A
 		protected override string GetBaseDescription()
 		{
 			if (!base.DebutActive)
@@ -26,8 +23,6 @@ namespace LBoL.EntityLib.Cards.Neutral.Blue
 			}
 			return base.GetBaseDescription();
 		}
-
-		// Token: 0x06000BC8 RID: 3016 RVA: 0x000176B1 File Offset: 0x000158B1
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.DefenseAction(true);

@@ -9,15 +9,11 @@ using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.EntityLib.Cards.Enemy;
-
 namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 {
-	// Token: 0x020004D7 RID: 1239
 	[UsedImplicitly]
 	public sealed class ClownpieceFriend : Card
 	{
-		// Token: 0x170001CE RID: 462
-		// (get) Token: 0x06001063 RID: 4195 RVA: 0x0001CEDE File Offset: 0x0001B0DE
 		[UsedImplicitly]
 		public ManaGroup StartMana
 		{
@@ -26,14 +22,10 @@ namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 				return ManaGroup.Philosophies(3);
 			}
 		}
-
-		// Token: 0x06001064 RID: 4196 RVA: 0x0001CEE6 File Offset: 0x0001B0E6
 		public override IEnumerable<BattleAction> OnTurnStartedInHand()
 		{
 			return this.GetPassiveActions();
 		}
-
-		// Token: 0x06001065 RID: 4197 RVA: 0x0001CEEE File Offset: 0x0001B0EE
 		public override IEnumerable<BattleAction> GetPassiveActions()
 		{
 			if (!base.Summoned || base.Battle.BattleShouldEnd)
@@ -55,8 +47,6 @@ namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 			}
 			yield break;
 		}
-
-		// Token: 0x06001066 RID: 4198 RVA: 0x0001CEFE File Offset: 0x0001B0FE
 		protected override IEnumerable<BattleAction> SummonActions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return new GainManaAction(this.StartMana);
@@ -68,8 +58,6 @@ namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x06001067 RID: 4199 RVA: 0x0001CF23 File Offset: 0x0001B123
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (precondition == null || ((MiniSelectCardInteraction)precondition).SelectedCard.FriendToken == FriendToken.Active)

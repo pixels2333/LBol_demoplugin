@@ -18,14 +18,10 @@ using LBoL.Presentation.UI.Widgets;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.UI.Extensions;
-
 namespace LBoL.Presentation.UI.Panels
 {
-	// Token: 0x02000099 RID: 153
 	public class GameRunVisualPanel : UiPanel
 	{
-		// Token: 0x17000154 RID: 340
-		// (get) Token: 0x060007F3 RID: 2035 RVA: 0x00025705 File Offset: 0x00023905
 		public override PanelLayer Layer
 		{
 			get
@@ -33,9 +29,6 @@ namespace LBoL.Presentation.UI.Panels
 				return PanelLayer.Top;
 			}
 		}
-
-		// Token: 0x17000155 RID: 341
-		// (get) Token: 0x060007F4 RID: 2036 RVA: 0x00025708 File Offset: 0x00023908
 		private static Button DeckButton
 		{
 			get
@@ -43,20 +36,14 @@ namespace LBoL.Presentation.UI.Panels
 				return UiManager.GetPanel<SystemBoard>().deckButton;
 			}
 		}
-
-		// Token: 0x060007F5 RID: 2037 RVA: 0x00025714 File Offset: 0x00023914
 		protected override void OnEnterBattle()
 		{
 			base.Battle.ActionViewer.Register<GainMoneyAction>(new BattleActionViewer<GainMoneyAction>(this.ViewGainMoney), null);
 		}
-
-		// Token: 0x060007F6 RID: 2038 RVA: 0x00025733 File Offset: 0x00023933
 		protected override void OnLeaveBattle()
 		{
 			base.Battle.ActionViewer.Unregister<GainMoneyAction>(new BattleActionViewer<GainMoneyAction>(this.ViewGainMoney));
 		}
-
-		// Token: 0x060007F7 RID: 2039 RVA: 0x00025751 File Offset: 0x00023951
 		private IEnumerator ViewGainMoney(GainMoneyAction action)
 		{
 			Vector3 vector;
@@ -87,8 +74,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x060007F8 RID: 2040 RVA: 0x00025768 File Offset: 0x00023968
 		public void PlayAddToDeckEffect(IEnumerable<Card> cards, IEnumerable<CardWidget> sourceWidgets = null, float waitingTime = 0f)
 		{
 			List<Card> list = Enumerable.ToList<Card>(cards);
@@ -154,8 +139,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 			}
 		}
-
-		// Token: 0x060007F9 RID: 2041 RVA: 0x00025B0C File Offset: 0x00023D0C
 		public void ViewRemoveDeckCards(IEnumerable<Card> cards)
 		{
 			List<Card> list = Enumerable.ToList<Card>(cards);
@@ -170,15 +153,11 @@ namespace LBoL.Presentation.UI.Panels
 				cardWidget.Remove();
 			}
 		}
-
-		// Token: 0x060007FA RID: 2042 RVA: 0x00025BB8 File Offset: 0x00023DB8
 		public void DebugCardFly(int count)
 		{
 			Card[] array = Enumerable.ToArray<Card>(Enumerable.Select<ValueTuple<Type, CardConfig>, Card>(Library.EnumerateCardTypes().SampleMany(count, new Func<int, int, int>(Random.Range)), ([TupleElementNames(new string[] { "cardType", "config" })] ValueTuple<Type, CardConfig> t) => Library.CreateCard(t.Item1)));
 			this.PlayAddToDeckEffect(array, null, 0f);
 		}
-
-		// Token: 0x060007FB RID: 2043 RVA: 0x00025C14 File Offset: 0x00023E14
 		private static void ImageBlink(Component image)
 		{
 			Transform trans = image.transform;
@@ -190,8 +169,6 @@ namespace LBoL.Presentation.UI.Panels
 				.SetUpdate(true)
 				.SetAutoKill(true);
 		}
-
-		// Token: 0x060007FC RID: 2044 RVA: 0x00025C90 File Offset: 0x00023E90
 		public void PlayUpgradeDeckCardsEffect(Card[] cards, float waitingTime = 0f)
 		{
 			int num = cards.Length;
@@ -219,24 +196,14 @@ namespace LBoL.Presentation.UI.Panels
 			sequence.SetUpdate(true).SetAutoKill(true).SetTarget(this)
 				.SetDelay(waitingTime);
 		}
-
-		// Token: 0x0400058B RID: 1419
 		[SerializeField]
 		private CardWidget cardPrefab;
-
-		// Token: 0x0400058C RID: 1420
 		[SerializeField]
 		private CardFlyBrief cardFlyBrief;
-
-		// Token: 0x0400058D RID: 1421
 		[SerializeField]
 		private GameObject cardFlyTrail;
-
-		// Token: 0x0400058E RID: 1422
 		[SerializeField]
 		private GameObject cardUpgrade;
-
-		// Token: 0x0400058F RID: 1423
 		[SerializeField]
 		private Transform cardFlyLayer;
 	}

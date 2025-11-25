@@ -1,13 +1,10 @@
 ﻿using System;
 using System.Text;
 using UnityEngine;
-
 namespace LBoL.Core
 {
-	// Token: 0x02000070 RID: 112
 	public static class StringDecorator
 	{
-		// Token: 0x06000512 RID: 1298 RVA: 0x000109F4 File Offset: 0x0000EBF4
 		private static int ReadSegment(string source, int i, StringBuilder builder, char end, Color defaultColor)
 		{
 			int length = source.Length;
@@ -43,8 +40,6 @@ namespace LBoL.Core
 			}
 			throw new ArgumentException("Invalid decorate source '(" + source.Replace("\n", "\\n") + ")': missing close tag");
 		}
-
-		// Token: 0x06000513 RID: 1299 RVA: 0x00010B00 File Offset: 0x0000ED00
 		public static string Decorate(string source, Color keywordColor)
 		{
 			string text;
@@ -75,14 +70,10 @@ namespace LBoL.Core
 			}
 			return text;
 		}
-
-		// Token: 0x06000514 RID: 1300 RVA: 0x00010B90 File Offset: 0x0000ED90
 		public static string Decorate(string source)
 		{
 			return StringDecorator.Decorate(source, GlobalConfig.DefaultKeywordColor);
 		}
-
-		// Token: 0x06000515 RID: 1301 RVA: 0x00010B9D File Offset: 0x0000ED9D
 		public static string GetEntityName(string rawName)
 		{
 			return string.Concat(new string[]

@@ -8,14 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
-
 namespace LBoL.EntityLib.Cards.Character.Reimu
 {
-	// Token: 0x020003F2 RID: 1010
 	[UsedImplicitly]
 	public sealed class ReimuHuashan : Card
 	{
-		// Token: 0x06000E0C RID: 3596 RVA: 0x0001A0AA File Offset: 0x000182AA
 		public override void Initialize()
 		{
 			base.Initialize();
@@ -25,8 +22,6 @@ namespace LBoL.EntityLib.Cards.Character.Reimu
 			}
 			base.DeckCounter = new int?(0);
 		}
-
-		// Token: 0x06000E0D RID: 3597 RVA: 0x0001A0D8 File Offset: 0x000182D8
 		protected override string GetBaseDescription()
 		{
 			int? deckCounter = base.DeckCounter;
@@ -37,8 +32,6 @@ namespace LBoL.EntityLib.Cards.Character.Reimu
 			}
 			return base.GetBaseDescription();
 		}
-
-		// Token: 0x06000E0E RID: 3598 RVA: 0x0001A110 File Offset: 0x00018310
 		public override IEnumerable<BattleAction> AfterUseAction()
 		{
 			base.DeckCounter = new int?(1);
@@ -49,14 +42,10 @@ namespace LBoL.EntityLib.Cards.Character.Reimu
 			}
 			return base.AfterUseAction();
 		}
-
-		// Token: 0x06000E0F RID: 3599 RVA: 0x0001A155 File Offset: 0x00018355
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			base.ReactBattleEvent<GameEventArgs>(base.Battle.BattleStarted, new EventSequencedReactor<GameEventArgs>(this.OnBattleStarted));
 		}
-
-		// Token: 0x06000E10 RID: 3600 RVA: 0x0001A174 File Offset: 0x00018374
 		private IEnumerable<BattleAction> OnBattleStarted(GameEventArgs args)
 		{
 			if (base.Battle.ReimuHuashanTimes > 0)

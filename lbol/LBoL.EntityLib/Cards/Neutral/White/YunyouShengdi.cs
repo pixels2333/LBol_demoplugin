@@ -8,14 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Neutral.White
 {
-	// Token: 0x02000283 RID: 643
 	[UsedImplicitly]
 	public sealed class YunyouShengdi : Card
 	{
-		// Token: 0x06000A28 RID: 2600 RVA: 0x000155E0 File Offset: 0x000137E0
 		public override Interaction Precondition()
 		{
 			if (this.IsUpgraded)
@@ -33,8 +30,6 @@ namespace LBoL.EntityLib.Cards.Neutral.White
 			}
 			return new SelectHandInteraction(1, 1, list);
 		}
-
-		// Token: 0x06000A29 RID: 2601 RVA: 0x00015642 File Offset: 0x00013842
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.DefenseAction(true);
@@ -57,8 +52,6 @@ namespace LBoL.EntityLib.Cards.Neutral.White
 			}
 			yield break;
 		}
-
-		// Token: 0x040000EE RID: 238
 		private Card oneTargetHand;
 	}
 }

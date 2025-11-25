@@ -10,15 +10,11 @@ using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.EntityLib.StatusEffects.Neutral.MultiColor;
-
 namespace LBoL.EntityLib.Cards.Neutral.MultiColor
 {
-	// Token: 0x020002F2 RID: 754
 	[UsedImplicitly]
 	public sealed class YukariFriend : Card
 	{
-		// Token: 0x17000143 RID: 323
-		// (get) Token: 0x06000B3D RID: 2877 RVA: 0x00016ADE File Offset: 0x00014CDE
 		[UsedImplicitly]
 		public int Fire
 		{
@@ -31,14 +27,10 @@ namespace LBoL.EntityLib.Cards.Neutral.MultiColor
 				return Enumerable.Count<Card>(base.Battle.TurnCardUsageHistory, (Card c) => c.CardType == CardType.Defense);
 			}
 		}
-
-		// Token: 0x06000B3E RID: 2878 RVA: 0x00016B19 File Offset: 0x00014D19
 		public override IEnumerable<BattleAction> OnTurnEndingInHand()
 		{
 			return this.GetPassiveActions();
 		}
-
-		// Token: 0x06000B3F RID: 2879 RVA: 0x00016B21 File Offset: 0x00014D21
 		public override IEnumerable<BattleAction> GetPassiveActions()
 		{
 			if (!base.Summoned || base.Battle.BattleShouldEnd)
@@ -62,8 +54,6 @@ namespace LBoL.EntityLib.Cards.Neutral.MultiColor
 			}
 			yield break;
 		}
-
-		// Token: 0x06000B40 RID: 2880 RVA: 0x00016B31 File Offset: 0x00014D31
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (precondition == null || ((MiniSelectCardInteraction)precondition).SelectedCard.FriendToken == FriendToken.Active)
@@ -96,8 +86,6 @@ namespace LBoL.EntityLib.Cards.Neutral.MultiColor
 			}
 			yield break;
 		}
-
-		// Token: 0x06000B41 RID: 2881 RVA: 0x00016B48 File Offset: 0x00014D48
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			base.HandleBattleEvent<CardUsingEventArgs>(base.Battle.CardUsed, delegate(CardUsingEventArgs _)

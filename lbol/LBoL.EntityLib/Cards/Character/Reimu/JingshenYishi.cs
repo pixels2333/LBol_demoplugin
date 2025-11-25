@@ -8,14 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Character.Reimu
 {
-	// Token: 0x020003DC RID: 988
 	[UsedImplicitly]
 	public sealed class JingshenYishi : Card
 	{
-		// Token: 0x06000DDB RID: 3547 RVA: 0x00019CA4 File Offset: 0x00017EA4
 		public override Interaction Precondition()
 		{
 			List<Card> list = Enumerable.ToList<Card>(Enumerable.Where<Card>(base.Battle.HandZone, (Card hand) => hand != this));
@@ -29,8 +26,6 @@ namespace LBoL.EntityLib.Cards.Character.Reimu
 			}
 			return new SelectHandInteraction(1, 1, list);
 		}
-
-		// Token: 0x06000DDC RID: 3548 RVA: 0x00019CFC File Offset: 0x00017EFC
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.DefenseAction(true);
@@ -49,8 +44,6 @@ namespace LBoL.EntityLib.Cards.Character.Reimu
 			}
 			yield break;
 		}
-
-		// Token: 0x04000106 RID: 262
 		private Card _oneTargetHand;
 	}
 }

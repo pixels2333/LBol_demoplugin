@@ -8,43 +8,32 @@ using LBoL.Core.Randoms;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.StatusEffects.Enemy;
-
 namespace LBoL.EntityLib.EnemyUnits.Normal.Drones
 {
-	// Token: 0x0200020A RID: 522
 	[UsedImplicitly]
 	public abstract class TerminatorOrigin : Drone
 	{
-		// Token: 0x06000836 RID: 2102 RVA: 0x00012282 File Offset: 0x00010482
 		protected override void EnterBattle()
 		{
 			this.Next = TerminatorOrigin.MoveType.ShootAccuracy;
 			base.CountDown = 4;
 			base.ReactBattleEvent<GameEventArgs>(base.Battle.BattleStarted, new Func<GameEventArgs, IEnumerable<BattleAction>>(this.OnBattleStarted));
 		}
-
-		// Token: 0x06000837 RID: 2103 RVA: 0x000122AF File Offset: 0x000104AF
 		private IEnumerable<BattleAction> OnBattleStarted(GameEventArgs arg)
 		{
 			yield return new ApplyStatusEffectAction<DroneBlock>(this, new int?(base.Defend), default(int?), default(int?), default(int?), 0f, true);
 			yield break;
 		}
-
-		// Token: 0x06000838 RID: 2104 RVA: 0x000122C0 File Offset: 0x000104C0
 		public override void OnSpawn(EnemyUnit spawner)
 		{
 			this.React(new ApplyStatusEffectAction<Appliance>(this, default(int?), default(int?), default(int?), default(int?), 0f, true));
 			this.React(new ApplyStatusEffectAction<DroneBlock>(this, new int?(base.Defend), default(int?), default(int?), default(int?), 0f, true));
 		}
-
-		// Token: 0x06000839 RID: 2105 RVA: 0x00012345 File Offset: 0x00010545
 		protected override void Stun()
 		{
 			this.Next = TerminatorOrigin.MoveType.Stun;
 			base.UpdateTurnMoves();
 		}
-
-		// Token: 0x0600083A RID: 2106 RVA: 0x00012354 File Offset: 0x00010554
 		private IEnumerable<BattleAction> RepairActions()
 		{
 			base.CountDown = 4;
@@ -69,8 +58,6 @@ namespace LBoL.EntityLib.EnemyUnits.Normal.Drones
 			}
 			yield break;
 		}
-
-		// Token: 0x0600083B RID: 2107 RVA: 0x00012364 File Offset: 0x00010564
 		protected override IEnumerable<IEnemyMove> GetTurnMoves()
 		{
 			IEnemyMove enemyMove;
@@ -94,8 +81,6 @@ namespace LBoL.EntityLib.EnemyUnits.Normal.Drones
 			yield return enemyMove;
 			yield break;
 		}
-
-		// Token: 0x0600083C RID: 2108 RVA: 0x00012374 File Offset: 0x00010574
 		protected override void UpdateMoveCounters()
 		{
 			if (base.HasStatusEffect<Emi>())
@@ -113,24 +98,10 @@ namespace LBoL.EntityLib.EnemyUnits.Normal.Drones
 			}
 			this.Next = this._pool.Without(this.Last).Sample(base.EnemyMoveRng);
 		}
-
-		// Token: 0x170000D9 RID: 217
-		// (get) Token: 0x0600083D RID: 2109 RVA: 0x000123E0 File Offset: 0x000105E0
-		// (set) Token: 0x0600083E RID: 2110 RVA: 0x000123E8 File Offset: 0x000105E8
 		private TerminatorOrigin.MoveType Last { get; set; }
-
-		// Token: 0x170000DA RID: 218
-		// (get) Token: 0x0600083F RID: 2111 RVA: 0x000123F1 File Offset: 0x000105F1
-		// (set) Token: 0x06000840 RID: 2112 RVA: 0x000123F9 File Offset: 0x000105F9
 		private TerminatorOrigin.MoveType Next { get; set; }
-
-		// Token: 0x0400008D RID: 141
 		private const int RepairInterval = 4;
-
-		// Token: 0x0400008E RID: 142
 		private const float ResultChatTime = 2.5f;
-
-		// Token: 0x04000091 RID: 145
 		private readonly RepeatableRandomPool<TerminatorOrigin.MoveType> _pool = new RepeatableRandomPool<TerminatorOrigin.MoveType>
 		{
 			{
@@ -142,17 +113,11 @@ namespace LBoL.EntityLib.EnemyUnits.Normal.Drones
 				1f
 			}
 		};
-
-		// Token: 0x02000712 RID: 1810
 		private enum MoveType
 		{
-			// Token: 0x040009D2 RID: 2514
 			TripleShoot,
-			// Token: 0x040009D3 RID: 2515
 			ShootAccuracy,
-			// Token: 0x040009D4 RID: 2516
 			Repair,
-			// Token: 0x040009D5 RID: 2517
 			Stun
 		}
 	}

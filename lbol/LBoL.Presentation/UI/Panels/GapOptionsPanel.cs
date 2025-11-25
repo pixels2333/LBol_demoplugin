@@ -16,14 +16,10 @@ using LBoL.EntityLib.Exhibits.Common;
 using LBoL.Presentation.UI.Widgets;
 using TMPro;
 using UnityEngine;
-
 namespace LBoL.Presentation.UI.Panels
 {
-	// Token: 0x0200009A RID: 154
 	public class GapOptionsPanel : UiPanel<GapStation>
 	{
-		// Token: 0x17000156 RID: 342
-		// (get) Token: 0x060007FE RID: 2046 RVA: 0x00025E38 File Offset: 0x00024038
 		public override PanelLayer Layer
 		{
 			get
@@ -31,8 +27,6 @@ namespace LBoL.Presentation.UI.Panels
 				return PanelLayer.Bottom;
 			}
 		}
-
-		// Token: 0x060007FF RID: 2047 RVA: 0x00025E3C File Offset: 0x0002403C
 		public override void OnLocaleChanged()
 		{
 			this._headerInitial = "Gap.HeaderInitial".Localize(true);
@@ -42,15 +36,11 @@ namespace LBoL.Presentation.UI.Panels
 				gapOptionWidget.OnLocalizeChanged();
 			}
 		}
-
-		// Token: 0x06000800 RID: 2048 RVA: 0x00025EB0 File Offset: 0x000240B0
 		public void Awake()
 		{
 			this.info.alpha = 0f;
 			this._headerPos = this.header.transform.localPosition;
 		}
-
-		// Token: 0x06000801 RID: 2049 RVA: 0x00025ED8 File Offset: 0x000240D8
 		protected override void OnShowing(GapStation gapStation)
 		{
 			this._gapStation = gapStation;
@@ -87,30 +77,22 @@ namespace LBoL.Presentation.UI.Panels
 				gapOptionWidget.transform.SetAsFirstSibling();
 			}
 		}
-
-		// Token: 0x06000802 RID: 2050 RVA: 0x000260E0 File Offset: 0x000242E0
 		protected override void OnHided()
 		{
 			this._gapStation = null;
 			this.optionsLayout.DestroyChildren();
 			this._options.Clear();
 		}
-
-		// Token: 0x06000803 RID: 2051 RVA: 0x000260FF File Offset: 0x000242FF
 		public IEnumerator WaitUntilOptionSelected()
 		{
 			this._selected = false;
 			return new WaitUntil(() => this._selected);
 		}
-
-		// Token: 0x06000804 RID: 2052 RVA: 0x00026119 File Offset: 0x00024319
 		public void SelectedAndHide()
 		{
 			this._selected = true;
 			base.Hide();
 		}
-
-		// Token: 0x06000805 RID: 2053 RVA: 0x00026128 File Offset: 0x00024328
 		public void StartHoverOption(GapOption option)
 		{
 			if (!this._headerChanged)
@@ -122,14 +104,10 @@ namespace LBoL.Presentation.UI.Panels
 			this.info.text = option.Description;
 			this.info.DOFade(1f, 0.1f);
 		}
-
-		// Token: 0x06000806 RID: 2054 RVA: 0x00026194 File Offset: 0x00024394
 		public void EndHoverOption()
 		{
 			this.info.DOFade(0f, 0.1f);
 		}
-
-		// Token: 0x06000807 RID: 2055 RVA: 0x000261AC File Offset: 0x000243AC
 		public void OptionClicked(GapOption option)
 		{
 			if (!this._optionActive)
@@ -165,21 +143,15 @@ namespace LBoL.Presentation.UI.Panels
 				return;
 			}
 		}
-
-		// Token: 0x06000808 RID: 2056 RVA: 0x00026241 File Offset: 0x00024441
 		private void DrinkTea(GapOption option)
 		{
 			this._gapStation.DrinkTea((DrinkTea)option);
 			this.SelectedAndHide();
 		}
-
-		// Token: 0x06000809 RID: 2057 RVA: 0x0002625A File Offset: 0x0002445A
 		private void UpgradeCard(GapOption option)
 		{
 			base.StartCoroutine(this.UpgradeCardRunner((UpgradeCard)option));
 		}
-
-		// Token: 0x0600080A RID: 2058 RVA: 0x0002626F File Offset: 0x0002446F
 		private IEnumerator UpgradeCardRunner(UpgradeCard upgradeCard)
 		{
 			ShowCardsPanel upgradeCardPanel = UiManager.GetPanel<ShowCardsPanel>();
@@ -207,14 +179,10 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x0600080B RID: 2059 RVA: 0x00026285 File Offset: 0x00024485
 		private void FindExhibit()
 		{
 			base.StartCoroutine(this.CoFindExhibit());
 		}
-
-		// Token: 0x0600080C RID: 2060 RVA: 0x00026294 File Offset: 0x00024494
 		private IEnumerator CoFindExhibit()
 		{
 			this._optionActive = false;
@@ -222,8 +190,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.SelectedAndHide();
 			yield break;
 		}
-
-		// Token: 0x0600080D RID: 2061 RVA: 0x000262A4 File Offset: 0x000244A4
 		private void GetMoney()
 		{
 			GetMoney getMoney = Enumerable.FirstOrDefault<GetMoney>(Enumerable.OfType<GetMoney>(this._gapStation.GapOptions));
@@ -236,14 +202,10 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.SelectedAndHide();
 		}
-
-		// Token: 0x0600080E RID: 2062 RVA: 0x000262F3 File Offset: 0x000244F3
 		private void RemoveCard()
 		{
 			base.StartCoroutine(this.RemoveCardRunner());
 		}
-
-		// Token: 0x0600080F RID: 2063 RVA: 0x00026302 File Offset: 0x00024502
 		private IEnumerator RemoveCardRunner()
 		{
 			ShowCardsPanel panel = UiManager.GetPanel<ShowCardsPanel>();
@@ -264,14 +226,10 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x06000810 RID: 2064 RVA: 0x00026311 File Offset: 0x00024511
 		private void InternalGetRareCard(GapOption option)
 		{
 			base.StartCoroutine(this.GetRareCardRunner(option));
 		}
-
-		// Token: 0x06000811 RID: 2065 RVA: 0x00026321 File Offset: 0x00024521
 		private IEnumerator GetRareCardRunner(GapOption option)
 		{
 			foreach (GapOptionWidget gapOptionWidget in this._options)
@@ -307,8 +265,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.SelectedAndHide();
 			yield break;
 		}
-
-		// Token: 0x06000812 RID: 2066 RVA: 0x00026338 File Offset: 0x00024538
 		private void UpgradeBaota()
 		{
 			Baota exhibit = base.GameRun.Player.GetExhibit<Baota>();
@@ -323,8 +279,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.SelectedAndHide();
 		}
-
-		// Token: 0x06000813 RID: 2067 RVA: 0x0002637C File Offset: 0x0002457C
 		public Vector3 GetOptionPosition(int index)
 		{
 			GapOptionWidget gapOptionWidget = this._options.TryGetValue(index);
@@ -334,57 +288,27 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			return gapOptionWidget.transform.position;
 		}
-
-		// Token: 0x04000590 RID: 1424
 		[SerializeField]
 		private TextMeshProUGUI header;
-
-		// Token: 0x04000591 RID: 1425
 		[SerializeField]
 		private TextMeshProUGUI info;
-
-		// Token: 0x04000592 RID: 1426
 		[SerializeField]
 		private GapOptionWidget template;
-
-		// Token: 0x04000593 RID: 1427
 		[SerializeField]
 		private Transform optionsLayout;
-
-		// Token: 0x04000594 RID: 1428
 		[SerializeField]
 		private AssociationList<GapOptionType, Sprite> spriteTable;
-
-		// Token: 0x04000595 RID: 1429
 		[SerializeField]
 		private Vector3 defaultOptionPos;
-
-		// Token: 0x04000596 RID: 1430
 		[SerializeField]
 		private Vector3 optionPadding;
-
-		// Token: 0x04000597 RID: 1431
 		private bool _headerChanged;
-
-		// Token: 0x04000598 RID: 1432
 		private Vector3 _headerPos;
-
-		// Token: 0x04000599 RID: 1433
 		private GapStation _gapStation;
-
-		// Token: 0x0400059A RID: 1434
 		private string _headerInitial;
-
-		// Token: 0x0400059B RID: 1435
 		private IList<string> _headers;
-
-		// Token: 0x0400059C RID: 1436
 		private readonly List<GapOptionWidget> _options = new List<GapOptionWidget>();
-
-		// Token: 0x0400059D RID: 1437
 		private bool _selected;
-
-		// Token: 0x0400059E RID: 1438
 		private bool _optionActive;
 	}
 }

@@ -8,14 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.EntityLib.StatusEffects.Koishi;
-
 namespace LBoL.EntityLib.Cards.Character.Koishi
 {
-	// Token: 0x02000492 RID: 1170
 	[UsedImplicitly]
 	public sealed class SelfControl : Card
 	{
-		// Token: 0x06000FA6 RID: 4006 RVA: 0x0001BE90 File Offset: 0x0001A090
 		public override Interaction Precondition()
 		{
 			List<SelfControl> list = Enumerable.ToList<SelfControl>(Library.CreateCards<SelfControl>(2, this.IsUpgraded));
@@ -27,8 +24,6 @@ namespace LBoL.EntityLib.Cards.Character.Koishi
 			selfControl2.SetBattle(base.Battle);
 			return new MiniSelectCardInteraction(list, false, false, false);
 		}
-
-		// Token: 0x06000FA7 RID: 4007 RVA: 0x0001BEEA File Offset: 0x0001A0EA
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			MiniSelectCardInteraction miniSelectCardInteraction = (MiniSelectCardInteraction)precondition;

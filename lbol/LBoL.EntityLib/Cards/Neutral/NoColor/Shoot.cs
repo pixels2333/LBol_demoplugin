@@ -5,14 +5,11 @@ using LBoL.Base;
 using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Neutral.NoColor
 {
-	// Token: 0x020002E1 RID: 737
 	[UsedImplicitly]
 	public sealed class Shoot : Card
 	{
-		// Token: 0x06000B1A RID: 2842 RVA: 0x00016820 File Offset: 0x00014A20
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			string text2;

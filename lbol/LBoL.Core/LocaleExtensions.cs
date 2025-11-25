@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-
 namespace LBoL.Core
 {
-	// Token: 0x0200005A RID: 90
 	public static class LocaleExtensions
 	{
-		// Token: 0x060003F0 RID: 1008 RVA: 0x0000C2EC File Offset: 0x0000A4EC
 		public static string ToTag(this Locale locale)
 		{
 			string text;
@@ -65,8 +62,6 @@ namespace LBoL.Core
 			}
 			return text;
 		}
-
-		// Token: 0x060003F1 RID: 1009 RVA: 0x0000C3E0 File Offset: 0x0000A5E0
 		public static string ToAlpha2Name(this Locale locale)
 		{
 			string text;
@@ -125,8 +120,6 @@ namespace LBoL.Core
 			}
 			return text;
 		}
-
-		// Token: 0x060003F2 RID: 1010 RVA: 0x0000C4D4 File Offset: 0x0000A6D4
 		public static Locale? TryParseLocaleTag(this string tag)
 		{
 			uint num = <PrivateImplementationDetails>.ComputeStringHash(tag);
@@ -265,8 +258,6 @@ namespace LBoL.Core
 			}
 			return default(Locale?);
 		}
-
-		// Token: 0x060003F3 RID: 1011 RVA: 0x0000C7F4 File Offset: 0x0000A9F4
 		public static string ToLocaleName(this Locale locale)
 		{
 			Dictionary<Locale, string> dictionary;
@@ -277,8 +268,6 @@ namespace LBoL.Core
 			}
 			return string.Empty;
 		}
-
-		// Token: 0x060003F4 RID: 1012 RVA: 0x0000C828 File Offset: 0x0000AA28
 		// Note: this type is marked as 'beforefieldinit'.
 		static LocaleExtensions()
 		{
@@ -589,8 +578,6 @@ namespace LBoL.Core
 			dictionary.Add(locale16, dictionary17);
 			LocaleExtensions.LocaleNamesTable = dictionary;
 		}
-
-		// Token: 0x0400022B RID: 555
 		private static readonly Dictionary<Locale, Dictionary<Locale, string>> LocaleNamesTable;
 	}
 }

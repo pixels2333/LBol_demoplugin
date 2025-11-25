@@ -10,15 +10,11 @@ using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.EnemyUnits.Character;
 using LBoL.EntityLib.StatusEffects.Enemy;
-
 namespace LBoL.EntityLib.EnemyUnits.Normal.Guihuos
 {
-	// Token: 0x020001FD RID: 509
 	[UsedImplicitly]
 	public abstract class Guihuo : EnemyUnit
 	{
-		// Token: 0x170000CD RID: 205
-		// (get) Token: 0x06000801 RID: 2049 RVA: 0x00011C55 File Offset: 0x0000FE55
 		protected virtual Type DebuffType
 		{
 			get
@@ -26,9 +22,6 @@ namespace LBoL.EntityLib.EnemyUnits.Normal.Guihuos
 				return typeof(Weak);
 			}
 		}
-
-		// Token: 0x170000CE RID: 206
-		// (get) Token: 0x06000802 RID: 2050 RVA: 0x00011C61 File Offset: 0x0000FE61
 		protected virtual string SkillVFX
 		{
 			get
@@ -36,20 +29,12 @@ namespace LBoL.EntityLib.EnemyUnits.Normal.Guihuos
 				return "GuihuoUskill";
 			}
 		}
-
-		// Token: 0x170000CF RID: 207
-		// (get) Token: 0x06000803 RID: 2051 RVA: 0x00011C68 File Offset: 0x0000FE68
-		// (set) Token: 0x06000804 RID: 2052 RVA: 0x00011C70 File Offset: 0x0000FE70
 		public Guihuo.MoveType Next { get; set; }
-
-		// Token: 0x06000805 RID: 2053 RVA: 0x00011C79 File Offset: 0x0000FE79
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			this.SetFirstTurn();
 			base.ReactBattleEvent<GameEventArgs>(base.Battle.BattleStarted, new Func<GameEventArgs, IEnumerable<BattleAction>>(this.OnBattleStarted));
 		}
-
-		// Token: 0x06000806 RID: 2054 RVA: 0x00011C9E File Offset: 0x0000FE9E
 		private IEnumerable<BattleAction> OnBattleStarted(GameEventArgs arg)
 		{
 			int? num = new int?(base.Count1 + base.EnemyBattleRng.NextInt(0, base.Count2));
@@ -57,8 +42,6 @@ namespace LBoL.EntityLib.EnemyUnits.Normal.Guihuos
 			yield return new ApplyStatusEffectAction<DeathExplodeCount>(this, num, default(int?), default(int?), num2, 0f, true);
 			yield break;
 		}
-
-		// Token: 0x06000807 RID: 2055 RVA: 0x00011CB0 File Offset: 0x0000FEB0
 		public override void OnSpawn(EnemyUnit spawner)
 		{
 			int num = 0;
@@ -71,8 +54,6 @@ namespace LBoL.EntityLib.EnemyUnits.Normal.Guihuos
 			this.React(PerformAction.Sfx("GhostSpawn", 0f));
 			this.React(new ApplyStatusEffectAction<DeathExplodeNotCount>(this, new int?(base.Count1 + base.EnemyBattleRng.NextInt(0, base.Count2) + num), default(int?), default(int?), default(int?), 0f, true));
 		}
-
-		// Token: 0x06000808 RID: 2056 RVA: 0x00011D50 File Offset: 0x0000FF50
 		private void SetFirstTurn()
 		{
 			if (Enumerable.Count<EnemyUnit>(base.AllAliveEnemies, (EnemyUnit enemy) => enemy is Guihuo) >= 3)
@@ -107,16 +88,12 @@ namespace LBoL.EntityLib.EnemyUnits.Normal.Guihuos
 			base.CountDown = base.EnemyMoveRng.NextInt(0, 2);
 			this.Next = ((base.CountDown <= 0) ? Guihuo.MoveType.Debuff : Guihuo.MoveType.Shoot);
 		}
-
-		// Token: 0x06000809 RID: 2057 RVA: 0x00011E78 File Offset: 0x00010078
 		private IEnumerable<BattleAction> Explode()
 		{
 			yield return new EnemyMoveAction(this, base.GetMove(2), true);
 			yield return new ForceKillAction(this, this);
 			yield break;
 		}
-
-		// Token: 0x0600080A RID: 2058 RVA: 0x00011E88 File Offset: 0x00010088
 		protected override IEnumerable<IEnemyMove> GetTurnMoves()
 		{
 			switch (this.Next)
@@ -142,8 +119,6 @@ namespace LBoL.EntityLib.EnemyUnits.Normal.Guihuos
 			}
 			yield break;
 		}
-
-		// Token: 0x0600080B RID: 2059 RVA: 0x00011E98 File Offset: 0x00010098
 		protected override void UpdateMoveCounters()
 		{
 			DeathExplodeCount statusEffect = base.GetStatusEffect<DeathExplodeCount>();
@@ -156,15 +131,10 @@ namespace LBoL.EntityLib.EnemyUnits.Normal.Guihuos
 			base.CountDown = num;
 			this.Next = ((base.CountDown <= 0) ? Guihuo.MoveType.Debuff : Guihuo.MoveType.Shoot);
 		}
-
-		// Token: 0x02000705 RID: 1797
 		public enum MoveType
 		{
-			// Token: 0x0400099D RID: 2461
 			Shoot,
-			// Token: 0x0400099E RID: 2462
 			Debuff,
-			// Token: 0x0400099F RID: 2463
 			Explode
 		}
 	}

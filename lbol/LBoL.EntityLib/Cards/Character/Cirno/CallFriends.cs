@@ -12,14 +12,11 @@ using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
 using LBoL.EntityLib.Cards.Character.Cirno.Friend;
-
 namespace LBoL.EntityLib.Cards.Character.Cirno
 {
-	// Token: 0x0200049C RID: 1180
 	[UsedImplicitly]
 	public sealed class CallFriends : Card
 	{
-		// Token: 0x06000FC4 RID: 4036 RVA: 0x0001C0FE File Offset: 0x0001A2FE
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			List<Card> cards = Enumerable.ToList<Card>(base.Battle.RollCards(new CardWeightTable(RarityWeightTable.BattleCard, OwnerWeightTable.Valid, CardTypeWeightTable.OnlyFriend, false), base.Value1, (CardConfig config) => config.Cost.Amount < 5));
@@ -51,8 +48,6 @@ namespace LBoL.EntityLib.Cards.Character.Cirno
 			}
 			yield break;
 		}
-
-		// Token: 0x06000FC5 RID: 4037 RVA: 0x0001C110 File Offset: 0x0001A310
 		public CallFriends()
 		{
 			List<Type> list = new List<Type>();
@@ -63,8 +58,6 @@ namespace LBoL.EntityLib.Cards.Character.Cirno
 			this._types = list;
 			base..ctor();
 		}
-
-		// Token: 0x0400010B RID: 267
 		private readonly List<Type> _types;
 	}
 }

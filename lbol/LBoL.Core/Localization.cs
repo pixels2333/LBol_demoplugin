@@ -13,33 +13,14 @@ using UnityEngine;
 using YamlDotNet.Helpers;
 using YamlDotNet.RepresentationModel;
 using YamlDotNet.Serialization;
-
 namespace LBoL.Core
 {
-	// Token: 0x0200005B RID: 91
 	public static class Localization
 	{
-		// Token: 0x17000145 RID: 325
-		// (get) Token: 0x060003F5 RID: 1013 RVA: 0x0000D576 File Offset: 0x0000B776
-		// (set) Token: 0x060003F6 RID: 1014 RVA: 0x0000D57D File Offset: 0x0000B77D
 		public static Locale CurrentLocale { get; private set; } = Locale.ZhHans;
-
-		// Token: 0x17000146 RID: 326
-		// (get) Token: 0x060003F7 RID: 1015 RVA: 0x0000D585 File Offset: 0x0000B785
-		// (set) Token: 0x060003F8 RID: 1016 RVA: 0x0000D58C File Offset: 0x0000B78C
 		internal static Localization.PluralRuleGetter CardinalRule { get; private set; } = new Localization.PluralRuleGetter(Localization.FallbackRule);
-
-		// Token: 0x17000147 RID: 327
-		// (get) Token: 0x060003F9 RID: 1017 RVA: 0x0000D594 File Offset: 0x0000B794
-		// (set) Token: 0x060003FA RID: 1018 RVA: 0x0000D59B File Offset: 0x0000B79B
 		internal static Localization.PluralRuleGetter OrdinalRule { get; private set; } = new Localization.PluralRuleGetter(Localization.FallbackRule);
-
-		// Token: 0x17000148 RID: 328
-		// (get) Token: 0x060003FB RID: 1019 RVA: 0x0000D5A3 File Offset: 0x0000B7A3
-		// (set) Token: 0x060003FC RID: 1020 RVA: 0x0000D5AA File Offset: 0x0000B7AA
 		private static Localization.Humanizer CurrentHumanizer { get; set; }
-
-		// Token: 0x060003FD RID: 1021 RVA: 0x0000D5B2 File Offset: 0x0000B7B2
 		public static void SetCurrentLocale(Locale locale)
 		{
 			Localization.CurrentLocale = locale;
@@ -47,8 +28,6 @@ namespace LBoL.Core
 			Localization.OrdinalRule = Localization.GetOrdinalHandler(locale);
 			Localization.CurrentHumanizer = Localization.GetHumanizer(locale);
 		}
-
-		// Token: 0x060003FE RID: 1022 RVA: 0x0000D5DC File Offset: 0x0000B7DC
 		private static YamlMappingNode ParseYaml(string content)
 		{
 			YamlMappingNode yamlMappingNode;
@@ -60,8 +39,6 @@ namespace LBoL.Core
 			}
 			return yamlMappingNode;
 		}
-
-		// Token: 0x060003FF RID: 1023 RVA: 0x0000D648 File Offset: 0x0000B848
 		private static async UniTask<string> ReadFileAsync(string name, bool logError = true)
 		{
 			string path = Path.Combine("Localization", Localization.CurrentLocale.ToTag(), name + ".yaml");
@@ -80,16 +57,12 @@ namespace LBoL.Core
 			}
 			return text;
 		}
-
-		// Token: 0x06000400 RID: 1024 RVA: 0x0000D694 File Offset: 0x0000B894
 		internal static async UniTask<YamlMappingNode> LoadFileAsync(string name, bool logError = true)
 		{
 			string text = await Localization.ReadFileAsync(name, logError);
 			string content = text;
 			return await UniTask.RunOnThreadPool<YamlMappingNode>(() => Localization.ParseYaml(content), true, default(CancellationToken));
 		}
-
-		// Token: 0x06000401 RID: 1025 RVA: 0x0000D6E0 File Offset: 0x0000B8E0
 		private static void DefaultSetter(PropertyInfo prop, object obj)
 		{
 			if (prop.PropertyType == typeof(string))
@@ -104,8 +77,6 @@ namespace LBoL.Core
 				}));
 			}
 		}
-
-		// Token: 0x06000402 RID: 1026 RVA: 0x0000D748 File Offset: 0x0000B948
 		private static Dictionary<string, object> CreatePropertyLocalizeTable(string id, YamlMappingNode mapping)
 		{
 			Dictionary<string, object> dictionary = new Dictionary<string, object>();
@@ -164,16 +135,12 @@ namespace LBoL.Core
 			}
 			return dictionary;
 		}
-
-		// Token: 0x06000403 RID: 1027 RVA: 0x0000D8E0 File Offset: 0x0000BAE0
 		internal static async UniTask<Dictionary<string, Dictionary<string, object>>> LoadTypeLocalizationTableAsync(Type baseType, IEnumerable<Type> subTypes)
 		{
 			YamlMappingNode yamlMappingNode = await Localization.LoadFileAsync(baseType.Name, true);
 			YamlMappingNode content = yamlMappingNode;
 			return await UniTask.RunOnThreadPool<Dictionary<string, Dictionary<string, object>>>(() => Localization.InternalLoadTypeLocalizationTable(content, baseType, subTypes), true, default(CancellationToken));
 		}
-
-		// Token: 0x06000404 RID: 1028 RVA: 0x0000D92C File Offset: 0x0000BB2C
 		private static Dictionary<string, Dictionary<string, object>> InternalLoadTypeLocalizationTable(YamlMappingNode documentRoot, Type baseType, IEnumerable<Type> subTypes)
 		{
 			Dictionary<string, Dictionary<string, object>> dictionary = new Dictionary<string, Dictionary<string, object>>();
@@ -210,8 +177,6 @@ namespace LBoL.Core
 			}
 			return dictionary;
 		}
-
-		// Token: 0x06000405 RID: 1029 RVA: 0x0000DA78 File Offset: 0x0000BC78
 		private static async UniTask LoadTableAsync(string fileName)
 		{
 			try
@@ -247,8 +212,6 @@ namespace LBoL.Core
 				Debug.LogError(string.Concat(new string[] { "Localization: load '", fileName, "' failed (", ex.Message, ")" }));
 			}
 		}
-
-		// Token: 0x06000406 RID: 1030 RVA: 0x0000DABC File Offset: 0x0000BCBC
 		private static void LoadInnerTable(string prefix, YamlMappingNode mapping)
 		{
 			foreach (KeyValuePair<YamlNode, YamlNode> keyValuePair in mapping.Children)
@@ -317,8 +280,6 @@ namespace LBoL.Core
 				}
 			}
 		}
-
-		// Token: 0x06000407 RID: 1031 RVA: 0x0000DCA0 File Offset: 0x0000BEA0
 		public static string Localize(string key, bool decorate = true)
 		{
 			object obj;
@@ -357,8 +318,6 @@ namespace LBoL.Core
 			}
 			return text4;
 		}
-
-		// Token: 0x06000408 RID: 1032 RVA: 0x0000DDA4 File Offset: 0x0000BFA4
 		public static string LocalizeFormat(string key, params object[] args)
 		{
 			object obj;
@@ -405,8 +364,6 @@ namespace LBoL.Core
 			}
 			return text2;
 		}
-
-		// Token: 0x06000409 RID: 1033 RVA: 0x0000DEEC File Offset: 0x0000C0EC
 		public static IList<string> LocalizeStrings(string key, bool decorate = true)
 		{
 			object obj;
@@ -427,16 +384,12 @@ namespace LBoL.Core
 			}
 			return new FaultTolerantArray<string>(array, "<null>", "[Localization] <" + key + ">[{0}] not found");
 		}
-
-		// Token: 0x0600040A RID: 1034 RVA: 0x0000DFC8 File Offset: 0x0000C1C8
 		public static async UniTask ReloadCommonAsync()
 		{
 			Localization.LocalizationTable.Clear();
 			Localization.FailureTable.Clear();
 			await Localization.LoadTableAsync("Common");
 		}
-
-		// Token: 0x0600040B RID: 1035 RVA: 0x0000E004 File Offset: 0x0000C204
 		public static async UniTask<Dictionary<string, T>> LoadFileAsync<T>(string name)
 		{
 			Deserializer deserializer = new Deserializer();
@@ -444,8 +397,6 @@ namespace LBoL.Core
 			string text = await Localization.ReadFileAsync(name, true);
 			return deserializer2.Deserialize<Dictionary<string, T>>(text) ?? new Dictionary<string, T>();
 		}
-
-		// Token: 0x0600040C RID: 1036 RVA: 0x0000E048 File Offset: 0x0000C248
 		private static Localization.PluralRuleGetter GetCardinalHandler(Locale locale)
 		{
 			Localization.PluralRuleGetter pluralRuleGetter;
@@ -504,8 +455,6 @@ namespace LBoL.Core
 			}
 			return pluralRuleGetter;
 		}
-
-		// Token: 0x0600040D RID: 1037 RVA: 0x0000E1BC File Offset: 0x0000C3BC
 		private static Localization.PluralRuleGetter GetOrdinalHandler(Locale locale)
 		{
 			Localization.PluralRuleGetter pluralRuleGetter;
@@ -564,14 +513,10 @@ namespace LBoL.Core
 			}
 			return pluralRuleGetter;
 		}
-
-		// Token: 0x0600040E RID: 1038 RVA: 0x0000E32F File Offset: 0x0000C52F
 		private static string FallbackRule(int n)
 		{
 			return null;
 		}
-
-		// Token: 0x0600040F RID: 1039 RVA: 0x0000E332 File Offset: 0x0000C532
 		private static string OneOtherCardinalRule(int n)
 		{
 			if (n != 1)
@@ -580,8 +525,6 @@ namespace LBoL.Core
 			}
 			return "one";
 		}
-
-		// Token: 0x06000410 RID: 1040 RVA: 0x0000E340 File Offset: 0x0000C540
 		private static string EnglishOrdinalRule(int n)
 		{
 			int num = n % 10;
@@ -600,8 +543,6 @@ namespace LBoL.Core
 			}
 			return null;
 		}
-
-		// Token: 0x06000411 RID: 1041 RVA: 0x0000E388 File Offset: 0x0000C588
 		private static string RussianCardinalRule(int n)
 		{
 			int num = n % 10;
@@ -616,8 +557,6 @@ namespace LBoL.Core
 			}
 			return "many";
 		}
-
-		// Token: 0x06000412 RID: 1042 RVA: 0x0000E3CC File Offset: 0x0000C5CC
 		private static string PolishUkrainianCardinalRule(int n)
 		{
 			if (n == 1)
@@ -632,8 +571,6 @@ namespace LBoL.Core
 			}
 			return "many";
 		}
-
-		// Token: 0x06000413 RID: 1043 RVA: 0x0000E40A File Offset: 0x0000C60A
 		private static string FrenchPortugueseCardinalRule(int n)
 		{
 			if (n <= 1)
@@ -646,8 +583,6 @@ namespace LBoL.Core
 			}
 			return null;
 		}
-
-		// Token: 0x06000414 RID: 1044 RVA: 0x0000E428 File Offset: 0x0000C628
 		public static void TestCardinal(Locale locale, string one, string few, string many, string other)
 		{
 			Localization.<>c__DisplayClass42_0 CS$<>8__locals1;
@@ -670,8 +605,6 @@ namespace LBoL.Core
 			string text2 = string.Concat(Enumerable.Select<byte, string>(SHA256.Create().ComputeHash(new UTF8Encoding(false, true).GetBytes(text)), (byte n) => n.ToString("x2")));
 			Debug.Log(text + "\n\nHash: " + text2);
 		}
-
-		// Token: 0x06000415 RID: 1045 RVA: 0x0000E518 File Offset: 0x0000C718
 		private static Localization.Humanizer GetHumanizer(Locale locale)
 		{
 			switch (locale)
@@ -686,14 +619,10 @@ namespace LBoL.Core
 			}
 			return new Localization.Humanizer(Localization.Identity);
 		}
-
-		// Token: 0x06000416 RID: 1046 RVA: 0x0000E572 File Offset: 0x0000C772
 		private static string Identity(string input)
 		{
 			return input;
 		}
-
-		// Token: 0x06000417 RID: 1047 RVA: 0x0000E578 File Offset: 0x0000C778
 		private static string UppercaseFirstLetter(string input)
 		{
 			if (input.Length > 0 && char.IsLower(input.get_Chars(0)))
@@ -702,15 +631,11 @@ namespace LBoL.Core
 			}
 			return input;
 		}
-
-		// Token: 0x06000418 RID: 1048 RVA: 0x0000E5C8 File Offset: 0x0000C7C8
 		public static string Humanize(string input)
 		{
 			Localization.Humanizer currentHumanizer = Localization.CurrentHumanizer;
 			return ((currentHumanizer != null) ? currentHumanizer(input) : null) ?? input;
 		}
-
-		// Token: 0x0600041A RID: 1050 RVA: 0x0000E620 File Offset: 0x0000C820
 		[CompilerGenerated]
 		internal static string <TestCardinal>g__Get|42_0(int n, ref Localization.<>c__DisplayClass42_0 A_1)
 		{
@@ -745,19 +670,9 @@ namespace LBoL.Core
 			}
 			return text2 + " " + (text3 ?? ("<" + text + ">"));
 		}
-
-		// Token: 0x04000230 RID: 560
 		private static readonly Dictionary<string, object> LocalizationTable = new Dictionary<string, object>();
-
-		// Token: 0x04000231 RID: 561
 		private static readonly Dictionary<string, string> FailureTable = new Dictionary<string, string>();
-
-		// Token: 0x020001F8 RID: 504
-		// (Invoke) Token: 0x060010D9 RID: 4313
 		internal delegate string PluralRuleGetter(int n);
-
-		// Token: 0x020001F9 RID: 505
-		// (Invoke) Token: 0x060010DD RID: 4317
 		private delegate string Humanizer(string input);
 	}
 }

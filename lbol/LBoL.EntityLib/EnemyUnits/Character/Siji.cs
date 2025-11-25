@@ -7,22 +7,17 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Units;
 using LBoL.EntityLib.EnemyUnits.Opponent;
 using LBoL.EntityLib.StatusEffects.Enemy;
-
 namespace LBoL.EntityLib.EnemyUnits.Character
 {
-	// Token: 0x02000248 RID: 584
 	[UsedImplicitly]
 	public sealed class Siji : EnemyUnit
 	{
-		// Token: 0x0600094C RID: 2380 RVA: 0x0001417A File Offset: 0x0001237A
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			base.ReactBattleEvent<GameEventArgs>(base.Battle.BattleStarted, new Func<GameEventArgs, IEnumerable<BattleAction>>(this.OnBattleStarted));
 			this._reason = 0;
 			this._gunIndex = 0;
 		}
-
-		// Token: 0x0600094D RID: 2381 RVA: 0x000141A7 File Offset: 0x000123A7
 		private IEnumerable<BattleAction> OnBattleStarted(GameEventArgs arg)
 		{
 			string spellcard = "净颇梨审判";
@@ -96,8 +91,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield return new ApplyStatusEffectAction<SijiZui>(this, new int?(num), default(int?), default(int?), default(int?), 0f, true);
 			yield break;
 		}
-
-		// Token: 0x0600094E RID: 2382 RVA: 0x000141B7 File Offset: 0x000123B7
 		protected override IEnumerable<IEnemyMove> GetTurnMoves()
 		{
 			int level = base.GetStatusEffect<SijiZui>().Level;
@@ -117,8 +110,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			yield break;
 		}
-
-		// Token: 0x0600094F RID: 2383 RVA: 0x000141C7 File Offset: 0x000123C7
 		private IEnumerable<BattleAction> BuffActions()
 		{
 			yield return new ApplyStatusEffectAction<SijiZui>(this, new int?((this._reason == 3) ? 2 : 1), default(int?), default(int?), default(int?), 0f, true);
@@ -135,11 +126,7 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield return PerformAction.Chat(this, text.Localize(true), 3f, 0f, 0f, true);
 			yield break;
 		}
-
-		// Token: 0x040000D7 RID: 215
 		private int _reason;
-
-		// Token: 0x040000D8 RID: 216
 		private int _gunIndex;
 	}
 }

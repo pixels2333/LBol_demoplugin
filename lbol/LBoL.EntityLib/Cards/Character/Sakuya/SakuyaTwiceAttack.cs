@@ -6,14 +6,11 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Character.Sakuya
 {
-	// Token: 0x020003B3 RID: 947
 	[UsedImplicitly]
 	public sealed class SakuyaTwiceAttack : Card
 	{
-		// Token: 0x06000D6C RID: 3436 RVA: 0x000194D5 File Offset: 0x000176D5
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			base.CardGuns = new Guns(base.GunName, base.Value1, true);

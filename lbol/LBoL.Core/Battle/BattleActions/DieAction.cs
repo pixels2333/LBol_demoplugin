@@ -4,18 +4,11 @@ using System.Linq;
 using System.Text;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x0200016B RID: 363
 	public sealed class DieAction : BattleAction
 	{
-		// Token: 0x170004E1 RID: 1249
-		// (get) Token: 0x06000E09 RID: 3593 RVA: 0x00026AB9 File Offset: 0x00024CB9
-		// (set) Token: 0x06000E0A RID: 3594 RVA: 0x00026AC1 File Offset: 0x00024CC1
 		public DieEventArgs[] ArgsList { get; private set; }
-
-		// Token: 0x06000E0B RID: 3595 RVA: 0x00026ACC File Offset: 0x00024CCC
 		internal DieAction(IEnumerable<ValueTuple<Unit, DieCause>> dyingUnits, Unit source, GameEntity dieSource)
 		{
 			this.ArgsList = Enumerable.ToArray<DieEventArgs>(Enumerable.Select<ValueTuple<Unit, DieCause>, DieEventArgs>(dyingUnits, delegate(ValueTuple<Unit, DieCause> pair)
@@ -31,8 +24,6 @@ namespace LBoL.Core.Battle.BattleActions
 				};
 			}));
 		}
-
-		// Token: 0x06000E0C RID: 3596 RVA: 0x00026B10 File Offset: 0x00024D10
 		internal DieAction(Unit dyingUnit, DieCause dieCause, Unit source, GameEntity dieSource)
 		{
 			this.ArgsList = new DieEventArgs[]
@@ -46,8 +37,6 @@ namespace LBoL.Core.Battle.BattleActions
 				}
 			};
 		}
-
-		// Token: 0x06000E0D RID: 3597 RVA: 0x00026B4C File Offset: 0x00024D4C
 		public override BattleAction SetCause(ActionCause cause)
 		{
 			base.SetCause(cause);
@@ -58,8 +47,6 @@ namespace LBoL.Core.Battle.BattleActions
 			}
 			return this;
 		}
-
-		// Token: 0x06000E0E RID: 3598 RVA: 0x00026B80 File Offset: 0x00024D80
 		public override BattleAction SetSource(GameEntity source)
 		{
 			base.SetSource(source);
@@ -70,8 +57,6 @@ namespace LBoL.Core.Battle.BattleActions
 			}
 			return this;
 		}
-
-		// Token: 0x06000E0F RID: 3599 RVA: 0x00026BB4 File Offset: 0x00024DB4
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			yield return base.CreatePhase("PreEvent", delegate
@@ -132,9 +117,6 @@ namespace LBoL.Core.Battle.BattleActions
 			}, false);
 			yield break;
 		}
-
-		// Token: 0x170004E2 RID: 1250
-		// (get) Token: 0x06000E10 RID: 3600 RVA: 0x00026BC4 File Offset: 0x00024DC4
 		public override bool IsModified
 		{
 			get
@@ -142,9 +124,6 @@ namespace LBoL.Core.Battle.BattleActions
 				return Enumerable.Any<DieEventArgs>(this.ArgsList, (DieEventArgs arg) => arg.IsModified);
 			}
 		}
-
-		// Token: 0x170004E3 RID: 1251
-		// (get) Token: 0x06000E11 RID: 3601 RVA: 0x00026BF0 File Offset: 0x00024DF0
 		public override string[] Modifiers
 		{
 			get
@@ -152,9 +131,6 @@ namespace LBoL.Core.Battle.BattleActions
 				return Enumerable.ToArray<string>(Enumerable.SelectMany<DieEventArgs, string>(this.ArgsList, (DieEventArgs arg) => arg.Modifiers));
 			}
 		}
-
-		// Token: 0x170004E4 RID: 1252
-		// (get) Token: 0x06000E12 RID: 3602 RVA: 0x00026C21 File Offset: 0x00024E21
 		public override bool IsCanceled
 		{
 			get
@@ -162,9 +138,6 @@ namespace LBoL.Core.Battle.BattleActions
 				return false;
 			}
 		}
-
-		// Token: 0x170004E5 RID: 1253
-		// (get) Token: 0x06000E13 RID: 3603 RVA: 0x00026C24 File Offset: 0x00024E24
 		public override CancelCause CancelCause
 		{
 			get
@@ -172,8 +145,6 @@ namespace LBoL.Core.Battle.BattleActions
 				return CancelCause.None;
 			}
 		}
-
-		// Token: 0x06000E14 RID: 3604 RVA: 0x00026C28 File Offset: 0x00024E28
 		public override void ClearModifiers()
 		{
 			DieEventArgs[] argsList = this.ArgsList;
@@ -182,8 +153,6 @@ namespace LBoL.Core.Battle.BattleActions
 				argsList[i].ClearModifiers();
 			}
 		}
-
-		// Token: 0x06000E15 RID: 3605 RVA: 0x00026C54 File Offset: 0x00024E54
 		public override string ExportDebugDetails()
 		{
 			StringBuilder stringBuilder = new StringBuilder();

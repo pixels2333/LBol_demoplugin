@@ -7,20 +7,12 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.StatusEffects.Enemy;
-
 namespace LBoL.EntityLib.EnemyUnits.Character
 {
-	// Token: 0x0200024C RID: 588
 	[UsedImplicitly]
 	public sealed class Tianzi : EnemyUnit
 	{
-		// Token: 0x17000110 RID: 272
-		// (get) Token: 0x06000964 RID: 2404 RVA: 0x000144B5 File Offset: 0x000126B5
-		// (set) Token: 0x06000965 RID: 2405 RVA: 0x000144BD File Offset: 0x000126BD
 		private Tianzi.MoveType Next { get; set; }
-
-		// Token: 0x17000111 RID: 273
-		// (get) Token: 0x06000966 RID: 2406 RVA: 0x000144C6 File Offset: 0x000126C6
 		private string SpellBuff
 		{
 			get
@@ -28,9 +20,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 				return base.GetSpellCardName(new int?(1), 2);
 			}
 		}
-
-		// Token: 0x17000112 RID: 274
-		// (get) Token: 0x06000967 RID: 2407 RVA: 0x000144D8 File Offset: 0x000126D8
 		private string SpellAttack
 		{
 			get
@@ -38,8 +27,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 				return base.GetSpellCardName(default(int?), 0);
 			}
 		}
-
-		// Token: 0x06000968 RID: 2408 RVA: 0x000144F5 File Offset: 0x000126F5
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			this.Next = Tianzi.MoveType.AttackAndDebuff;
@@ -48,16 +35,12 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			this.SpellAttackTimes = 0;
 			base.ReactBattleEvent<GameEventArgs>(base.Battle.BattleStarted, new Func<GameEventArgs, IEnumerable<BattleAction>>(this.OnBattleStarted));
 		}
-
-		// Token: 0x06000969 RID: 2409 RVA: 0x00014530 File Offset: 0x00012730
 		private IEnumerable<BattleAction> OnBattleStarted(GameEventArgs arg)
 		{
 			yield return new ApplyStatusEffectAction<FlatPeach>(this, new int?(base.Count1), default(int?), default(int?), default(int?), 0f, true);
 			yield return new ApplyStatusEffectAction<EnemyEnergy>(this, new int?(0), default(int?), default(int?), default(int?), 0f, true);
 			yield break;
 		}
-
-		// Token: 0x0600096A RID: 2410 RVA: 0x00014540 File Offset: 0x00012740
 		private IEnumerable<BattleAction> DebuffActions()
 		{
 			Unit player = base.Battle.Player;
@@ -68,8 +51,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield return new ApplyStatusEffectAction<Fragil>(player2, default(int?), num, default(int?), default(int?), 0f, false);
 			yield break;
 		}
-
-		// Token: 0x0600096B RID: 2411 RVA: 0x00014550 File Offset: 0x00012750
 		private IEnumerable<BattleAction> SpellBuffActions()
 		{
 			if (this._spellBuffShowed)
@@ -93,13 +74,7 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield return new ApplyStatusEffectAction<Firepower>(this, num2, num3, num4, num, 0.2f, true);
 			yield break;
 		}
-
-		// Token: 0x17000113 RID: 275
-		// (get) Token: 0x0600096C RID: 2412 RVA: 0x00014560 File Offset: 0x00012760
-		// (set) Token: 0x0600096D RID: 2413 RVA: 0x00014568 File Offset: 0x00012768
 		private int SpellAttackTimes { get; set; }
-
-		// Token: 0x0600096E RID: 2414 RVA: 0x00014571 File Offset: 0x00012771
 		private IEnumerable<BattleAction> SpellAttackActions()
 		{
 			yield return new ApplyStatusEffectAction<EnemyEnergyNegative>(this, new int?(100), default(int?), default(int?), default(int?), 0f, true);
@@ -113,8 +88,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x0600096F RID: 2415 RVA: 0x00014581 File Offset: 0x00012781
 		protected override IEnumerable<IEnemyMove> GetTurnMoves()
 		{
 			switch (this.Next)
@@ -137,13 +110,7 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			yield break;
 		}
-
-		// Token: 0x17000114 RID: 276
-		// (get) Token: 0x06000970 RID: 2416 RVA: 0x00014591 File Offset: 0x00012791
-		// (set) Token: 0x06000971 RID: 2417 RVA: 0x00014599 File Offset: 0x00012799
 		private int DebuffCountDown { get; set; }
-
-		// Token: 0x06000972 RID: 2418 RVA: 0x000145A4 File Offset: 0x000127A4
 		protected override void UpdateMoveCounters()
 		{
 			int num = base.CountDown - 1;
@@ -170,23 +137,13 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			this.Next = Tianzi.MoveType.Shoot;
 		}
-
-		// Token: 0x040000DB RID: 219
 		private const int EnergyUse = 100;
-
-		// Token: 0x040000DC RID: 220
 		private bool _spellBuffShowed;
-
-		// Token: 0x02000782 RID: 1922
 		private enum MoveType
 		{
-			// Token: 0x04000BD4 RID: 3028
 			Shoot,
-			// Token: 0x04000BD5 RID: 3029
 			AttackAndDebuff,
-			// Token: 0x04000BD6 RID: 3030
 			DefendAndBuff,
-			// Token: 0x04000BD7 RID: 3031
 			SpellAttack
 		}
 	}

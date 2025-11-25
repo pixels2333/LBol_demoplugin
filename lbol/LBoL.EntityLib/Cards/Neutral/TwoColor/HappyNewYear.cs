@@ -11,14 +11,11 @@ using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
 using LBoL.Core.StatusEffects;
 using UnityEngine;
-
 namespace LBoL.EntityLib.Cards.Neutral.TwoColor
 {
-	// Token: 0x0200028F RID: 655
 	[UsedImplicitly]
 	public sealed class HappyNewYear : Card
 	{
-		// Token: 0x06000A45 RID: 2629 RVA: 0x000157E3 File Offset: 0x000139E3
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			Card attack = base.Battle.RollCard(new CardWeightTable(RarityWeightTable.BattleCard, OwnerWeightTable.Valid, CardTypeWeightTable.CanBeLoot, false), (CardConfig config) => config.Type == CardType.Attack);

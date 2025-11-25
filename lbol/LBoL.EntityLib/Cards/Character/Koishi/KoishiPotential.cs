@@ -8,14 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Character.Koishi
 {
-	// Token: 0x02000479 RID: 1145
 	[UsedImplicitly]
 	public sealed class KoishiPotential : Card
 	{
-		// Token: 0x06000F5B RID: 3931 RVA: 0x0001B887 File Offset: 0x00019A87
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (base.Battle.BattleShouldEnd)

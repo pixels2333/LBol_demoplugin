@@ -7,14 +7,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
-
 namespace LBoL.EntityLib.Cards.Character.Sakuya
 {
-	// Token: 0x020003B5 RID: 949
 	[UsedImplicitly]
 	public sealed class SakuyaUsage2 : Card
 	{
-		// Token: 0x06000D72 RID: 3442 RVA: 0x00019539 File Offset: 0x00017739
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return PerformAction.Effect(base.Battle.Player, "ExtraTime", 0f, null, 0f, PerformAction.EffectBehavior.PlayOneShot, 0f);

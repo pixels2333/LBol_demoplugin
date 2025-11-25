@@ -11,14 +11,11 @@ using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.EntityLib.StatusEffects.ExtraTurn.Partners;
-
 namespace LBoL.EntityLib.Cards.Neutral.TwoColor
 {
-	// Token: 0x02000292 RID: 658
 	[UsedImplicitly]
 	public sealed class HuiyeTime : Card
 	{
-		// Token: 0x06000A4F RID: 2639 RVA: 0x000158B0 File Offset: 0x00013AB0
 		public override Interaction Precondition()
 		{
 			List<Card> list = Enumerable.ToList<Card>(Enumerable.Where<Card>(base.Battle.HandZone, (Card hand) => hand != this && !hand.IsTempRetain && !hand.IsRetain && !hand.Summoned));
@@ -28,8 +25,6 @@ namespace LBoL.EntityLib.Cards.Neutral.TwoColor
 			}
 			return null;
 		}
-
-		// Token: 0x06000A50 RID: 2640 RVA: 0x000158F6 File Offset: 0x00013AF6
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			SelectHandInteraction selectHandInteraction = (SelectHandInteraction)precondition;

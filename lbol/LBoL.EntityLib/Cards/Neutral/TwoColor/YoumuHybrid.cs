@@ -9,14 +9,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
-
 namespace LBoL.EntityLib.Cards.Neutral.TwoColor
 {
-	// Token: 0x020002BD RID: 701
 	[UsedImplicitly]
 	public sealed class YoumuHybrid : Card
 	{
-		// Token: 0x06000ABF RID: 2751 RVA: 0x000161A6 File Offset: 0x000143A6
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			int num = base.SynergyAmount(consumingMana, ManaColor.White, 1);

@@ -9,14 +9,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Character.Sakuya
 {
-	// Token: 0x02000388 RID: 904
 	[UsedImplicitly]
 	public sealed class Dejavu : Card
 	{
-		// Token: 0x06000CE4 RID: 3300 RVA: 0x00018B6C File Offset: 0x00016D6C
 		public override Interaction Precondition()
 		{
 			List<Card> list = Enumerable.ToList<Card>(Enumerable.Where<Card>(base.Battle.HandZone, (Card hand) => hand != this));
@@ -26,8 +23,6 @@ namespace LBoL.EntityLib.Cards.Character.Sakuya
 			}
 			return null;
 		}
-
-		// Token: 0x06000CE5 RID: 3301 RVA: 0x00018BB2 File Offset: 0x00016DB2
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (precondition != null)

@@ -9,20 +9,15 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.StatusEffects.Basic
 {
-	// Token: 0x020000F8 RID: 248
 	[UsedImplicitly]
 	public sealed class Vampire : StatusEffect
 	{
-		// Token: 0x0600037A RID: 890 RVA: 0x00008FC7 File Offset: 0x000071C7
 		protected override void OnAdded(Unit unit)
 		{
 			base.ReactOwnerEvent<StatisticalDamageEventArgs>(base.Owner.StatisticalTotalDamageDealt, new EventSequencedReactor<StatisticalDamageEventArgs>(this.OnStatisticalDamageDealt));
 		}
-
-		// Token: 0x0600037B RID: 891 RVA: 0x00008FE6 File Offset: 0x000071E6
 		private IEnumerable<BattleAction> OnStatisticalDamageDealt(StatisticalDamageEventArgs args)
 		{
 			if (base.Battle.BattleShouldEnd)

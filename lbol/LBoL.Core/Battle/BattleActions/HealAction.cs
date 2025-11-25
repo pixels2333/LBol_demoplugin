@@ -2,17 +2,11 @@
 using System.Collections.Generic;
 using LBoL.Base.Extensions;
 using LBoL.Core.Units;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x02000188 RID: 392
 	public sealed class HealAction : EventBattleAction<HealEventArgs>
 	{
-		// Token: 0x17000511 RID: 1297
-		// (get) Token: 0x06000EA9 RID: 3753 RVA: 0x00027D23 File Offset: 0x00025F23
 		public float WaitTime { get; }
-
-		// Token: 0x06000EAA RID: 3754 RVA: 0x00027D2B File Offset: 0x00025F2B
 		public HealAction(Unit source, Unit target, int amount, HealType type = HealType.Normal, float waitTime = 0.2f)
 		{
 			base.Args = new HealEventArgs
@@ -24,8 +18,6 @@ namespace LBoL.Core.Battle.BattleActions
 			};
 			this.WaitTime = waitTime;
 		}
-
-		// Token: 0x06000EAB RID: 3755 RVA: 0x00027D64 File Offset: 0x00025F64
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			base.Args.ActionSource = base.Source;

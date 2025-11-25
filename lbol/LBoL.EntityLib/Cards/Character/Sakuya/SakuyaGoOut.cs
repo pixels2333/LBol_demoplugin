@@ -7,15 +7,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Character.Sakuya
 {
-	// Token: 0x020003AA RID: 938
 	[UsedImplicitly]
 	public sealed class SakuyaGoOut : Card
 	{
-		// Token: 0x1700017D RID: 381
-		// (get) Token: 0x06000D54 RID: 3412 RVA: 0x00019390 File Offset: 0x00017590
 		public override bool DiscardCard
 		{
 			get
@@ -23,8 +19,6 @@ namespace LBoL.EntityLib.Cards.Character.Sakuya
 				return true;
 			}
 		}
-
-		// Token: 0x06000D55 RID: 3413 RVA: 0x00019393 File Offset: 0x00017593
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return new DrawManyCardAction(base.Value1);

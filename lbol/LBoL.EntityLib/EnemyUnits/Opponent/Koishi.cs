@@ -10,40 +10,16 @@ using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.Cards.Enemy;
 using LBoL.EntityLib.StatusEffects.Enemy;
-
 namespace LBoL.EntityLib.EnemyUnits.Opponent
 {
-	// Token: 0x020001CE RID: 462
 	[UsedImplicitly]
 	public sealed class Koishi : EnemyUnit
 	{
-		// Token: 0x17000092 RID: 146
-		// (get) Token: 0x060006C6 RID: 1734 RVA: 0x0000F760 File Offset: 0x0000D960
-		// (set) Token: 0x060006C7 RID: 1735 RVA: 0x0000F768 File Offset: 0x0000D968
 		private Koishi.MoveType Next { get; set; }
-
-		// Token: 0x17000093 RID: 147
-		// (get) Token: 0x060006C8 RID: 1736 RVA: 0x0000F771 File Offset: 0x0000D971
-		// (set) Token: 0x060006C9 RID: 1737 RVA: 0x0000F779 File Offset: 0x0000D979
 		private Koishi.MoveType Last { get; set; }
-
-		// Token: 0x17000094 RID: 148
-		// (get) Token: 0x060006CA RID: 1738 RVA: 0x0000F782 File Offset: 0x0000D982
-		// (set) Token: 0x060006CB RID: 1739 RVA: 0x0000F78A File Offset: 0x0000D98A
 		private Koishi.InspirationType PreviousInspiration { get; set; }
-
-		// Token: 0x17000095 RID: 149
-		// (get) Token: 0x060006CC RID: 1740 RVA: 0x0000F793 File Offset: 0x0000D993
-		// (set) Token: 0x060006CD RID: 1741 RVA: 0x0000F79B File Offset: 0x0000D99B
 		private Koishi.InspirationType NextInspiration { get; set; }
-
-		// Token: 0x17000096 RID: 150
-		// (get) Token: 0x060006CE RID: 1742 RVA: 0x0000F7A4 File Offset: 0x0000D9A4
-		// (set) Token: 0x060006CF RID: 1743 RVA: 0x0000F7AC File Offset: 0x0000D9AC
 		private RandomGen InspirationRng { get; set; }
-
-		// Token: 0x17000097 RID: 151
-		// (get) Token: 0x060006D0 RID: 1744 RVA: 0x0000F7B5 File Offset: 0x0000D9B5
 		private string SpellCardName
 		{
 			get
@@ -51,8 +27,6 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 				return base.GetSpellCardName(new int?(9), 10);
 			}
 		}
-
-		// Token: 0x060006D1 RID: 1745 RVA: 0x0000F7C8 File Offset: 0x0000D9C8
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			base.CountDown = 3;
@@ -60,8 +34,6 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 			this.InspirationRng = base.EnemyMoveRng;
 			this.NextInspiration = this._insPool.Sample(this.InspirationRng);
 		}
-
-		// Token: 0x060006D2 RID: 1746 RVA: 0x0000F81C File Offset: 0x0000DA1C
 		private IEnumerable<BattleAction> OnBattleStarted(GameEventArgs arg)
 		{
 			if (base.Difficulty == GameDifficulty.Lunatic)
@@ -75,8 +47,6 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 			}
 			yield break;
 		}
-
-		// Token: 0x060006D3 RID: 1747 RVA: 0x0000F82C File Offset: 0x0000DA2C
 		public override void OnSpawn(EnemyUnit spawner)
 		{
 			if (base.Difficulty == GameDifficulty.Lunatic)
@@ -90,8 +60,6 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 			}
 			this.React(new ApplyStatusEffectAction<MirrorImage>(this, default(int?), default(int?), default(int?), default(int?), 0f, true));
 		}
-
-		// Token: 0x060006D4 RID: 1748 RVA: 0x0000F8C5 File Offset: 0x0000DAC5
 		protected override IEnumerable<IEnemyMove> GetTurnMoves()
 		{
 			switch (this.Next)
@@ -155,8 +123,6 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 			}
 			yield break;
 		}
-
-		// Token: 0x060006D5 RID: 1749 RVA: 0x0000F8D5 File Offset: 0x0000DAD5
 		private IEnumerable<BattleAction> SpellActions()
 		{
 			foreach (BattleAction battleAction in this.AttackActions(null, base.Gun4, base.Damage4, 1, true, "Instant"))
@@ -170,14 +136,7 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x17000098 RID: 152
-		// (get) Token: 0x060006D6 RID: 1750 RVA: 0x0000F8E5 File Offset: 0x0000DAE5
-		// (set) Token: 0x060006D7 RID: 1751 RVA: 0x0000F8ED File Offset: 0x0000DAED
 		private int SpellLevel { get; set; }
-
-		// Token: 0x17000099 RID: 153
-		// (get) Token: 0x060006D8 RID: 1752 RVA: 0x0000F8F6 File Offset: 0x0000DAF6
 		private bool HiddenIntention
 		{
 			get
@@ -185,9 +144,6 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 				return this.SpellLevel > 0;
 			}
 		}
-
-		// Token: 0x1700009A RID: 154
-		// (get) Token: 0x060006D9 RID: 1753 RVA: 0x0000F901 File Offset: 0x0000DB01
 		private int ShieldCount
 		{
 			get
@@ -195,9 +151,6 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 				return base.Defend / 2 + this.SpellLevel * 2;
 			}
 		}
-
-		// Token: 0x1700009B RID: 155
-		// (get) Token: 0x060006DA RID: 1754 RVA: 0x0000F914 File Offset: 0x0000DB14
 		private int AddCardsCount
 		{
 			get
@@ -209,9 +162,6 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 				return 2;
 			}
 		}
-
-		// Token: 0x1700009C RID: 156
-		// (get) Token: 0x060006DB RID: 1755 RVA: 0x0000F922 File Offset: 0x0000DB22
 		private int DebuffDuration
 		{
 			get
@@ -223,9 +173,6 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 				return 2;
 			}
 		}
-
-		// Token: 0x1700009D RID: 157
-		// (get) Token: 0x060006DC RID: 1756 RVA: 0x0000F930 File Offset: 0x0000DB30
 		private int PowerCount
 		{
 			get
@@ -237,9 +184,6 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 				return 2;
 			}
 		}
-
-		// Token: 0x1700009E RID: 158
-		// (get) Token: 0x060006DD RID: 1757 RVA: 0x0000F93E File Offset: 0x0000DB3E
 		private int GrazeCount
 		{
 			get
@@ -251,8 +195,6 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 				return 2;
 			}
 		}
-
-		// Token: 0x060006DE RID: 1758 RVA: 0x0000F94C File Offset: 0x0000DB4C
 		protected override void UpdateMoveCounters()
 		{
 			int num = base.CountDown - 1;
@@ -270,8 +212,6 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 			this.PreviousInspiration = this.NextInspiration;
 			this.NextInspiration = this._insPool.Without(this.PreviousInspiration).Sample(this.InspirationRng);
 		}
-
-		// Token: 0x04000054 RID: 84
 		private readonly RepeatableRandomPool<Koishi.MoveType> _pool = new RepeatableRandomPool<Koishi.MoveType>
 		{
 			{
@@ -287,8 +227,6 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 				1f
 			}
 		};
-
-		// Token: 0x04000055 RID: 85
 		private readonly RepeatableRandomPool<Koishi.InspirationType> _insPool = new RepeatableRandomPool<Koishi.InspirationType>
 		{
 			{
@@ -312,32 +250,19 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 				1f
 			}
 		};
-
-		// Token: 0x02000689 RID: 1673
 		private enum MoveType
 		{
-			// Token: 0x04000797 RID: 1943
 			TripleShoot,
-			// Token: 0x04000798 RID: 1944
 			DoubleShoot,
-			// Token: 0x04000799 RID: 1945
 			ShootDefend,
-			// Token: 0x0400079A RID: 1946
 			Spell
 		}
-
-		// Token: 0x0200068A RID: 1674
 		private enum InspirationType
 		{
-			// Token: 0x0400079C RID: 1948
 			White,
-			// Token: 0x0400079D RID: 1949
 			Blue,
-			// Token: 0x0400079E RID: 1950
 			Black,
-			// Token: 0x0400079F RID: 1951
 			Red,
-			// Token: 0x040007A0 RID: 1952
 			Green
 		}
 	}

@@ -9,20 +9,15 @@ using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.StatusEffects.Neutral.TwoColor;
 using UnityEngine;
-
 namespace LBoL.EntityLib.StatusEffects.Basic
 {
-	// Token: 0x020000EB RID: 235
 	[UsedImplicitly]
 	public sealed class Amulet : StatusEffect
 	{
-		// Token: 0x06000346 RID: 838 RVA: 0x00008A65 File Offset: 0x00006C65
 		protected override void OnAdded(Unit unit)
 		{
 			base.ReactOwnerEvent<StatusEffectApplyEventArgs>(base.Owner.StatusEffectAdding, new EventSequencedReactor<StatusEffectApplyEventArgs>(this.OnStatusEffectAdding));
 		}
-
-		// Token: 0x06000347 RID: 839 RVA: 0x00008A84 File Offset: 0x00006C84
 		private IEnumerable<BattleAction> OnStatusEffectAdding(StatusEffectApplyEventArgs args)
 		{
 			if (base.Level <= 0)

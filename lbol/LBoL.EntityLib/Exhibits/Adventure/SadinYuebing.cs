@@ -7,20 +7,15 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Exhibits.Adventure
 {
-	// Token: 0x020001C6 RID: 454
 	[UsedImplicitly]
 	public sealed class SadinYuebing : Exhibit
 	{
-		// Token: 0x06000693 RID: 1683 RVA: 0x0000EFE4 File Offset: 0x0000D1E4
 		protected override void OnEnterBattle()
 		{
 			base.ReactBattleEvent<UnitEventArgs>(base.Battle.Player.TurnStarted, new EventSequencedReactor<UnitEventArgs>(this.OnPlayerTurnStarted));
 		}
-
-		// Token: 0x06000694 RID: 1684 RVA: 0x0000F008 File Offset: 0x0000D208
 		private IEnumerable<BattleAction> OnPlayerTurnStarted(UnitEventArgs args)
 		{
 			if (base.Battle.BattleShouldEnd)

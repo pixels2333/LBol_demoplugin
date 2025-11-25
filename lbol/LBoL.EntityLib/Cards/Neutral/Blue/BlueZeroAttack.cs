@@ -7,14 +7,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.Cards.Neutral.Blue
 {
-	// Token: 0x02000312 RID: 786
 	[UsedImplicitly]
 	public sealed class BlueZeroAttack : Card
 	{
-		// Token: 0x06000BA1 RID: 2977 RVA: 0x00017400 File Offset: 0x00015600
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.AttackAction(selector, null);

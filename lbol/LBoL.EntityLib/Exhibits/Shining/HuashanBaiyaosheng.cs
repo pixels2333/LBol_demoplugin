@@ -5,20 +5,15 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.StatusEffects;
-
 namespace LBoL.EntityLib.Exhibits.Shining
 {
-	// Token: 0x0200012C RID: 300
 	[UsedImplicitly]
 	public sealed class HuashanBaiyaosheng : ShiningExhibit
 	{
-		// Token: 0x0600041E RID: 1054 RVA: 0x0000B33B File Offset: 0x0000953B
 		protected override void OnEnterBattle()
 		{
 			base.ReactBattleEvent<UnitEventArgs>(base.Battle.Player.TurnStarted, new EventSequencedReactor<UnitEventArgs>(this.OnPlayerTurnStarted));
 		}
-
-		// Token: 0x0600041F RID: 1055 RVA: 0x0000B35F File Offset: 0x0000955F
 		private IEnumerable<BattleAction> OnPlayerTurnStarted(GameEventArgs args)
 		{
 			switch (base.Battle.Player.TurnCounter)

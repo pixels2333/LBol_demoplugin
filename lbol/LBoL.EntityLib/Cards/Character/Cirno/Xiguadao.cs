@@ -7,14 +7,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using UnityEngine;
-
 namespace LBoL.EntityLib.Cards.Character.Cirno
 {
-	// Token: 0x020004D5 RID: 1237
 	[UsedImplicitly]
 	public sealed class Xiguadao : Card
 	{
-		// Token: 0x0600105F RID: 4191 RVA: 0x0001CEA7 File Offset: 0x0001B0A7
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			bool flag = Random.Range(0f, 1f) > 0.5f;
@@ -32,11 +29,7 @@ namespace LBoL.EntityLib.Cards.Character.Cirno
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x04000111 RID: 273
 		private const string UpGun = "推进之银up";
-
-		// Token: 0x04000112 RID: 274
 		private const string DownGun = "推进之银down";
 	}
 }

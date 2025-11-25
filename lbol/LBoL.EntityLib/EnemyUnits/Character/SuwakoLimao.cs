@@ -11,27 +11,18 @@ using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.Cards.Enemy;
 using LBoL.EntityLib.StatusEffects.Enemy;
-
 namespace LBoL.EntityLib.EnemyUnits.Character
 {
-	// Token: 0x0200024B RID: 587
 	[UsedImplicitly]
 	public sealed class SuwakoLimao : EnemyUnit
 	{
-		// Token: 0x1700010F RID: 271
-		// (get) Token: 0x06000958 RID: 2392 RVA: 0x00014314 File Offset: 0x00012514
-		// (set) Token: 0x06000959 RID: 2393 RVA: 0x0001431C File Offset: 0x0001251C
 		private SuwakoLimao.MoveType Next { get; set; }
-
-		// Token: 0x0600095A RID: 2394 RVA: 0x00014325 File Offset: 0x00012525
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			this.Next = SuwakoLimao.MoveType.Start;
 			base.ReactBattleEvent<GameEventArgs>(base.Battle.BattleStarted, new Func<GameEventArgs, IEnumerable<BattleAction>>(this.OnBattleStarted));
 			base.ReactBattleEvent<DieEventArgs>(base.Dying, new Func<DieEventArgs, IEnumerable<BattleAction>>(this.OnDying));
 		}
-
-		// Token: 0x0600095B RID: 2395 RVA: 0x00014363 File Offset: 0x00012563
 		private IEnumerable<BattleAction> OnBattleStarted(GameEventArgs arg)
 		{
 			yield return PerformAction.Effect(this, "Bianshen", 0f, null, 0f, PerformAction.EffectBehavior.PlayOneShot, 0f);
@@ -40,8 +31,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield return new ApplyStatusEffectAction<LimaoDisguiser>(this, default(int?), default(int?), default(int?), default(int?), 0.5f, true);
 			yield break;
 		}
-
-		// Token: 0x0600095C RID: 2396 RVA: 0x00014374 File Offset: 0x00012574
 		public override void OnSpawn(EnemyUnit spawner)
 		{
 			this.React(PerformAction.Effect(this, "Bianshen", 0f, null, 0f, PerformAction.EffectBehavior.PlayOneShot, 0f));
@@ -49,8 +38,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			this.React(PerformAction.TransformModel(this, base.Id));
 			this.React(new ApplyStatusEffectAction<LimaoDisguiser>(this, default(int?), default(int?), default(int?), default(int?), 0.5f, true));
 		}
-
-		// Token: 0x0600095D RID: 2397 RVA: 0x00014414 File Offset: 0x00012614
 		private IEnumerable<BattleAction> OnDying(DieEventArgs arg)
 		{
 			yield return PerformAction.Effect(this, "Bianshen", 0f, null, 0f, PerformAction.EffectBehavior.PlayOneShot, 0f);
@@ -59,8 +46,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield return PerformAction.DeathAnimation(this);
 			yield break;
 		}
-
-		// Token: 0x0600095E RID: 2398 RVA: 0x00014424 File Offset: 0x00012624
 		private IEnumerable<BattleAction> StartActions()
 		{
 			yield return new EnemyMoveAction(this, base.GetMove(0), true);
@@ -69,8 +54,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield return new ApplyStatusEffectAction<SuwakoHex>(this, new int?(1), default(int?), default(int?), default(int?), 0f, true);
 			yield break;
 		}
-
-		// Token: 0x0600095F RID: 2399 RVA: 0x00014434 File Offset: 0x00012634
 		private IEnumerable<BattleAction> DebuffActions()
 		{
 			yield return new EnemyMoveAction(this, base.GetMove(2), true);
@@ -87,8 +70,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield return PerformAction.Animation(base.Battle.Player, "Hit", 0.3f, null, 0f, -1);
 			yield break;
 		}
-
-		// Token: 0x06000960 RID: 2400 RVA: 0x00014444 File Offset: 0x00012644
 		private IEnumerable<BattleAction> HexActions()
 		{
 			yield return new EnemyMoveAction(this, base.GetMove(2), true);
@@ -108,8 +89,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x06000961 RID: 2401 RVA: 0x00014454 File Offset: 0x00012654
 		protected override IEnumerable<IEnemyMove> GetTurnMoves()
 		{
 			switch (this.Next)
@@ -132,8 +111,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			yield break;
 		}
-
-		// Token: 0x06000962 RID: 2402 RVA: 0x00014464 File Offset: 0x00012664
 		protected override void UpdateMoveCounters()
 		{
 			SuwakoLimao.MoveType moveType;
@@ -156,17 +133,11 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			this.Next = moveType;
 		}
-
-		// Token: 0x0200077B RID: 1915
 		private enum MoveType
 		{
-			// Token: 0x04000BB5 RID: 2997
 			Start,
-			// Token: 0x04000BB6 RID: 2998
 			ShootAndDefend,
-			// Token: 0x04000BB7 RID: 2999
 			Debuff,
-			// Token: 0x04000BB8 RID: 3000
 			Hex
 		}
 	}

@@ -13,14 +13,10 @@ using LBoL.Presentation.UI.ExtraWidgets;
 using LBoL.Presentation.UI.Widgets;
 using UnityEngine;
 using UnityEngine.UI;
-
 namespace LBoL.Presentation.UI.Panels
 {
-	// Token: 0x020000BF RID: 191
 	public class TooltipsLayer : UiPanel
 	{
-		// Token: 0x170001BA RID: 442
-		// (get) Token: 0x06000B3F RID: 2879 RVA: 0x0003A548 File Offset: 0x00038748
 		public override PanelLayer Layer
 		{
 			get
@@ -28,14 +24,10 @@ namespace LBoL.Presentation.UI.Panels
 				return PanelLayer.Tooltip;
 			}
 		}
-
-		// Token: 0x06000B40 RID: 2880 RVA: 0x0003A54B File Offset: 0x0003874B
 		private void Awake()
 		{
 			this._rectTransform = base.GetComponent<RectTransform>();
 		}
-
-		// Token: 0x06000B41 RID: 2881 RVA: 0x0003A55C File Offset: 0x0003875C
 		private static Card GetSingleReferenceCard(IEnumerable<Card> referenceCards, string debugName)
 		{
 			Card card;
@@ -52,8 +44,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			return card;
 		}
-
-		// Token: 0x06000B42 RID: 2882 RVA: 0x0003A5A0 File Offset: 0x000387A0
 		private RectTransform CreateReferenceCardWidget(RectTransform tooltipTrans, Card relativeCard)
 		{
 			CardWidget cardWidget = Object.Instantiate<CardWidget>(this.cardTemplate, tooltipTrans);
@@ -68,14 +58,10 @@ namespace LBoL.Presentation.UI.Panels
 			rectTransform.localScale = new Vector3(0.85f, 0.85f, 1f);
 			return rectTransform;
 		}
-
-		// Token: 0x06000B43 RID: 2883 RVA: 0x0003A631 File Offset: 0x00038831
 		public static int ShowNormal(TooltipSource source)
 		{
 			return UiManager.GetPanel<TooltipsLayer>().InternalShowNormal(source);
 		}
-
-		// Token: 0x06000B44 RID: 2884 RVA: 0x0003A640 File Offset: 0x00038840
 		private int InternalShowNormal(TooltipSource source)
 		{
 			this.HideTooltip(this._currentId);
@@ -92,14 +78,10 @@ namespace LBoL.Presentation.UI.Panels
 			this._currentId = num;
 			return num;
 		}
-
-		// Token: 0x06000B45 RID: 2885 RVA: 0x0003A6CB File Offset: 0x000388CB
 		public static int ShowCard(ICardTooltipSource source, bool showSelfInstead = false)
 		{
 			return UiManager.GetPanel<TooltipsLayer>().InternalShowCard(source, showSelfInstead);
 		}
-
-		// Token: 0x06000B46 RID: 2886 RVA: 0x0003A6DC File Offset: 0x000388DC
 		private int InternalShowCard(ICardTooltipSource source, bool showSelfInstead)
 		{
 			this.HideTooltip(this._currentId);
@@ -159,14 +141,10 @@ namespace LBoL.Presentation.UI.Panels
 			tooltipPositioner.Gap = 10f;
 			return this._currentId;
 		}
-
-		// Token: 0x06000B47 RID: 2887 RVA: 0x0003A8D3 File Offset: 0x00038AD3
 		public static int ShowCardMultiple(IMultiCardTooltipSource source)
 		{
 			return UiManager.GetPanel<TooltipsLayer>().InternalShowCardMultiple(source);
 		}
-
-		// Token: 0x06000B48 RID: 2888 RVA: 0x0003A8E0 File Offset: 0x00038AE0
 		private int InternalShowCardMultiple(IMultiCardTooltipSource source)
 		{
 			this.HideTooltip(this._currentId);
@@ -196,14 +174,10 @@ namespace LBoL.Presentation.UI.Panels
 			tooltipPositioner.Gap = 10f;
 			return this._currentId;
 		}
-
-		// Token: 0x06000B49 RID: 2889 RVA: 0x0003AA1C File Offset: 0x00038C1C
 		public static int ShowExhibit(ExhibitTooltipSource source)
 		{
 			return UiManager.GetPanel<TooltipsLayer>().InternalShowExhibit(source);
 		}
-
-		// Token: 0x06000B4A RID: 2890 RVA: 0x0003AA2C File Offset: 0x00038C2C
 		private int InternalShowExhibit(ExhibitTooltipSource source)
 		{
 			this.HideTooltip(this._currentId);
@@ -252,14 +226,10 @@ namespace LBoL.Presentation.UI.Panels
 			tooltipPositioner.Gap = source.Gap;
 			return this._currentId;
 		}
-
-		// Token: 0x06000B4B RID: 2891 RVA: 0x0003AC02 File Offset: 0x00038E02
 		public static int ShowUltimateSkill(UltimateSkillTooltipSource source)
 		{
 			return UiManager.GetPanel<TooltipsLayer>().InternalShowUltimateSkill(source);
 		}
-
-		// Token: 0x06000B4C RID: 2892 RVA: 0x0003AC10 File Offset: 0x00038E10
 		private int InternalShowUltimateSkill(UltimateSkillTooltipSource source)
 		{
 			this.HideTooltip(this._currentId);
@@ -307,14 +277,10 @@ namespace LBoL.Presentation.UI.Panels
 			tooltipPositioner.TooltipSize = vector2;
 			return this._currentId;
 		}
-
-		// Token: 0x06000B4D RID: 2893 RVA: 0x0003ADDF File Offset: 0x00038FDF
 		public static int ShowStatus(StatusTooltipSource source)
 		{
 			return UiManager.GetPanel<TooltipsLayer>().InternalShowStatus(source);
 		}
-
-		// Token: 0x06000B4E RID: 2894 RVA: 0x0003ADEC File Offset: 0x00038FEC
 		private int InternalShowStatus(StatusTooltipSource source)
 		{
 			this.HideTooltip(this._currentId);
@@ -338,14 +304,10 @@ namespace LBoL.Presentation.UI.Panels
 			tooltipPositioner.TooltipSize = vector;
 			return this._currentId;
 		}
-
-		// Token: 0x06000B4F RID: 2895 RVA: 0x0003AECF File Offset: 0x000390CF
 		public static int ShowDoll(DollTooltipSource source)
 		{
 			return UiManager.GetPanel<TooltipsLayer>().InternalShowDoll(source);
 		}
-
-		// Token: 0x06000B50 RID: 2896 RVA: 0x0003AEDC File Offset: 0x000390DC
 		private int InternalShowDoll(DollTooltipSource source)
 		{
 			this.HideTooltip(this._currentId);
@@ -369,14 +331,10 @@ namespace LBoL.Presentation.UI.Panels
 			tooltipPositioner.TooltipSize = vector;
 			return this._currentId;
 		}
-
-		// Token: 0x06000B51 RID: 2897 RVA: 0x0003AFBA File Offset: 0x000391BA
 		public static int ShowAchievement(AchievementTooltipSource source)
 		{
 			return UiManager.GetPanel<TooltipsLayer>().InternalShowAchievement(source);
 		}
-
-		// Token: 0x06000B52 RID: 2898 RVA: 0x0003AFC8 File Offset: 0x000391C8
 		private int InternalShowAchievement(AchievementTooltipSource source)
 		{
 			this.HideTooltip(this._currentId);
@@ -400,14 +358,10 @@ namespace LBoL.Presentation.UI.Panels
 			tooltipPositioner.Gap = source.Gap;
 			return this._currentId;
 		}
-
-		// Token: 0x06000B53 RID: 2899 RVA: 0x0003B0B4 File Offset: 0x000392B4
 		public static void Hide(int id)
 		{
 			UiManager.GetPanel<TooltipsLayer>().HideTooltip(id);
 		}
-
-		// Token: 0x06000B54 RID: 2900 RVA: 0x0003B0C4 File Offset: 0x000392C4
 		private void HideTooltip(int id)
 		{
 			if (id < this._currentId)
@@ -420,8 +374,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this._currentTooltip.Clear();
 		}
-
-		// Token: 0x06000B55 RID: 2901 RVA: 0x0003B12C File Offset: 0x0003932C
 		public void Refresh()
 		{
 			List<TooltipWidget> list = new List<TooltipWidget>();
@@ -441,32 +393,16 @@ namespace LBoL.Presentation.UI.Panels
 				}
 			}
 		}
-
-		// Token: 0x040008D9 RID: 2265
 		private const float RelativeCardRatio = 0.85f;
-
-		// Token: 0x040008DA RID: 2266
 		private const float RelativeCardGap = 10f;
-
-		// Token: 0x040008DB RID: 2267
 		[SerializeField]
 		private TooltipWidget tooltipTemplate;
-
-		// Token: 0x040008DC RID: 2268
 		[SerializeField]
 		private EntityTooltipWidget entityTooltipTemplate;
-
-		// Token: 0x040008DD RID: 2269
 		[SerializeField]
 		private CardWidget cardTemplate;
-
-		// Token: 0x040008DE RID: 2270
 		private int _currentId;
-
-		// Token: 0x040008DF RID: 2271
 		private readonly List<GameObject> _currentTooltip = new List<GameObject>();
-
-		// Token: 0x040008E0 RID: 2272
 		private RectTransform _rectTransform;
 	}
 }

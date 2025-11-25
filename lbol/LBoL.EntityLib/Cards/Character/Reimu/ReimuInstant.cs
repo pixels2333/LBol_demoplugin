@@ -7,14 +7,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.StatusEffects;
 using LBoL.EntityLib.StatusEffects.ExtraTurn;
-
 namespace LBoL.EntityLib.Cards.Character.Reimu
 {
-	// Token: 0x020003F3 RID: 1011
 	[UsedImplicitly]
 	public sealed class ReimuInstant : LimitedStopTimeCard
 	{
-		// Token: 0x06000E12 RID: 3602 RVA: 0x0001A18C File Offset: 0x0001838C
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.AttackAction(selector, null);

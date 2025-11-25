@@ -7,13 +7,10 @@ using DG.Tweening.Plugins.Options;
 using JetBrains.Annotations;
 using LBoL.Base.Extensions;
 using UnityEngine;
-
 namespace LBoL.Presentation.Effect
 {
-	// Token: 0x02000102 RID: 258
 	public class LoveGirlEffectManager : MonoBehaviour
 	{
-		// Token: 0x06000E56 RID: 3670 RVA: 0x00044870 File Offset: 0x00042A70
 		[UsedImplicitly]
 		public void Add(int amount)
 		{
@@ -24,8 +21,6 @@ namespace LBoL.Presentation.Effect
 			}
 			this.Refresh();
 		}
-
-		// Token: 0x06000E57 RID: 3671 RVA: 0x000448B0 File Offset: 0x00042AB0
 		[UsedImplicitly]
 		public void Remove(int amount)
 		{
@@ -69,8 +64,6 @@ namespace LBoL.Presentation.Effect
 			}
 			this.Refresh();
 		}
-
-		// Token: 0x06000E58 RID: 3672 RVA: 0x00044A2C File Offset: 0x00042C2C
 		private void Refresh()
 		{
 			if (this.list.Count > 0)
@@ -86,8 +79,6 @@ namespace LBoL.Presentation.Effect
 				}
 			}
 		}
-
-		// Token: 0x06000E59 RID: 3673 RVA: 0x00044AC8 File Offset: 0x00042CC8
 		private void Update()
 		{
 			this.time += Time.unscaledDeltaTime;
@@ -96,15 +87,9 @@ namespace LBoL.Presentation.Effect
 				loveGirlEffectView.Calculation(this.time, Time.unscaledDeltaTime);
 			}
 		}
-
-		// Token: 0x04000AB6 RID: 2742
 		[SerializeField]
 		private LoveGirlEffectView template;
-
-		// Token: 0x04000AB7 RID: 2743
 		private readonly List<LoveGirlEffectView> list = new List<LoveGirlEffectView>();
-
-		// Token: 0x04000AB8 RID: 2744
 		private float time;
 	}
 }

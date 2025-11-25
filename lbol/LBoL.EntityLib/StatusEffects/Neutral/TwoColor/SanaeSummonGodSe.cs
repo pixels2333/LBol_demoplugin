@@ -6,14 +6,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.StatusEffects.Neutral.TwoColor
 {
-	// Token: 0x02000048 RID: 72
 	[UsedImplicitly]
 	public sealed class SanaeSummonGodSe : StatusEffect
 	{
-		// Token: 0x060000DF RID: 223 RVA: 0x00003927 File Offset: 0x00001B27
 		protected override string GetBaseDescription()
 		{
 			if (base.Count != 1)
@@ -22,14 +19,10 @@ namespace LBoL.EntityLib.StatusEffects.Neutral.TwoColor
 			}
 			return base.ExtraDescription;
 		}
-
-		// Token: 0x060000E0 RID: 224 RVA: 0x0000393F File Offset: 0x00001B3F
 		protected override void OnAdded(Unit unit)
 		{
 			base.ReactOwnerEvent<UnitEventArgs>(base.Battle.Player.TurnStarted, new EventSequencedReactor<UnitEventArgs>(this.OnPlayerTurnStarted));
 		}
-
-		// Token: 0x060000E1 RID: 225 RVA: 0x00003963 File Offset: 0x00001B63
 		private IEnumerable<BattleAction> OnPlayerTurnStarted(UnitEventArgs args)
 		{
 			if (base.Battle.BattleShouldEnd)

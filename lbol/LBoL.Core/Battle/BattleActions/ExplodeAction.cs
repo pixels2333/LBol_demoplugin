@@ -7,33 +7,15 @@ using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using UnityEngine;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x02000180 RID: 384
 	public sealed class ExplodeAction : BattleAction
 	{
-		// Token: 0x17000506 RID: 1286
-		// (get) Token: 0x06000E81 RID: 3713 RVA: 0x00027722 File Offset: 0x00025922
 		public DieEventArgs DieArgs { get; }
-
-		// Token: 0x17000507 RID: 1287
-		// (get) Token: 0x06000E82 RID: 3714 RVA: 0x0002772A File Offset: 0x0002592A
 		public DamageDealingEventArgs DealingArgs { get; }
-
-		// Token: 0x17000508 RID: 1288
-		// (get) Token: 0x06000E83 RID: 3715 RVA: 0x00027732 File Offset: 0x00025932
 		public DamageEventArgs[] DamageArgs { get; }
-
-		// Token: 0x17000509 RID: 1289
-		// (get) Token: 0x06000E84 RID: 3716 RVA: 0x0002773A File Offset: 0x0002593A
 		public string GunName { get; }
-
-		// Token: 0x1700050A RID: 1290
-		// (get) Token: 0x06000E85 RID: 3717 RVA: 0x00027742 File Offset: 0x00025942
 		public GunType GunType { get; }
-
-		// Token: 0x06000E86 RID: 3718 RVA: 0x0002774C File Offset: 0x0002594C
 		public ExplodeAction(EnemyUnit unit, IEnumerable<Unit> damageTargets, DamageInfo damageInfo, DieCause dieCause, GameEntity dieSource, string gunName = "Instant", GunType gunType = GunType.Single)
 		{
 			Unit[] array = Enumerable.ToArray<Unit>(damageTargets);
@@ -61,14 +43,10 @@ namespace LBoL.Core.Battle.BattleActions
 			this.GunName = gunName;
 			this.GunType = gunType;
 		}
-
-		// Token: 0x06000E87 RID: 3719 RVA: 0x00027817 File Offset: 0x00025A17
 		public ExplodeAction(EnemyUnit unit, Unit damageTarget, DamageInfo damageInfo, DieCause dieCause, GameEntity dieSource, string gunName = "Instant", GunType gunType = GunType.Single)
 			: this(unit, new Unit[] { damageTarget }, damageInfo, dieCause, dieSource, gunName, gunType)
 		{
 		}
-
-		// Token: 0x06000E88 RID: 3720 RVA: 0x00027834 File Offset: 0x00025A34
 		public override BattleAction SetCause(ActionCause cause)
 		{
 			base.SetCause(cause);
@@ -81,8 +59,6 @@ namespace LBoL.Core.Battle.BattleActions
 			}
 			return this;
 		}
-
-		// Token: 0x06000E89 RID: 3721 RVA: 0x00027880 File Offset: 0x00025A80
 		public override BattleAction SetSource(GameEntity source)
 		{
 			base.SetSource(source);
@@ -95,9 +71,6 @@ namespace LBoL.Core.Battle.BattleActions
 			}
 			return this;
 		}
-
-		// Token: 0x1700050B RID: 1291
-		// (get) Token: 0x06000E8A RID: 3722 RVA: 0x000278CC File Offset: 0x00025ACC
 		public override bool IsModified
 		{
 			get
@@ -113,9 +86,6 @@ namespace LBoL.Core.Battle.BattleActions
 				return true;
 			}
 		}
-
-		// Token: 0x1700050C RID: 1292
-		// (get) Token: 0x06000E8B RID: 3723 RVA: 0x00027928 File Offset: 0x00025B28
 		public override string[] Modifiers
 		{
 			get
@@ -127,9 +97,6 @@ namespace LBoL.Core.Battle.BattleActions
 				return Enumerable.ToArray<string>(Enumerable.Distinct<string>(Enumerable.Concat<string>(this.DieArgs.Modifiers, Enumerable.SelectMany<DamageEventArgs, string>(this.DamageArgs, (DamageEventArgs arg) => arg.Modifiers))));
 			}
 		}
-
-		// Token: 0x1700050D RID: 1293
-		// (get) Token: 0x06000E8C RID: 3724 RVA: 0x0002798D File Offset: 0x00025B8D
 		public override bool IsCanceled
 		{
 			get
@@ -137,9 +104,6 @@ namespace LBoL.Core.Battle.BattleActions
 				return false;
 			}
 		}
-
-		// Token: 0x1700050E RID: 1294
-		// (get) Token: 0x06000E8D RID: 3725 RVA: 0x00027990 File Offset: 0x00025B90
 		public override CancelCause CancelCause
 		{
 			get
@@ -147,8 +111,6 @@ namespace LBoL.Core.Battle.BattleActions
 				return CancelCause.None;
 			}
 		}
-
-		// Token: 0x06000E8E RID: 3726 RVA: 0x00027994 File Offset: 0x00025B94
 		public override void ClearModifiers()
 		{
 			this.DieArgs.ClearModifiers();
@@ -158,8 +120,6 @@ namespace LBoL.Core.Battle.BattleActions
 				damageArgs[i].ClearModifiers();
 			}
 		}
-
-		// Token: 0x06000E8F RID: 3727 RVA: 0x000279C9 File Offset: 0x00025BC9
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			if (Enumerable.All<Unit>(this.DealingArgs.Targets, (Unit t) => t.IsDead))
@@ -311,8 +271,6 @@ namespace LBoL.Core.Battle.BattleActions
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x06000E90 RID: 3728 RVA: 0x000279DC File Offset: 0x00025BDC
 		public override string ExportDebugDetails()
 		{
 			if (!this._dealingPassed)
@@ -321,8 +279,6 @@ namespace LBoL.Core.Battle.BattleActions
 			}
 			return "Damage: [" + string.Join(", ", Enumerable.Select<DamageEventArgs, string>(this.DamageArgs, (DamageEventArgs a) => a.ExportDebugDetails())) + "]; Die: " + this.DieArgs.ExportDebugDetails();
 		}
-
-		// Token: 0x0400067D RID: 1661
 		private bool _dealingPassed;
 	}
 }

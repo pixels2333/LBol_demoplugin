@@ -9,19 +9,12 @@ using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.EnemyUnits.Normal.Shenlings;
 using LBoL.EntityLib.StatusEffects.Enemy;
-
 namespace LBoL.EntityLib.EnemyUnits.Character
 {
-	// Token: 0x0200023B RID: 571
 	[UsedImplicitly]
 	public sealed class KanakoLimao : EnemyUnit
 	{
-		// Token: 0x170000EC RID: 236
-		// (get) Token: 0x060008BC RID: 2236 RVA: 0x00012EA2 File Offset: 0x000110A2
-		// (set) Token: 0x060008BD RID: 2237 RVA: 0x00012EAA File Offset: 0x000110AA
 		private KanakoLimao.MoveType Next { get; set; }
-
-		// Token: 0x060008BE RID: 2238 RVA: 0x00012EB4 File Offset: 0x000110B4
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			this.Next = KanakoLimao.MoveType.DoubleShoot;
@@ -30,8 +23,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			base.ReactBattleEvent<GameEventArgs>(base.Battle.BattleStarted, new Func<GameEventArgs, IEnumerable<BattleAction>>(this.OnBattleStarted));
 			base.ReactBattleEvent<DieEventArgs>(base.Dying, new Func<DieEventArgs, IEnumerable<BattleAction>>(this.OnDying));
 		}
-
-		// Token: 0x060008BF RID: 2239 RVA: 0x00012F2F File Offset: 0x0001112F
 		private IEnumerable<BattleAction> OnBattleStarted(GameEventArgs arg)
 		{
 			yield return PerformAction.Chat(this, "Chat.Limao1".Localize(true), 3f, 0f, 1f, true);
@@ -53,8 +44,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x060008C0 RID: 2240 RVA: 0x00012F3F File Offset: 0x0001113F
 		private IEnumerable<BattleAction> OnDying(DieEventArgs arg)
 		{
 			yield return PerformAction.Effect(this, "Bianshen", 0f, null, 0f, PerformAction.EffectBehavior.PlayOneShot, 0f);
@@ -63,8 +52,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield return PerformAction.DeathAnimation(this);
 			yield break;
 		}
-
-		// Token: 0x060008C1 RID: 2241 RVA: 0x00012F4F File Offset: 0x0001114F
 		private IEnumerable<BattleAction> SummonActions()
 		{
 			yield return new EnemyMoveAction(this, base.GetMove(2), true);
@@ -92,8 +79,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			this._summonedOnce = true;
 			yield break;
 		}
-
-		// Token: 0x060008C2 RID: 2242 RVA: 0x00012F5F File Offset: 0x0001115F
 		protected override IEnumerable<IEnemyMove> GetTurnMoves()
 		{
 			switch (this.Next)
@@ -117,8 +102,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			yield break;
 		}
-
-		// Token: 0x060008C3 RID: 2243 RVA: 0x00012F70 File Offset: 0x00011170
 		protected override void UpdateMoveCounters()
 		{
 			KanakoLimao.MoveType moveType;
@@ -138,24 +121,13 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			this.Next = moveType;
 		}
-
-		// Token: 0x040000AA RID: 170
 		private Type _summonType;
-
-		// Token: 0x040000AB RID: 171
 		private int _summonRootIndex;
-
-		// Token: 0x040000AC RID: 172
 		private bool _summonedOnce;
-
-		// Token: 0x02000735 RID: 1845
 		private enum MoveType
 		{
-			// Token: 0x04000A71 RID: 2673
 			DoubleShoot,
-			// Token: 0x04000A72 RID: 2674
 			Spawn,
-			// Token: 0x04000A73 RID: 2675
 			ShootAndDefend
 		}
 	}

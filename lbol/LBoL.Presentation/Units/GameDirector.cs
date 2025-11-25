@@ -28,33 +28,14 @@ using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.UI.Widgets;
 using UnityEngine;
-
 namespace LBoL.Presentation.Units
 {
-	// Token: 0x02000018 RID: 24
 	public class GameDirector : Singleton<GameDirector>
 	{
-		// Token: 0x17000041 RID: 65
-		// (get) Token: 0x060001AB RID: 427 RVA: 0x000087EE File Offset: 0x000069EE
-		// (set) Token: 0x060001AC RID: 428 RVA: 0x000087F6 File Offset: 0x000069F6
 		private Dictionary<string, EnemyFormation> Formations { get; set; }
-
-		// Token: 0x17000042 RID: 66
-		// (get) Token: 0x060001AD RID: 429 RVA: 0x000087FF File Offset: 0x000069FF
-		// (set) Token: 0x060001AE RID: 430 RVA: 0x00008806 File Offset: 0x00006A06
 		private static string ActiveFormation { get; set; }
-
-		// Token: 0x17000043 RID: 67
-		// (get) Token: 0x060001AF RID: 431 RVA: 0x0000880E File Offset: 0x00006A0E
-		// (set) Token: 0x060001B0 RID: 432 RVA: 0x00008816 File Offset: 0x00006A16
 		public UnitView PlayerUnitView { get; private set; }
-
-		// Token: 0x17000044 RID: 68
-		// (get) Token: 0x060001B1 RID: 433 RVA: 0x0000881F File Offset: 0x00006A1F
 		private List<UnitView> EnemyUnitViews { get; } = new List<UnitView>();
-
-		// Token: 0x17000045 RID: 69
-		// (get) Token: 0x060001B2 RID: 434 RVA: 0x00008827 File Offset: 0x00006A27
 		public static UnitView Player
 		{
 			get
@@ -62,9 +43,6 @@ namespace LBoL.Presentation.Units
 				return Singleton<GameDirector>.Instance.PlayerUnitView;
 			}
 		}
-
-		// Token: 0x17000046 RID: 70
-		// (get) Token: 0x060001B3 RID: 435 RVA: 0x00008833 File Offset: 0x00006A33
 		public static IReadOnlyList<UnitView> Enemies
 		{
 			get
@@ -72,8 +50,6 @@ namespace LBoL.Presentation.Units
 				return Singleton<GameDirector>.Instance.EnemyUnitViews;
 			}
 		}
-
-		// Token: 0x060001B4 RID: 436 RVA: 0x00008840 File Offset: 0x00006A40
 		private void Awake()
 		{
 			this.Formations = new Dictionary<string, EnemyFormation>();
@@ -88,8 +64,6 @@ namespace LBoL.Presentation.Units
 			GameDirector.SetTimeStep();
 			GameDirector._cameraOffset = CameraController.MainCamera.transform.localPosition;
 		}
-
-		// Token: 0x060001B5 RID: 437 RVA: 0x000088D8 File Offset: 0x00006AD8
 		public void EnterBattle(BattleController battle)
 		{
 			battle.ActionViewer.Register<WaitForCoroutineAction>(new BattleActionViewer<WaitForCoroutineAction>(GameDirector.WaitCoroutineViewer), null);
@@ -114,8 +88,6 @@ namespace LBoL.Presentation.Units
 			battle.GlobalStatusChanged += new Action(this.OnGlobalStatusChanged);
 			GameDirector.Player.EnterBattle(battle);
 		}
-
-		// Token: 0x060001B6 RID: 438 RVA: 0x00008ACC File Offset: 0x00006CCC
 		public void LeaveBattle(BattleController battle)
 		{
 			battle.ActionViewer.Unregister<WaitForCoroutineAction>(new BattleActionViewer<WaitForCoroutineAction>(GameDirector.WaitCoroutineViewer));
@@ -140,8 +112,6 @@ namespace LBoL.Presentation.Units
 			battle.GlobalStatusChanged -= new Action(this.OnGlobalStatusChanged);
 			GameDirector.Player.LeaveBattle(battle);
 		}
-
-		// Token: 0x060001B7 RID: 439 RVA: 0x00008CAC File Offset: 0x00006EAC
 		private void OnGlobalStatusChanged()
 		{
 			if (this.PlayerUnitView)
@@ -157,8 +127,6 @@ namespace LBoL.Presentation.Units
 				}
 			}
 		}
-
-		// Token: 0x060001B8 RID: 440 RVA: 0x00008D24 File Offset: 0x00006F24
 		public static void MovePlayer(Vector2 v2)
 		{
 			if (Singleton<GameDirector>.Instance.PlayerUnitView == null)
@@ -168,14 +136,10 @@ namespace LBoL.Presentation.Units
 			}
 			Singleton<GameDirector>.Instance.playerRoot.localPosition = v2;
 		}
-
-		// Token: 0x060001B9 RID: 441 RVA: 0x00008D52 File Offset: 0x00006F52
 		public static UniTask<UnitView> LoadPlayerAsync(PlayerUnit player, bool hidden = false)
 		{
 			return Singleton<GameDirector>.Instance.InternalLoadPlayerAsync(player, hidden);
 		}
-
-		// Token: 0x060001BA RID: 442 RVA: 0x00008D60 File Offset: 0x00006F60
 		private async UniTask<UnitView> InternalLoadPlayerAsync(PlayerUnit player, bool hidden)
 		{
 			GameObject gameObject = Object.Instantiate<GameObject>(this.unitPrefab, this.playerRoot);
@@ -190,8 +154,6 @@ namespace LBoL.Presentation.Units
 			this.PlayerUnitView = playerView;
 			return playerView;
 		}
-
-		// Token: 0x060001BB RID: 443 RVA: 0x00008DB4 File Offset: 0x00006FB4
 		public static UniTask<UnitView> LoadEnemyAsync(EnemyUnit enemy, string formationName = null, bool hidden = false, int? forceRootIndex = null)
 		{
 			if (formationName == null)
@@ -208,20 +170,14 @@ namespace LBoL.Presentation.Units
 			Debug.LogWarning("Formation name '" + formationName + "' not found, using default.");
 			return Singleton<GameDirector>.Instance.InternalLoadEnemyAsync(enemy, Singleton<GameDirector>.Instance.Formations["Triangle"], hidden, forceRootIndex);
 		}
-
-		// Token: 0x060001BC RID: 444 RVA: 0x00008E34 File Offset: 0x00007034
 		public static void ClearEnemies()
 		{
 			Singleton<GameDirector>.Instance.InternalClearEnemies();
 		}
-
-		// Token: 0x060001BD RID: 445 RVA: 0x00008E40 File Offset: 0x00007040
 		public static void ClearAll()
 		{
 			Singleton<GameDirector>.Instance.InternalClearAll();
 		}
-
-		// Token: 0x060001BE RID: 446 RVA: 0x00008E4C File Offset: 0x0000704C
 		private async UniTask<UnitView> InternalLoadEnemyAsync(EnemyUnit enemy, EnemyFormation formation, bool hidden, int? forceRootIndex)
 		{
 			int rootIndex = forceRootIndex ?? enemy.RootIndex;
@@ -243,8 +199,6 @@ namespace LBoL.Presentation.Units
 			enemyView.AngleIndex = Enumerable.ToList<int>(formation.enemyLocations.Keys)[rootIndex];
 			return enemyView;
 		}
-
-		// Token: 0x060001BF RID: 447 RVA: 0x00008EB0 File Offset: 0x000070B0
 		public static async UniTask<UnitView> LoadLoreCharacterAsync(Type characterType, Action clickAction, int index = 0)
 		{
 			EnemyUnit enemyUnit = Library.CreateEnemyUnit(characterType);
@@ -257,8 +211,6 @@ namespace LBoL.Presentation.Units
 			obj.ClickHandler = clickAction;
 			return obj;
 		}
-
-		// Token: 0x060001C0 RID: 448 RVA: 0x00008F04 File Offset: 0x00007104
 		private void InternalClearEnemies()
 		{
 			foreach (UnitView unitView in this.EnemyUnitViews)
@@ -267,8 +219,6 @@ namespace LBoL.Presentation.Units
 			}
 			this.EnemyUnitViews.Clear();
 		}
-
-		// Token: 0x060001C1 RID: 449 RVA: 0x00008F64 File Offset: 0x00007164
 		private void InternalClearAll()
 		{
 			GameDirector.StopLoreChat();
@@ -277,8 +227,6 @@ namespace LBoL.Presentation.Units
 			this.InternalClearEnemies();
 			GameDirector.ClearDoremyEnvironment();
 		}
-
-		// Token: 0x060001C2 RID: 450 RVA: 0x00008F90 File Offset: 0x00007190
 		public static void HidePlayer()
 		{
 			UnitView playerUnitView = Singleton<GameDirector>.Instance.PlayerUnitView;
@@ -287,8 +235,6 @@ namespace LBoL.Presentation.Units
 				playerUnitView.IsHidden = true;
 			}
 		}
-
-		// Token: 0x060001C3 RID: 451 RVA: 0x00008FB8 File Offset: 0x000071B8
 		public static void HideAll()
 		{
 			GameDirector.HidePlayer();
@@ -297,8 +243,6 @@ namespace LBoL.Presentation.Units
 				unitView.IsHidden = true;
 			}
 		}
-
-		// Token: 0x060001C4 RID: 452 RVA: 0x00009014 File Offset: 0x00007214
 		public static void RevealPlayer(bool withStatus)
 		{
 			UnitView playerUnitView = Singleton<GameDirector>.Instance.PlayerUnitView;
@@ -307,15 +251,11 @@ namespace LBoL.Presentation.Units
 				playerUnitView.Show(withStatus);
 			}
 		}
-
-		// Token: 0x060001C5 RID: 453 RVA: 0x0000903B File Offset: 0x0000723B
 		public static void RevealAll(bool withStatus)
 		{
 			GameDirector.RevealPlayer(withStatus);
 			GameDirector.RevealAllEnemies(withStatus);
 		}
-
-		// Token: 0x060001C6 RID: 454 RVA: 0x0000904C File Offset: 0x0000724C
 		public static void RevealAllEnemies(bool withStatus)
 		{
 			foreach (UnitView unitView in Singleton<GameDirector>.Instance.EnemyUnitViews)
@@ -323,8 +263,6 @@ namespace LBoL.Presentation.Units
 				unitView.Show(withStatus);
 			}
 		}
-
-		// Token: 0x060001C7 RID: 455 RVA: 0x000090A4 File Offset: 0x000072A4
 		public static void RevealEnemy(int index, bool withStatus)
 		{
 			UnitView enemy = GameDirector.GetEnemy(index);
@@ -333,8 +271,6 @@ namespace LBoL.Presentation.Units
 				enemy.Show(withStatus);
 			}
 		}
-
-		// Token: 0x060001C8 RID: 456 RVA: 0x000090C8 File Offset: 0x000072C8
 		public static void RevealEnemy(EnemyUnit enemy, bool withStatus)
 		{
 			UnitView enemy2 = GameDirector.GetEnemy(enemy);
@@ -343,8 +279,6 @@ namespace LBoL.Presentation.Units
 				enemy2.Show(withStatus);
 			}
 		}
-
-		// Token: 0x060001C9 RID: 457 RVA: 0x000090EC File Offset: 0x000072EC
 		public static void FadeInEnemyStatus()
 		{
 			foreach (UnitView unitView in Singleton<GameDirector>.Instance.EnemyUnitViews)
@@ -352,8 +286,6 @@ namespace LBoL.Presentation.Units
 				unitView.SetStatusVisible(true, false);
 			}
 		}
-
-		// Token: 0x060001CA RID: 458 RVA: 0x00009144 File Offset: 0x00007344
 		public static void FadeInPlayerStatus()
 		{
 			UnitView playerUnitView = Singleton<GameDirector>.Instance.PlayerUnitView;
@@ -362,8 +294,6 @@ namespace LBoL.Presentation.Units
 				playerUnitView.SetStatusVisible(true, false);
 			}
 		}
-
-		// Token: 0x060001CB RID: 459 RVA: 0x0000916C File Offset: 0x0000736C
 		public static void FadeOutPlayerStatus()
 		{
 			UnitView playerUnitView = Singleton<GameDirector>.Instance.PlayerUnitView;
@@ -372,8 +302,6 @@ namespace LBoL.Presentation.Units
 				playerUnitView.SetStatusVisible(false, false);
 			}
 		}
-
-		// Token: 0x060001CC RID: 460 RVA: 0x00009194 File Offset: 0x00007394
 		private static void UpdateEnemyMoveOrder()
 		{
 			if (GameDirector._enemyMoveOrderVisible)
@@ -389,8 +317,6 @@ namespace LBoL.Presentation.Units
 				}
 			}
 		}
-
-		// Token: 0x060001CD RID: 461 RVA: 0x000092B4 File Offset: 0x000074B4
 		public static void SetEnemyMoveOrderVisible(bool visible)
 		{
 			GameDirector._enemyMoveOrderVisible = visible;
@@ -415,8 +341,6 @@ namespace LBoL.Presentation.Units
 				unitView2.SetMoveOrderVisible(false);
 			}
 		}
-
-		// Token: 0x060001CE RID: 462 RVA: 0x00009354 File Offset: 0x00007554
 		public static UnitView GetUnit(Unit unit)
 		{
 			if (unit == GameDirector.Player.Unit)
@@ -430,32 +354,22 @@ namespace LBoL.Presentation.Units
 			}
 			return null;
 		}
-
-		// Token: 0x060001CF RID: 463 RVA: 0x00009386 File Offset: 0x00007586
 		public static UnitView GetEnemy(int index)
 		{
 			return Singleton<GameDirector>.Instance.EnemyUnitViews.TryGetValue(index);
 		}
-
-		// Token: 0x060001D0 RID: 464 RVA: 0x00009398 File Offset: 0x00007598
 		public static UnitView GetEnemyByRootIndex(int rootIndex)
 		{
 			return Enumerable.FirstOrDefault<UnitView>(Singleton<GameDirector>.Instance.EnemyUnitViews, (UnitView enemy) => enemy.RootIndex == rootIndex);
 		}
-
-		// Token: 0x060001D1 RID: 465 RVA: 0x000093D0 File Offset: 0x000075D0
 		public static UnitView GetEnemy(EnemyUnit enemy)
 		{
 			return Enumerable.FirstOrDefault<UnitView>(Singleton<GameDirector>.Instance.EnemyUnitViews, (UnitView e) => e.Unit == enemy);
 		}
-
-		// Token: 0x060001D2 RID: 466 RVA: 0x00009405 File Offset: 0x00007605
 		public static void PlayerDebutAnimation()
 		{
 			GameDirector.Player.DebutAnimation();
 		}
-
-		// Token: 0x060001D3 RID: 467 RVA: 0x00009411 File Offset: 0x00007611
 		public static void EnemyDebutAnimation(int index)
 		{
 			UnitView enemy = GameDirector.GetEnemy(index);
@@ -465,8 +379,6 @@ namespace LBoL.Presentation.Units
 			}
 			enemy.DebutAnimation();
 		}
-
-		// Token: 0x060001D4 RID: 468 RVA: 0x00009423 File Offset: 0x00007623
 		public static void EnemyDebutAnimation(EnemyUnit enemy)
 		{
 			UnitView enemy2 = GameDirector.GetEnemy(enemy);
@@ -476,8 +388,6 @@ namespace LBoL.Presentation.Units
 			}
 			enemy2.DebutAnimation();
 		}
-
-		// Token: 0x060001D5 RID: 469 RVA: 0x00009438 File Offset: 0x00007638
 		public static void AllEnemiesDebutAnimation()
 		{
 			foreach (UnitView unitView in GameDirector.Enemies)
@@ -485,8 +395,6 @@ namespace LBoL.Presentation.Units
 				unitView.DebutAnimation();
 			}
 		}
-
-		// Token: 0x060001D6 RID: 470 RVA: 0x00009484 File Offset: 0x00007684
 		public static IEnumerable<UnitView> EnumeratePotentialTargets(TargetType targetType)
 		{
 			if (targetType == TargetType.All || targetType == TargetType.Self)
@@ -507,19 +415,11 @@ namespace LBoL.Presentation.Units
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x17000047 RID: 71
-		// (get) Token: 0x060001D7 RID: 471 RVA: 0x00009494 File Offset: 0x00007694
-		// (set) Token: 0x060001D8 RID: 472 RVA: 0x0000949B File Offset: 0x0000769B
 		private static Coroutine LoreChatRunner { get; set; }
-
-		// Token: 0x060001D9 RID: 473 RVA: 0x000094A3 File Offset: 0x000076A3
 		public static void DebutChat(bool hasKaguya, string playerName)
 		{
 			GameDirector.LoreChatRunner = Singleton<GameDirector>.Instance.StartCoroutine(GameDirector.DebutFlow(hasKaguya, playerName));
 		}
-
-		// Token: 0x060001DA RID: 474 RVA: 0x000094BB File Offset: 0x000076BB
 		private static IEnumerator DebutFlow(bool hasKaguya, string playerName)
 		{
 			UnitView eirin = GameDirector.Enemies[0];
@@ -564,14 +464,10 @@ namespace LBoL.Presentation.Units
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x060001DB RID: 475 RVA: 0x000094D1 File Offset: 0x000076D1
 		public static void ShopChat()
 		{
 			GameDirector.LoreChatRunner = Singleton<GameDirector>.Instance.StartCoroutine(GameDirector.ShopFlow());
 		}
-
-		// Token: 0x060001DC RID: 476 RVA: 0x000094E7 File Offset: 0x000076E7
 		private static IEnumerator ShopFlow()
 		{
 			UnitView takane = GameDirector.Enemies[0];
@@ -594,8 +490,6 @@ namespace LBoL.Presentation.Units
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x060001DD RID: 477 RVA: 0x000094EF File Offset: 0x000076EF
 		public static void StopLoreChat()
 		{
 			if (GameDirector.LoreChatRunner != null)
@@ -604,22 +498,16 @@ namespace LBoL.Presentation.Units
 			}
 			GameDirector.LoreChatRunner = null;
 		}
-
-		// Token: 0x060001DE RID: 478 RVA: 0x0000950D File Offset: 0x0000770D
 		private static IEnumerator WaitCoroutineViewer(WaitForCoroutineAction action)
 		{
 			yield return action.Coroutine;
 			yield break;
 		}
-
-		// Token: 0x060001DF RID: 479 RVA: 0x0000951C File Offset: 0x0000771C
 		private static IEnumerator WaitYieldInstructionViewer(WaitForYieldInstructionAction action)
 		{
 			yield return action.Instruction;
 			yield break;
 		}
-
-		// Token: 0x060001E0 RID: 480 RVA: 0x0000952C File Offset: 0x0000772C
 		private static IEnumerator DamageActionViewer(DamageAction action)
 		{
 			DamageEventArgs[] damageArgs = action.DamageArgs;
@@ -702,8 +590,6 @@ namespace LBoL.Presentation.Units
 			}
 			return null;
 		}
-
-		// Token: 0x060001E1 RID: 481 RVA: 0x00009808 File Offset: 0x00007A08
 		private static IEnumerator ExplodeActionViewer(ExplodeAction action)
 		{
 			DamageEventArgs[] damageArgs = action.DamageArgs;
@@ -766,8 +652,6 @@ namespace LBoL.Presentation.Units
 			int num2 = bluePoint;
 			return GameDirector.<ExplodeActionViewer>g__InternalExplodeViewer|76_0(unit, list, text, gunType, unit3, num, num2);
 		}
-
-		// Token: 0x060001E2 RID: 482 RVA: 0x00009A38 File Offset: 0x00007C38
 		private static IEnumerator GunShootAction(UnitView source, [TupleElementNames(new string[] { "target", "damageInfo" })] IList<ValueTuple<UnitView, DamageInfo>> pairs, string gunName, GunType type)
 		{
 			source.Targets = Enumerable.ToList<UnitView>(Enumerable.Select<ValueTuple<UnitView, DamageInfo>, UnitView>(pairs, ([TupleElementNames(new string[] { "target", "damageInfo" })] ValueTuple<UnitView, DamageInfo> p) => p.Item1));
@@ -811,8 +695,6 @@ namespace LBoL.Presentation.Units
 			yield return new WaitWhile(() => GameDirector._someoneCrashing);
 			yield break;
 		}
-
-		// Token: 0x060001E3 RID: 483 RVA: 0x00009A5C File Offset: 0x00007C5C
 		private static IEnumerator GunShootAction(DollView doll, [TupleElementNames(new string[] { "target", "damageInfo" })] IList<ValueTuple<UnitView, DamageInfo>> pairs, string gunName, GunType type)
 		{
 			List<UnitView> list = Enumerable.ToList<UnitView>(Enumerable.Select<ValueTuple<UnitView, DamageInfo>, UnitView>(pairs, ([TupleElementNames(new string[] { "target", "damageInfo" })] ValueTuple<UnitView, DamageInfo> p) => p.Item1));
@@ -852,14 +734,10 @@ namespace LBoL.Presentation.Units
 			yield return new WaitWhile(() => GameDirector._someoneCrashing);
 			yield break;
 		}
-
-		// Token: 0x060001E4 RID: 484 RVA: 0x00009A80 File Offset: 0x00007C80
 		public static void OnGunHit()
 		{
 			GameDirector.GunHitPresentation(GameDirector._gunHitArgs);
 		}
-
-		// Token: 0x060001E5 RID: 485 RVA: 0x00009A8C File Offset: 0x00007C8C
 		private static void GunHitPresentation(GunHitArgs gunHitArgs)
 		{
 			float num = 0f;
@@ -894,8 +772,6 @@ namespace LBoL.Presentation.Units
 				Singleton<GameDirector>.Instance.StartCoroutine(GameDirector.CrashingTimer());
 			}
 		}
-
-		// Token: 0x060001E6 RID: 486 RVA: 0x00009BA4 File Offset: 0x00007DA4
 		private static IEnumerator CrashingTimer()
 		{
 			GameDirector._someoneCrashing = true;
@@ -903,19 +779,11 @@ namespace LBoL.Presentation.Units
 			GameDirector._someoneCrashing = false;
 			yield break;
 		}
-
-		// Token: 0x17000048 RID: 72
-		// (get) Token: 0x060001E7 RID: 487 RVA: 0x00009BAC File Offset: 0x00007DAC
-		// (set) Token: 0x060001E8 RID: 488 RVA: 0x00009BB3 File Offset: 0x00007DB3
 		private static int ShakingDamage { get; set; }
-
-		// Token: 0x060001E9 RID: 489 RVA: 0x00009BBB File Offset: 0x00007DBB
 		private static void ShakeWithDamage(float damage, float shakePower)
 		{
 			GameDirector.ShakeWithDamage((damage * shakePower).ToInt());
 		}
-
-		// Token: 0x060001EA RID: 490 RVA: 0x00009BCC File Offset: 0x00007DCC
 		private static void ShakeWithDamage(int damage)
 		{
 			GameDirector.ShakingDamage += damage;
@@ -944,8 +812,6 @@ namespace LBoL.Presentation.Units
 				GameDirector.Shake(0, true);
 			}
 		}
-
-		// Token: 0x060001EB RID: 491 RVA: 0x00009C68 File Offset: 0x00007E68
 		public static void Shake(int level = 0, bool withDamage = true)
 		{
 			if (level >= 4)
@@ -971,8 +837,6 @@ namespace LBoL.Presentation.Units
 				return;
 			}
 		}
-
-		// Token: 0x060001EC RID: 492 RVA: 0x00009CE4 File Offset: 0x00007EE4
 		private static void ShakeHandler(float duration, float strength, bool withDamage)
 		{
 			Transform trans = CameraController.MainCamera.transform;
@@ -987,8 +851,6 @@ namespace LBoL.Presentation.Units
 				}
 			});
 		}
-
-		// Token: 0x060001ED RID: 493 RVA: 0x00009D6C File Offset: 0x00007F6C
 		public static void ShakeUi(int level = 0)
 		{
 			if (level >= 4)
@@ -1014,8 +876,6 @@ namespace LBoL.Presentation.Units
 				return;
 			}
 		}
-
-		// Token: 0x060001EE RID: 494 RVA: 0x00009DE4 File Offset: 0x00007FE4
 		private static void ShakeUiHandler(float duration, float strength)
 		{
 			RectTransform trans = CameraController.UiRoot;
@@ -1026,8 +886,6 @@ namespace LBoL.Presentation.Units
 				trans.localPosition = Vector3.zero;
 			});
 		}
-
-		// Token: 0x060001EF RID: 495 RVA: 0x00009E5E File Offset: 0x0000805E
 		private static IEnumerator StatisticalTotalDamageViewer(StatisticalTotalDamageAction action)
 		{
 			GameRunController gameRun = action.Battle.GameRun;
@@ -1076,8 +934,6 @@ namespace LBoL.Presentation.Units
 			}
 			yield break;
 		}
-
-		// Token: 0x060001F0 RID: 496 RVA: 0x00009E6D File Offset: 0x0000806D
 		private static IEnumerator EndShootActionViewer(EndShootAction action)
 		{
 			UnitView unit = GameDirector.GetUnit(action.SourceUnit);
@@ -1087,8 +943,6 @@ namespace LBoL.Presentation.Units
 			}
 			yield break;
 		}
-
-		// Token: 0x060001F1 RID: 497 RVA: 0x00009E7C File Offset: 0x0000807C
 		private static IEnumerator HealActionViewer(HealAction action)
 		{
 			HealEventArgs args = action.Args;
@@ -1129,8 +983,6 @@ namespace LBoL.Presentation.Units
 			yield return new WaitForSeconds(action.WaitTime);
 			yield break;
 		}
-
-		// Token: 0x060001F2 RID: 498 RVA: 0x00009E8B File Offset: 0x0000808B
 		private static IEnumerator EnemyMoveViewer(EnemyMoveAction action)
 		{
 			EnemyUnit enemy = action.Enemy;
@@ -1142,16 +994,12 @@ namespace LBoL.Presentation.Units
 			}
 			yield break;
 		}
-
-		// Token: 0x060001F3 RID: 499 RVA: 0x00009E9A File Offset: 0x0000809A
 		private static IEnumerator LoseAllExhibitsViewer(LoseAllExhibitsAction action)
 		{
 			UiManager.GetPanel<PlayBoard>().FindActionSourceWorldPosition(action.Source);
 			yield return UiManager.GetPanel<SystemBoard>().LoseAllExhibits(action.Args.Exhibits, action.Source);
 			yield break;
 		}
-
-		// Token: 0x060001F4 RID: 500 RVA: 0x00009EA9 File Offset: 0x000080A9
 		private static IEnumerator PerformViewer(PerformAction action)
 		{
 			PerformAction.PerformArgs args = action.Args;
@@ -1399,14 +1247,10 @@ namespace LBoL.Presentation.Units
 			}
 			yield break;
 		}
-
-		// Token: 0x060001F5 RID: 501 RVA: 0x00009EB8 File Offset: 0x000080B8
 		public static void AddDeremyEnvironment(EffectWidget widget)
 		{
 			GameDirector.DoremyEnvironmentEffects.Add(widget);
 		}
-
-		// Token: 0x060001F6 RID: 502 RVA: 0x00009EC8 File Offset: 0x000080C8
 		public static void ClearDoremyEnvironment()
 		{
 			foreach (EffectWidget effectWidget in GameDirector.DoremyEnvironmentEffects)
@@ -1415,8 +1259,6 @@ namespace LBoL.Presentation.Units
 			}
 			GameDirector.DoremyEnvironmentEffects.Clear();
 		}
-
-		// Token: 0x060001F7 RID: 503 RVA: 0x00009F28 File Offset: 0x00008128
 		private static IEnumerator SpawnViewer(SpawnEnemyAction action)
 		{
 			EnemyUnit enemyUnit = (EnemyUnit)action.Args.Unit;
@@ -1432,8 +1274,6 @@ namespace LBoL.Presentation.Units
 			}
 			yield break;
 		}
-
-		// Token: 0x060001F8 RID: 504 RVA: 0x00009F37 File Offset: 0x00008137
 		private static IEnumerator ForceKillViewer(ForceKillAction action)
 		{
 			UnitView unit = GameDirector.GetUnit(action.Args.Target);
@@ -1443,8 +1283,6 @@ namespace LBoL.Presentation.Units
 			}
 			yield break;
 		}
-
-		// Token: 0x060001F9 RID: 505 RVA: 0x00009F46 File Offset: 0x00008146
 		private static IEnumerator EscapeViewer(EscapeAction action)
 		{
 			Unit unit = action.Args.Unit;
@@ -1471,8 +1309,6 @@ namespace LBoL.Presentation.Units
 			GameDirector.UpdateEnemyMoveOrder();
 			yield break;
 		}
-
-		// Token: 0x060001FA RID: 506 RVA: 0x00009F55 File Offset: 0x00008155
 		private static IEnumerator InternalDieViewer(DieEventArgs args)
 		{
 			Unit unit = args.Unit;
@@ -1523,8 +1359,6 @@ namespace LBoL.Presentation.Units
 			IL_01A5:
 			yield break;
 		}
-
-		// Token: 0x060001FB RID: 507 RVA: 0x00009F64 File Offset: 0x00008164
 		private static IEnumerator MultipleDieViewer(DieAction action)
 		{
 			List<Coroutine> list = new List<Coroutine>();
@@ -1544,8 +1378,6 @@ namespace LBoL.Presentation.Units
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x060001FC RID: 508 RVA: 0x00009F73 File Offset: 0x00008173
 		private static IEnumerator EnemyDeathPoints(Transform enemyTrans, int red, int bluePoint, int money)
 		{
 			int i = red;
@@ -1607,8 +1439,6 @@ namespace LBoL.Presentation.Units
 			}
 			yield break;
 		}
-
-		// Token: 0x060001FD RID: 509 RVA: 0x00009F97 File Offset: 0x00008197
 		private static IEnumerator CastBlockShieldViewer(CastBlockShieldAction action)
 		{
 			UnitView unit = GameDirector.GetUnit(action.Args.Source);
@@ -1628,8 +1458,6 @@ namespace LBoL.Presentation.Units
 			}
 			yield break;
 		}
-
-		// Token: 0x060001FE RID: 510 RVA: 0x00009FA8 File Offset: 0x000081A8
 		private static IEnumerator LoseBlockShieldViewer(LoseBlockShieldAction action)
 		{
 			UnitView unit = GameDirector.GetUnit(action.Args.Target);
@@ -1639,15 +1467,11 @@ namespace LBoL.Presentation.Units
 			}
 			return null;
 		}
-
-		// Token: 0x060001FF RID: 511 RVA: 0x00009FD8 File Offset: 0x000081D8
 		private IEnumerator InstantWinViewer(InstantWinAction action)
 		{
 			GameDirector.ClearEnemies();
 			yield break;
 		}
-
-		// Token: 0x06000200 RID: 512 RVA: 0x00009FE0 File Offset: 0x000081E0
 		private IEnumerator ApplyStatusEffectViewer(ApplyStatusEffectAction action)
 		{
 			StatusEffectApplyEventArgs args = action.Args;
@@ -1706,8 +1530,6 @@ namespace LBoL.Presentation.Units
 			yield return new WaitForSeconds(args.WaitTime);
 			yield break;
 		}
-
-		// Token: 0x06000201 RID: 513 RVA: 0x00009FEF File Offset: 0x000081EF
 		private IEnumerator RemoveStatusEffectViewer(RemoveStatusEffectAction action)
 		{
 			StatusEffectEventArgs args = action.Args;
@@ -1729,23 +1551,9 @@ namespace LBoL.Presentation.Units
 			yield return new WaitForSeconds(args.WaitTime);
 			yield break;
 		}
-
-		// Token: 0x17000049 RID: 73
-		// (get) Token: 0x06000202 RID: 514 RVA: 0x00009FFE File Offset: 0x000081FE
-		// (set) Token: 0x06000203 RID: 515 RVA: 0x0000A005 File Offset: 0x00008205
 		public static float TimeStep { get; set; }
-
-		// Token: 0x1700004A RID: 74
-		// (get) Token: 0x06000204 RID: 516 RVA: 0x0000A00D File Offset: 0x0000820D
-		// (set) Token: 0x06000205 RID: 517 RVA: 0x0000A015 File Offset: 0x00008215
 		private float CurrentTime { get; set; }
-
-		// Token: 0x1700004B RID: 75
-		// (get) Token: 0x06000206 RID: 518 RVA: 0x0000A01E File Offset: 0x0000821E
-		// (set) Token: 0x06000207 RID: 519 RVA: 0x0000A026 File Offset: 0x00008226
 		private float Accumulator { get; set; }
-
-		// Token: 0x06000208 RID: 520 RVA: 0x0000A02F File Offset: 0x0000822F
 		private static void SetTimeStep()
 		{
 			GameDirector.TimeStep = 0.016666668f;
@@ -1754,8 +1562,6 @@ namespace LBoL.Presentation.Units
 				Debug.LogError("TimeSteptoo fast!");
 			}
 		}
-
-		// Token: 0x06000209 RID: 521 RVA: 0x0000A058 File Offset: 0x00008258
 		private void Update()
 		{
 			float time = Time.time;
@@ -1772,8 +1578,6 @@ namespace LBoL.Presentation.Units
 				this.Accumulator -= GameDirector.TimeStep;
 			}
 		}
-
-		// Token: 0x0600020A RID: 522 RVA: 0x0000A0C0 File Offset: 0x000082C0
 		private void MasterTick()
 		{
 			if (this.PlayerUnitView)
@@ -1791,8 +1595,6 @@ namespace LBoL.Presentation.Units
 			Singleton<GunManager>.Instance.Tick();
 			Singleton<EffectManager>.Instance.Tick();
 		}
-
-		// Token: 0x0600020C RID: 524 RVA: 0x0000A194 File Offset: 0x00008394
 		// Note: this type is marked as 'beforefieldinit'.
 		static GameDirector()
 		{
@@ -1805,8 +1607,6 @@ namespace LBoL.Presentation.Units
 			GameDirector.ShakeFloors = list;
 			GameDirector.DoremyEnvironmentEffects = new List<EffectWidget>();
 		}
-
-		// Token: 0x0600020D RID: 525 RVA: 0x0000A218 File Offset: 0x00008418
 		[CompilerGenerated]
 		internal static IEnumerator <ExplodeActionViewer>g__InternalExplodeViewer|76_0(UnitView source, IList<ValueTuple<UnitView, DamageInfo>> targetPairs, string gunName, GunType gunType, Unit explodingUnit, int power, int bluepoint)
 		{
@@ -1822,61 +1622,27 @@ namespace LBoL.Presentation.Units
 			}
 			yield break;
 		}
-
-		// Token: 0x04000098 RID: 152
 		private const string DefaultFormation = "Triangle";
-
-		// Token: 0x04000099 RID: 153
 		[SerializeField]
 		private Transform unitRoot;
-
-		// Token: 0x0400009A RID: 154
 		[SerializeField]
 		private Transform playerRoot;
-
-		// Token: 0x0400009B RID: 155
 		[SerializeField]
 		private GameObject unitPrefab;
-
-		// Token: 0x040000A0 RID: 160
 		private static readonly Vector2 PlayerPosition = new Vector2(-3f, 0.5f);
-
-		// Token: 0x040000A1 RID: 161
 		private static readonly Vector3 EirinPosition = new Vector3(3f, 0.5f);
-
-		// Token: 0x040000A2 RID: 162
 		private static readonly Vector3 KaguyaPosition = new Vector3(4.4f, 0.5f);
-
-		// Token: 0x040000A3 RID: 163
 		private static bool _enemyMoveOrderVisible;
-
-		// Token: 0x040000A4 RID: 164
 		[SerializeField]
 		private Transform lore0;
-
-		// Token: 0x040000A5 RID: 165
 		[SerializeField]
 		private Transform lore1;
-
-		// Token: 0x040000A7 RID: 167
 		private static GunHitArgs _gunHitArgs;
-
-		// Token: 0x040000A8 RID: 168
 		private static bool _someoneCrashing;
-
-		// Token: 0x040000A9 RID: 169
 		private static readonly List<int> ShakeFloors;
-
-		// Token: 0x040000AB RID: 171
 		private const float DefaultShakeScale = 0.08f;
-
-		// Token: 0x040000AC RID: 172
 		private static Vector3 _cameraOffset;
-
-		// Token: 0x040000AD RID: 173
 		private static readonly List<EffectWidget> DoremyEnvironmentEffects;
-
-		// Token: 0x040000AE RID: 174
 		private const float MaxFrameTime = 0.25f;
 	}
 }

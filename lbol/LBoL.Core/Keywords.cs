@@ -7,13 +7,10 @@ using LBoL.Base;
 using LBoL.Core.Helpers;
 using UnityEngine;
 using YamlDotNet.RepresentationModel;
-
 namespace LBoL.Core
 {
-	// Token: 0x02000057 RID: 87
 	public static class Keywords
 	{
-		// Token: 0x060003A4 RID: 932 RVA: 0x0000BC44 File Offset: 0x00009E44
 		public static async UniTask ReloadAsync()
 		{
 			Keywords.KeywordTable.Clear();
@@ -72,14 +69,10 @@ namespace LBoL.Core
 				Keywords.KeywordTable.Add(keyword, new KeywordDisplayWord(keyword, text, StringDecorator.Decorate(text2), flag, flag2, flag3));
 			}
 		}
-
-		// Token: 0x060003A5 RID: 933 RVA: 0x0000BC80 File Offset: 0x00009E80
 		public static IEnumerable<Keyword> EnumerateComponents(Keyword keyword)
 		{
 			return Enumerable.Where<Keyword>(Keywords.AllKeywords, (Keyword c) => keyword.HasFlag(c));
 		}
-
-		// Token: 0x060003A6 RID: 934 RVA: 0x0000BCB0 File Offset: 0x00009EB0
 		public static KeywordDisplayWord GetDisplayWord(Keyword keyword)
 		{
 			KeywordDisplayWord keywordDisplayWord;
@@ -90,11 +83,7 @@ namespace LBoL.Core
 			Debug.LogError(string.Format("Cannot get keyword display word for '{0}'", keyword));
 			return null;
 		}
-
-		// Token: 0x04000215 RID: 533
 		private static readonly List<Keyword> AllKeywords = Enumerable.ToList<Keyword>(Enumerable.Where<Keyword>(EnumHelper<Keyword>.GetValues(), (Keyword k) => k > Keyword.None));
-
-		// Token: 0x04000216 RID: 534
 		private static readonly Dictionary<Keyword, KeywordDisplayWord> KeywordTable = new Dictionary<Keyword, KeywordDisplayWord>();
 	}
 }

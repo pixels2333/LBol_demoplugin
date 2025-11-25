@@ -5,14 +5,11 @@ using JetBrains.Annotations;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.DebugCards
 {
-	// Token: 0x0200037A RID: 890
 	[UsedImplicitly]
 	public sealed class DebugRemoveAllHandWhenDraw : Card
 	{
-		// Token: 0x06000CBB RID: 3259 RVA: 0x000188C4 File Offset: 0x00016AC4
 		public override IEnumerable<BattleAction> OnDraw()
 		{
 			List<Card> list = Enumerable.ToList<Card>(base.Battle.HandZone);

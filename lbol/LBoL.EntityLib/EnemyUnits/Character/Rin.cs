@@ -12,20 +12,12 @@ using LBoL.EntityLib.EnemyUnits.Normal.Guihuos;
 using LBoL.EntityLib.PlayerUnits;
 using LBoL.EntityLib.StatusEffects.Enemy;
 using UnityEngine;
-
 namespace LBoL.EntityLib.EnemyUnits.Character
 {
-	// Token: 0x02000245 RID: 581
 	[UsedImplicitly]
 	public sealed class Rin : EnemyUnit<IRinView>
 	{
-		// Token: 0x170000FD RID: 253
-		// (get) Token: 0x06000914 RID: 2324 RVA: 0x0001399D File Offset: 0x00011B9D
-		// (set) Token: 0x06000915 RID: 2325 RVA: 0x000139A5 File Offset: 0x00011BA5
 		private Rin.MoveType Next { get; set; }
-
-		// Token: 0x170000FE RID: 254
-		// (get) Token: 0x06000916 RID: 2326 RVA: 0x000139B0 File Offset: 0x00011BB0
 		private string Spell
 		{
 			get
@@ -33,13 +25,7 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 				return base.GetSpellCardName(default(int?), 3);
 			}
 		}
-
-		// Token: 0x170000FF RID: 255
-		// (get) Token: 0x06000917 RID: 2327 RVA: 0x000139CD File Offset: 0x00011BCD
-		// (set) Token: 0x06000918 RID: 2328 RVA: 0x000139D5 File Offset: 0x00011BD5
 		private StatusEffect SummonSe { get; set; }
-
-		// Token: 0x06000919 RID: 2329 RVA: 0x000139E0 File Offset: 0x00011BE0
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			this.Next = Rin.MoveType.Summon;
@@ -64,8 +50,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			base.ReactBattleEvent<GameEventArgs>(base.Battle.BattleStarted, new Func<GameEventArgs, IEnumerable<BattleAction>>(this.OnBattleStarted));
 			base.ReactBattleEvent<DieEventArgs>(base.Battle.EnemyDied, new Func<DieEventArgs, IEnumerable<BattleAction>>(this.OnEnemyDied));
 		}
-
-		// Token: 0x0600091A RID: 2330 RVA: 0x00013B08 File Offset: 0x00011D08
 		private IEnumerable<BattleAction> OnBattleStarted(GameEventArgs arg)
 		{
 			int? num = new int?(3);
@@ -87,8 +71,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			yield break;
 		}
-
-		// Token: 0x0600091B RID: 2331 RVA: 0x00013B18 File Offset: 0x00011D18
 		private IEnumerable<BattleAction> OnEnemyDied(DieEventArgs arg)
 		{
 			if (base.IsAlive)
@@ -145,8 +127,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			yield break;
 		}
-
-		// Token: 0x0600091C RID: 2332 RVA: 0x00013B2F File Offset: 0x00011D2F
 		private IEnumerable<BattleAction> SummonActions()
 		{
 			yield return new EnemyMoveAction(this, base.GetMove(1), true);
@@ -189,8 +169,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			yield break;
 		}
-
-		// Token: 0x0600091D RID: 2333 RVA: 0x00013B3F File Offset: 0x00011D3F
 		private IEnumerable<BattleAction> ExplodeActions()
 		{
 			List<EnemyUnit> allGuihuo = Enumerable.ToList<EnemyUnit>(Enumerable.Where<EnemyUnit>(base.AllAliveEnemies, (EnemyUnit enemy) => enemy is Guihuo));
@@ -215,8 +193,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			yield break;
 		}
-
-		// Token: 0x0600091E RID: 2334 RVA: 0x00013B4F File Offset: 0x00011D4F
 		private IEnumerable<BattleAction> SpellActions(bool noGuihuo)
 		{
 			base.CountDown = 4;
@@ -256,8 +232,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x0600091F RID: 2335 RVA: 0x00013B66 File Offset: 0x00011D66
 		protected override IEnumerable<IEnemyMove> GetTurnMoves()
 		{
 			IEnemyMove enemyMove;
@@ -291,8 +265,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			yield break;
 		}
-
-		// Token: 0x06000920 RID: 2336 RVA: 0x00013B78 File Offset: 0x00011D78
 		protected override void UpdateMoveCounters()
 		{
 			int num = base.CountDown - 1;
@@ -321,8 +293,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			this.Next = Rin.MoveType.Shoot;
 		}
-
-		// Token: 0x06000921 RID: 2337 RVA: 0x00013C34 File Offset: 0x00011E34
 		private static Type GetGuihuoType(Rin.RinOrbColor color)
 		{
 			Type type;
@@ -345,8 +315,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			return type;
 		}
-
-		// Token: 0x06000922 RID: 2338 RVA: 0x00013C98 File Offset: 0x00011E98
 		private static Rin.RinOrbColor GetColor(Unit unit)
 		{
 			Rin.RinOrbColor rinOrbColor;
@@ -374,71 +342,38 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			return rinOrbColor;
 		}
-
-		// Token: 0x06000923 RID: 2339 RVA: 0x00013CCE File Offset: 0x00011ECE
 		private static string GetEffectName(Rin.RinOrbColor color)
 		{
 			return "GuihuoTrail" + color.ToString();
 		}
-
-		// Token: 0x040000C8 RID: 200
 		private readonly Queue<Rin.RinOrbData> _rinOrbs = new Queue<Rin.RinOrbData>(3);
-
-		// Token: 0x040000CA RID: 202
 		private const int SpellInterval = 4;
-
-		// Token: 0x040000CB RID: 203
 		private int _rinOrbIndex = 2;
-
-		// Token: 0x040000CC RID: 204
 		private int _summonRootIndex = -1;
-
-		// Token: 0x0200075E RID: 1886
 		private enum MoveType
 		{
-			// Token: 0x04000B2D RID: 2861
 			Shoot,
-			// Token: 0x04000B2E RID: 2862
 			Defend,
-			// Token: 0x04000B2F RID: 2863
 			Summon,
-			// Token: 0x04000B30 RID: 2864
 			Explode,
-			// Token: 0x04000B31 RID: 2865
 			Spell,
-			// Token: 0x04000B32 RID: 2866
 			SpellNoGuihuo
 		}
-
-		// Token: 0x0200075F RID: 1887
 		public class RinOrbData
 		{
-			// Token: 0x0600209C RID: 8348 RVA: 0x0004A9FF File Offset: 0x00048BFF
 			public RinOrbData(Rin.RinOrbColor color, int orbitIndex)
 			{
 				this.Color = color;
 				this.OrbitIndex = orbitIndex;
 			}
-
-			// Token: 0x1700057C RID: 1404
-			// (get) Token: 0x0600209D RID: 8349 RVA: 0x0004AA15 File Offset: 0x00048C15
 			public Rin.RinOrbColor Color { get; }
-
-			// Token: 0x1700057D RID: 1405
-			// (get) Token: 0x0600209E RID: 8350 RVA: 0x0004AA1D File Offset: 0x00048C1D
 			public int OrbitIndex { get; }
 		}
-
-		// Token: 0x02000760 RID: 1888
 		public enum RinOrbColor
 		{
-			// Token: 0x04000B36 RID: 2870
 			None,
-			// Token: 0x04000B37 RID: 2871
 			Red,
-			// Token: 0x04000B38 RID: 2872
 			Green,
-			// Token: 0x04000B39 RID: 2873
 			Blue
 		}
 	}

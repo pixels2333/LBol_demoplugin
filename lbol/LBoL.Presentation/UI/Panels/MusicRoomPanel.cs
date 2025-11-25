@@ -12,14 +12,10 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
-
 namespace LBoL.Presentation.UI.Panels
 {
-	// Token: 0x020000A5 RID: 165
 	public class MusicRoomPanel : UiPanel, IInputActionHandler
 	{
-		// Token: 0x1700016D RID: 365
-		// (get) Token: 0x060008D8 RID: 2264 RVA: 0x0002C7AD File Offset: 0x0002A9AD
 		private int CurrentWidgetIndex
 		{
 			get
@@ -27,8 +23,6 @@ namespace LBoL.Presentation.UI.Panels
 				return this._musicWidgets.FindIndex((MusicWidget widget) => widget.IsSelect);
 			}
 		}
-
-		// Token: 0x060008D9 RID: 2265 RVA: 0x0002C7DC File Offset: 0x0002A9DC
 		private void Awake()
 		{
 			this.musicRoot.DestroyChildren();
@@ -96,8 +90,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.StopMusic();
 			this._canvasGroup = base.GetComponent<CanvasGroup>();
 		}
-
-		// Token: 0x060008DA RID: 2266 RVA: 0x0002C8D0 File Offset: 0x0002AAD0
 		protected override void OnShowing()
 		{
 			this.audioSourceList[0].outputAudioMixerGroup = AudioManager.BgmGroup;
@@ -115,8 +107,6 @@ namespace LBoL.Presentation.UI.Panels
 			this._canvasGroup.interactable = true;
 			UiManager.PushActionHandler(this);
 		}
-
-		// Token: 0x060008DB RID: 2267 RVA: 0x0002C990 File Offset: 0x0002AB90
 		protected override void OnHiding()
 		{
 			AudioManager.LeaveMusicRoomFadeInBgm();
@@ -131,14 +121,10 @@ namespace LBoL.Presentation.UI.Panels
 			this._canvasGroup.interactable = false;
 			UiManager.PopActionHandler(this);
 		}
-
-		// Token: 0x060008DC RID: 2268 RVA: 0x0002CA2C File Offset: 0x0002AC2C
 		void IInputActionHandler.OnCancel()
 		{
 			this.returnButton.onClick.Invoke();
 		}
-
-		// Token: 0x060008DD RID: 2269 RVA: 0x0002CA40 File Offset: 0x0002AC40
 		public async UniTask PlayMusic(BgmConfig config)
 		{
 			foreach (MusicWidget musicWidget in this._musicWidgets)
@@ -209,8 +195,6 @@ namespace LBoL.Presentation.UI.Panels
 				musicWidget2.Interactable = true;
 			}
 		}
-
-		// Token: 0x060008DE RID: 2270 RVA: 0x0002CA8C File Offset: 0x0002AC8C
 		private void PrepareLoop()
 		{
 			float time = this.audioSourceList[this._loopAudioIndex].time;
@@ -222,8 +206,6 @@ namespace LBoL.Presentation.UI.Panels
 			this._nextLoop += this._loopEnd - this._loopStart;
 			this._loopAudioIndex = num;
 		}
-
-		// Token: 0x060008DF RID: 2271 RVA: 0x0002CB58 File Offset: 0x0002AD58
 		public void StopMusic()
 		{
 			this.dialogGroup.DOFade(0f, 0.4f);
@@ -241,8 +223,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.armParent.DOLocalRotate(new Vector3(0f, 0f, 0f), 0.4f, RotateMode.Fast).SetEase(Ease.Linear).SetLink(base.gameObject)
 				.SetUpdate(true);
 		}
-
-		// Token: 0x060008E0 RID: 2272 RVA: 0x0002CC4C File Offset: 0x0002AE4C
 		private void InitSpectrumArea()
 		{
 			Vector2 sizeDelta = this.spectrumArea.sizeDelta;
@@ -277,8 +257,6 @@ namespace LBoL.Presentation.UI.Panels
 				num4 += num2;
 			}
 		}
-
-		// Token: 0x060008E1 RID: 2273 RVA: 0x0002CDFC File Offset: 0x0002AFFC
 		private void UpdateSpectrumArea()
 		{
 			this._barUpdateTimeout -= Time.unscaledDeltaTime;
@@ -322,8 +300,6 @@ namespace LBoL.Presentation.UI.Panels
 				rectTransform2.anchoredPosition = anchoredPosition;
 			}
 		}
-
-		// Token: 0x060008E2 RID: 2274 RVA: 0x0002CF6C File Offset: 0x0002B16C
 		private void Update()
 		{
 			if (AudioSettings.dspTime + (double)((this._loopEnd - this._loopStart) / 2f) > (double)this._nextLoop && this.loopToggle.isOn && !this.playToggle.isOn)
@@ -363,144 +339,66 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.UpdateSpectrumArea();
 		}
-
-		// Token: 0x04000680 RID: 1664
 		[SerializeField]
 		private Button returnButton;
-
-		// Token: 0x04000681 RID: 1665
 		[SerializeField]
 		private TextMeshProUGUI commentText;
-
-		// Token: 0x04000682 RID: 1666
 		[SerializeField]
 		private TextMeshProUGUI originText;
-
-		// Token: 0x04000683 RID: 1667
 		[SerializeField]
 		private TextMeshProUGUI artistText;
-
-		// Token: 0x04000684 RID: 1668
 		[SerializeField]
 		private TextMeshProUGUI usesText;
-
-		// Token: 0x04000685 RID: 1669
 		[SerializeField]
 		private CanvasGroup dialogGroup;
-
-		// Token: 0x04000686 RID: 1670
 		[SerializeField]
 		private MusicWidget musicTemplate;
-
-		// Token: 0x04000687 RID: 1671
 		[SerializeField]
 		private Transform musicRoot;
-
-		// Token: 0x04000688 RID: 1672
 		[SerializeField]
 		private Transform discImage;
-
-		// Token: 0x04000689 RID: 1673
 		[SerializeField]
 		private Transform armParent;
-
-		// Token: 0x0400068A RID: 1674
 		[SerializeField]
 		private Toggle playToggle;
-
-		// Token: 0x0400068B RID: 1675
 		[SerializeField]
 		private Toggle loopToggle;
-
-		// Token: 0x0400068C RID: 1676
 		[SerializeField]
 		private Image loopImage;
-
-		// Token: 0x0400068D RID: 1677
 		[SerializeField]
 		private List<AudioSource> audioSourceList;
-
-		// Token: 0x0400068E RID: 1678
 		private readonly List<MusicWidget> _musicWidgets = new List<MusicWidget>();
-
-		// Token: 0x0400068F RID: 1679
 		private int _currentAudioIndex;
-
-		// Token: 0x04000690 RID: 1680
 		private int _loopAudioIndex;
-
-		// Token: 0x04000691 RID: 1681
 		private bool _isLoading;
-
-		// Token: 0x04000692 RID: 1682
 		private CanvasGroup _canvasGroup;
-
-		// Token: 0x04000693 RID: 1683
 		private float _loopStart;
-
-		// Token: 0x04000694 RID: 1684
 		private float _loopEnd;
-
-		// Token: 0x04000695 RID: 1685
 		private float _nextLoop;
-
-		// Token: 0x04000696 RID: 1686
 		private float _currentLoop;
-
-		// Token: 0x04000697 RID: 1687
 		private double _tempPauseStartTime;
-
-		// Token: 0x04000698 RID: 1688
 		private double _tempPauseEndTime;
-
-		// Token: 0x04000699 RID: 1689
 		[Header("Spectrum Area")]
 		[SerializeField]
 		private RectTransform spectrumArea;
-
-		// Token: 0x0400069A RID: 1690
 		[SerializeField]
 		private Color barColor = Color.white;
-
-		// Token: 0x0400069B RID: 1691
 		[SerializeField]
 		private Color capColor = Color.white;
-
-		// Token: 0x0400069C RID: 1692
 		[Range(0f, 2f)]
 		[SerializeField]
 		private float barDropSpeed = 1f;
-
-		// Token: 0x0400069D RID: 1693
 		[SerializeField]
 		private float barUpdateInterval = 0.02f;
-
-		// Token: 0x0400069E RID: 1694
 		[SerializeField]
 		private FFTWindow windowFunction = FFTWindow.Blackman;
-
-		// Token: 0x0400069F RID: 1695
 		private const int Size = 8;
-
-		// Token: 0x040006A0 RID: 1696
 		private const int SpectrumSize = 128;
-
-		// Token: 0x040006A1 RID: 1697
 		private readonly float[] _spectrumData = new float[128];
-
-		// Token: 0x040006A2 RID: 1698
 		private readonly float[] _barValues = new float[8];
-
-		// Token: 0x040006A3 RID: 1699
 		private readonly float[] _bufferedBarValues = new float[8];
-
-		// Token: 0x040006A4 RID: 1700
 		private readonly RectTransform[] _bars = new RectTransform[8];
-
-		// Token: 0x040006A5 RID: 1701
 		private readonly RectTransform[] _caps = new RectTransform[8];
-
-		// Token: 0x040006A6 RID: 1702
 		private float _barUpdateTimeout;
 	}
 }

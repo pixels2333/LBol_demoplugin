@@ -9,14 +9,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
-
 namespace LBoL.EntityLib.Cards.Neutral.Black
 {
-	// Token: 0x02000330 RID: 816
 	[UsedImplicitly]
 	public sealed class GrimoireStudy : Card
 	{
-		// Token: 0x06000BF1 RID: 3057 RVA: 0x00017954 File Offset: 0x00015B54
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.SacrificeAction(base.Value2);

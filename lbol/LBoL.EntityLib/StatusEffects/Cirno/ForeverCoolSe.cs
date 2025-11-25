@@ -10,14 +10,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.StatusEffects.Cirno
 {
-	// Token: 0x020000DC RID: 220
 	[UsedImplicitly]
 	public sealed class ForeverCoolSe : StatusEffect
 	{
-		// Token: 0x06000314 RID: 788 RVA: 0x00008424 File Offset: 0x00006624
 		protected override void OnAdded(Unit unit)
 		{
 			base.ReactOwnerEvent<CardUsingEventArgs>(base.Battle.CardUsed, new EventSequencedReactor<CardUsingEventArgs>(this.OnCardUsed));
@@ -27,8 +24,6 @@ namespace LBoL.EntityLib.StatusEffects.Cirno
 			}
 			base.HandleOwnerEvent<UnitEventArgs>(base.Battle.EnemySpawned, new GameEventHandler<UnitEventArgs>(this.OnEnemySpawned));
 		}
-
-		// Token: 0x06000315 RID: 789 RVA: 0x000084C4 File Offset: 0x000066C4
 		private IEnumerable<BattleAction> OnCardUsed(CardUsingEventArgs args)
 		{
 			if (base.Battle.BattleShouldEnd)
@@ -48,8 +43,6 @@ namespace LBoL.EntityLib.StatusEffects.Cirno
 			}
 			yield break;
 		}
-
-		// Token: 0x06000316 RID: 790 RVA: 0x000084DC File Offset: 0x000066DC
 		private void OnEnemyStatusEffectAdded(StatusEffectApplyEventArgs args)
 		{
 			if (base.Battle.BattleShouldEnd)
@@ -70,8 +63,6 @@ namespace LBoL.EntityLib.StatusEffects.Cirno
 				}
 			}
 		}
-
-		// Token: 0x06000317 RID: 791 RVA: 0x00008587 File Offset: 0x00006787
 		private void OnEnemySpawned(UnitEventArgs args)
 		{
 			base.HandleOwnerEvent<StatusEffectApplyEventArgs>(args.Unit.StatusEffectAdded, new GameEventHandler<StatusEffectApplyEventArgs>(this.OnEnemyStatusEffectAdded));

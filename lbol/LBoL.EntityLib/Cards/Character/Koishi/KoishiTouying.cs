@@ -9,14 +9,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
-
 namespace LBoL.EntityLib.Cards.Character.Koishi
 {
-	// Token: 0x0200047C RID: 1148
 	[UsedImplicitly]
 	public sealed class KoishiTouying : Card
 	{
-		// Token: 0x06000F61 RID: 3937 RVA: 0x0001B8DB File Offset: 0x00019ADB
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return new GainManaAction(base.Mana);

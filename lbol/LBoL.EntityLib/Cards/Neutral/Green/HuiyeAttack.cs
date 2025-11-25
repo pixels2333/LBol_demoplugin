@@ -8,14 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Neutral.Green
 {
-	// Token: 0x020002F7 RID: 759
 	[UsedImplicitly]
 	public sealed class HuiyeAttack : Card
 	{
-		// Token: 0x06000B50 RID: 2896 RVA: 0x00016C30 File Offset: 0x00014E30
 		public override ManaGroup GetXCostFromPooled(ManaGroup pooledMana)
 		{
 			ManaGroup manaGroup = ManaGroup.Empty;
@@ -34,8 +31,6 @@ namespace LBoL.EntityLib.Cards.Neutral.Green
 			}
 			return manaGroup;
 		}
-
-		// Token: 0x06000B51 RID: 2897 RVA: 0x00016CD8 File Offset: 0x00014ED8
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			List<ManaColor> list = Enumerable.ToList<ManaColor>(Enumerable.Where<ManaColor>(ManaColors.SingleColors, (ManaColor color) => consumingMana.GetValue(color) > 0));
@@ -92,8 +87,6 @@ namespace LBoL.EntityLib.Cards.Neutral.Green
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x040000F7 RID: 247
 		private const string RawGunName = "蓬莱的树海";
 	}
 }

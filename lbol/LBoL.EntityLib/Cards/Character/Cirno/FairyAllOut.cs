@@ -6,14 +6,11 @@ using LBoL.Base;
 using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Character.Cirno
 {
-	// Token: 0x020004AE RID: 1198
 	[UsedImplicitly]
 	public sealed class FairyAllOut : Card
 	{
-		// Token: 0x06000FEC RID: 4076 RVA: 0x0001C481 File Offset: 0x0001A681
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.AttackAction(selector, null);

@@ -8,20 +8,15 @@ using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.StatusEffects.Sakuya
 {
-	// Token: 0x02000021 RID: 33
 	[UsedImplicitly]
 	public sealed class SpecialClockSe : StatusEffect
 	{
-		// Token: 0x0600004E RID: 78 RVA: 0x000027E1 File Offset: 0x000009E1
 		protected override void OnAdded(Unit unit)
 		{
 			base.ReactOwnerEvent<UnitEventArgs>(base.Owner.TurnStarted, new EventSequencedReactor<UnitEventArgs>(this.OnOwnerTurnStarted));
 		}
-
-		// Token: 0x0600004F RID: 79 RVA: 0x00002800 File Offset: 0x00000A00
 		private IEnumerable<BattleAction> OnOwnerTurnStarted(UnitEventArgs args)
 		{
 			if (base.Battle.BattleShouldEnd || base.Battle.HandZone.Count == 0)

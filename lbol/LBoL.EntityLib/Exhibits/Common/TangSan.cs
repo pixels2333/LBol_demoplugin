@@ -7,20 +7,15 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Exhibits.Common
 {
-	// Token: 0x02000198 RID: 408
 	[UsedImplicitly]
 	public sealed class TangSan : Exhibit
 	{
-		// Token: 0x060005CD RID: 1485 RVA: 0x0000DCDE File Offset: 0x0000BEDE
 		protected override void OnEnterBattle()
 		{
 			base.ReactBattleEvent<UnitEventArgs>(base.Battle.Player.TurnStarted, new EventSequencedReactor<UnitEventArgs>(this.OnPlayerTurnStarted));
 		}
-
-		// Token: 0x060005CE RID: 1486 RVA: 0x0000DD02 File Offset: 0x0000BF02
 		private IEnumerable<BattleAction> OnPlayerTurnStarted(GameEventArgs args)
 		{
 			if (base.Battle.Player.TurnCounter == 1)
@@ -42,8 +37,6 @@ namespace LBoL.EntityLib.Exhibits.Common
 			}
 			yield break;
 		}
-
-		// Token: 0x060005CF RID: 1487 RVA: 0x0000DD12 File Offset: 0x0000BF12
 		protected override void OnLeaveBattle()
 		{
 			base.Blackout = false;

@@ -4,13 +4,10 @@ using LBoL.Core.Adventures;
 using LBoL.Core.Randoms;
 using LBoL.EntityLib.Stages.NormalStages;
 using Yarn;
-
 namespace LBoL.EntityLib.Adventures.FirstPlace
 {
-	// Token: 0x0200051F RID: 1311
 	public sealed class MiyoiBartender : Adventure
 	{
-		// Token: 0x06001132 RID: 4402 RVA: 0x0001FC68 File Offset: 0x0001DE68
 		protected override void InitVariables(IVariableStorage storage)
 		{
 			UniqueRandomPool<string> uniqueRandomPool = new UniqueRandomPool<string>(true)

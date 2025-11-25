@@ -15,14 +15,11 @@ using LBoL.Presentation.UI.Panels;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-
 namespace LBoL.Presentation.UI.Widgets
 {
-	// Token: 0x02000044 RID: 68
 	[DisallowMultipleComponent]
 	public sealed class CardWidget : MonoBehaviour, ICardTooltipSource
 	{
-		// Token: 0x0600042F RID: 1071 RVA: 0x00010C3E File Offset: 0x0000EE3E
 		private static string GetSimpleIllustrator(string id)
 		{
 			if (id.EndsWith("(Sketch)"))
@@ -35,10 +32,6 @@ namespace LBoL.Presentation.UI.Widgets
 			}
 			return id;
 		}
-
-		// Token: 0x170000B2 RID: 178
-		// (get) Token: 0x06000430 RID: 1072 RVA: 0x00010C7C File Offset: 0x0000EE7C
-		// (set) Token: 0x06000431 RID: 1073 RVA: 0x00010C84 File Offset: 0x0000EE84
 		private string CurrentIllustrator
 		{
 			get
@@ -51,8 +44,6 @@ namespace LBoL.Presentation.UI.Widgets
 				this.illustrator.text = CardWidget.GetSimpleIllustrator(value);
 			}
 		}
-
-		// Token: 0x06000432 RID: 1074 RVA: 0x00010CA0 File Offset: 0x0000EEA0
 		public unsafe static void LoadSprites()
 		{
 			IntPtr intPtr = stackalloc byte[(UIntPtr)12];
@@ -202,8 +193,6 @@ namespace LBoL.Presentation.UI.Widgets
 				}
 			}
 		}
-
-		// Token: 0x06000433 RID: 1075 RVA: 0x00011208 File Offset: 0x0000F408
 		public void RefreshBgTextureForLoopOrder()
 		{
 			Card card = this._card;
@@ -226,8 +215,6 @@ namespace LBoL.Presentation.UI.Widgets
 				}
 			}
 		}
-
-		// Token: 0x06000434 RID: 1076 RVA: 0x00011280 File Offset: 0x0000F480
 		[return: TupleElementNames(new string[] { "main", "sub" })]
 		public static ValueTuple<Texture2D, Texture2D> GetBgTexture(Card card)
 		{
@@ -312,8 +299,6 @@ namespace LBoL.Presentation.UI.Widgets
 				}
 			}
 		}
-
-		// Token: 0x06000435 RID: 1077 RVA: 0x000114E0 File Offset: 0x0000F6E0
 		private static Sprite GetOwnerSprite(Card card)
 		{
 			string owner = card.Config.Owner;
@@ -329,8 +314,6 @@ namespace LBoL.Presentation.UI.Widgets
 			Debug.LogError("Cannot find owner sprite for '" + owner + "'");
 			return null;
 		}
-
-		// Token: 0x06000436 RID: 1078 RVA: 0x0001152C File Offset: 0x0000F72C
 		private static Sprite GetTypeSprite(Card card)
 		{
 			Sprite sprite;
@@ -341,19 +324,8 @@ namespace LBoL.Presentation.UI.Widgets
 			Debug.LogError(string.Format("Cannot find type sprite for '{0}'", card.Config.Type));
 			return null;
 		}
-
-		// Token: 0x170000B3 RID: 179
-		// (get) Token: 0x06000437 RID: 1079 RVA: 0x00011574 File Offset: 0x0000F774
-		// (set) Token: 0x06000438 RID: 1080 RVA: 0x0001157C File Offset: 0x0000F77C
 		public bool NotReveal { get; set; }
-
-		// Token: 0x170000B4 RID: 180
-		// (get) Token: 0x06000439 RID: 1081 RVA: 0x00011585 File Offset: 0x0000F785
-		// (set) Token: 0x0600043A RID: 1082 RVA: 0x0001158D File Offset: 0x0000F78D
 		public bool NotReadyInMuseum { get; set; }
-
-		// Token: 0x170000B5 RID: 181
-		// (get) Token: 0x0600043B RID: 1083 RVA: 0x00011596 File Offset: 0x0000F796
 		public RectTransform RectTransform
 		{
 			get
@@ -361,9 +333,6 @@ namespace LBoL.Presentation.UI.Widgets
 				return this.rectTransform;
 			}
 		}
-
-		// Token: 0x170000B6 RID: 182
-		// (get) Token: 0x0600043C RID: 1084 RVA: 0x0001159E File Offset: 0x0000F79E
 		public CanvasGroup CanvasGroup
 		{
 			get
@@ -371,14 +340,10 @@ namespace LBoL.Presentation.UI.Widgets
 				return this.canvasGroup;
 			}
 		}
-
-		// Token: 0x0600043D RID: 1085 RVA: 0x000115A6 File Offset: 0x0000F7A6
 		public void SetIdVisible(bool visible)
 		{
 			this.cardIdText.gameObject.SetActive(visible);
 		}
-
-		// Token: 0x0600043E RID: 1086 RVA: 0x000115B9 File Offset: 0x0000F7B9
 		private void Awake()
 		{
 			this._rawPath = Utils.GetScenePath(base.transform);
@@ -389,8 +354,6 @@ namespace LBoL.Presentation.UI.Widgets
 			}
 			this.deckIndex.gameObject.SetActive(false);
 		}
-
-		// Token: 0x0600043F RID: 1087 RVA: 0x000115F2 File Offset: 0x0000F7F2
 		private void LateUpdate()
 		{
 			if (this._changed)
@@ -399,8 +362,6 @@ namespace LBoL.Presentation.UI.Widgets
 				this.SetProperties();
 			}
 		}
-
-		// Token: 0x06000440 RID: 1088 RVA: 0x00011609 File Offset: 0x0000F809
 		private void OnEnable()
 		{
 			L10nManager.LocaleChanged += new Action(this.OnLocaleChanged);
@@ -410,8 +371,6 @@ namespace LBoL.Presentation.UI.Widgets
 				this.AddHandlers(this._card);
 			}
 		}
-
-		// Token: 0x06000441 RID: 1089 RVA: 0x00011644 File Offset: 0x0000F844
 		private void OnDisable()
 		{
 			L10nManager.LocaleChanged -= new Action(this.OnLocaleChanged);
@@ -423,8 +382,6 @@ namespace LBoL.Presentation.UI.Widgets
 			this.HideTooltip();
 			DOTween.Kill(this, false);
 		}
-
-		// Token: 0x06000442 RID: 1090 RVA: 0x00011695 File Offset: 0x0000F895
 		private void OnDestroy()
 		{
 			if (this._card != null)
@@ -433,22 +390,16 @@ namespace LBoL.Presentation.UI.Widgets
 				this._card = null;
 			}
 		}
-
-		// Token: 0x06000443 RID: 1091 RVA: 0x000116B2 File Offset: 0x0000F8B2
 		private void AddHandlers(Card card)
 		{
 			card.PropertyChanged += new Action(this.OnPropertyChanged);
 			card.Activating += new Action(this.OnActivating);
 		}
-
-		// Token: 0x06000444 RID: 1092 RVA: 0x000116D8 File Offset: 0x0000F8D8
 		private void RemoveHandlers(Card card)
 		{
 			card.PropertyChanged -= new Action(this.OnPropertyChanged);
 			card.Activating -= new Action(this.OnActivating);
 		}
-
-		// Token: 0x06000445 RID: 1093 RVA: 0x000116FE File Offset: 0x0000F8FE
 		private void OnLocaleChanged()
 		{
 			if (this._card != null)
@@ -456,8 +407,6 @@ namespace LBoL.Presentation.UI.Widgets
 				this._changed = true;
 			}
 		}
-
-		// Token: 0x06000446 RID: 1094 RVA: 0x00011710 File Offset: 0x0000F910
 		private void OnSettingsChanged(GameSettingsSaveData settings)
 		{
 			if (!this)
@@ -479,10 +428,6 @@ namespace LBoL.Presentation.UI.Widgets
 				this.illustrator.gameObject.SetActive(false);
 			}
 		}
-
-		// Token: 0x170000B7 RID: 183
-		// (get) Token: 0x06000447 RID: 1095 RVA: 0x00011795 File Offset: 0x0000F995
-		// (set) Token: 0x06000448 RID: 1096 RVA: 0x000117A0 File Offset: 0x0000F9A0
 		public Card Card
 		{
 			get
@@ -514,8 +459,6 @@ namespace LBoL.Presentation.UI.Widgets
 				}
 			}
 		}
-
-		// Token: 0x06000449 RID: 1097 RVA: 0x00011800 File Offset: 0x0000FA00
 		private void LazySetCard()
 		{
 			if (this._card == null)
@@ -545,10 +488,6 @@ namespace LBoL.Presentation.UI.Widgets
 				this._changedImageWhenUpgrade = this._card.IsUpgraded;
 			}
 		}
-
-		// Token: 0x170000B8 RID: 184
-		// (get) Token: 0x0600044A RID: 1098 RVA: 0x000119AC File Offset: 0x0000FBAC
-		// (set) Token: 0x0600044B RID: 1099 RVA: 0x000119B4 File Offset: 0x0000FBB4
 		public bool MarginAsFriend
 		{
 			get
@@ -564,15 +503,11 @@ namespace LBoL.Presentation.UI.Widgets
 				}
 			}
 		}
-
-		// Token: 0x0600044C RID: 1100 RVA: 0x00011A04 File Offset: 0x0000FC04
 		public void SetCardIllustrator(string id)
 		{
 			this._tempIllustratorId = id;
 			this._changed = true;
 		}
-
-		// Token: 0x0600044D RID: 1101 RVA: 0x00011A14 File Offset: 0x0000FC14
 		private void RefreshCardImage()
 		{
 			string text = GameMaster.GetPreferredCardIllustrator(this._card);
@@ -607,8 +542,6 @@ namespace LBoL.Presentation.UI.Widgets
 			Texture texture = ResourcesHelper.TryGetCardImage(text2 + text);
 			this.cardImage.texture = (texture ? texture : this.defaultCardImage);
 		}
-
-		// Token: 0x0600044E RID: 1102 RVA: 0x00011B88 File Offset: 0x0000FD88
 		private void SetBgTexture(Card card)
 		{
 			ValueTuple<Texture2D, Texture2D> bgTexture = CardWidget.GetBgTexture(card);
@@ -618,10 +551,6 @@ namespace LBoL.Presentation.UI.Widgets
 			this.cardSubBg.texture = item2;
 			this.cardSubBg.gameObject.SetActive(item2);
 		}
-
-		// Token: 0x170000B9 RID: 185
-		// (get) Token: 0x0600044F RID: 1103 RVA: 0x00011BD6 File Offset: 0x0000FDD6
-		// (set) Token: 0x06000450 RID: 1104 RVA: 0x00011BE0 File Offset: 0x0000FDE0
 		public bool ShowManaHand
 		{
 			get
@@ -641,10 +570,6 @@ namespace LBoL.Presentation.UI.Widgets
 				}
 			}
 		}
-
-		// Token: 0x170000BA RID: 186
-		// (get) Token: 0x06000451 RID: 1105 RVA: 0x00011C3C File Offset: 0x0000FE3C
-		// (set) Token: 0x06000452 RID: 1106 RVA: 0x00011C44 File Offset: 0x0000FE44
 		public bool CostMoreLeft
 		{
 			get
@@ -663,8 +588,6 @@ namespace LBoL.Presentation.UI.Widgets
 					.SetTarget(this.costHandRect);
 			}
 		}
-
-		// Token: 0x06000453 RID: 1107 RVA: 0x00011CA8 File Offset: 0x0000FEA8
 		public void SetCostToLeftInstant(bool left = true)
 		{
 			this._costMoreLeft = left;
@@ -676,8 +599,6 @@ namespace LBoL.Presentation.UI.Widgets
 			}
 			this.costHandRect.localPosition += new Vector3(150f, 0f, 0f);
 		}
-
-		// Token: 0x06000454 RID: 1108 RVA: 0x00011D24 File Offset: 0x0000FF24
 		public void OnActivating()
 		{
 			if (!this)
@@ -698,20 +619,14 @@ namespace LBoL.Presentation.UI.Widgets
 				.SetUpdate(true)
 				.SetLink(base.gameObject);
 		}
-
-		// Token: 0x06000455 RID: 1109 RVA: 0x00011DD4 File Offset: 0x0000FFD4
 		private void OnPropertyChanged()
 		{
 			this._changed = true;
 		}
-
-		// Token: 0x06000456 RID: 1110 RVA: 0x00011DDD File Offset: 0x0000FFDD
 		public void RefreshStatus()
 		{
 			this._changed = true;
 		}
-
-		// Token: 0x06000457 RID: 1111 RVA: 0x00011DE8 File Offset: 0x0000FFE8
 		private void SetProperties()
 		{
 			if (this._card == null)
@@ -756,13 +671,7 @@ namespace LBoL.Presentation.UI.Widgets
 			}
 			this.descriptionText.alignment = ((lineCount > 1 || this._card.CardType == CardType.Friend) ? TextAlignmentOptions.Left : TextAlignmentOptions.Center);
 		}
-
-		// Token: 0x170000BB RID: 187
-		// (get) Token: 0x06000458 RID: 1112 RVA: 0x00012071 File Offset: 0x00010271
-		// (set) Token: 0x06000459 RID: 1113 RVA: 0x00012079 File Offset: 0x00010279
 		public CardWidget.EdgeStatus Edge { get; set; }
-
-		// Token: 0x0600045A RID: 1114 RVA: 0x00012084 File Offset: 0x00010284
 		public void SetCardEdge(CardWidget.EdgeStatus status)
 		{
 			this.Edge = status;
@@ -802,8 +711,6 @@ namespace LBoL.Presentation.UI.Widgets
 				throw new ArgumentOutOfRangeException("status", status, null);
 			}
 		}
-
-		// Token: 0x0600045B RID: 1115 RVA: 0x0001215C File Offset: 0x0001035C
 		private void SetEdgeAfford(bool b)
 		{
 			if (b && !this._edgeAfford)
@@ -817,8 +724,6 @@ namespace LBoL.Presentation.UI.Widgets
 				this._edgeAfford.SetActive(b);
 			}
 		}
-
-		// Token: 0x0600045C RID: 1116 RVA: 0x000121E0 File Offset: 0x000103E0
 		private void SetEdgeAffordKicker(bool b)
 		{
 			if (b && !this._edgeAffordKicker)
@@ -832,8 +737,6 @@ namespace LBoL.Presentation.UI.Widgets
 				this._edgeAffordKicker.SetActive(b);
 			}
 		}
-
-		// Token: 0x0600045D RID: 1117 RVA: 0x00012264 File Offset: 0x00010464
 		private void SetEdgeHigh(bool b)
 		{
 			if (b && !this._edgeHigh)
@@ -845,8 +748,6 @@ namespace LBoL.Presentation.UI.Widgets
 				this._edgeHigh.SetActive(b);
 			}
 		}
-
-		// Token: 0x0600045E RID: 1118 RVA: 0x000122B4 File Offset: 0x000104B4
 		private void SetEdgeHighKicker(bool b)
 		{
 			if (b && !this._edgeHighKicker)
@@ -858,8 +759,6 @@ namespace LBoL.Presentation.UI.Widgets
 				this._edgeHighKicker.SetActive(b);
 			}
 		}
-
-		// Token: 0x0600045F RID: 1119 RVA: 0x00012301 File Offset: 0x00010501
 		private void PlayActivatingEdge()
 		{
 			if (!this._edgeActivatingOnce)
@@ -868,16 +767,12 @@ namespace LBoL.Presentation.UI.Widgets
 			}
 			this._edgeActivatingOnce.GetComponentInChildren<ParticleSystem>().Play(true);
 		}
-
-		// Token: 0x06000460 RID: 1120 RVA: 0x00012338 File Offset: 0x00010538
 		public void PlayFriendEffect()
 		{
 			GameObject gameObject = Object.Instantiate<GameObject>(this.friendEffect, this.effectFront);
 			gameObject.GetComponentInChildren<ParticleSystem>().Play(true);
 			Object.Destroy(gameObject, 2f);
 		}
-
-		// Token: 0x06000461 RID: 1121 RVA: 0x00012364 File Offset: 0x00010564
 		public void PlayTransformEffect()
 		{
 			base.transform.DOLocalRotate(new Vector3(0f, 360f, 0f), 0.5f, RotateMode.FastBeyond360);
@@ -885,8 +780,6 @@ namespace LBoL.Presentation.UI.Widgets
 			gameObject.GetComponentInChildren<ParticleSystem>().Play(true);
 			Object.Destroy(gameObject, 3f);
 		}
-
-		// Token: 0x06000462 RID: 1122 RVA: 0x000123C0 File Offset: 0x000105C0
 		public void SetEndingNotify()
 		{
 			if (!this._edgeEndNotify)
@@ -896,8 +789,6 @@ namespace LBoL.Presentation.UI.Widgets
 			this._edgeEndNotify.GetComponentInChildren<ParticleSystem>().Stop();
 			this._edgeEndNotify.GetComponentInChildren<ParticleSystem>().Play();
 		}
-
-		// Token: 0x06000463 RID: 1123 RVA: 0x00012414 File Offset: 0x00010614
 		public ExileCoverEffect Exile()
 		{
 			AudioManager.PlayUi("CardExile", false);
@@ -907,8 +798,6 @@ namespace LBoL.Presentation.UI.Widgets
 			exileCoverEffect.Exile();
 			return exileCoverEffect;
 		}
-
-		// Token: 0x06000464 RID: 1124 RVA: 0x00012468 File Offset: 0x00010668
 		public RemoveCoverEffect Remove()
 		{
 			AudioManager.PlayUi("CardExile", false);
@@ -918,18 +807,12 @@ namespace LBoL.Presentation.UI.Widgets
 			removeCoverEffect.Remove();
 			return removeCoverEffect;
 		}
-
-		// Token: 0x06000465 RID: 1125 RVA: 0x000124B9 File Offset: 0x000106B9
 		public void Summon()
 		{
 			this.ShowManaHand = true;
 			this.PlayFriendEffect();
 			AudioManager.PlayUi("SummonFriend", false);
 		}
-
-		// Token: 0x170000BC RID: 188
-		// (get) Token: 0x06000466 RID: 1126 RVA: 0x000124D3 File Offset: 0x000106D3
-		// (set) Token: 0x06000467 RID: 1127 RVA: 0x000124DB File Offset: 0x000106DB
 		public bool ShowSticker
 		{
 			get
@@ -942,23 +825,9 @@ namespace LBoL.Presentation.UI.Widgets
 				this.sticker.gameObject.SetActive(value);
 			}
 		}
-
-		// Token: 0x170000BD RID: 189
-		// (get) Token: 0x06000468 RID: 1128 RVA: 0x000124F5 File Offset: 0x000106F5
-		// (set) Token: 0x06000469 RID: 1129 RVA: 0x000124FD File Offset: 0x000106FD
 		public TooltipPosition[] TooltipPositions { get; set; } = CardWidget.DefaultTooltipPositions;
-
-		// Token: 0x170000BE RID: 190
-		// (get) Token: 0x0600046A RID: 1130 RVA: 0x00012506 File Offset: 0x00010706
-		// (set) Token: 0x0600046B RID: 1131 RVA: 0x0001250E File Offset: 0x0001070E
 		private int TooltipId { get; set; }
-
-		// Token: 0x170000BF RID: 191
-		// (get) Token: 0x0600046C RID: 1132 RVA: 0x00012517 File Offset: 0x00010717
-		// (set) Token: 0x0600046D RID: 1133 RVA: 0x0001251F File Offset: 0x0001071F
 		public bool TooltipEnabled { get; set; } = true;
-
-		// Token: 0x0600046E RID: 1134 RVA: 0x00012528 File Offset: 0x00010728
 		public void ShowTooltip()
 		{
 			if (this.Card != null && this.TooltipEnabled)
@@ -966,8 +835,6 @@ namespace LBoL.Presentation.UI.Widgets
 				this.TooltipId = TooltipsLayer.ShowCard(this, false);
 			}
 		}
-
-		// Token: 0x0600046F RID: 1135 RVA: 0x00012547 File Offset: 0x00010747
 		public void HideTooltip()
 		{
 			if (this.TooltipId != 0)
@@ -976,8 +843,6 @@ namespace LBoL.Presentation.UI.Widgets
 				this.TooltipId = 0;
 			}
 		}
-
-		// Token: 0x06000470 RID: 1136 RVA: 0x00012564 File Offset: 0x00010764
 		public void ShowDeckIndex(int index, bool top = false, bool bottom = false)
 		{
 			string text = index.ToString();
@@ -999,110 +864,42 @@ namespace LBoL.Presentation.UI.Widgets
 			this.deckIndex.text = text;
 			this.deckIndex.gameObject.SetActive(true);
 		}
-
-		// Token: 0x06000471 RID: 1137 RVA: 0x000125D9 File Offset: 0x000107D9
 		public void HideDeckIndex()
 		{
 			this.deckIndex.gameObject.SetActive(false);
 		}
-
-		// Token: 0x040001FD RID: 509
 		private static Dictionary<ValueTuple<ManaColor, Rarity, bool>, Texture2D> _bgTextureTable;
-
-		// Token: 0x040001FE RID: 510
 		private static Dictionary<ValueTuple<Rarity, bool>, Texture2D> _rainbowBgTextureTable;
-
-		// Token: 0x040001FF RID: 511
 		private static Dictionary<ValueTuple<Rarity, bool>, Texture2D> _toolBgTextureTable;
-
-		// Token: 0x04000200 RID: 512
 		private static Dictionary<ValueTuple<Rarity, bool>, Texture2D> _misfortuneBgTextureTable;
-
-		// Token: 0x04000201 RID: 513
 		private static Dictionary<string, Sprite> _ownerSpriteTable;
-
-		// Token: 0x04000202 RID: 514
 		private static Dictionary<CardType, Sprite> _typeSpriteTable;
-
-		// Token: 0x04000203 RID: 515
 		private const string BgTexturePath = "Sprite/Card/Bg/";
-
-		// Token: 0x04000204 RID: 516
 		private const string BgCloneTexturePath = "Sprite/Card/Bg/Clone/";
-
-		// Token: 0x04000205 RID: 517
 		private string _currentIllustrator;
-
-		// Token: 0x04000206 RID: 518
 		private bool _awaken;
-
-		// Token: 0x04000207 RID: 519
 		private bool _lazySetCard;
-
-		// Token: 0x04000208 RID: 520
 		private Card _card;
-
-		// Token: 0x04000209 RID: 521
 		private GameObject _cardActive;
-
-		// Token: 0x0400020A RID: 522
 		private string _tempIllustratorId;
-
-		// Token: 0x0400020B RID: 523
 		private bool _changed;
-
-		// Token: 0x0400020E RID: 526
 		private string _rawPath;
-
-		// Token: 0x0400020F RID: 527
 		private bool _marginAsFriend;
-
-		// Token: 0x04000210 RID: 528
 		private bool _dontShowMana;
-
-		// Token: 0x04000211 RID: 529
 		private bool _showManaHand;
-
-		// Token: 0x04000212 RID: 530
 		private const float DistanceX = 150f;
-
-		// Token: 0x04000213 RID: 531
 		private const float Duration = 0.1f;
-
-		// Token: 0x04000214 RID: 532
 		private bool _costMoreLeft;
-
-		// Token: 0x04000215 RID: 533
 		private bool _shouldChangeImageWhenUpgrade;
-
-		// Token: 0x04000216 RID: 534
 		private bool _changedImageWhenUpgrade;
-
-		// Token: 0x04000218 RID: 536
 		private GameObject _edgeAfford;
-
-		// Token: 0x04000219 RID: 537
 		private GameObject _edgeAffordKicker;
-
-		// Token: 0x0400021A RID: 538
 		private GameObject _edgeHigh;
-
-		// Token: 0x0400021B RID: 539
 		private GameObject _edgeHighKicker;
-
-		// Token: 0x0400021C RID: 540
 		private GameObject _edgeEndNotify;
-
-		// Token: 0x0400021D RID: 541
 		private GameObject _edgeActivatingOnce;
-
-		// Token: 0x0400021E RID: 542
 		private GameObject _edgeActivatingLoop;
-
-		// Token: 0x0400021F RID: 543
 		private bool _showSticker;
-
-		// Token: 0x04000220 RID: 544
 		private static readonly TooltipPosition[] DefaultTooltipPositions = new TooltipPosition[]
 		{
 			new TooltipPosition(TooltipDirection.Right, TooltipAlignment.Max),
@@ -1111,168 +908,87 @@ namespace LBoL.Presentation.UI.Widgets
 			new TooltipPosition(TooltipDirection.Bottom, TooltipAlignment.Center),
 			new TooltipPosition(TooltipDirection.Left, TooltipAlignment.Min)
 		};
-
-		// Token: 0x04000224 RID: 548
 		[Header("组件引用")]
 		[SerializeField]
 		private TextMeshProUGUI nameText;
-
-		// Token: 0x04000225 RID: 549
 		[SerializeField]
 		private TextMeshProUGUI typeText;
-
-		// Token: 0x04000226 RID: 550
 		[SerializeField]
 		private TextMeshProUGUI descriptionText;
-
-		// Token: 0x04000227 RID: 551
 		[SerializeField]
 		private CostWidget costWidget;
-
-		// Token: 0x04000228 RID: 552
 		[SerializeField]
 		private RectTransform costRegularRect;
-
-		// Token: 0x04000229 RID: 553
 		[SerializeField]
 		private RectTransform costHandRect;
-
-		// Token: 0x0400022A RID: 554
 		[SerializeField]
 		private RawImage cardImage;
-
-		// Token: 0x0400022B RID: 555
 		[SerializeField]
 		private RawImage cardMainBg;
-
-		// Token: 0x0400022C RID: 556
 		[SerializeField]
 		private RawImage cardSubBg;
-
-		// Token: 0x0400022D RID: 557
 		[SerializeField]
 		private Image cardTypeIcon;
-
-		// Token: 0x0400022E RID: 558
 		[SerializeField]
 		private Image cardOwnerIcon;
-
-		// Token: 0x0400022F RID: 559
 		[SerializeField]
 		private Transform effectBack;
-
-		// Token: 0x04000230 RID: 560
 		[SerializeField]
 		private Transform effectFront;
-
-		// Token: 0x04000231 RID: 561
 		[SerializeField]
 		private Image cardBack;
-
-		// Token: 0x04000232 RID: 562
 		[SerializeField]
 		private Transform root;
-
-		// Token: 0x04000233 RID: 563
 		[SerializeField]
 		private Transform exileLayer;
-
-		// Token: 0x04000234 RID: 564
 		[SerializeField]
 		private RectTransform rectTransform;
-
-		// Token: 0x04000235 RID: 565
 		[SerializeField]
 		private CanvasGroup canvasGroup;
-
-		// Token: 0x04000236 RID: 566
 		[SerializeField]
 		private GameObject baseLoyaltyObj;
-
-		// Token: 0x04000237 RID: 567
 		[SerializeField]
 		private TextMeshProUGUI baseLoyalty;
-
-		// Token: 0x04000238 RID: 568
 		[SerializeField]
 		private Image sticker;
-
-		// Token: 0x04000239 RID: 569
 		[Header("SubInfos")]
 		[SerializeField]
 		private TextMeshProUGUI cardIdText;
-
-		// Token: 0x0400023A RID: 570
 		[SerializeField]
 		private TextMeshProUGUI otherInfo;
-
-		// Token: 0x0400023B RID: 571
 		[SerializeField]
 		private TextMeshProUGUI unfinished;
-
-		// Token: 0x0400023C RID: 572
 		[SerializeField]
 		private TextMeshProUGUI illustrator;
-
-		// Token: 0x0400023D RID: 573
 		[SerializeField]
 		private TextMeshProUGUI deckIndex;
-
-		// Token: 0x0400023E RID: 574
 		[Header("资源引用")]
 		[SerializeField]
 		private GameObject edgeAfford;
-
-		// Token: 0x0400023F RID: 575
 		[SerializeField]
 		private GameObject edgeAffordKicker;
-
-		// Token: 0x04000240 RID: 576
 		[SerializeField]
 		private GameObject edgeHigh;
-
-		// Token: 0x04000241 RID: 577
 		[SerializeField]
 		private GameObject edgeHighKicker;
-
-		// Token: 0x04000242 RID: 578
 		[SerializeField]
 		private GameObject edgeEndNotify;
-
-		// Token: 0x04000243 RID: 579
 		[SerializeField]
 		private GameObject edgeActivating;
-
-		// Token: 0x04000244 RID: 580
 		[SerializeField]
 		private GameObject friendEffect;
-
-		// Token: 0x04000245 RID: 581
 		[SerializeField]
 		private GameObject transformEffect;
-
-		// Token: 0x04000246 RID: 582
 		[SerializeField]
 		private Texture defaultCardImage;
-
-		// Token: 0x04000247 RID: 583
 		public ExileCoverEffect cardExile;
-
-		// Token: 0x04000248 RID: 584
 		public RemoveCoverEffect cardRemove;
-
-		// Token: 0x020001CE RID: 462
 		public enum EdgeStatus
 		{
-			// Token: 0x04000EF7 RID: 3831
 			None,
-			// Token: 0x04000EF8 RID: 3832
 			Afford,
-			// Token: 0x04000EF9 RID: 3833
 			AffordKicker,
-			// Token: 0x04000EFA RID: 3834
 			High,
-			// Token: 0x04000EFB RID: 3835
 			HighKicker
 		}
 	}

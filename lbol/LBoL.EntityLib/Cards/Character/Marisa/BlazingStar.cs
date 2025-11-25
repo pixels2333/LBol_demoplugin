@@ -7,14 +7,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.StatusEffects;
 using LBoL.EntityLib.StatusEffects.ExtraTurn;
-
 namespace LBoL.EntityLib.Cards.Character.Marisa
 {
-	// Token: 0x0200040F RID: 1039
 	[UsedImplicitly]
 	public sealed class BlazingStar : LimitedStopTimeCard
 	{
-		// Token: 0x06000E56 RID: 3670 RVA: 0x0001A63C File Offset: 0x0001883C
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.DefenseAction(true);

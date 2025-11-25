@@ -19,13 +19,10 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
-
 namespace LBoL.Presentation.UI.Panels
 {
-	// Token: 0x020000A4 RID: 164
 	public class MuseumPanel : UiPanel, IInputActionHandler
 	{
-		// Token: 0x0600089C RID: 2204 RVA: 0x00029DAC File Offset: 0x00027FAC
 		public void Awake()
 		{
 			this._characterFilterList.Add("Neutral", this.characterToggleTemplate);
@@ -80,8 +77,6 @@ namespace LBoL.Presentation.UI.Panels
 			});
 			this.textFilter.onValueChanged.AddListener(new UnityAction<string>(this.TextFilter));
 		}
-
-		// Token: 0x0600089D RID: 2205 RVA: 0x0002A0DC File Offset: 0x000282DC
 		public bool Initialization()
 		{
 			if (Singleton<GameMaster>.Instance.CurrentProfile == null || this._initialized)
@@ -150,8 +145,6 @@ namespace LBoL.Presentation.UI.Panels
 			this._initialized = true;
 			return true;
 		}
-
-		// Token: 0x0600089E RID: 2206 RVA: 0x0002A424 File Offset: 0x00028624
 		private void SetupLifetimeGrid()
 		{
 			bool flag = Singleton<GameMaster>.Instance.CurrentProfile.BluePoint != 0;
@@ -200,8 +193,6 @@ namespace LBoL.Presentation.UI.Panels
 				this._setupLifetimeGrid = true;
 			}
 		}
-
-		// Token: 0x0600089F RID: 2207 RVA: 0x0002A6FC File Offset: 0x000288FC
 		public void UpdateLifetimeGrid()
 		{
 			float num = 0f;
@@ -226,8 +217,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.lifetimeScrollRect.normalizedPosition = Vector2.one;
 		}
-
-		// Token: 0x060008A0 RID: 2208 RVA: 0x0002A7FC File Offset: 0x000289FC
 		public override void OnLocaleChanged()
 		{
 			base.OnLocaleChanged();
@@ -255,16 +244,12 @@ namespace LBoL.Presentation.UI.Panels
 			this._initialized = false;
 			this.Initialization();
 		}
-
-		// Token: 0x060008A1 RID: 2209 RVA: 0x0002A964 File Offset: 0x00028B64
 		public override void OnInputDeviceChanged(InputDeviceType inputDevice)
 		{
 			base.OnInputDeviceChanged(inputDevice);
 			this.OnCardScrollRectValueChanged(this.cardsScrollRect.scrollRect.normalizedPosition);
 			this.OnAchievementScrollRectValueChanged(this.achievementScrollRect.normalizedPosition);
 		}
-
-		// Token: 0x060008A2 RID: 2210 RVA: 0x0002A994 File Offset: 0x00028B94
 		private void OnCardScrollRectValueChanged(Vector2 vec)
 		{
 			bool flag = true;
@@ -278,8 +263,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.cardUpgradedToggle.GetComponent<Selectable>().interactable = flag;
 			this.cardStyleToggle.GetComponent<Selectable>().interactable = flag;
 		}
-
-		// Token: 0x060008A3 RID: 2211 RVA: 0x0002AA14 File Offset: 0x00028C14
 		private void OnAchievementScrollRectValueChanged(Vector2 vec)
 		{
 			bool flag = true;
@@ -291,8 +274,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.unlockAchievementToggle.GetComponent<Selectable>().interactable = flag;
 			this.notUnlockAchievementToggle.GetComponent<Selectable>().interactable = flag;
 		}
-
-		// Token: 0x060008A4 RID: 2212 RVA: 0x0002AA74 File Offset: 0x00028C74
 		public void OnGamepadPairButtonActive(float valueStep)
 		{
 			ToggleGroup componentInChildren = base.GetComponentInChildren<ToggleGroup>();
@@ -307,8 +288,6 @@ namespace LBoL.Presentation.UI.Panels
 				component.isOn = true;
 			}
 		}
-
-		// Token: 0x060008A5 RID: 2213 RVA: 0x0002AAC8 File Offset: 0x00028CC8
 		private void SetExhibitNavigation(MuseumExhibitWidget museumExhibit, int key, int index)
 		{
 			Selectable component = museumExhibit.exhibitWidget.GetComponent<Button>();
@@ -429,8 +408,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			component.navigation = navigation;
 		}
-
-		// Token: 0x060008A6 RID: 2214 RVA: 0x0002AE7C File Offset: 0x0002907C
 		private void SetDropdowns()
 		{
 			this.orderDropdown.dropdown.ClearOptions();
@@ -451,8 +428,6 @@ namespace LBoL.Presentation.UI.Panels
 			dropdown2.AddOptions(list2);
 			this.revealDropdown.dropdown.SetValueWithoutNotify((int)MuseumPanel._revealStatus);
 		}
-
-		// Token: 0x060008A7 RID: 2215 RVA: 0x0002AF74 File Offset: 0x00029174
 		private void SetExhibitWidgetPositionAnim()
 		{
 			int num = 9;
@@ -489,8 +464,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.RefreshExhibits();
 			this.exhibitsLayout.sizeDelta = new Vector2(this.exhibitsLayout.sizeDelta.x, -num2 + 100f);
 		}
-
-		// Token: 0x060008A8 RID: 2216 RVA: 0x0002B170 File Offset: 0x00029370
 		private void RefreshExhibits()
 		{
 			foreach (KeyValuePair<int, List<MuseumExhibitWidget>> keyValuePair in this._exhibitWidgetDic)
@@ -508,8 +481,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 			}
 		}
-
-		// Token: 0x060008A9 RID: 2217 RVA: 0x0002B228 File Offset: 0x00029428
 		public void OnMuseumExhibitClick(MuseumExhibitWidget exhibit)
 		{
 			if (exhibit.IsLock)
@@ -537,8 +508,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.infoExhibitBg.sprite = this.boothList[exhibit.Exhibit.Config.Rarity] ?? this.boothList[Rarity.Common];
 			this.infoPanelRoot.SetActive(true);
 		}
-
-		// Token: 0x060008AA RID: 2218 RVA: 0x0002B394 File Offset: 0x00029594
 		public void ResetCardTab()
 		{
 			foreach (KeyValuePair<ManaColor, Toggle> keyValuePair in this.manaFilterList)
@@ -567,28 +536,20 @@ namespace LBoL.Presentation.UI.Panels
 			this.ClearTextFilter(false);
 			this.RefreshCards();
 		}
-
-		// Token: 0x060008AB RID: 2219 RVA: 0x0002B51C File Offset: 0x0002971C
 		public void ResetExhibitTab()
 		{
 			this.infoPanelRoot.SetActive(false);
 			this.infoExhibitBg.sprite = this.boothList[Rarity.Common];
 			this.exhibitScrollRect.normalizedPosition = Vector2.one;
 		}
-
-		// Token: 0x060008AC RID: 2220 RVA: 0x0002B551 File Offset: 0x00029751
 		public void RefreshCards()
 		{
 			this.InternalRefreshCards(false);
 		}
-
-		// Token: 0x060008AD RID: 2221 RVA: 0x0002B55A File Offset: 0x0002975A
 		public void RefreshCardsKeepPosition()
 		{
 			this.InternalRefreshCards(true);
 		}
-
-		// Token: 0x060008AE RID: 2222 RVA: 0x0002B564 File Offset: 0x00029764
 		private void InternalRefreshCards(bool keepPosition)
 		{
 			if (keepPosition)
@@ -666,8 +627,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.cardsScrollRect.scrollRect.normalizedPosition = (keepPosition ? this._scrollPosition : Vector2.one);
 			this.cardsScrollRect.OnValueChangedListener(keepPosition ? this._scrollPosition : Vector2.one);
 		}
-
-		// Token: 0x060008AF RID: 2223 RVA: 0x0002B840 File Offset: 0x00029A40
 		private static List<Card> SortCards(IEnumerable<Card> cards)
 		{
 			List<Card> list2;
@@ -734,29 +693,21 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			return list2;
 		}
-
-		// Token: 0x060008B0 RID: 2224 RVA: 0x0002BB6C File Offset: 0x00029D6C
 		private void CardOrder(bool increase)
 		{
 			MuseumPanel._increaseOrder = increase;
 			this.RefreshCards();
 		}
-
-		// Token: 0x060008B1 RID: 2225 RVA: 0x0002BB7A File Offset: 0x00029D7A
 		private void CardOrder(MuseumPanel.OrderStatus status)
 		{
 			MuseumPanel._orderStatus = status;
 			this.RefreshCards();
 		}
-
-		// Token: 0x060008B2 RID: 2226 RVA: 0x0002BB88 File Offset: 0x00029D88
 		private void CardOrder(MuseumPanel.RevealStatus status)
 		{
 			MuseumPanel._revealStatus = status;
 			this.RefreshCards();
 		}
-
-		// Token: 0x060008B3 RID: 2227 RVA: 0x0002BB98 File Offset: 0x00029D98
 		private IEnumerable<Type> FilterCardByCharacter()
 		{
 			List<Type> list = new List<Type>();
@@ -780,8 +731,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			return list;
 		}
-
-		// Token: 0x060008B4 RID: 2228 RVA: 0x0002BC88 File Offset: 0x00029E88
 		private IEnumerable<Type> FilterCardByMana()
 		{
 			List<Type> list = new List<Type>();
@@ -815,8 +764,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			return list;
 		}
-
-		// Token: 0x060008B5 RID: 2229 RVA: 0x0002BDD0 File Offset: 0x00029FD0
 		private IEnumerable<Type> FilterCardByType()
 		{
 			List<Type> list = new List<Type>();
@@ -836,8 +783,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			return list;
 		}
-
-		// Token: 0x060008B6 RID: 2230 RVA: 0x0002BEA0 File Offset: 0x0002A0A0
 		private static void HideTabRoot(GameObject root)
 		{
 			if (root.activeSelf)
@@ -848,15 +793,11 @@ namespace LBoL.Presentation.UI.Panels
 				});
 			}
 		}
-
-		// Token: 0x060008B7 RID: 2231 RVA: 0x0002BEF3 File Offset: 0x0002A0F3
 		private static void ShowTabRoot(GameObject root)
 		{
 			root.SetActive(true);
 			root.GetComponent<CanvasGroup>().DOFade(1f, 0.2f).From(0f, true, false);
 		}
-
-		// Token: 0x060008B8 RID: 2232 RVA: 0x0002BF20 File Offset: 0x0002A120
 		protected override void OnShowing()
 		{
 			this.cardsTab.toggle.SetIsOnWithoutNotify(true);
@@ -867,22 +808,16 @@ namespace LBoL.Presentation.UI.Panels
 			this._canvasGroup.interactable = true;
 			UiManager.PushActionHandler(this);
 		}
-
-		// Token: 0x060008B9 RID: 2233 RVA: 0x0002BF72 File Offset: 0x0002A172
 		protected override void OnHiding()
 		{
 			GameMaster.PlatformHandler.SetMainMenuInfo(MainMenuStatus.Idle);
 			this._canvasGroup.interactable = false;
 			UiManager.PopActionHandler(this);
 		}
-
-		// Token: 0x060008BA RID: 2234 RVA: 0x0002BF91 File Offset: 0x0002A191
 		void IInputActionHandler.OnCancel()
 		{
 			this.returnButton.onClick.Invoke();
 		}
-
-		// Token: 0x060008BB RID: 2235 RVA: 0x0002BFA3 File Offset: 0x0002A1A3
 		private void ResetToCardTab()
 		{
 			MuseumPanel.ShowTabRoot(this.cardsRoot.gameObject);
@@ -890,8 +825,6 @@ namespace LBoL.Presentation.UI.Panels
 			MuseumPanel.HideTabRoot(this.achievementRoot.gameObject);
 			this.ResetCardTab();
 		}
-
-		// Token: 0x060008BC RID: 2236 RVA: 0x0002BFDC File Offset: 0x0002A1DC
 		private void CardTabToggle(bool on)
 		{
 			if (!on)
@@ -908,8 +841,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.ResetCardTab();
 			GamepadNavigationManager.RefreshSelection();
 		}
-
-		// Token: 0x060008BD RID: 2237 RVA: 0x0002C03C File Offset: 0x0002A23C
 		private void ExhibitTabToggle(bool on)
 		{
 			if (!on)
@@ -927,8 +858,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.RefreshExhibits();
 			GamepadNavigationManager.RefreshSelection();
 		}
-
-		// Token: 0x060008BE RID: 2238 RVA: 0x0002C0A4 File Offset: 0x0002A2A4
 		private void AchievementTabToggle(bool on)
 		{
 			if (!on)
@@ -951,38 +880,26 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			GamepadNavigationManager.RefreshSelection();
 		}
-
-		// Token: 0x060008BF RID: 2239 RVA: 0x0002C140 File Offset: 0x0002A340
 		public static bool IsCardLocked(string cardId)
 		{
 			return ExpHelper.GetCardUnlockLevel(cardId) > Singleton<GameMaster>.Instance.CurrentProfileLevel;
 		}
-
-		// Token: 0x060008C0 RID: 2240 RVA: 0x0002C154 File Offset: 0x0002A354
 		public static bool IsCardRevealed(Card card)
 		{
 			return !card.Config.Revealable || card.Config.DebugLevel > 0 || Singleton<GameMaster>.Instance.CurrentProfile.CardsRevealed.Contains(card.Id);
 		}
-
-		// Token: 0x060008C1 RID: 2241 RVA: 0x0002C18D File Offset: 0x0002A38D
 		public static bool IsExhibitLocked(string exhibitId)
 		{
 			return ExpHelper.GetExhibitUnlockLevel(exhibitId) > Singleton<GameMaster>.Instance.CurrentProfileLevel;
 		}
-
-		// Token: 0x060008C2 RID: 2242 RVA: 0x0002C1A1 File Offset: 0x0002A3A1
 		public static bool IsExhibitRevealed(string exhibitId)
 		{
 			return !ExhibitConfig.FromId(exhibitId).Revealable || Singleton<GameMaster>.Instance.CurrentProfile.ExhibitsRevealed.Contains(exhibitId);
 		}
-
-		// Token: 0x060008C3 RID: 2243 RVA: 0x0002C1C7 File Offset: 0x0002A3C7
 		public int GetTabIndex()
 		{
 			return base.GetComponentInChildren<ToggleGroup>().GetFirstActiveToggle().transform.GetSiblingIndex();
 		}
-
-		// Token: 0x060008C4 RID: 2244 RVA: 0x0002C1DE File Offset: 0x0002A3DE
 		private void ClearTextFilter(bool refresh = true)
 		{
 			this.textFilter.SetTextWithoutNotify("");
@@ -992,26 +909,16 @@ namespace LBoL.Presentation.UI.Panels
 				this.RefreshCards();
 			}
 		}
-
-		// Token: 0x060008C5 RID: 2245 RVA: 0x0002C20A File Offset: 0x0002A40A
 		private void TextFilter(string text)
 		{
 			this.clearTextFilter.gameObject.SetActive(!text.IsNullOrEmpty());
 			this.RefreshCards();
 		}
-
-		// Token: 0x060008C6 RID: 2246 RVA: 0x0002C22C File Offset: 0x0002A42C
 		private static bool Filter(Card card, string filter)
 		{
 			return ("CardType." + card.CardType.ToString()).Localize(true).IndexOf(filter, 1) >= 0 || card.Name.IndexOf(filter, 1) >= 0 || card.Description.IndexOf(filter, 1) >= 0;
 		}
-
-		// Token: 0x1700016C RID: 364
-		// (get) Token: 0x060008C7 RID: 2247 RVA: 0x0002C28C File Offset: 0x0002A48C
-		// (set) Token: 0x060008C8 RID: 2248 RVA: 0x0002C293 File Offset: 0x0002A493
 		private static MuseumPanel.AchievementStatus CurrentAchievementStatus { get; set; }
-
-		// Token: 0x060008C9 RID: 2249 RVA: 0x0002C29C File Offset: 0x0002A49C
 		private void ResetAchievement()
 		{
 			this.allAchievementToggle.toggle.SetIsOnWithoutNotify(true);
@@ -1021,8 +928,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.RefreshAchievement();
 			this.achievementScrollRect.normalizedPosition = Vector2.one;
 		}
-
-		// Token: 0x060008CA RID: 2250 RVA: 0x0002C2F8 File Offset: 0x0002A4F8
 		private void RefreshAchievement()
 		{
 			this.achievementParent.DestroyChildren();
@@ -1068,8 +973,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.achievementCountText.text = "Museum.AchievementCount".Localize(true) + string.Format(" {0}/{1}", num, num2);
 		}
-
-		// Token: 0x060008CB RID: 2251 RVA: 0x0002C450 File Offset: 0x0002A650
 		private void AchievementFilter(bool on, MuseumPanel.AchievementStatus status)
 		{
 			if (!on)
@@ -1079,8 +982,6 @@ namespace LBoL.Presentation.UI.Panels
 			MuseumPanel.CurrentAchievementStatus = status;
 			this.RefreshAchievement();
 		}
-
-		// Token: 0x060008CC RID: 2252 RVA: 0x0002C464 File Offset: 0x0002A664
 		private static string SecondToHour(int seconds)
 		{
 			int num2;
@@ -1088,8 +989,6 @@ namespace LBoL.Presentation.UI.Panels
 			int num = Math.DivRem(Math.DivRem(seconds, 60, ref num2), 60, ref num3);
 			return string.Format("{0}:{1:00}:{2:00}", num, num3, num2);
 		}
-
-		// Token: 0x060008CD RID: 2253 RVA: 0x0002C4A4 File Offset: 0x0002A6A4
 		private void RefreshLifetimeData()
 		{
 			ProfileSaveData currentProfile = Singleton<GameMaster>.Instance.CurrentProfile;
@@ -1107,333 +1006,157 @@ namespace LBoL.Presentation.UI.Panels
 			this._lifetimePuzzleWidget.SetTotalValue(currentProfile.TotalPuzzleCount);
 			this._lifetimePuzzleWidget.UpdateCharacterStatus(Enumerable.ToDictionary<CharacterStatsSaveData, string, string>(characterStats, (CharacterStatsSaveData characterStat) => characterStat.CharacterId, (CharacterStatsSaveData characterStat) => characterStat.PuzzleCount.ToString()));
 		}
-
-		// Token: 0x0400062F RID: 1583
 		private const int CardsPerRow = 5;
-
-		// Token: 0x04000630 RID: 1584
 		[Header("General")]
 		[SerializeField]
 		private CommonToggleWidget cardsTab;
-
-		// Token: 0x04000631 RID: 1585
 		[SerializeField]
 		private CommonToggleWidget exhibitsTab;
-
-		// Token: 0x04000632 RID: 1586
 		[SerializeField]
 		private CommonToggleWidget achievementTab;
-
-		// Token: 0x04000633 RID: 1587
 		[SerializeField]
 		private Button returnButton;
-
-		// Token: 0x04000634 RID: 1588
 		[Header("Card")]
 		[SerializeField]
 		private RectTransform cardsRoot;
-
-		// Token: 0x04000635 RID: 1589
 		[SerializeField]
 		private RecyclableScrollRectWidget cardsScrollRect;
-
-		// Token: 0x04000636 RID: 1590
 		[SerializeField]
 		private ScrollRect cardsFilterScrollRect;
-
-		// Token: 0x04000637 RID: 1591
 		[SerializeField]
 		private DropdownWidget orderDropdown;
-
-		// Token: 0x04000638 RID: 1592
 		[SerializeField]
 		private DropdownWidget revealDropdown;
-
-		// Token: 0x04000639 RID: 1593
 		[SerializeField]
 		private SwitchWidget orderSwitch;
-
-		// Token: 0x0400063A RID: 1594
 		[SerializeField]
 		private CommonToggleWidget cardUpgradedToggle;
-
-		// Token: 0x0400063B RID: 1595
 		[SerializeField]
 		private CommonToggleWidget cardStyleToggle;
-
-		// Token: 0x0400063C RID: 1596
 		[SerializeField]
 		private RectTransform characterToggleLayout;
-
-		// Token: 0x0400063D RID: 1597
 		[SerializeField]
 		private Toggle characterToggleTemplate;
-
-		// Token: 0x0400063E RID: 1598
 		[SerializeField]
 		private GameObject revealCountRoot;
-
-		// Token: 0x0400063F RID: 1599
 		[SerializeField]
 		private TextMeshProUGUI revealCountTmp;
-
-		// Token: 0x04000640 RID: 1600
 		[SerializeField]
 		private AssociationList<ManaColor, Toggle> manaFilterList;
-
-		// Token: 0x04000641 RID: 1601
 		[SerializeField]
 		private AssociationList<CardType, Toggle> typeFilterList;
-
-		// Token: 0x04000642 RID: 1602
 		[SerializeField]
 		private AssociationList<string, Sprite> portraitList;
-
-		// Token: 0x04000643 RID: 1603
 		[SerializeField]
 		private AssociationList<Rarity, Sprite> boothList;
-
-		// Token: 0x04000644 RID: 1604
 		[SerializeField]
 		private CommonButtonWidget clearTextFilter;
-
-		// Token: 0x04000645 RID: 1605
 		[SerializeField]
 		private TMP_InputField textFilter;
-
-		// Token: 0x04000646 RID: 1606
 		[Header("Exhibit")]
 		[SerializeField]
 		private RectTransform exhibitsRoot;
-
-		// Token: 0x04000647 RID: 1607
 		[SerializeField]
 		private RectTransform exhibitsLayout;
-
-		// Token: 0x04000648 RID: 1608
 		[SerializeField]
 		private ScrollRect exhibitScrollRect;
-
-		// Token: 0x04000649 RID: 1609
 		[SerializeField]
 		private MuseumExhibitWidget exhibitWidgetTemplate;
-
-		// Token: 0x0400064A RID: 1610
 		[SerializeField]
 		private GameObject separatorLabelTemplate;
-
-		// Token: 0x0400064B RID: 1611
 		[SerializeField]
 		private GameObject infoPanelRoot;
-
-		// Token: 0x0400064C RID: 1612
 		[SerializeField]
 		private ExhibitWidget infoExhibit;
-
-		// Token: 0x0400064D RID: 1613
 		[SerializeField]
 		private TextMeshProUGUI infoExhibitName;
-
-		// Token: 0x0400064E RID: 1614
 		[SerializeField]
 		private TextMeshProUGUI infoExhibitRarity;
-
-		// Token: 0x0400064F RID: 1615
 		[SerializeField]
 		private Image infoExhibitBg;
-
-		// Token: 0x04000650 RID: 1616
 		[SerializeField]
 		private Image infoExhibitLockMask;
-
-		// Token: 0x04000651 RID: 1617
 		[SerializeField]
 		private MuseumExhibitTooltip museumExhibitTooltip;
-
-		// Token: 0x04000652 RID: 1618
 		[Header("Achievement")]
 		[SerializeField]
 		private RectTransform achievementRoot;
-
-		// Token: 0x04000653 RID: 1619
 		[SerializeField]
 		private RectTransform achievementParent;
-
-		// Token: 0x04000654 RID: 1620
 		[SerializeField]
 		private AchievementWidget achievementTemplate;
-
-		// Token: 0x04000655 RID: 1621
 		[SerializeField]
 		private TextMeshProUGUI achievementCountText;
-
-		// Token: 0x04000656 RID: 1622
 		[SerializeField]
 		private CommonToggleWidget allAchievementToggle;
-
-		// Token: 0x04000657 RID: 1623
 		[SerializeField]
 		private CommonToggleWidget unlockAchievementToggle;
-
-		// Token: 0x04000658 RID: 1624
 		[SerializeField]
 		private CommonToggleWidget notUnlockAchievementToggle;
-
-		// Token: 0x04000659 RID: 1625
 		[SerializeField]
 		private ScrollRect achievementScrollRect;
-
-		// Token: 0x0400065A RID: 1626
 		[SerializeField]
 		private RectTransform lifetimeGrid;
-
-		// Token: 0x0400065B RID: 1627
 		[SerializeField]
 		private RectTransform lifetimeTemplate;
-
-		// Token: 0x0400065C RID: 1628
 		[SerializeField]
 		private ScrollRect lifetimeScrollRect;
-
-		// Token: 0x0400065D RID: 1629
 		[SerializeField]
 		private VerticalLayoutGroup lifetimeLayoutGroup;
-
-		// Token: 0x0400065E RID: 1630
 		[SerializeField]
 		private VerticalLayoutGroup contentLayoutGroup;
-
-		// Token: 0x0400065F RID: 1631
 		private RectTransform _lifetimeTotalBp;
-
-		// Token: 0x04000660 RID: 1632
 		private RectTransform _lifetimeTime;
-
-		// Token: 0x04000661 RID: 1633
 		private RectTransform _lifetimeGame;
-
-		// Token: 0x04000662 RID: 1634
 		private RectTransform _lifetimeWin;
-
-		// Token: 0x04000663 RID: 1635
 		private RectTransform _lifetimePerfect;
-
-		// Token: 0x04000664 RID: 1636
 		private RectTransform _lifetimePuzzle;
-
-		// Token: 0x04000665 RID: 1637
 		private LifetimeWidget _lifetimeTotalBpWidget;
-
-		// Token: 0x04000666 RID: 1638
 		private LifetimeWidget _lifetimeTimeWidget;
-
-		// Token: 0x04000667 RID: 1639
 		private LifetimeWidget _lifetimeGameWidget;
-
-		// Token: 0x04000668 RID: 1640
 		private LifetimeWidget _lifetimeWinWidget;
-
-		// Token: 0x04000669 RID: 1641
 		private LifetimeWidget _lifetimePerfectWidget;
-
-		// Token: 0x0400066A RID: 1642
 		private LifetimeWidget _lifetimePuzzleWidget;
-
-		// Token: 0x0400066B RID: 1643
 		private const float ExhibitWidgetSpaceX = 470f;
-
-		// Token: 0x0400066C RID: 1644
 		private const float ExhibitWidgetSpaceY = 280f;
-
-		// Token: 0x0400066D RID: 1645
 		private const int ExhibitWidgetRowMax = 5;
-
-		// Token: 0x0400066E RID: 1646
 		private readonly Dictionary<string, Toggle> _characterFilterList = new Dictionary<string, Toggle>();
-
-		// Token: 0x0400066F RID: 1647
 		private readonly Dictionary<int, List<MuseumExhibitWidget>> _exhibitWidgetDic = new Dictionary<int, List<MuseumExhibitWidget>>();
-
-		// Token: 0x04000670 RID: 1648
 		private readonly Dictionary<int, GameObject> _exhibitLabelDic = new Dictionary<int, GameObject>();
-
-		// Token: 0x04000671 RID: 1649
 		private List<Card> _lastCardData = new List<Card>();
-
-		// Token: 0x04000672 RID: 1650
 		private int _lastUnrevealedCardCount;
-
-		// Token: 0x04000673 RID: 1651
 		private const string NeutralCharacter = "Neutral";
-
-		// Token: 0x04000674 RID: 1652
 		private bool _initialized;
-
-		// Token: 0x04000675 RID: 1653
 		private CanvasGroup _canvasGroup;
-
-		// Token: 0x04000676 RID: 1654
 		private List<RectTransform> _lifetimeGird = new List<RectTransform>();
-
-		// Token: 0x04000677 RID: 1655
 		private static bool _increaseOrder = true;
-
-		// Token: 0x04000678 RID: 1656
 		private static MuseumPanel.OrderStatus _orderStatus;
-
-		// Token: 0x04000679 RID: 1657
 		private static MuseumPanel.RevealStatus _revealStatus;
-
-		// Token: 0x0400067A RID: 1658
 		private bool _oldDataInGrid;
-
-		// Token: 0x0400067B RID: 1659
 		private bool _setupLifetimeGrid;
-
-		// Token: 0x0400067C RID: 1660
 		private Vector2 _scrollPosition;
-
-		// Token: 0x0400067D RID: 1661
 		private string _currentProfileName;
-
-		// Token: 0x0400067F RID: 1663
 		private const int AchievementPerRow = 6;
-
-		// Token: 0x02000274 RID: 628
 		private enum OrderStatus
 		{
-			// Token: 0x04001106 RID: 4358
 			Index,
-			// Token: 0x04001107 RID: 4359
 			Rarity,
-			// Token: 0x04001108 RID: 4360
 			Mana,
-			// Token: 0x04001109 RID: 4361
 			Illustrator
 		}
-
-		// Token: 0x02000275 RID: 629
 		private enum RevealStatus
 		{
-			// Token: 0x0400110B RID: 4363
 			All,
-			// Token: 0x0400110C RID: 4364
 			Revealed,
-			// Token: 0x0400110D RID: 4365
 			Unrevealed
 		}
-
-		// Token: 0x02000276 RID: 630
 		private class CardsRows : RecyclableScrollRectWidget.IRecyclableScrollRectDataSource
 		{
-			// Token: 0x0600159C RID: 5532 RVA: 0x00062CC2 File Offset: 0x00060EC2
 			public CardsRows(int rowSize, IEnumerable<Card> cards)
 			{
 				this._rowSize = rowSize;
 				this._cards = Enumerable.ToList<Card>(cards);
 			}
-
-			// Token: 0x0600159D RID: 5533 RVA: 0x00062CDD File Offset: 0x00060EDD
 			public int GetItemCount()
 			{
 				if (this._cards == null)
@@ -1442,8 +1165,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 				return (this._cards.Count + this._rowSize - 1) / this._rowSize;
 			}
-
-			// Token: 0x0600159E RID: 5534 RVA: 0x00062D04 File Offset: 0x00060F04
 			public void SetCell(RecyclableScrollRectWidget.RecyclableCell cell, int index)
 			{
 				CardsRow cardsRow = (CardsRow)cell;
@@ -1451,22 +1172,13 @@ namespace LBoL.Presentation.UI.Panels
 				int num2 = Math.Min(num, index * this._rowSize);
 				cardsRow.SetCards(index, (num2 == num) ? Enumerable.Empty<Card>() : Enumerable.Take<Card>(Enumerable.Skip<Card>(this._cards, num2), num));
 			}
-
-			// Token: 0x0400110E RID: 4366
 			private readonly int _rowSize;
-
-			// Token: 0x0400110F RID: 4367
 			private readonly List<Card> _cards;
 		}
-
-		// Token: 0x02000277 RID: 631
 		private enum AchievementStatus
 		{
-			// Token: 0x04001111 RID: 4369
 			All,
-			// Token: 0x04001112 RID: 4370
 			Unlock,
-			// Token: 0x04001113 RID: 4371
 			NotUnlock
 		}
 	}

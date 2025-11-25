@@ -6,14 +6,11 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Cards;
 using LBoL.EntityLib.StatusEffects.Basic;
-
 namespace LBoL.EntityLib.Cards.Neutral.White
 {
-	// Token: 0x02000271 RID: 625
 	[UsedImplicitly]
 	public sealed class BailianJingang : Card
 	{
-		// Token: 0x060009F1 RID: 2545 RVA: 0x00015107 File Offset: 0x00013307
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.DefenseAction(true);

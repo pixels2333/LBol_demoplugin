@@ -11,19 +11,12 @@ using LBoL.Core.Units;
 using LBoL.EntityLib.Cards.Enemy;
 using LBoL.EntityLib.StatusEffects.Enemy;
 using UnityEngine;
-
 namespace LBoL.EntityLib.EnemyUnits.Normal
 {
-	// Token: 0x020001D7 RID: 471
 	[UsedImplicitly]
 	public sealed class FraudRabbit : EnemyUnit
 	{
-		// Token: 0x170000AE RID: 174
-		// (get) Token: 0x06000729 RID: 1833 RVA: 0x000104D4 File Offset: 0x0000E6D4
-		// (set) Token: 0x0600072A RID: 1834 RVA: 0x000104DC File Offset: 0x0000E6DC
 		private FraudRabbit.MoveType Next { get; set; }
-
-		// Token: 0x0600072B RID: 1835 RVA: 0x000104E8 File Offset: 0x0000E6E8
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			this.Next = FraudRabbit.MoveType.Start;
@@ -31,8 +24,6 @@ namespace LBoL.EntityLib.EnemyUnits.Normal
 			base.ReactBattleEvent<UnitEventArgs>(base.TurnStarted, new Func<UnitEventArgs, IEnumerable<BattleAction>>(this.OnTurnStarted));
 			base.ReactBattleEvent<DieEventArgs>(base.Died, new Func<DieEventArgs, IEnumerable<BattleAction>>(this.OnDied));
 		}
-
-		// Token: 0x0600072C RID: 1836 RVA: 0x00010549 File Offset: 0x0000E749
 		private IEnumerable<BattleAction> OnBattleStarted(GameEventArgs arg)
 		{
 			this.DebuffType = base.EnemyBattleRng.NextInt(0, 1) == 0;
@@ -42,8 +33,6 @@ namespace LBoL.EntityLib.EnemyUnits.Normal
 			yield return new ApplyStatusEffectAction(typeFromHandle, this, num, default(int?), num2, default(int?), 0f, true);
 			yield break;
 		}
-
-		// Token: 0x0600072D RID: 1837 RVA: 0x00010559 File Offset: 0x0000E759
 		private IEnumerable<BattleAction> OnTurnStarted(UnitEventArgs arg)
 		{
 			if (this._escaping || this.Next == FraudRabbit.MoveType.Start)
@@ -67,8 +56,6 @@ namespace LBoL.EntityLib.EnemyUnits.Normal
 			}
 			yield break;
 		}
-
-		// Token: 0x0600072E RID: 1838 RVA: 0x00010569 File Offset: 0x0000E769
 		protected override IEnumerable<IEnemyMove> GetTurnMoves()
 		{
 			IEnemyMove enemyMove;
@@ -92,8 +79,6 @@ namespace LBoL.EntityLib.EnemyUnits.Normal
 			yield return enemyMove;
 			yield break;
 		}
-
-		// Token: 0x0600072F RID: 1839 RVA: 0x00010579 File Offset: 0x0000E779
 		private IEnumerable<BattleAction> Start()
 		{
 			yield return new EnemyMoveAction(this, base.GetMove(0), true);
@@ -110,13 +95,7 @@ namespace LBoL.EntityLib.EnemyUnits.Normal
 			base.GetStatusEffect<PhoneBillSe>().Count += money;
 			yield break;
 		}
-
-		// Token: 0x170000AF RID: 175
-		// (get) Token: 0x06000730 RID: 1840 RVA: 0x00010589 File Offset: 0x0000E789
-		// (set) Token: 0x06000731 RID: 1841 RVA: 0x00010591 File Offset: 0x0000E791
 		private bool DebuffType { get; set; }
-
-		// Token: 0x06000732 RID: 1842 RVA: 0x0001059A File Offset: 0x0000E79A
 		private IEnumerable<BattleAction> Debuff()
 		{
 			yield return new EnemyMoveAction(this, base.GetMove(1), true);
@@ -129,8 +108,6 @@ namespace LBoL.EntityLib.EnemyUnits.Normal
 			base.GetStatusEffect<PhoneBillSe>().Count += money;
 			yield break;
 		}
-
-		// Token: 0x06000733 RID: 1843 RVA: 0x000105AA File Offset: 0x0000E7AA
 		private IEnumerable<BattleAction> EscapeActions()
 		{
 			yield return new EnemyMoveAction(this, base.GetMove(3), true);
@@ -149,8 +126,6 @@ namespace LBoL.EntityLib.EnemyUnits.Normal
 			}
 			yield break;
 		}
-
-		// Token: 0x06000734 RID: 1844 RVA: 0x000105BA File Offset: 0x0000E7BA
 		private IEnumerable<BattleAction> OnDied(DieEventArgs arg)
 		{
 			List<Card> list = Enumerable.ToList<Card>(Enumerable.Where<Card>(base.Battle.EnumerateAllCards(), (Card c) => c is Payment && c.Zone != CardZone.Exile));
@@ -167,8 +142,6 @@ namespace LBoL.EntityLib.EnemyUnits.Normal
 			}
 			yield break;
 		}
-
-		// Token: 0x06000735 RID: 1845 RVA: 0x000105CA File Offset: 0x0000E7CA
 		protected override void UpdateMoveCounters()
 		{
 			if (this._escaping)
@@ -178,20 +151,12 @@ namespace LBoL.EntityLib.EnemyUnits.Normal
 			}
 			this.Next = FraudRabbit.MoveType.Debuff;
 		}
-
-		// Token: 0x0400006B RID: 107
 		private bool _escaping;
-
-		// Token: 0x020006A9 RID: 1705
 		private enum MoveType
 		{
-			// Token: 0x04000825 RID: 2085
 			Start,
-			// Token: 0x04000826 RID: 2086
 			Debuff,
-			// Token: 0x04000827 RID: 2087
 			WannaEscape,
-			// Token: 0x04000828 RID: 2088
 			Escape
 		}
 	}

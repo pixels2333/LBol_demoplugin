@@ -12,14 +12,10 @@ using LBoL.EntityLib.Cards.Enemy;
 using LBoL.EntityLib.EnemyUnits.Character;
 using LBoL.EntityLib.Exhibits.Seija;
 using UnityEngine;
-
 namespace LBoL.EntityLib.StatusEffects.Enemy.Seija
 {
-	// Token: 0x020000CF RID: 207
 	public sealed class MadokaBowSe : SeijaSe
 	{
-		// Token: 0x17000048 RID: 72
-		// (get) Token: 0x060002D0 RID: 720 RVA: 0x00007A2D File Offset: 0x00005C2D
 		protected override Type ExhibitType
 		{
 			get
@@ -27,8 +23,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy.Seija
 				return typeof(MadokaBow);
 			}
 		}
-
-		// Token: 0x060002D1 RID: 721 RVA: 0x00007A3C File Offset: 0x00005C3C
 		protected override void OnAdded(Unit unit)
 		{
 			base.OnAdded(unit);
@@ -36,8 +30,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy.Seija
 			this.React(PerformAction.Sfx("GuirenItem", 0f));
 			this.React(PerformAction.EffectMessage(unit, "SeijaExhibitManager", "AddExhibit", this));
 		}
-
-		// Token: 0x060002D2 RID: 722 RVA: 0x00007AA3 File Offset: 0x00005CA3
 		private IEnumerable<BattleAction> OnOwnerTurnEnded(UnitEventArgs args)
 		{
 			if (base.Battle.BattleShouldEnd)
@@ -81,8 +73,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy.Seija
 			}
 			yield break;
 		}
-
-		// Token: 0x04000021 RID: 33
 		private readonly RepeatableRandomPool<Type> _pool1 = new RepeatableRandomPool<Type>
 		{
 			{
@@ -102,8 +92,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy.Seija
 				1f
 			}
 		};
-
-		// Token: 0x04000022 RID: 34
 		private readonly RepeatableRandomPool<Type> _pool2 = new RepeatableRandomPool<Type>
 		{
 			{

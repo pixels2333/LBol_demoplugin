@@ -8,14 +8,11 @@ using LBoL.Core.Adventures;
 using LBoL.Core.Randoms;
 using LBoL.EntityLib.Exhibits.Adventure;
 using Yarn;
-
 namespace LBoL.EntityLib.Adventures.Shared12
 {
-	// Token: 0x0200051A RID: 1306
 	[AdventureInfo(WeighterType = typeof(KeineSales.KeineSalesWeighter))]
 	public sealed class KeineSales : Adventure
 	{
-		// Token: 0x0600111F RID: 4383 RVA: 0x0001F0DC File Offset: 0x0001D2DC
 		protected override void InitVariables(IVariableStorage storage)
 		{
 			int num;
@@ -271,8 +268,6 @@ namespace LBoL.EntityLib.Adventures.Shared12
 			string text5 = text;
 			storage.SetValue("$charToAsk", text5);
 		}
-
-		// Token: 0x06001120 RID: 4384 RVA: 0x0001F850 File Offset: 0x0001DA50
 		[RuntimeCommand("setJunko", "")]
 		[UsedImplicitly]
 		public void SetJunko(string title)
@@ -295,8 +290,6 @@ namespace LBoL.EntityLib.Adventures.Shared12
 				throw new ArgumentException();
 			}
 		}
-
-		// Token: 0x06001121 RID: 4385 RVA: 0x0001F8A4 File Offset: 0x0001DAA4
 		private void FindJunko(int index)
 		{
 			switch (this._threeCharacters.IndexOf(index))
@@ -314,8 +307,6 @@ namespace LBoL.EntityLib.Adventures.Shared12
 				throw new ArgumentException();
 			}
 		}
-
-		// Token: 0x06001122 RID: 4386 RVA: 0x0001F91C File Offset: 0x0001DB1C
 		[RuntimeCommand("rollQuestions", "")]
 		[UsedImplicitly]
 		public void RollQuestions()
@@ -328,8 +319,6 @@ namespace LBoL.EntityLib.Adventures.Shared12
 			base.Storage.SetValue("$question2", this._questionTitles[this._threeQuestions[1]]);
 			base.Storage.SetValue("$question3", this._questionTitles[this._threeQuestions[2]]);
 		}
-
-		// Token: 0x06001123 RID: 4387 RVA: 0x0001F9B8 File Offset: 0x0001DBB8
 		[RuntimeCommand("mathCheck", "")]
 		[UsedImplicitly]
 		public void MathCheck(int answer)
@@ -338,8 +327,6 @@ namespace LBoL.EntityLib.Adventures.Shared12
 			this.teacherCheck = num == 2 || num == 3 || num == 5 || num == 7 || num == 11 || num == 13;
 			base.Storage.SetValue("$teacherCheck", this.teacherCheck);
 		}
-
-		// Token: 0x06001124 RID: 4388 RVA: 0x0001FA07 File Offset: 0x0001DC07
 		[RuntimeCommand("historyCheck", "")]
 		[UsedImplicitly]
 		public void HistoryCheck(int answer)
@@ -350,8 +337,6 @@ namespace LBoL.EntityLib.Adventures.Shared12
 			}
 			base.Storage.SetValue("$teacherCheck", this.teacherCheck);
 		}
-
-		// Token: 0x06001125 RID: 4389 RVA: 0x0001FA36 File Offset: 0x0001DC36
 		[RuntimeCommand("applianceCheck", "")]
 		[UsedImplicitly]
 		public void ApplianceCheck(int answer)
@@ -362,53 +347,22 @@ namespace LBoL.EntityLib.Adventures.Shared12
 			}
 			base.Storage.SetValue("$teacherCheck", this.teacherCheck);
 		}
-
-		// Token: 0x04000133 RID: 307
 		private int junkoNo;
-
-		// Token: 0x04000134 RID: 308
 		private int[] _threeQuestions;
-
-		// Token: 0x04000135 RID: 309
 		private int[] _threeArtifacts;
-
-		// Token: 0x04000136 RID: 310
 		private int[] _threeCharacters;
-
-		// Token: 0x04000137 RID: 311
 		private string junkoTitle;
-
-		// Token: 0x04000138 RID: 312
 		private readonly string[] _charaTitle = new string[3];
-
-		// Token: 0x04000139 RID: 313
 		private readonly string[] _charaName = new string[3];
-
-		// Token: 0x0400013A RID: 314
 		private readonly string[] _questionTitles = new string[3];
-
-		// Token: 0x0400013B RID: 315
 		private int singleDigit;
-
-		// Token: 0x0400013C RID: 316
 		private int whoToAsk;
-
-		// Token: 0x0400013D RID: 317
 		private bool teacherCheck;
-
-		// Token: 0x0400013E RID: 318
 		private AdventureConfig lastAdvHost;
-
-		// Token: 0x0400013F RID: 319
 		private AdventureConfig last2AdvHost;
-
-		// Token: 0x04000140 RID: 320
 		private AdventureConfig last3AdvHost;
-
-		// Token: 0x02000A73 RID: 2675
 		private class KeineSalesWeighter : IAdventureWeighter
 		{
-			// Token: 0x0600376D RID: 14189 RVA: 0x000869BF File Offset: 0x00084BBF
 			public float WeightFor(Type type, GameRunController gameRun)
 			{
 				return (float)((gameRun.Money >= 100 && gameRun.AdventureHistory.Count > 2) ? 1 : 0);

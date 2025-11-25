@@ -6,13 +6,10 @@ using System.Reflection;
 using System.Text;
 using JetBrains.Annotations;
 using UnityEngine;
-
 namespace LBoL.Core
 {
-	// Token: 0x02000069 RID: 105
 	public sealed class RuntimeFormatter
 	{
-		// Token: 0x06000469 RID: 1129 RVA: 0x0000F044 File Offset: 0x0000D244
 		public RuntimeFormatter([NotNull] string format)
 		{
 			int num = 0;
@@ -203,14 +200,10 @@ namespace LBoL.Core
 			Block_37:
 			throw RuntimeFormatter.FormatError(format);
 		}
-
-		// Token: 0x0600046A RID: 1130 RVA: 0x0000F301 File Offset: 0x0000D501
 		private static FormatException FormatError(string content)
 		{
 			return new FormatException("Invalid format string: " + content);
 		}
-
-		// Token: 0x0600046B RID: 1131 RVA: 0x0000F314 File Offset: 0x0000D514
 		public string Format(RuntimeFormatterArgmentHandler argumentHandler)
 		{
 			if (this._segments.Count == 0)
@@ -228,14 +221,10 @@ namespace LBoL.Core
 			}
 			return Localization.Humanize(stringBuilder.ToString());
 		}
-
-		// Token: 0x0600046C RID: 1132 RVA: 0x0000F3AC File Offset: 0x0000D5AC
 		internal string Format(GameEntityFormatWrapper formatWrapper)
 		{
 			return this.Format(new RuntimeFormatterArgmentHandler(formatWrapper.Format));
 		}
-
-		// Token: 0x0600046D RID: 1133 RVA: 0x0000F3C0 File Offset: 0x0000D5C0
 		public string Format(object obj)
 		{
 			Type type = obj.GetType();
@@ -264,8 +253,6 @@ namespace LBoL.Core
 				return string.Empty;
 			});
 		}
-
-		// Token: 0x0600046E RID: 1134 RVA: 0x0000F400 File Offset: 0x0000D600
 		public string SequenceFormat(params object[] args)
 		{
 			return this.Format(delegate(string key, string format)
@@ -288,8 +275,6 @@ namespace LBoL.Core
 				return RuntimeFormatter.FormatArgument(args[num], format);
 			});
 		}
-
-		// Token: 0x0600046F RID: 1135 RVA: 0x0000F42C File Offset: 0x0000D62C
 		internal static string FormatArgument(object arg, string format)
 		{
 			if (arg == null)
@@ -312,8 +297,6 @@ namespace LBoL.Core
 			}
 			return arg.ToString() ?? string.Empty;
 		}
-
-		// Token: 0x06000470 RID: 1136 RVA: 0x0000F494 File Offset: 0x0000D694
 		private unsafe static bool TryGetSubstitude(ReadOnlySpan<char> format, ReadOnlySpan<char> finding, [NotNullWhen(true)] out string output)
 		{
 			ReadOnlySpan<char> readOnlySpan;
@@ -408,8 +391,6 @@ namespace LBoL.Core
 			output = null;
 			return false;
 		}
-
-		// Token: 0x06000471 RID: 1137 RVA: 0x0000F688 File Offset: 0x0000D888
 		private static string GetPluralSubstitude(int num, ReadOnlySpan<char> format)
 		{
 			if (num < 0)
@@ -428,8 +409,6 @@ namespace LBoL.Core
 			}
 			throw new ArgumentException(string.Format("Cannot substitude {0} in '{1}'", num, new string(format)));
 		}
-
-		// Token: 0x06000472 RID: 1138 RVA: 0x0000F708 File Offset: 0x0000D908
 		private static string GetOrdinalSubstitude(int num, ReadOnlySpan<char> format)
 		{
 			if (num < 0)
@@ -444,8 +423,6 @@ namespace LBoL.Core
 			}
 			throw new ArgumentException(string.Format("Cannot substitude {0} in '{1}'", num, new string(format)));
 		}
-
-		// Token: 0x06000473 RID: 1139 RVA: 0x0000F778 File Offset: 0x0000D978
 		internal static string GetSelectSubstitude(string content, ReadOnlySpan<char> format)
 		{
 			string text;
@@ -462,8 +439,6 @@ namespace LBoL.Core
 				"'"
 			}));
 		}
-
-		// Token: 0x06000474 RID: 1140 RVA: 0x0000F7CC File Offset: 0x0000D9CC
 		internal static bool TryGetSpecialSubstitude(object arg, ReadOnlySpan<char> format, [NotNullWhen(true)] out string substitude)
 		{
 			if (MemoryExtensions.StartsWith(format, "plural ", 5))
@@ -520,8 +495,6 @@ namespace LBoL.Core
 				return true;
 			}
 		}
-
-		// Token: 0x06000475 RID: 1141 RVA: 0x0000F944 File Offset: 0x0000DB44
 		internal static string ApplySubstitude(string arg, string substitude)
 		{
 			int num = substitude.IndexOf('%');
@@ -533,49 +506,30 @@ namespace LBoL.Core
 			}
 			return substitude;
 		}
-
-		// Token: 0x0400025C RID: 604
 		private readonly List<RuntimeFormatter.Segment> _segments = new List<RuntimeFormatter.Segment>();
-
-		// Token: 0x02000210 RID: 528
 		private abstract class Segment
 		{
-			// Token: 0x06001124 RID: 4388
 			public abstract string Shoot(RuntimeFormatterArgmentHandler handler);
-
-			// Token: 0x06001125 RID: 4389
 			public abstract void Shoot(StringBuilder builder, RuntimeFormatterArgmentHandler handler);
 		}
-
-		// Token: 0x02000211 RID: 529
 		private class StringSegment : RuntimeFormatter.Segment
 		{
-			// Token: 0x06001127 RID: 4391 RVA: 0x0002E777 File Offset: 0x0002C977
 			public StringSegment(string content)
 			{
 				this._content = content;
 			}
-
-			// Token: 0x06001128 RID: 4392 RVA: 0x0002E786 File Offset: 0x0002C986
 			public override string Shoot(RuntimeFormatterArgmentHandler handler)
 			{
 				return this._content;
 			}
-
-			// Token: 0x06001129 RID: 4393 RVA: 0x0002E78E File Offset: 0x0002C98E
 			public override void Shoot(StringBuilder builder, RuntimeFormatterArgmentHandler handler)
 			{
 				builder.Append(this._content);
 			}
-
-			// Token: 0x04000811 RID: 2065
 			private readonly string _content;
 		}
-
-		// Token: 0x02000212 RID: 530
 		private class ObjectSegment : RuntimeFormatter.Segment
 		{
-			// Token: 0x0600112A RID: 4394 RVA: 0x0002E79D File Offset: 0x0002C99D
 			public ObjectSegment(string key, int width, bool leftJustify, [MaybeNull] string format)
 			{
 				this._key = key;
@@ -583,8 +537,6 @@ namespace LBoL.Core
 				this._leftJustify = leftJustify;
 				this._format = format;
 			}
-
-			// Token: 0x0600112B RID: 4395 RVA: 0x0002E7C4 File Offset: 0x0002C9C4
 			public override string Shoot(RuntimeFormatterArgmentHandler handler)
 			{
 				string text = handler(this._key, this._format) ?? string.Empty;
@@ -595,8 +547,6 @@ namespace LBoL.Core
 				}
 				return text.PadRight(num);
 			}
-
-			// Token: 0x0600112C RID: 4396 RVA: 0x0002E814 File Offset: 0x0002CA14
 			public override void Shoot(StringBuilder builder, RuntimeFormatterArgmentHandler handler)
 			{
 				string text = handler(this._key, this._format);
@@ -611,17 +561,9 @@ namespace LBoL.Core
 					builder.Append(' ', num);
 				}
 			}
-
-			// Token: 0x04000812 RID: 2066
 			private readonly string _key;
-
-			// Token: 0x04000813 RID: 2067
 			private readonly int _width;
-
-			// Token: 0x04000814 RID: 2068
 			private readonly bool _leftJustify;
-
-			// Token: 0x04000815 RID: 2069
 			[MaybeNull]
 			private readonly string _format;
 		}

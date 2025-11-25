@@ -3,13 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using LBoL.Base;
 using LBoL.Base.Extensions;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x02000169 RID: 361
 	public class ConvertManaAction : SimpleEventBattleAction<ManaConvertingEventArgs>
 	{
-		// Token: 0x06000DF2 RID: 3570 RVA: 0x0002657D File Offset: 0x0002477D
 		public ConvertManaAction(ManaGroup input, ManaGroup output, bool allowPartial)
 		{
 			base.Args = new ManaConvertingEventArgs
@@ -19,14 +16,10 @@ namespace LBoL.Core.Battle.BattleActions
 				AllowPartial = allowPartial
 			};
 		}
-
-		// Token: 0x06000DF3 RID: 3571 RVA: 0x000265A5 File Offset: 0x000247A5
 		protected override void PreEventPhase()
 		{
 			base.Trigger(base.Battle.ManaConverting);
 		}
-
-		// Token: 0x06000DF4 RID: 3572 RVA: 0x000265B8 File Offset: 0x000247B8
 		protected override void MainPhase()
 		{
 			ManaGroup manaGroup;
@@ -47,14 +40,10 @@ namespace LBoL.Core.Battle.BattleActions
 				base.Args.IsModified = true;
 			}
 		}
-
-		// Token: 0x06000DF5 RID: 3573 RVA: 0x0002665A File Offset: 0x0002485A
 		protected override void PostEventPhase()
 		{
 			base.Trigger(base.Battle.ManaConverted);
 		}
-
-		// Token: 0x06000DF6 RID: 3574 RVA: 0x00026670 File Offset: 0x00024870
 		public static ConvertManaAction Purify(ManaGroup mana, int count)
 		{
 			ManaGroup empty = ManaGroup.Empty;
@@ -80,8 +69,6 @@ namespace LBoL.Core.Battle.BattleActions
 			}
 			return new ConvertManaAction(empty, ManaGroup.Colorlesses(num), true);
 		}
-
-		// Token: 0x06000DF7 RID: 3575 RVA: 0x000266F0 File Offset: 0x000248F0
 		public static ConvertManaAction PhilosophyRandomMana(ManaGroup mana, int count, RandomGen rng)
 		{
 			List<ManaColor> list = Enumerable.ToList<ManaColor>(mana.EnumerateComponents());

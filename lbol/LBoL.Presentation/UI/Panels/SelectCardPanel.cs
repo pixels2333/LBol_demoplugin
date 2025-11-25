@@ -18,14 +18,10 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 using UnityEngine.UI.Extensions;
-
 namespace LBoL.Presentation.UI.Panels
 {
-	// Token: 0x020000B1 RID: 177
 	public class SelectCardPanel : UiPanel<SelectCardPayload>, IInputActionHandler
 	{
-		// Token: 0x17000191 RID: 401
-		// (get) Token: 0x060009CB RID: 2507 RVA: 0x000318D5 File Offset: 0x0002FAD5
 		public override PanelLayer Layer
 		{
 			get
@@ -33,33 +29,11 @@ namespace LBoL.Presentation.UI.Panels
 				return PanelLayer.Top;
 			}
 		}
-
-		// Token: 0x17000192 RID: 402
-		// (get) Token: 0x060009CC RID: 2508 RVA: 0x000318D8 File Offset: 0x0002FAD8
-		// (set) Token: 0x060009CD RID: 2509 RVA: 0x000318E0 File Offset: 0x0002FAE0
 		public int Min { get; private set; }
-
-		// Token: 0x17000193 RID: 403
-		// (get) Token: 0x060009CE RID: 2510 RVA: 0x000318E9 File Offset: 0x0002FAE9
-		// (set) Token: 0x060009CF RID: 2511 RVA: 0x000318F1 File Offset: 0x0002FAF1
 		public int Max { get; private set; }
-
-		// Token: 0x17000194 RID: 404
-		// (get) Token: 0x060009D0 RID: 2512 RVA: 0x000318FA File Offset: 0x0002FAFA
-		// (set) Token: 0x060009D1 RID: 2513 RVA: 0x00031902 File Offset: 0x0002FB02
 		public bool Sortable { get; set; }
-
-		// Token: 0x17000195 RID: 405
-		// (get) Token: 0x060009D2 RID: 2514 RVA: 0x0003190B File Offset: 0x0002FB0B
-		// (set) Token: 0x060009D3 RID: 2515 RVA: 0x00031913 File Offset: 0x0002FB13
 		public List<Card> SelectedCards { get; private set; }
-
-		// Token: 0x17000196 RID: 406
-		// (get) Token: 0x060009D4 RID: 2516 RVA: 0x0003191C File Offset: 0x0002FB1C
-		// (set) Token: 0x060009D5 RID: 2517 RVA: 0x00031924 File Offset: 0x0002FB24
 		public bool IsCanceled { get; private set; }
-
-		// Token: 0x060009D6 RID: 2518 RVA: 0x00031930 File Offset: 0x0002FB30
 		public void Awake()
 		{
 			this.confirmButton.onClick.AddListener(new UnityAction(this.Confirm));
@@ -68,24 +42,18 @@ namespace LBoL.Presentation.UI.Panels
 			this.miniCancelButton.onClick.AddListener(new UnityAction(this.Cancel));
 			this.cardParent.transform.DestroyChildren();
 		}
-
-		// Token: 0x060009D7 RID: 2519 RVA: 0x000319C0 File Offset: 0x0002FBC0
 		protected override void OnEnterGameRun()
 		{
 			base.GameRun.InteractionViewer.Register<SelectHandInteraction>(new InteractionViewer<SelectHandInteraction>(this.ViewSelectHand));
 			base.GameRun.InteractionViewer.Register<SelectCardInteraction>(new InteractionViewer<SelectCardInteraction>(this.ViewSelectCard));
 			base.GameRun.InteractionViewer.Register<MiniSelectCardInteraction>(new InteractionViewer<MiniSelectCardInteraction>(this.ViewMiniSelect));
 		}
-
-		// Token: 0x060009D8 RID: 2520 RVA: 0x00031A24 File Offset: 0x0002FC24
 		protected override void OnLeaveGameRun()
 		{
 			base.GameRun.InteractionViewer.Unregister<SelectHandInteraction>(new InteractionViewer<SelectHandInteraction>(this.ViewSelectHand));
 			base.GameRun.InteractionViewer.Unregister<SelectCardInteraction>(new InteractionViewer<SelectCardInteraction>(this.ViewSelectCard));
 			base.GameRun.InteractionViewer.Unregister<MiniSelectCardInteraction>(new InteractionViewer<MiniSelectCardInteraction>(this.ViewMiniSelect));
 		}
-
-		// Token: 0x060009D9 RID: 2521 RVA: 0x00031A88 File Offset: 0x0002FC88
 		protected override void OnShowing(SelectCardPayload payload)
 		{
 			this._payload = payload;
@@ -165,16 +133,12 @@ namespace LBoL.Presentation.UI.Panels
 			Cursor.visible = true;
 			UiManager.PushActionHandler(this);
 		}
-
-		// Token: 0x060009DA RID: 2522 RVA: 0x00031CA0 File Offset: 0x0002FEA0
 		protected override void OnHiding()
 		{
 			UiManager.GetPanel<PlayBoard>().SetCursorVisible();
 			this._payload = null;
 			UiManager.PopActionHandler(this);
 		}
-
-		// Token: 0x060009DB RID: 2523 RVA: 0x00031CBC File Offset: 0x0002FEBC
 		protected override void OnHided()
 		{
 			foreach (SelectCardWidget selectCardWidget in this._selectCardWidgets)
@@ -183,8 +147,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this._selectCardWidgets.Clear();
 		}
-
-		// Token: 0x060009DC RID: 2524 RVA: 0x00031D1C File Offset: 0x0002FF1C
 		public bool SwitchMinimized()
 		{
 			if (!base.IsVisible)
@@ -199,8 +161,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.minimizedButton.SwitchMinimized();
 			return true;
 		}
-
-		// Token: 0x060009DD RID: 2525 RVA: 0x00031D58 File Offset: 0x0002FF58
 		private void Confirm()
 		{
 			this.SelectedCards = new List<Card>();
@@ -227,21 +187,15 @@ namespace LBoL.Presentation.UI.Panels
 			this.IsCanceled = false;
 			base.Hide();
 		}
-
-		// Token: 0x060009DE RID: 2526 RVA: 0x00031E58 File Offset: 0x00030058
 		private void Cancel()
 		{
 			this.IsCanceled = true;
 			base.Hide();
 		}
-
-		// Token: 0x060009DF RID: 2527 RVA: 0x00031E67 File Offset: 0x00030067
 		private void Skip()
 		{
 			base.Hide();
 		}
-
-		// Token: 0x060009E0 RID: 2528 RVA: 0x00031E6F File Offset: 0x0003006F
 		public void OnCancel()
 		{
 			if (this._payload != null)
@@ -257,16 +211,12 @@ namespace LBoL.Presentation.UI.Panels
 				base.Hide();
 			}
 		}
-
-		// Token: 0x060009E1 RID: 2529 RVA: 0x00031E93 File Offset: 0x00030093
 		public IEnumerator ShowAsync(SelectCardPayload payload)
 		{
 			base.Show(payload);
 			yield return new WaitWhile(() => base.IsVisible);
 			yield break;
 		}
-
-		// Token: 0x060009E2 RID: 2530 RVA: 0x00031EA9 File Offset: 0x000300A9
 		public IEnumerator ShowMiniSelect(SelectCardPayload payload)
 		{
 			SelectCardPanel.<>c__DisplayClass58_0 CS$<>8__locals1 = new SelectCardPanel.<>c__DisplayClass58_0();
@@ -361,8 +311,6 @@ namespace LBoL.Presentation.UI.Panels
 			});
 			yield break;
 		}
-
-		// Token: 0x060009E3 RID: 2531 RVA: 0x00031EBF File Offset: 0x000300BF
 		private IEnumerator ViewSelectHand(SelectHandInteraction interaction)
 		{
 			this.miniSelectCardRoot.gameObject.SetActive(false);
@@ -390,8 +338,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x060009E4 RID: 2532 RVA: 0x00031ED5 File Offset: 0x000300D5
 		private IEnumerator ViewSelectCard(SelectCardInteraction interaction)
 		{
 			this.miniSelectCardRoot.gameObject.SetActive(false);
@@ -419,8 +365,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x060009E5 RID: 2533 RVA: 0x00031EEB File Offset: 0x000300EB
 		private IEnumerator ViewMiniSelect(MiniSelectCardInteraction interaction)
 		{
 			SelectCardPanel.<>c__DisplayClass70_0 CS$<>8__locals1 = new SelectCardPanel.<>c__DisplayClass70_0();
@@ -551,8 +495,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x060009E6 RID: 2534 RVA: 0x00031F04 File Offset: 0x00030104
 		private void SetTitle(Interaction interaction)
 		{
 			string description = interaction.Description;
@@ -577,15 +519,11 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.titleRoot.gameObject.SetActive(false);
 		}
-
-		// Token: 0x060009E7 RID: 2535 RVA: 0x00031FA4 File Offset: 0x000301A4
 		private void SetTitle(string titleText)
 		{
 			this.titleTmp.text = titleText;
 			this.titleRoot.gameObject.SetActive(true);
 		}
-
-		// Token: 0x060009E8 RID: 2536 RVA: 0x00031FC3 File Offset: 0x000301C3
 		public CardWidget ExtractBufferedCard()
 		{
 			if (!this._bufferedCardWidget)
@@ -598,118 +536,52 @@ namespace LBoL.Presentation.UI.Panels
 			bufferedCardWidget.HideTooltip();
 			return bufferedCardWidget;
 		}
-
-		// Token: 0x0400073A RID: 1850
 		[SerializeField]
 		private RectTransform cardParent;
-
-		// Token: 0x0400073B RID: 1851
 		[SerializeField]
 		private TextMeshProUGUI titleTmp;
-
-		// Token: 0x0400073C RID: 1852
 		[SerializeField]
 		private RectTransform titleRoot;
-
-		// Token: 0x0400073D RID: 1853
 		[SerializeField]
 		private CardWidget cardTemplate;
-
-		// Token: 0x0400073E RID: 1854
 		[SerializeField]
 		private GameObject selectParticle;
-
-		// Token: 0x0400073F RID: 1855
 		[SerializeField]
 		private RectTransform normalSelectCardRoot;
-
-		// Token: 0x04000740 RID: 1856
 		[SerializeField]
 		private Button confirmButton;
-
-		// Token: 0x04000741 RID: 1857
 		[SerializeField]
 		private Button cancelButton;
-
-		// Token: 0x04000742 RID: 1858
 		[SerializeField]
 		private RectTransform miniSelectCardRoot;
-
-		// Token: 0x04000743 RID: 1859
 		[SerializeField]
 		private CanvasGroup miniCg;
-
-		// Token: 0x04000744 RID: 1860
 		[SerializeField]
 		private Button miniSkipButton;
-
-		// Token: 0x04000745 RID: 1861
 		[SerializeField]
 		private Button miniCancelButton;
-
-		// Token: 0x04000746 RID: 1862
 		[SerializeField]
 		private GameObject selectCardLayout;
-
-		// Token: 0x04000747 RID: 1863
 		[SerializeField]
 		private MinimizedButtonWidget minimizedButton;
-
-		// Token: 0x04000748 RID: 1864
 		private SelectCardPayload _payload;
-
-		// Token: 0x04000749 RID: 1865
 		private readonly List<SelectCardWidget> _selectCardWidgets = new List<SelectCardWidget>();
-
-		// Token: 0x0400074A RID: 1866
 		private readonly List<int> _selectIndexOrder = new List<int>();
-
-		// Token: 0x0400074B RID: 1867
 		private CardWidget _bufferedCardWidget;
-
-		// Token: 0x04000751 RID: 1873
 		private const int CardsPerRow = 5;
-
-		// Token: 0x04000752 RID: 1874
 		private const float NormalHigh1 = 1200f;
-
-		// Token: 0x04000753 RID: 1875
 		private const float NormalHigh2 = 1600f;
-
-		// Token: 0x04000754 RID: 1876
 		private const float TitleNormalY1 = -400f;
-
-		// Token: 0x04000755 RID: 1877
 		private const float TitleNormalY2 = -200f;
-
-		// Token: 0x04000756 RID: 1878
 		private const float TitleMiniY = -300f;
-
-		// Token: 0x04000757 RID: 1879
 		private const float XStart = -2300f;
-
-		// Token: 0x04000758 RID: 1880
 		private readonly float[] _xDistance = new float[] { 800f, 800f, 800f, 750f, 700f };
-
-		// Token: 0x04000759 RID: 1881
 		private const float StartDelay = 0.1f;
-
-		// Token: 0x0400075A RID: 1882
 		private const float FlyInTime = 0.45f;
-
-		// Token: 0x0400075B RID: 1883
 		private const float PauseTime = 0.1f;
-
-		// Token: 0x0400075C RID: 1884
 		private const float FlipTime = 0.35f;
-
-		// Token: 0x0400075D RID: 1885
 		private const float CreateInterval = 0.05f;
-
-		// Token: 0x0400075E RID: 1886
 		private const float FlipInterval = 0.05f;
-
-		// Token: 0x0400075F RID: 1887
 		private const float Scale = 1.1f;
 	}
 }

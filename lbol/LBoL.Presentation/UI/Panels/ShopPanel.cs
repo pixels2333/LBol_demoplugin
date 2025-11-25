@@ -17,14 +17,10 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-
 namespace LBoL.Presentation.UI.Panels
 {
-	// Token: 0x020000B5 RID: 181
 	public class ShopPanel : UiPanel<ShopStation>
 	{
-		// Token: 0x17000199 RID: 409
-		// (get) Token: 0x06000A36 RID: 2614 RVA: 0x00033AF4 File Offset: 0x00031CF4
 		private static int MaxCardCount
 		{
 			get
@@ -32,9 +28,6 @@ namespace LBoL.Presentation.UI.Panels
 				return 10;
 			}
 		}
-
-		// Token: 0x1700019A RID: 410
-		// (get) Token: 0x06000A37 RID: 2615 RVA: 0x00033AF8 File Offset: 0x00031CF8
 		private static int MaxExhibitCount
 		{
 			get
@@ -42,9 +35,6 @@ namespace LBoL.Presentation.UI.Panels
 				return 3;
 			}
 		}
-
-		// Token: 0x1700019B RID: 411
-		// (get) Token: 0x06000A38 RID: 2616 RVA: 0x00033AFB File Offset: 0x00031CFB
 		public override PanelLayer Layer
 		{
 			get
@@ -52,20 +42,8 @@ namespace LBoL.Presentation.UI.Panels
 				return PanelLayer.Bottom;
 			}
 		}
-
-		// Token: 0x1700019C RID: 412
-		// (get) Token: 0x06000A39 RID: 2617 RVA: 0x00033AFE File Offset: 0x00031CFE
-		// (set) Token: 0x06000A3A RID: 2618 RVA: 0x00033B06 File Offset: 0x00031D06
 		private ShopStation ShopStation { get; set; }
-
-		// Token: 0x1700019D RID: 413
-		// (get) Token: 0x06000A3B RID: 2619 RVA: 0x00033B0F File Offset: 0x00031D0F
-		// (set) Token: 0x06000A3C RID: 2620 RVA: 0x00033B17 File Offset: 0x00031D17
 		public bool LockedByInteractionMinimized { get; set; }
-
-		// Token: 0x1700019E RID: 414
-		// (get) Token: 0x06000A3D RID: 2621 RVA: 0x00033B20 File Offset: 0x00031D20
-		// (set) Token: 0x06000A3E RID: 2622 RVA: 0x00033B28 File Offset: 0x00031D28
 		public bool ShowDetailCardService
 		{
 			get
@@ -79,8 +57,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.removeButton.gameObject.SetActive(value);
 			}
 		}
-
-		// Token: 0x06000A3F RID: 2623 RVA: 0x00033B54 File Offset: 0x00031D54
 		public void Awake()
 		{
 			foreach (ValueTuple<int, ShopCard> valueTuple in this.shopCardList.WithIndices<ShopCard>())
@@ -105,8 +81,6 @@ namespace LBoL.Presentation.UI.Panels
 			SimpleTooltipSource.CreateWithGeneralKeyAndArgs(this.removeButton.gameObject, "Shop.Remove", "Shop.RemoveTooltip", new object[] { 25 }).WithPosition(TooltipDirection.Left, TooltipAlignment.Max);
 			this.Close();
 		}
-
-		// Token: 0x06000A40 RID: 2624 RVA: 0x00033CE4 File Offset: 0x00031EE4
 		public override void OnLocaleChanged()
 		{
 			this._welcomeQuotes = "Shop.WelcomeQuotes".LocalizeStrings(true);
@@ -114,8 +88,6 @@ namespace LBoL.Presentation.UI.Panels
 			this._cantAffordQuotes = "Shop.CantAffordQuotes".LocalizeStrings(true);
 			this.SetCardServicePrice();
 		}
-
-		// Token: 0x06000A41 RID: 2625 RVA: 0x00033D20 File Offset: 0x00031F20
 		private void SetCardServicePrice()
 		{
 			if (base.GameRun == null)
@@ -129,8 +101,6 @@ namespace LBoL.Presentation.UI.Panels
 			flag = base.GameRun.Money >= base.GameRun.RemoveDeckCardPrice;
 			this.removePrice.color = (flag ? ShopPanel.EnoughColor : ShopPanel.NotEnoughColor);
 		}
-
-		// Token: 0x06000A42 RID: 2626 RVA: 0x00033DF8 File Offset: 0x00031FF8
 		protected override void OnShowing(ShopStation shopStation)
 		{
 			this.ShopStation = shopStation;
@@ -139,15 +109,11 @@ namespace LBoL.Presentation.UI.Panels
 			this._interactable = false;
 			GameMaster.ShowPoseAnimation = false;
 		}
-
-		// Token: 0x06000A43 RID: 2627 RVA: 0x00033E1B File Offset: 0x0003201B
 		protected override void OnShown()
 		{
 			UiManager.GetPanel<VnPanel>().SetNextButton(false, new int?(0), null);
 			base.StartCoroutine(this.CoShowAnimation());
 		}
-
-		// Token: 0x06000A44 RID: 2628 RVA: 0x00033E3C File Offset: 0x0003203C
 		private IEnumerator CoShowAnimation()
 		{
 			Transform transform = this.box.transform;
@@ -234,14 +200,10 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x06000A45 RID: 2629 RVA: 0x00033E4B File Offset: 0x0003204B
 		protected override void OnHiding()
 		{
 			this.HideQuote();
 		}
-
-		// Token: 0x06000A46 RID: 2630 RVA: 0x00033E54 File Offset: 0x00032054
 		protected override void OnHided()
 		{
 			this.Clear();
@@ -254,8 +216,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			GameMaster.ShowPoseAnimation = true;
 		}
-
-		// Token: 0x06000A47 RID: 2631 RVA: 0x00033EAC File Offset: 0x000320AC
 		private void Close()
 		{
 			this.cover.transform.localPosition = Vector3.zero;
@@ -265,8 +225,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.effect.gameObject.SetActive(false);
 			this.talkRoot.gameObject.SetActive(false);
 		}
-
-		// Token: 0x06000A48 RID: 2632 RVA: 0x00033F20 File Offset: 0x00032120
 		public void SetShopAfterBuying()
 		{
 			int money = this.ShopStation.GameRun.Money;
@@ -305,8 +263,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.SetCardService();
 		}
-
-		// Token: 0x06000A49 RID: 2633 RVA: 0x000340DC File Offset: 0x000322DC
 		private void SetShop()
 		{
 			int money = this.ShopStation.GameRun.Money;
@@ -363,8 +319,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.ShowDetailCardService = false;
 			this.SetCardService();
 		}
-
-		// Token: 0x06000A4A RID: 2634 RVA: 0x000342A0 File Offset: 0x000324A0
 		private void SetCardService()
 		{
 			if (this.ShopStation.CanUseCardService)
@@ -377,8 +331,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.cardServiceRoot.SetActive(false);
 			this.soldOutRoot.SetActive(true);
 		}
-
-		// Token: 0x06000A4B RID: 2635 RVA: 0x000342F4 File Offset: 0x000324F4
 		private void Clear()
 		{
 			foreach (ShopCard shopCard in this.shopCardList)
@@ -390,8 +342,6 @@ namespace LBoL.Presentation.UI.Panels
 				shopExhibit.Close();
 			}
 		}
-
-		// Token: 0x06000A4C RID: 2636 RVA: 0x00034384 File Offset: 0x00032584
 		public void BuyCard(int index)
 		{
 			if (!this._interactable || this.LockedByInteractionMinimized)
@@ -424,14 +374,10 @@ namespace LBoL.Presentation.UI.Panels
 				this.SetShopAfterBuying();
 			}
 		}
-
-		// Token: 0x06000A4D RID: 2637 RVA: 0x00034482 File Offset: 0x00032682
 		public Vector3 GetExhibitPosition(int index)
 		{
 			return this.shopExhibitList[index].transform.position;
 		}
-
-		// Token: 0x06000A4E RID: 2638 RVA: 0x0003449C File Offset: 0x0003269C
 		public void BuyExhibit(int index)
 		{
 			if (!this._interactable || this.LockedByInteractionMinimized)
@@ -444,8 +390,6 @@ namespace LBoL.Presentation.UI.Panels
 				base.StartCoroutine(this.CoBuyExhibit(shopItem, index));
 			}
 		}
-
-		// Token: 0x06000A4F RID: 2639 RVA: 0x000344DE File Offset: 0x000326DE
 		private IEnumerator CoBuyExhibit(ShopItem<Exhibit> exhibitItem, int index)
 		{
 			yield return this.ShopStation.BuyExhibitRunner(exhibitItem);
@@ -458,8 +402,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.SetShopAfterBuying();
 			yield break;
 		}
-
-		// Token: 0x06000A50 RID: 2640 RVA: 0x000344FB File Offset: 0x000326FB
 		private void OnReturnButtonClicked()
 		{
 			if (!this._interactable || this.LockedByInteractionMinimized)
@@ -469,8 +411,6 @@ namespace LBoL.Presentation.UI.Panels
 			AudioManager.PlayUi("WoodClick", false);
 			base.Hide();
 		}
-
-		// Token: 0x06000A51 RID: 2641 RVA: 0x00034520 File Offset: 0x00032720
 		private void OnCardServiceClicked()
 		{
 			this.ShowDetailCardService = !this.ShowDetailCardService;
@@ -481,8 +421,6 @@ namespace LBoL.Presentation.UI.Panels
 				gameObject.GetComponent<EventSystem>().SetSelectedGameObject(null);
 			}
 		}
-
-		// Token: 0x06000A52 RID: 2642 RVA: 0x00034570 File Offset: 0x00032770
 		private void OnUpgradeClicked()
 		{
 			if (this.LockedByInteractionMinimized)
@@ -498,8 +436,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.QuoteCantAfford();
 			AudioManager.PlayUi("NoMoney", false);
 		}
-
-		// Token: 0x06000A53 RID: 2643 RVA: 0x000345C4 File Offset: 0x000327C4
 		private void OnRemoveClicked()
 		{
 			if (this.LockedByInteractionMinimized)
@@ -515,8 +451,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.QuoteCantAfford();
 			AudioManager.PlayUi("NoMoney", false);
 		}
-
-		// Token: 0x06000A54 RID: 2644 RVA: 0x00034617 File Offset: 0x00032817
 		public IEnumerator CoUpgradeCard()
 		{
 			ShowCardsPanel panel = UiManager.GetPanel<ShowCardsPanel>();
@@ -538,8 +472,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x06000A55 RID: 2645 RVA: 0x00034626 File Offset: 0x00032826
 		public IEnumerator CoRemoveCard()
 		{
 			ShowCardsPanel panel = UiManager.GetPanel<ShowCardsPanel>();
@@ -561,8 +493,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x06000A56 RID: 2646 RVA: 0x00034635 File Offset: 0x00032835
 		public CardWidget ExtractBufferedCard()
 		{
 			if (!this._bufferedCardWidget)
@@ -575,32 +505,24 @@ namespace LBoL.Presentation.UI.Panels
 			bufferedCardWidget.HideTooltip();
 			return bufferedCardWidget;
 		}
-
-		// Token: 0x06000A57 RID: 2647 RVA: 0x00034664 File Offset: 0x00032864
 		private void QuoteWelcome()
 		{
 			int num = Random.Range(0, this._welcomeQuotes.Count);
 			this.talkText.text = this._welcomeQuotes[num];
 			this.ShowQuote();
 		}
-
-		// Token: 0x06000A58 RID: 2648 RVA: 0x000346A0 File Offset: 0x000328A0
 		private void QuoteBought()
 		{
 			int num = Random.Range(0, this._boughtQuotes.Count);
 			this.talkText.text = this._boughtQuotes[num];
 			this.ShowQuote();
 		}
-
-		// Token: 0x06000A59 RID: 2649 RVA: 0x000346DC File Offset: 0x000328DC
 		public void QuoteCantAfford()
 		{
 			int num = Random.Range(0, this._cantAffordQuotes.Count);
 			this.talkText.text = this._cantAffordQuotes[num];
 			this.ShowQuote();
 		}
-
-		// Token: 0x06000A5A RID: 2650 RVA: 0x00034718 File Offset: 0x00032918
 		private void ShowQuote()
 		{
 			if (this._talkShowing)
@@ -611,8 +533,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			base.StartCoroutine("ShowQuoteRunner");
 		}
-
-		// Token: 0x06000A5B RID: 2651 RVA: 0x00034741 File Offset: 0x00032941
 		private IEnumerator ShowQuoteRunner()
 		{
 			this._talkShowing = true;
@@ -633,8 +553,6 @@ namespace LBoL.Presentation.UI.Panels
 				.SetAutoKill(true);
 			yield break;
 		}
-
-		// Token: 0x06000A5C RID: 2652 RVA: 0x00034750 File Offset: 0x00032950
 		private void HideQuote()
 		{
 			base.StopCoroutine("ShowQuoteRunner");
@@ -643,147 +561,67 @@ namespace LBoL.Presentation.UI.Panels
 			this.talkText.DOKill(false);
 			this._talkShowing = false;
 		}
-
-		// Token: 0x06000A5D RID: 2653 RVA: 0x0003478B File Offset: 0x0003298B
 		public void UI_EnterTalk()
 		{
 			this.HideQuote();
 		}
-
-		// Token: 0x040007BB RID: 1979
 		[SerializeField]
 		private RectTransform root;
-
-		// Token: 0x040007BC RID: 1980
 		[SerializeField]
 		private Image box;
-
-		// Token: 0x040007BD RID: 1981
 		[SerializeField]
 		private GameObject shopBoard;
-
-		// Token: 0x040007BE RID: 1982
 		[SerializeField]
 		private Image cover;
-
-		// Token: 0x040007BF RID: 1983
 		[SerializeField]
 		private Image effect;
-
-		// Token: 0x040007C0 RID: 1984
 		[SerializeField]
 		private List<ShopCard> shopCardList;
-
-		// Token: 0x040007C1 RID: 1985
 		[SerializeField]
 		private List<ShopExhibit> shopExhibitList;
-
-		// Token: 0x040007C2 RID: 1986
 		[SerializeField]
 		private Button returnButton;
-
-		// Token: 0x040007C3 RID: 1987
 		[SerializeField]
 		private GameObject cardServiceRoot;
-
-		// Token: 0x040007C4 RID: 1988
 		[SerializeField]
 		private GameObject soldOutRoot;
-
-		// Token: 0x040007C5 RID: 1989
 		[SerializeField]
 		private Button cardServiceButton;
-
-		// Token: 0x040007C6 RID: 1990
 		[SerializeField]
 		private Button upgradeButton;
-
-		// Token: 0x040007C7 RID: 1991
 		[SerializeField]
 		private Button removeButton;
-
-		// Token: 0x040007C8 RID: 1992
 		[SerializeField]
 		private TextMeshProUGUI upgradePrice;
-
-		// Token: 0x040007C9 RID: 1993
 		[SerializeField]
 		private TextMeshProUGUI removePrice;
-
-		// Token: 0x040007CA RID: 1994
 		[SerializeField]
 		private RectTransform talkRoot;
-
-		// Token: 0x040007CB RID: 1995
 		[SerializeField]
 		private Image talkImage;
-
-		// Token: 0x040007CC RID: 1996
 		[SerializeField]
 		private RectTransform talkActor;
-
-		// Token: 0x040007CD RID: 1997
 		[SerializeField]
 		private TextMeshProUGUI talkText;
-
-		// Token: 0x040007CE RID: 1998
 		private bool _quotedSomething;
-
-		// Token: 0x040007CF RID: 1999
 		public static readonly Color EnoughColor = Color.white;
-
-		// Token: 0x040007D0 RID: 2000
 		public static readonly Color NotEnoughColor = new Color(1f, 0.5f, 0.5f);
-
-		// Token: 0x040007D1 RID: 2001
 		public static readonly Color Discount = Color.green;
-
-		// Token: 0x040007D2 RID: 2002
 		private IList<string> _boughtQuotes;
-
-		// Token: 0x040007D3 RID: 2003
 		private IList<string> _cantAffordQuotes;
-
-		// Token: 0x040007D4 RID: 2004
 		private IList<string> _welcomeQuotes;
-
-		// Token: 0x040007D7 RID: 2007
 		private CardWidget _bufferedCardWidget;
-
-		// Token: 0x040007D8 RID: 2008
 		private bool _interactable;
-
-		// Token: 0x040007D9 RID: 2009
 		private bool _showDetailCardService;
-
-		// Token: 0x040007DA RID: 2010
 		private const float ShakeS = 200f;
-
-		// Token: 0x040007DB RID: 2011
 		private const int ShakeV = 20;
-
-		// Token: 0x040007DC RID: 2012
 		private const float StartScale = 1.4f;
-
-		// Token: 0x040007DD RID: 2013
 		private const float DownTime = 0.4f;
-
-		// Token: 0x040007DE RID: 2014
 		private const float VibrationTime = 0.2f;
-
-		// Token: 0x040007DF RID: 2015
 		private const float CoverTime = 0.4f;
-
-		// Token: 0x040007E0 RID: 2016
 		private const float TalkAmp = 10f;
-
-		// Token: 0x040007E1 RID: 2017
 		private const float TalkQuarterTime = 0.5f;
-
-		// Token: 0x040007E2 RID: 2018
 		private const float FadeTime = 0.2f;
-
-		// Token: 0x040007E3 RID: 2019
 		private bool _talkShowing;
 	}
 }

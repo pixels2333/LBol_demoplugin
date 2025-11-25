@@ -12,20 +12,12 @@ using LBoL.Core.Units;
 using LBoL.EntityLib.Cards.Enemy;
 using LBoL.EntityLib.EnemyUnits.Normal;
 using LBoL.EntityLib.StatusEffects.Enemy;
-
 namespace LBoL.EntityLib.EnemyUnits.Character
 {
-	// Token: 0x0200023D RID: 573
 	[UsedImplicitly]
 	public sealed class Kokoro : EnemyUnit<IKokoroView>
 	{
-		// Token: 0x170000ED RID: 237
-		// (get) Token: 0x060008C7 RID: 2247 RVA: 0x00012FB9 File Offset: 0x000111B9
-		// (set) Token: 0x060008C8 RID: 2248 RVA: 0x00012FC1 File Offset: 0x000111C1
 		private Kokoro.MoveType Next { get; set; }
-
-		// Token: 0x170000EE RID: 238
-		// (get) Token: 0x060008C9 RID: 2249 RVA: 0x00012FCA File Offset: 0x000111CA
 		private string SpellCard
 		{
 			get
@@ -33,8 +25,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 				return base.GetSpellCardName(new int?(3), 4);
 			}
 		}
-
-		// Token: 0x060008CA RID: 2250 RVA: 0x00012FD9 File Offset: 0x000111D9
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			this.Next = Kokoro.MoveType.Nu;
@@ -42,8 +32,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			this._summonType = typeof(MaskBlue);
 			base.ReactBattleEvent<GameEventArgs>(base.Battle.BattleStarted, new Func<GameEventArgs, IEnumerable<BattleAction>>(this.OnBattleStarted));
 		}
-
-		// Token: 0x060008CB RID: 2251 RVA: 0x00013016 File Offset: 0x00011216
 		private IEnumerable<BattleAction> OnBattleStarted(GameEventArgs arg)
 		{
 			IKokoroView view = base.View;
@@ -55,8 +43,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield return PerformAction.Chat(this, "Chat.Kokoro1".Localize(true), 3f, 0f, 0f, true);
 			yield break;
 		}
-
-		// Token: 0x060008CC RID: 2252 RVA: 0x00013026 File Offset: 0x00011226
 		protected override IEnumerable<BattleAction> AttackActions(string move, string gunName, int damage, int times = 1, bool isAccuracy = false, string followGunName = "Instant")
 		{
 			SkirtColor skirtColor;
@@ -88,8 +74,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x060008CD RID: 2253 RVA: 0x00013063 File Offset: 0x00011263
 		protected override IEnumerable<IEnemyMove> GetTurnMoves()
 		{
 			switch (this.Next)
@@ -131,8 +115,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			yield break;
 		}
-
-		// Token: 0x060008CE RID: 2254 RVA: 0x00013073 File Offset: 0x00011273
 		private IEnumerable<BattleAction> XiActions()
 		{
 			if (base.Battle.BattleShouldEnd)
@@ -164,8 +146,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			yield break;
 		}
-
-		// Token: 0x060008CF RID: 2255 RVA: 0x00013083 File Offset: 0x00011283
 		private IEnumerable<BattleAction> NuActions()
 		{
 			if (base.Battle.BattleShouldEnd)
@@ -182,8 +162,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x060008D0 RID: 2256 RVA: 0x00013093 File Offset: 0x00011293
 		private IEnumerable<BattleAction> YouActions()
 		{
 			if (base.Battle.BattleShouldEnd)
@@ -203,9 +181,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield return new ApplyStatusEffectAction<Weak>(player, default(int?), num2, default(int?), default(int?), 0f, false);
 			yield break;
 		}
-
-		// Token: 0x170000EF RID: 239
-		// (get) Token: 0x060008D1 RID: 2257 RVA: 0x000130A3 File Offset: 0x000112A3
 		private int DarkPowerDamage
 		{
 			get
@@ -213,8 +188,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 				return this._darkPowerCount * base.Count1;
 			}
 		}
-
-		// Token: 0x060008D2 RID: 2258 RVA: 0x000130B2 File Offset: 0x000112B2
 		private IEnumerable<BattleAction> RenzhenActions()
 		{
 			if (base.Battle.BattleShouldEnd)
@@ -233,8 +206,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			this._darkPowerCount = 0;
 			yield break;
 		}
-
-		// Token: 0x060008D3 RID: 2259 RVA: 0x000130C4 File Offset: 0x000112C4
 		private BattleAction ClearOld()
 		{
 			KokoroQing kokoroQing = Enumerable.FirstOrDefault<KokoroQing>(Enumerable.OfType<KokoroQing>(base.StatusEffects));
@@ -244,8 +215,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			return new RemoveStatusEffectAction(kokoroQing, true, 0.1f);
 		}
-
-		// Token: 0x060008D4 RID: 2260 RVA: 0x000130F4 File Offset: 0x000112F4
 		protected override void UpdateMoveCounters()
 		{
 			int num = base.CountDown - 1;
@@ -258,8 +227,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			this.Next = this._pool.Without(this.Next).Sample(base.EnemyMoveRng);
 		}
-
-		// Token: 0x040000AE RID: 174
 		private readonly RepeatableRandomPool<Type> _maskTypes = new RepeatableRandomPool<Type>
 		{
 			{
@@ -275,17 +242,9 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 				1f
 			}
 		};
-
-		// Token: 0x040000AF RID: 175
 		private Type _summonType;
-
-		// Token: 0x040000B0 RID: 176
 		private int _summonRootIndex;
-
-		// Token: 0x040000B1 RID: 177
 		private int _darkPowerCount;
-
-		// Token: 0x040000B2 RID: 178
 		private readonly RepeatableRandomPool<Kokoro.MoveType> _pool = new RepeatableRandomPool<Kokoro.MoveType>
 		{
 			{
@@ -301,17 +260,11 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 				0.8f
 			}
 		};
-
-		// Token: 0x0200073B RID: 1851
 		private enum MoveType
 		{
-			// Token: 0x04000A88 RID: 2696
 			Xi,
-			// Token: 0x04000A89 RID: 2697
 			Nu,
-			// Token: 0x04000A8A RID: 2698
 			You,
-			// Token: 0x04000A8B RID: 2699
 			Renzhen
 		}
 	}

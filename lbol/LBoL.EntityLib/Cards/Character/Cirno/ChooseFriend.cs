@@ -9,14 +9,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
-
 namespace LBoL.EntityLib.Cards.Character.Cirno
 {
-	// Token: 0x0200049D RID: 1181
 	[UsedImplicitly]
 	public sealed class ChooseFriend : Card
 	{
-		// Token: 0x06000FC6 RID: 4038 RVA: 0x0001C16E File Offset: 0x0001A36E
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			Card[] array = base.Battle.RollCardsWithoutManaLimit(new CardWeightTable(RarityWeightTable.BattleCard, OwnerWeightTable.AllOnes, CardTypeWeightTable.OnlyFriend, false), base.Value1, (CardConfig config) => config.Cost.Amount < 5);

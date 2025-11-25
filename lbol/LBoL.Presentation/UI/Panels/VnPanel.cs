@@ -31,14 +31,10 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 using Yarn;
-
 namespace LBoL.Presentation.UI.Panels
 {
-	// Token: 0x020000C3 RID: 195
 	public class VnPanel : UiPanel
 	{
-		// Token: 0x170001C4 RID: 452
-		// (get) Token: 0x06000B92 RID: 2962 RVA: 0x0003C269 File Offset: 0x0003A469
 		public override PanelLayer Layer
 		{
 			get
@@ -46,13 +42,7 @@ namespace LBoL.Presentation.UI.Panels
 				return PanelLayer.VisualNovel;
 			}
 		}
-
-		// Token: 0x170001C5 RID: 453
-		// (get) Token: 0x06000B93 RID: 2963 RVA: 0x0003C26C File Offset: 0x0003A46C
-		// (set) Token: 0x06000B94 RID: 2964 RVA: 0x0003C274 File Offset: 0x0003A474
 		public bool IsTempLocked { get; set; }
-
-		// Token: 0x06000B95 RID: 2965 RVA: 0x0003C280 File Offset: 0x0003A480
 		public override async UniTask CustomLocalizationAsync()
 		{
 			this._nextString = "Game.Next".Localize(true);
@@ -109,8 +99,6 @@ namespace LBoL.Presentation.UI.Panels
 				this.adventureTitleText.text = this._currentAdventure.Title;
 			}
 		}
-
-		// Token: 0x06000B96 RID: 2966 RVA: 0x0003C2C4 File Offset: 0x0003A4C4
 		private string HandleLineArgument(string arg, string format)
 		{
 			if (!arg.StartsWith('@'))
@@ -151,13 +139,7 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			throw new ArgumentException("Invalid argument in dialog: " + arg);
 		}
-
-		// Token: 0x170001C6 RID: 454
-		// (get) Token: 0x06000B97 RID: 2967 RVA: 0x0003C446 File Offset: 0x0003A646
-		// (set) Token: 0x06000B98 RID: 2968 RVA: 0x0003C44E File Offset: 0x0003A64E
 		public int? NextButtonStringIndex { get; private set; }
-
-		// Token: 0x06000B99 RID: 2969 RVA: 0x0003C458 File Offset: 0x0003A658
 		public void SetNextButton(bool active, int? index = null, Action call = null)
 		{
 			if (call != null)
@@ -191,10 +173,6 @@ namespace LBoL.Presentation.UI.Panels
 				textMeshProUGUI.text = text;
 			}
 		}
-
-		// Token: 0x170001C7 RID: 455
-		// (get) Token: 0x06000B9A RID: 2970 RVA: 0x0003C4F1 File Offset: 0x0003A6F1
-		// (set) Token: 0x06000B9B RID: 2971 RVA: 0x0003C4FC File Offset: 0x0003A6FC
 		public bool AllScreenMode
 		{
 			get
@@ -225,26 +203,13 @@ namespace LBoL.Presentation.UI.Panels
 				this._activeText.gameObject.SetActive(true);
 			}
 		}
-
-		// Token: 0x170001C8 RID: 456
-		// (get) Token: 0x06000B9C RID: 2972 RVA: 0x0003C5D7 File Offset: 0x0003A7D7
-		// (set) Token: 0x06000B9D RID: 2973 RVA: 0x0003C5DF File Offset: 0x0003A7DF
 		private RectTransform NextButtonRect { get; set; }
-
-		// Token: 0x170001C9 RID: 457
-		// (get) Token: 0x06000B9E RID: 2974 RVA: 0x0003C5E8 File Offset: 0x0003A7E8
-		// (set) Token: 0x06000B9F RID: 2975 RVA: 0x0003C5F0 File Offset: 0x0003A7F0
 		private Vector2 NextButtonDefaultSize { get; set; }
-
-		// Token: 0x06000BA0 RID: 2976 RVA: 0x0003C5F9 File Offset: 0x0003A7F9
 		private void SetUserSkipping(bool value)
 		{
 			this._userSkipping = value;
 			this.skipIcon.gameObject.SetActive(value);
 		}
-
-		// Token: 0x170001CA RID: 458
-		// (get) Token: 0x06000BA1 RID: 2977 RVA: 0x0003C613 File Offset: 0x0003A813
 		private bool Skipping
 		{
 			get
@@ -252,8 +217,6 @@ namespace LBoL.Presentation.UI.Panels
 				return this._userSkipping || this._allSkipping;
 			}
 		}
-
-		// Token: 0x06000BA2 RID: 2978 RVA: 0x0003C628 File Offset: 0x0003A828
 		public void Awake()
 		{
 			this._canvasGroup = this.root.GetComponent<CanvasGroup>();
@@ -323,21 +286,15 @@ namespace LBoL.Presentation.UI.Panels
 			this.skipIcon.gameObject.SetActive(false);
 			this.tempArtText.gameObject.SetActive(false);
 		}
-
-		// Token: 0x06000BA3 RID: 2979 RVA: 0x0003C900 File Offset: 0x0003AB00
 		protected override void OnShowing()
 		{
 			GameMaster.ShowPoseAnimation = false;
 		}
-
-		// Token: 0x06000BA4 RID: 2980 RVA: 0x0003C908 File Offset: 0x0003AB08
 		protected override void OnHided()
 		{
 			GameMaster.ShowPoseAnimation = true;
 			this.skipIcon.gameObject.SetActive(false);
 		}
-
-		// Token: 0x06000BA5 RID: 2981 RVA: 0x0003C921 File Offset: 0x0003AB21
 		public void UserSkipDialog(bool skip)
 		{
 			if (skip)
@@ -351,8 +308,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.SetUserSkipping(false);
 		}
-
-		// Token: 0x06000BA6 RID: 2982 RVA: 0x0003C950 File Offset: 0x0003AB50
 		private void OnClickOption(int i)
 		{
 			if (this.IsTempLocked)
@@ -379,14 +334,10 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this._selectedOptionId = new int?(dialogOption.Id);
 		}
-
-		// Token: 0x06000BA7 RID: 2983 RVA: 0x0003C9FC File Offset: 0x0003ABFC
 		public bool HandleNavigateAction(NavigateDirection dir)
 		{
 			return false;
 		}
-
-		// Token: 0x06000BA8 RID: 2984 RVA: 0x0003CA00 File Offset: 0x0003AC00
 		public bool HandleSelectionFromKey(int i)
 		{
 			if (!this.IsRunning)
@@ -408,8 +359,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			return false;
 		}
-
-		// Token: 0x06000BA9 RID: 2985 RVA: 0x0003CA85 File Offset: 0x0003AC85
 		public bool HandleConfirmAction()
 		{
 			if (this.IsTempLocked)
@@ -423,8 +372,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			return false;
 		}
-
-		// Token: 0x06000BAA RID: 2986 RVA: 0x0003CAA4 File Offset: 0x0003ACA4
 		public bool HandleCancelAction()
 		{
 			if (this.IsTempLocked)
@@ -443,8 +390,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			return false;
 		}
-
-		// Token: 0x06000BAB RID: 2987 RVA: 0x0003CB01 File Offset: 0x0003AD01
 		private void OnClickNextLine()
 		{
 			if (this.IsTempLocked)
@@ -458,8 +403,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this._shouldShowNextLine = true;
 		}
-
-		// Token: 0x06000BAC RID: 2988 RVA: 0x0003CB30 File Offset: 0x0003AD30
 		private DialogOptionData GetOptionDataCache(int index)
 		{
 			if (this._optionDataCache == null)
@@ -472,8 +415,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			return this._optionDataCache[index];
 		}
-
-		// Token: 0x06000BAD RID: 2989 RVA: 0x0003CBE8 File Offset: 0x0003ADE8
 		private void ShowCharacter(string slotName, Unit unit, string defaultSprite)
 		{
 			VnPanel.ProtraitSlot protraitSlot;
@@ -486,8 +427,6 @@ namespace LBoL.Presentation.UI.Panels
 				protraitSlot.Load(unit.Id, defaultSprite);
 			}
 		}
-
-		// Token: 0x06000BAE RID: 2990 RVA: 0x0003CC2A File Offset: 0x0003AE2A
 		private IEnumerator HideCharacter(string slotName)
 		{
 			VnPanel.ProtraitSlot protraitSlot;
@@ -499,8 +438,6 @@ namespace LBoL.Presentation.UI.Panels
 			protraitSlot.Release();
 			yield break;
 		}
-
-		// Token: 0x06000BAF RID: 2991 RVA: 0x0003CC40 File Offset: 0x0003AE40
 		private IEnumerator InternalShowEnemyTitle(string eName, string title)
 		{
 			yield return new WaitForSeconds(1f);
@@ -526,14 +463,10 @@ namespace LBoL.Presentation.UI.Panels
 			this.enemyTitleRoot.SetActive(false);
 			yield break;
 		}
-
-		// Token: 0x06000BB0 RID: 2992 RVA: 0x0003CC5D File Offset: 0x0003AE5D
 		private IEnumerator ShowEnemyTitle(string name, string title)
 		{
 			return this.InternalShowEnemyTitle(name, title);
 		}
-
-		// Token: 0x06000BB1 RID: 2993 RVA: 0x0003CC67 File Offset: 0x0003AE67
 		private IEnumerator HighlightSlots([TupleElementNames(new string[] { "slotName", "sprite" })] params ValueTuple<string, string>[] highlightSlots)
 		{
 			HashSet<string> hashSet = new HashSet<string>(this._characterSlots.Keys);
@@ -567,8 +500,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x06000BB2 RID: 2994 RVA: 0x0003CC80 File Offset: 0x0003AE80
 		private void SetCharacterName()
 		{
 			if (this._nextLineCharacterName != null)
@@ -597,8 +528,6 @@ namespace LBoL.Presentation.UI.Panels
 			this._leftCharacterNameUnit = null;
 			this._rightCharacterNameUnit = null;
 		}
-
-		// Token: 0x06000BB3 RID: 2995 RVA: 0x0003CDB3 File Offset: 0x0003AFB3
 		private IEnumerator CoRevealText(string content, float speed, float ahead)
 		{
 			this._activeText.text = content;
@@ -621,8 +550,6 @@ namespace LBoL.Presentation.UI.Panels
 			this._totalRevealTime = (this._currentRevealTime = 0f);
 			yield break;
 		}
-
-		// Token: 0x06000BB4 RID: 2996 RVA: 0x0003CDD7 File Offset: 0x0003AFD7
 		private IEnumerator ShowOptions(DialogOption[] options)
 		{
 			OptionWidget[] array = this.optionWidgets;
@@ -660,8 +587,6 @@ namespace LBoL.Presentation.UI.Panels
 			this._selectedOptionId = default(int?);
 			yield break;
 		}
-
-		// Token: 0x06000BB5 RID: 2997 RVA: 0x0003CDF0 File Offset: 0x0003AFF0
 		public Vector3 GetOptionWorldPosition(int index)
 		{
 			if (index < 0)
@@ -679,8 +604,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			return this.optionsRoot.transform.GetChild(index).position;
 		}
-
-		// Token: 0x06000BB6 RID: 2998 RVA: 0x0003CE37 File Offset: 0x0003B037
 		private IEnumerator RunCommand(string command, [MaybeNull] RuntimeCommandHandler extraCommandHandler = null)
 		{
 			IEnumerator enumerator;
@@ -712,8 +635,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x06000BB7 RID: 2999 RVA: 0x0003CE54 File Offset: 0x0003B054
 		private AdventureSaveData SaveAdventureState(string jumpTargetNodeName)
 		{
 			if (this._runningCoroutine == null || this._currentAdventure == null)
@@ -727,8 +648,6 @@ namespace LBoL.Presentation.UI.Panels
 			adventureSaveData.Slots = Enumerable.ToArray<AdvSlotSaveData>(Enumerable.Select<VnPanel.AdvSlot, AdvSlotSaveData>(this._advSlots, (VnPanel.AdvSlot slot) => slot.Save()));
 			return adventureSaveData;
 		}
-
-		// Token: 0x06000BB8 RID: 3000 RVA: 0x0003CEE0 File Offset: 0x0003B0E0
 		public Coroutine RunDialog(string vnName, DialogStorage storage, global::Yarn.Library library, [MaybeNull] RuntimeCommandHandler extraCommandHandler = null, [MaybeNull] string startNode = null, [MaybeNull] Adventure adventure = null, [MaybeNull] VnExtraSettings extraSettings = null)
 		{
 			if (this._runningCoroutine != null)
@@ -742,8 +661,6 @@ namespace LBoL.Presentation.UI.Panels
 			this._runningCoroutine = base.StartCoroutine(this.CoRunDialog(vnName, this._storage, library, extraCommandHandler, startNode, adventure));
 			return this._runningCoroutine;
 		}
-
-		// Token: 0x06000BB9 RID: 3001 RVA: 0x0003CF4C File Offset: 0x0003B14C
 		public Coroutine RestoreAdventure(string vnName, Adventure adventure, AdventureSaveData saveData, DialogStorage storage, global::Yarn.Library library, [MaybeNull] RuntimeCommandHandler extraCommandHandler, [MaybeNull] VnExtraSettings extraSettings = null)
 		{
 			if (this._runningCoroutine != null)
@@ -773,9 +690,6 @@ namespace LBoL.Presentation.UI.Panels
 			this._runningCoroutine = base.StartCoroutine(this.CoRunDialog(vnName, this._storage, library, extraCommandHandler, saveData.NodeName, adventure));
 			return this._runningCoroutine;
 		}
-
-		// Token: 0x170001CB RID: 459
-		// (get) Token: 0x06000BBA RID: 3002 RVA: 0x0003D044 File Offset: 0x0003B244
 		public bool IsRunning
 		{
 			get
@@ -783,9 +697,6 @@ namespace LBoL.Presentation.UI.Panels
 				return this._runningCoroutine != null;
 			}
 		}
-
-		// Token: 0x170001CC RID: 460
-		// (get) Token: 0x06000BBB RID: 3003 RVA: 0x0003D04F File Offset: 0x0003B24F
 		public bool CanSkipAll
 		{
 			get
@@ -793,15 +704,11 @@ namespace LBoL.Presentation.UI.Panels
 				return this._canSkipAll;
 			}
 		}
-
-		// Token: 0x06000BBC RID: 3004 RVA: 0x0003D057 File Offset: 0x0003B257
 		public void Stop()
 		{
 			base.StopAllCoroutines();
 			this.End();
 		}
-
-		// Token: 0x06000BBD RID: 3005 RVA: 0x0003D065 File Offset: 0x0003B265
 		public void SkipAll()
 		{
 			if (!this._canSkipAll)
@@ -811,8 +718,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this._allSkipping = true;
 		}
-
-		// Token: 0x06000BBE RID: 3006 RVA: 0x0003D081 File Offset: 0x0003B281
 		private IEnumerator CoRunDialog(string vnName, DialogStorage storage, global::Yarn.Library library, [MaybeNull] RuntimeCommandHandler extraCommandHandler = null, [MaybeNull] string startNode = null, [MaybeNull] Adventure adventure = null)
 		{
 			VnPanel.<>c__DisplayClass127_0 CS$<>8__locals1 = new VnPanel.<>c__DisplayClass127_0();
@@ -968,8 +873,6 @@ namespace LBoL.Presentation.UI.Panels
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x06000BBF RID: 3007 RVA: 0x0003D0C0 File Offset: 0x0003B2C0
 		private void End()
 		{
 			this.ClearOptionSource();
@@ -997,8 +900,6 @@ namespace LBoL.Presentation.UI.Panels
 			this._extraSettings = null;
 			this.HideContent();
 		}
-
-		// Token: 0x06000BC0 RID: 3008 RVA: 0x0003D1E0 File Offset: 0x0003B3E0
 		public void HideContent()
 		{
 			this.AllScreenMode = false;
@@ -1014,8 +915,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.tempArtText.gameObject.SetActive(false);
 			this.root.SetActive(false);
 		}
-
-		// Token: 0x06000BC1 RID: 3009 RVA: 0x0003D274 File Offset: 0x0003B474
 		public void ShowOptionSource(OptionWidget source)
 		{
 			this.ClearOptionSource();
@@ -1076,8 +975,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			this.optionSourceLayout.GetComponent<RectTransform>().sizeDelta = new Vector2(num + 30f, num2 + 100f);
 		}
-
-		// Token: 0x06000BC2 RID: 3010 RVA: 0x0003D5D4 File Offset: 0x0003B7D4
 		public void ClearOptionSource()
 		{
 			this.optionSourceLayout.GetComponent<CanvasGroup>().DOFade(0f, 0.2f).From(1f, true, false)
@@ -1101,16 +998,12 @@ namespace LBoL.Presentation.UI.Panels
 				array[i].IsThisSourceActive = false;
 			}
 		}
-
-		// Token: 0x06000BC3 RID: 3011 RVA: 0x0003D6DC File Offset: 0x0003B8DC
 		[RuntimeCommand("enableSkipAll", "")]
 		[UsedImplicitly]
 		public void EnableSkipAll()
 		{
 			this._canSkipAll = true;
 		}
-
-		// Token: 0x06000BC4 RID: 3012 RVA: 0x0003D6E5 File Offset: 0x0003B8E5
 		[RuntimeCommand("wait", "")]
 		[UsedImplicitly]
 		public IEnumerator Wait(float seconds)
@@ -1118,16 +1011,12 @@ namespace LBoL.Presentation.UI.Panels
 			yield return new WaitForSeconds(seconds);
 			yield break;
 		}
-
-		// Token: 0x06000BC5 RID: 3013 RVA: 0x0003D6F4 File Offset: 0x0003B8F4
 		[RuntimeCommand("jump", "")]
 		[UsedImplicitly]
 		public void Jump(string nodeName)
 		{
 			this._dialogRunner.Jump(nodeName);
 		}
-
-		// Token: 0x06000BC6 RID: 3014 RVA: 0x0003D702 File Offset: 0x0003B902
 		[RuntimeCommand("saveAndJump", "")]
 		[UsedImplicitly]
 		public void SaveAndJump(string nodeName)
@@ -1135,32 +1024,24 @@ namespace LBoL.Presentation.UI.Panels
 			GameMaster.RequestSaveGameRunInAdventure(this.SaveAdventureState(nodeName));
 			this._dialogRunner.Jump(nodeName);
 		}
-
-		// Token: 0x06000BC7 RID: 3015 RVA: 0x0003D71C File Offset: 0x0003B91C
 		[RuntimeCommand("varLine", "")]
 		[UsedImplicitly]
 		public void VarLine(string varName)
 		{
 			this._nextLineAsVariable = "$" + varName;
 		}
-
-		// Token: 0x06000BC8 RID: 3016 RVA: 0x0003D72F File Offset: 0x0003B92F
 		[RuntimeCommand("showInstantly", "")]
 		[UsedImplicitly]
 		public void ShowInstantly()
 		{
 			this._showNextLineInstantly = true;
 		}
-
-		// Token: 0x06000BC9 RID: 3017 RVA: 0x0003D738 File Offset: 0x0003B938
 		[RuntimeCommand("noWait", "")]
 		[UsedImplicitly]
 		public void NoWait()
 		{
 			this._noWait = true;
 		}
-
-		// Token: 0x06000BCA RID: 3018 RVA: 0x0003D744 File Offset: 0x0003B944
 		[RuntimeCommand("optionCard", "")]
 		[UsedImplicitly]
 		public void OptionCard(int index, string cardId, bool? isUpgraded = null)
@@ -1181,8 +1062,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.GetOptionDataCache(index - 1).AddCard(card, false);
 			GameMaster.RevealCard(cardId);
 		}
-
-		// Token: 0x06000BCB RID: 3019 RVA: 0x0003D79C File Offset: 0x0003B99C
 		[RuntimeCommand("optionRandomCard", "")]
 		[UsedImplicitly]
 		public void OptionRandomCard(int index, string cardId, bool isUpgraded = false)
@@ -1200,8 +1079,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.GetOptionDataCache(index - 1).AddCard(card, true);
 			GameMaster.RevealCard(cardId);
 		}
-
-		// Token: 0x06000BCC RID: 3020 RVA: 0x0003D7E0 File Offset: 0x0003B9E0
 		[RuntimeCommand("optionExhibit", "")]
 		[UsedImplicitly]
 		public void OptionExhibit(int index, string exhibitId, string message = null)
@@ -1218,8 +1095,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.GetOptionDataCache(index - 1).AddExhibit(exhibit, false);
 			GameMaster.RevealExhibit(exhibitId);
 		}
-
-		// Token: 0x06000BCD RID: 3021 RVA: 0x0003D82C File Offset: 0x0003BA2C
 		[RuntimeCommand("optionRandomExhibit", "")]
 		[UsedImplicitly]
 		public void OptionRandomExhibit(int index, string exhibitId)
@@ -1227,24 +1102,18 @@ namespace LBoL.Presentation.UI.Panels
 			this.GetOptionDataCache(index - 1).AddExhibit(LBoL.Core.Library.CreateExhibit(exhibitId), true);
 			GameMaster.RevealExhibit(exhibitId);
 		}
-
-		// Token: 0x06000BCE RID: 3022 RVA: 0x0003D849 File Offset: 0x0003BA49
 		[RuntimeCommand("optionActive", "")]
 		[UsedImplicitly]
 		public void OptionActive(int index, bool active)
 		{
 			this.GetOptionDataCache(index - 1).IsActive = active;
 		}
-
-		// Token: 0x06000BCF RID: 3023 RVA: 0x0003D85A File Offset: 0x0003BA5A
 		[RuntimeCommand("optionTooltip", "")]
 		[UsedImplicitly]
 		public void OptionTooltip(int index, string title, string content)
 		{
 			this.GetOptionDataCache(index - 1).AddTooltip(title, content);
 		}
-
-		// Token: 0x06000BD0 RID: 3024 RVA: 0x0003D86C File Offset: 0x0003BA6C
 		[RuntimeCommand("showUsInSupply", "")]
 		[UsedImplicitly]
 		public void SowUsInSupply(bool hasPowerExhibit)
@@ -1256,32 +1125,24 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			UiManager.GetPanel<UltimateSkillPanel>().HideInDialog();
 		}
-
-		// Token: 0x06000BD1 RID: 3025 RVA: 0x0003D886 File Offset: 0x0003BA86
 		[RuntimeCommand("sfx", "")]
 		[UsedImplicitly]
 		public void PlaySfx(string audioName)
 		{
 			AudioManager.PlaySfx(audioName, -1f);
 		}
-
-		// Token: 0x06000BD2 RID: 3026 RVA: 0x0003D893 File Offset: 0x0003BA93
 		[RuntimeCommand("uiSound", "")]
 		[UsedImplicitly]
 		public void PlayUiSound(string audioName)
 		{
 			AudioManager.PlayUi(audioName, false);
 		}
-
-		// Token: 0x06000BD3 RID: 3027 RVA: 0x0003D89C File Offset: 0x0003BA9C
 		[RuntimeCommand("shake", "")]
 		[UsedImplicitly]
 		public void Shake(int shakeLevel = 0)
 		{
 			GameDirector.ShakeUi(shakeLevel);
 		}
-
-		// Token: 0x06000BD4 RID: 3028 RVA: 0x0003D8A4 File Offset: 0x0003BAA4
 		[RuntimeCommand("setAdventureImage", "")]
 		[UsedImplicitly]
 		public void SetAdventureImage(string suffix, int slotIndex = 0, float alpha = 1f)
@@ -1302,8 +1163,6 @@ namespace LBoL.Presentation.UI.Panels
 			advSlot.SetImage(true, this._currentAdventure.Id + suffix, alpha, slotIndex == 4);
 			advSlot.IsActive = true;
 		}
-
-		// Token: 0x06000BD5 RID: 3029 RVA: 0x0003D930 File Offset: 0x0003BB30
 		[RuntimeCommand("setAdventureImageAlpha", "")]
 		[UsedImplicitly]
 		public void SetAdventureImageAlpha(float alpha, int slotIndex = 0, bool front = true)
@@ -1316,8 +1175,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			Debug.LogError(string.Format("Cannot find adventure slot {0}", slotIndex));
 		}
-
-		// Token: 0x06000BD6 RID: 3030 RVA: 0x0003D96B File Offset: 0x0003BB6B
 		[RuntimeCommand("fadeAdventureImageAlpha", "")]
 		[UsedImplicitly]
 		public IEnumerator FadeAdventureImageAlpha(float alpha, float time, int slotIndex = 0, bool front = true)
@@ -1333,8 +1190,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x06000BD7 RID: 3031 RVA: 0x0003D998 File Offset: 0x0003BB98
 		[RuntimeCommand("setAdventureImageScale", "")]
 		[UsedImplicitly]
 		public void SetAdventureImageScale(float scale, int slotIndex = 0, bool front = true)
@@ -1347,8 +1202,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			Debug.LogError(string.Format("Cannot find adventure slot {0}", slotIndex));
 		}
-
-		// Token: 0x06000BD8 RID: 3032 RVA: 0x0003D9D3 File Offset: 0x0003BBD3
 		[RuntimeCommand("zoomAdventureImage", "")]
 		[UsedImplicitly]
 		public IEnumerator ZoomAdventureImage(float scale, float time, int slotIndex = 0, bool front = true)
@@ -1364,8 +1217,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x06000BD9 RID: 3033 RVA: 0x0003D9FF File Offset: 0x0003BBFF
 		[RuntimeCommand("crossfadeAdventureImage", "")]
 		[UsedImplicitly]
 		public IEnumerator CrossfadeAdventureImage(string suffix, float time, int slotIndex = 0)
@@ -1386,8 +1237,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x06000BDA RID: 3034 RVA: 0x0003DA24 File Offset: 0x0003BC24
 		[RuntimeCommand("clearAdventureImage", "")]
 		[UsedImplicitly]
 		public void ClearAdventureImage(int slotIndex = 0)
@@ -1400,16 +1249,12 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			Debug.LogError(string.Format("Cannot find adventure slot {0}", slotIndex));
 		}
-
-		// Token: 0x06000BDB RID: 3035 RVA: 0x0003DA5D File Offset: 0x0003BC5D
 		[RuntimeCommand("showPlayer", "")]
 		[UsedImplicitly]
 		public void ShowPlayer(string slotName, string defaultSprite = "默认")
 		{
 			this.ShowCharacter(slotName, base.GameRun.Player, defaultSprite);
 		}
-
-		// Token: 0x06000BDC RID: 3036 RVA: 0x0003DA74 File Offset: 0x0003BC74
 		[RuntimeCommand("showEnemy", "")]
 		[UsedImplicitly]
 		public void ShowEnemy(string slotName, string enemyId, string defaultSprite = "默认")
@@ -1417,16 +1262,12 @@ namespace LBoL.Presentation.UI.Panels
 			EnemyUnit enemyUnit = LBoL.Core.Library.CreateEnemyUnit(enemyId);
 			this.ShowCharacter(slotName, enemyUnit, defaultSprite);
 		}
-
-		// Token: 0x06000BDD RID: 3037 RVA: 0x0003DA91 File Offset: 0x0003BC91
 		[RuntimeCommand("hide", "")]
 		[UsedImplicitly]
 		public IEnumerator Hide(string slotName)
 		{
 			return this.HideCharacter(slotName);
 		}
-
-		// Token: 0x06000BDE RID: 3038 RVA: 0x0003DA9A File Offset: 0x0003BC9A
 		[RuntimeCommand("l", "")]
 		[UsedImplicitly]
 		public IEnumerator HighlightL(string spriteName = null)
@@ -1436,8 +1277,6 @@ namespace LBoL.Presentation.UI.Panels
 				new ValueTuple<string, string>("l", spriteName)
 			});
 		}
-
-		// Token: 0x06000BDF RID: 3039 RVA: 0x0003DABA File Offset: 0x0003BCBA
 		[RuntimeCommand("r", "")]
 		[UsedImplicitly]
 		public IEnumerator HighlightR(string spriteName = null)
@@ -1447,8 +1286,6 @@ namespace LBoL.Presentation.UI.Panels
 				new ValueTuple<string, string>("r", spriteName)
 			});
 		}
-
-		// Token: 0x06000BE0 RID: 3040 RVA: 0x0003DADC File Offset: 0x0003BCDC
 		[RuntimeCommand("highlight", "")]
 		[UsedImplicitly]
 		public IEnumerator Highlight(params string[] slotsAndSprites)
@@ -1481,24 +1318,18 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			return this.HighlightSlots(array);
 		}
-
-		// Token: 0x06000BE1 RID: 3041 RVA: 0x0003DB9B File Offset: 0x0003BD9B
 		[RuntimeCommand("lPlayerName", "")]
 		[UsedImplicitly]
 		public void LeftPlayerName()
 		{
 			this._nextLineCharacterName = new VnPanel.NextLineCharacterName(base.GameRun.Player, true);
 		}
-
-		// Token: 0x06000BE2 RID: 3042 RVA: 0x0003DBB4 File Offset: 0x0003BDB4
 		[RuntimeCommand("rPlayerName", "")]
 		[UsedImplicitly]
 		public void RightPlayerName()
 		{
 			this._nextLineCharacterName = new VnPanel.NextLineCharacterName(base.GameRun.Player, false);
 		}
-
-		// Token: 0x06000BE3 RID: 3043 RVA: 0x0003DBD0 File Offset: 0x0003BDD0
 		[RuntimeCommand("lEnemyName", "")]
 		[UsedImplicitly]
 		public void LeftEnemyName(string enemyId)
@@ -1506,8 +1337,6 @@ namespace LBoL.Presentation.UI.Panels
 			EnemyUnit enemyUnit = LBoL.Core.Library.CreateEnemyUnit(enemyId);
 			this._nextLineCharacterName = new VnPanel.NextLineCharacterName(enemyUnit, true);
 		}
-
-		// Token: 0x06000BE4 RID: 3044 RVA: 0x0003DBF4 File Offset: 0x0003BDF4
 		[RuntimeCommand("rEnemyName", "")]
 		[UsedImplicitly]
 		public void RightEnemyName(string enemyId)
@@ -1515,8 +1344,6 @@ namespace LBoL.Presentation.UI.Panels
 			EnemyUnit enemyUnit = LBoL.Core.Library.CreateEnemyUnit(enemyId);
 			this._nextLineCharacterName = new VnPanel.NextLineCharacterName(enemyUnit, false);
 		}
-
-		// Token: 0x06000BE5 RID: 3045 RVA: 0x0003DC15 File Offset: 0x0003BE15
 		[RuntimeCommand("enemyTitle", "")]
 		[UsedImplicitly]
 		public void EnemyTitle(string enemyId)
@@ -1524,8 +1351,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.enemyTitleRoot.transform.localPosition = new Vector3(-650f, 400f);
 			this.EnemyTitleHandler(enemyId);
 		}
-
-		// Token: 0x06000BE6 RID: 3046 RVA: 0x0003DC3D File Offset: 0x0003BE3D
 		[RuntimeCommand("enemyTitleR", "")]
 		[UsedImplicitly]
 		public void EnemyTitleR(string enemyId)
@@ -1533,23 +1358,17 @@ namespace LBoL.Presentation.UI.Panels
 			this.enemyTitleRoot.transform.localPosition = new Vector3(1000f, -440f);
 			this.EnemyTitleHandler(enemyId);
 		}
-
-		// Token: 0x06000BE7 RID: 3047 RVA: 0x0003DC65 File Offset: 0x0003BE65
 		[RuntimeCommand("playFinalStageEffect", "")]
 		[UsedImplicitly]
 		public void PlayFinalStageEffect()
 		{
 			Environment.PlayFinalStageEffect();
 		}
-
-		// Token: 0x06000BE8 RID: 3048 RVA: 0x0003DC6C File Offset: 0x0003BE6C
 		private void EnemyTitleHandler(string enemyId)
 		{
 			EnemyUnit enemyUnit = LBoL.Core.Library.CreateEnemyUnit(enemyId);
 			base.StartCoroutine(this.ShowEnemyTitle(enemyUnit.FullName, enemyUnit.Title));
 		}
-
-		// Token: 0x06000BE9 RID: 3049 RVA: 0x0003DC99 File Offset: 0x0003BE99
 		[RuntimeCommand("enemyAppear", "")]
 		[UsedImplicitly]
 		public IEnumerator CharacterEnter(int index, float time = 1f)
@@ -1559,48 +1378,36 @@ namespace LBoL.Presentation.UI.Panels
 			yield return new WaitForSeconds(time);
 			yield break;
 		}
-
-		// Token: 0x06000BEA RID: 3050 RVA: 0x0003DCAF File Offset: 0x0003BEAF
 		[RuntimeCommand("stopBgm", "")]
 		[UsedImplicitly]
 		public void StopBgm()
 		{
 			AudioManager.FadeOutBgm(1f);
 		}
-
-		// Token: 0x06000BEB RID: 3051 RVA: 0x0003DCBB File Offset: 0x0003BEBB
 		[RuntimeCommand("bgm", "")]
 		[UsedImplicitly]
 		public void PlayBgm(string bgmName)
 		{
 			AudioManager.PlayBgm(bgmName, 0f, false);
 		}
-
-		// Token: 0x06000BEC RID: 3052 RVA: 0x0003DCC9 File Offset: 0x0003BEC9
 		[RuntimeCommand("bgmStage", "")]
 		[UsedImplicitly]
 		public void PlayStageBgm()
 		{
 			AudioManager.EnterLayer0();
 		}
-
-		// Token: 0x06000BED RID: 3053 RVA: 0x0003DCD0 File Offset: 0x0003BED0
 		[RuntimeCommand("bgmElite", "")]
 		[UsedImplicitly]
 		public void PlayEliteBgm()
 		{
 			AudioManager.PlayEliteBgm(null);
 		}
-
-		// Token: 0x06000BEE RID: 3054 RVA: 0x0003DCD8 File Offset: 0x0003BED8
 		[RuntimeCommand("bgmBoss", "")]
 		[UsedImplicitly]
 		public void PlayBossBgm(string bgmId)
 		{
 			AudioManager.PlayBossBgm(bgmId);
 		}
-
-		// Token: 0x06000BEF RID: 3055 RVA: 0x0003DCE0 File Offset: 0x0003BEE0
 		[RuntimeCommand("battle", "")]
 		[UsedImplicitly]
 		public IEnumerator RunBattle(string enemyGroupName, bool reopenVnPanel = true)
@@ -1625,16 +1432,12 @@ namespace LBoL.Presentation.UI.Panels
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x06000BF0 RID: 3056 RVA: 0x0003DCFD File Offset: 0x0003BEFD
 		[RuntimeCommand("setVisible", "")]
 		[UsedImplicitly]
 		public void SetVisible(bool visible)
 		{
 			this.root.SetActive(visible);
 		}
-
-		// Token: 0x06000BF1 RID: 3057 RVA: 0x0003DD0B File Offset: 0x0003BF0B
 		[RuntimeCommand("showRewards", "")]
 		[UsedImplicitly]
 		public IEnumerator ShowRewards()
@@ -1650,16 +1453,12 @@ namespace LBoL.Presentation.UI.Panels
 			this.SetNextButton(false, default(int?), null);
 			yield break;
 		}
-
-		// Token: 0x06000BF2 RID: 3058 RVA: 0x0003DD1A File Offset: 0x0003BF1A
 		[RuntimeCommand("hideBackground", "")]
 		[UsedImplicitly]
 		public void HideBackground()
 		{
 			UiManager.Hide<BackgroundPanel>(true);
 		}
-
-		// Token: 0x06000BF3 RID: 3059 RVA: 0x0003DD24 File Offset: 0x0003BF24
 		private bool TryHandleSpecialCommand(string command)
 		{
 			string text = command.TrimStart();
@@ -1671,16 +1470,12 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			return false;
 		}
-
-		// Token: 0x06000BF4 RID: 3060 RVA: 0x0003DD5F File Offset: 0x0003BF5F
 		[RuntimeCommand("gainPower", "")]
 		[UsedImplicitly]
 		public void GainPower(int power)
 		{
 			base.GameRun.GainPower(power, false);
 		}
-
-		// Token: 0x06000BF5 RID: 3061 RVA: 0x0003DD70 File Offset: 0x0003BF70
 		public void ResetComic()
 		{
 			VnPanel.SimpleSlot simpleSlot = this._simpleSlots["bg"];
@@ -1693,8 +1488,6 @@ namespace LBoL.Presentation.UI.Panels
 			this.AllScreenMode = true;
 			this.ClearAllSlotsExpectBackground();
 		}
-
-		// Token: 0x06000BF6 RID: 3062 RVA: 0x0003DDDC File Offset: 0x0003BFDC
 		private void ClearAllSlotsExpectBackground()
 		{
 			foreach (VnPanel.SimpleSlot simpleSlot in this._simpleSlots.Values)
@@ -1705,8 +1498,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 			}
 		}
-
-		// Token: 0x06000BF7 RID: 3063 RVA: 0x0003DE48 File Offset: 0x0003C048
 		[RuntimeCommand("nextComic", "")]
 		[UsedImplicitly]
 		public IEnumerator NextComic()
@@ -1805,8 +1596,6 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			yield break;
 		}
-
-		// Token: 0x06000BF8 RID: 3064 RVA: 0x0003DE58 File Offset: 0x0003C058
 		private void LoadComic(string slotName, string comicName, bool fadeIn = true)
 		{
 			Sprite sprite = Resources.Load<Sprite>("Sprite/StoryComic/Opening/" + comicName);
@@ -1834,8 +1623,6 @@ namespace LBoL.Presentation.UI.Panels
 				Debug.LogWarning("Not found slot name: " + slotName);
 			}
 		}
-
-		// Token: 0x06000BF9 RID: 3065 RVA: 0x0003DF3C File Offset: 0x0003C13C
 		private void PosterRotateIn(bool skipping)
 		{
 			Image image = this._simpleSlots["cd"].Image;
@@ -1851,8 +1638,6 @@ namespace LBoL.Presentation.UI.Panels
 				.SetUpdate(true)
 				.SetAutoKill(true);
 		}
-
-		// Token: 0x06000BFA RID: 3066 RVA: 0x0003E000 File Offset: 0x0003C200
 		private void OrbEnter(bool skipping)
 		{
 			Image image = this._simpleSlots["c2"].Image;
@@ -1868,8 +1653,6 @@ namespace LBoL.Presentation.UI.Panels
 				.SetAutoKill(true)
 				.SetUpdate(true);
 		}
-
-		// Token: 0x06000BFB RID: 3067 RVA: 0x0003E0A0 File Offset: 0x0003C2A0
 		private void StartBranchBlink(bool skipping)
 		{
 			Image image = this._simpleSlots["c6"].Image;
@@ -1887,14 +1670,10 @@ namespace LBoL.Presentation.UI.Panels
 				.SetAutoKill(true)
 				.SetUpdate(true);
 		}
-
-		// Token: 0x06000BFC RID: 3068 RVA: 0x0003E14A File Offset: 0x0003C34A
 		private void EndBranchBlink()
 		{
 			this._simpleSlots["c6"].Image.gameObject.SetActive(false);
 		}
-
-		// Token: 0x06000BFF RID: 3071 RVA: 0x0003E1F0 File Offset: 0x0003C3F0
 		[CompilerGenerated]
 		internal static void <CoRevealText>g__SetCharColors|114_0(TextMeshProUGUI text, float revealProgress, float ahead)
 		{
@@ -1918,292 +1697,129 @@ namespace LBoL.Presentation.UI.Panels
 			}
 			text.UpdateVertexData();
 		}
-
-		// Token: 0x0400090E RID: 2318
 		[SerializeField]
 		private GameObject root;
-
-		// Token: 0x0400090F RID: 2319
 		[SerializeField]
 		private GameObject textRoot;
-
-		// Token: 0x04000910 RID: 2320
 		[SerializeField]
 		private TextMeshProUGUI mainText;
-
-		// Token: 0x04000911 RID: 2321
 		[SerializeField]
 		private GameObject comicTextRoot;
-
-		// Token: 0x04000912 RID: 2322
 		[SerializeField]
 		private TextMeshProUGUI comicText;
-
-		// Token: 0x04000913 RID: 2323
 		[SerializeField]
 		private Button nextLineButton;
-
-		// Token: 0x04000914 RID: 2324
 		[SerializeField]
 		private GameObject optionsRoot;
-
-		// Token: 0x04000915 RID: 2325
 		[SerializeField]
 		private OptionWidget[] optionWidgets;
-
-		// Token: 0x04000916 RID: 2326
 		[SerializeField]
 		private Transform simpleSlotRoot;
-
-		// Token: 0x04000917 RID: 2327
 		[SerializeField]
 		private VnPanel.AdvSlotEntry[] advSlots;
-
-		// Token: 0x04000918 RID: 2328
 		[SerializeField]
 		private Transform characterSlotRoot;
-
-		// Token: 0x04000919 RID: 2329
 		[SerializeField]
 		private GameObject leftCharacterNameRoot;
-
-		// Token: 0x0400091A RID: 2330
 		[SerializeField]
 		private TextMeshProUGUI leftCharacterNameText;
-
-		// Token: 0x0400091B RID: 2331
 		[SerializeField]
 		private GameObject rightCharacterNameRoot;
-
-		// Token: 0x0400091C RID: 2332
 		[SerializeField]
 		private TextMeshProUGUI rightCharacterNameText;
-
-		// Token: 0x0400091D RID: 2333
 		[SerializeField]
 		private Image adventureFrame;
-
-		// Token: 0x0400091E RID: 2334
 		[SerializeField]
 		private GameObject adventureTitle;
-
-		// Token: 0x0400091F RID: 2335
 		[SerializeField]
 		private TextMeshProUGUI adventureTitleText;
-
-		// Token: 0x04000920 RID: 2336
 		[SerializeField]
 		private GameObject enemyTitleRoot;
-
-		// Token: 0x04000921 RID: 2337
 		[SerializeField]
 		private Image enemyTitleBack;
-
-		// Token: 0x04000922 RID: 2338
 		[SerializeField]
 		private TextMeshProUGUI enemyName;
-
-		// Token: 0x04000923 RID: 2339
 		[SerializeField]
 		private TextMeshProUGUI enemyTitle;
-
-		// Token: 0x04000924 RID: 2340
 		[SerializeField]
 		private GameObject optionSourceLayout;
-
-		// Token: 0x04000925 RID: 2341
 		[SerializeField]
 		private CardWidget cardWidgetTemplate;
-
-		// Token: 0x04000926 RID: 2342
 		[SerializeField]
 		private MuseumExhibitWidget exhibitWidgetTemplate;
-
-		// Token: 0x04000927 RID: 2343
 		public Button nextButton;
-
-		// Token: 0x04000928 RID: 2344
 		[SerializeField]
 		private TextMeshProUGUI nextButtonText;
-
-		// Token: 0x04000929 RID: 2345
 		[SerializeField]
 		private Image skipIcon;
-
-		// Token: 0x0400092A RID: 2346
 		[SerializeField]
 		private TextMeshProUGUI tempArtText;
-
-		// Token: 0x0400092B RID: 2347
 		private readonly List<CardWidget> _cardWidgets = new List<CardWidget>();
-
-		// Token: 0x0400092C RID: 2348
 		private readonly List<MuseumExhibitWidget> _exhibitWidgets = new List<MuseumExhibitWidget>();
-
-		// Token: 0x0400092D RID: 2349
 		private GameObject _activeTextRoot;
-
-		// Token: 0x0400092E RID: 2350
 		private TextMeshProUGUI _activeText;
-
-		// Token: 0x0400092F RID: 2351
 		private bool _allScreenMode;
-
-		// Token: 0x04000930 RID: 2352
 		private string _nextString;
-
-		// Token: 0x04000931 RID: 2353
 		private string _nextStageString;
-
-		// Token: 0x04000932 RID: 2354
 		private string _skipString;
-
-		// Token: 0x04000933 RID: 2355
 		private string _skipShopString;
-
-		// Token: 0x04000934 RID: 2356
 		private bool _canSkipAll;
-
-		// Token: 0x04000935 RID: 2357
 		private bool _allSkipping;
-
-		// Token: 0x04000936 RID: 2358
 		private VnExtraSettings _extraSettings;
-
-		// Token: 0x04000937 RID: 2359
 		private DialogStorage _storage;
-
-		// Token: 0x04000939 RID: 2361
 		private readonly List<SimpleTooltipSource> _optionTooltipList = new List<SimpleTooltipSource>();
-
-		// Token: 0x0400093A RID: 2362
 		private Action _nextButtonHandler;
-
-		// Token: 0x0400093E RID: 2366
 		private readonly Vector2 _debutSize = new Vector2(3840f, 800f);
-
-		// Token: 0x0400093F RID: 2367
 		private const float RevealMaxTime = 30f;
-
-		// Token: 0x04000940 RID: 2368
 		private CanvasGroup _canvasGroup;
-
-		// Token: 0x04000941 RID: 2369
 		private RuntimeCommandHandler _commandHandler;
-
-		// Token: 0x04000942 RID: 2370
 		private readonly Dictionary<string, VnPanel.ProtraitSlot> _characterSlots = new Dictionary<string, VnPanel.ProtraitSlot>();
-
-		// Token: 0x04000943 RID: 2371
 		private readonly Dictionary<string, VnPanel.SimpleSlot> _simpleSlots = new Dictionary<string, VnPanel.SimpleSlot>();
-
-		// Token: 0x04000944 RID: 2372
 		private readonly List<VnPanel.AdvSlot> _advSlots = new List<VnPanel.AdvSlot>();
-
-		// Token: 0x04000945 RID: 2373
 		private DialogRunner _dialogRunner;
-
-		// Token: 0x04000946 RID: 2374
 		private DialogLinePhase _currentLineShowing;
-
-		// Token: 0x04000947 RID: 2375
 		private Adventure _currentAdventure;
-
-		// Token: 0x04000948 RID: 2376
 		private bool _shouldShowNextLine;
-
-		// Token: 0x04000949 RID: 2377
 		private float _totalRevealTime;
-
-		// Token: 0x0400094A RID: 2378
 		private float _currentRevealTime;
-
-		// Token: 0x0400094B RID: 2379
 		[MaybeNull]
 		private string _nextLineAsVariable;
-
-		// Token: 0x0400094C RID: 2380
 		private bool _userSkipping;
-
-		// Token: 0x0400094D RID: 2381
 		private List<DialogOptionData> _optionDataCache;
-
-		// Token: 0x0400094E RID: 2382
 		private Coroutine _runningCoroutine;
-
-		// Token: 0x0400094F RID: 2383
 		private DialogOption[] _options;
-
-		// Token: 0x04000950 RID: 2384
 		private int? _selectedOptionId;
-
-		// Token: 0x04000951 RID: 2385
 		private bool _showNextLineInstantly;
-
-		// Token: 0x04000952 RID: 2386
 		private bool _noWait;
-
-		// Token: 0x04000953 RID: 2387
 		private VnPanel.NextLineCharacterName _nextLineCharacterName;
-
-		// Token: 0x04000954 RID: 2388
 		private Unit _leftCharacterNameUnit;
-
-		// Token: 0x04000955 RID: 2389
 		private Unit _rightCharacterNameUnit;
-
-		// Token: 0x04000956 RID: 2390
 		private int _comicPhase;
-
-		// Token: 0x020002EE RID: 750
 		[Serializable]
 		public class AdvSlotEntry
 		{
-			// Token: 0x040012C1 RID: 4801
 			public RawImage front;
-
-			// Token: 0x040012C2 RID: 4802
 			public RawImage back;
 		}
-
-		// Token: 0x020002EF RID: 751
 		private class NextLineCharacterName
 		{
-			// Token: 0x060017A7 RID: 6055 RVA: 0x00068BB4 File Offset: 0x00066DB4
 			public NextLineCharacterName(Unit unit, bool left)
 			{
 				this.Unit = unit;
 				this.IsLeft = left;
 			}
-
-			// Token: 0x040012C3 RID: 4803
 			public readonly Unit Unit;
-
-			// Token: 0x040012C4 RID: 4804
 			public readonly bool IsLeft;
 		}
-
-		// Token: 0x020002F0 RID: 752
 		private class ProtraitSlot
 		{
-			// Token: 0x170004A2 RID: 1186
-			// (get) Token: 0x060017A8 RID: 6056 RVA: 0x00068BD9 File Offset: 0x00066DD9
 			public Image Image { get; }
-
-			// Token: 0x170004A3 RID: 1187
-			// (get) Token: 0x060017A9 RID: 6057 RVA: 0x00068BE1 File Offset: 0x00066DE1
 			public string Name { get; }
-
-			// Token: 0x060017AA RID: 6058 RVA: 0x00068BE9 File Offset: 0x00066DE9
 			public ProtraitSlot(Image i, string n)
 			{
 				this.Image = i;
 				this.Name = n;
 			}
-
-			// Token: 0x170004A4 RID: 1188
-			// (get) Token: 0x060017AB RID: 6059 RVA: 0x00068BFF File Offset: 0x00066DFF
-			// (set) Token: 0x060017AC RID: 6060 RVA: 0x00068C11 File Offset: 0x00066E11
 			public bool IsActive
 			{
 				get
@@ -2215,16 +1831,12 @@ namespace LBoL.Presentation.UI.Panels
 					this.Image.gameObject.SetActive(value);
 				}
 			}
-
-			// Token: 0x060017AD RID: 6061 RVA: 0x00068C24 File Offset: 0x00066E24
 			public void Load(string portraitName, string defaultSprite)
 			{
 				this._portraits = PortraitGroup.Load(portraitName);
 				this.Image.sprite = this.Get(defaultSprite);
 				this.IsActive = this.Get(defaultSprite) != null;
 			}
-
-			// Token: 0x060017AE RID: 6062 RVA: 0x00068C57 File Offset: 0x00066E57
 			public void Release()
 			{
 				this.IsActive = false;
@@ -2236,38 +1848,21 @@ namespace LBoL.Presentation.UI.Panels
 				}
 				this._portraits = null;
 			}
-
-			// Token: 0x060017AF RID: 6063 RVA: 0x00068C84 File Offset: 0x00066E84
 			public Sprite Get(string spriteName)
 			{
 				return this._portraits.Get(spriteName);
 			}
-
-			// Token: 0x040012C7 RID: 4807
 			private PortraitGroup _portraits;
 		}
-
-		// Token: 0x020002F1 RID: 753
 		private class SimpleSlot
 		{
-			// Token: 0x170004A5 RID: 1189
-			// (get) Token: 0x060017B0 RID: 6064 RVA: 0x00068C92 File Offset: 0x00066E92
 			public Image Image { get; }
-
-			// Token: 0x170004A6 RID: 1190
-			// (get) Token: 0x060017B1 RID: 6065 RVA: 0x00068C9A File Offset: 0x00066E9A
 			public string Name { get; }
-
-			// Token: 0x060017B2 RID: 6066 RVA: 0x00068CA2 File Offset: 0x00066EA2
 			public SimpleSlot(Image image, string n)
 			{
 				this.Image = image;
 				this.Name = n;
 			}
-
-			// Token: 0x170004A7 RID: 1191
-			// (get) Token: 0x060017B3 RID: 6067 RVA: 0x00068CB8 File Offset: 0x00066EB8
-			// (set) Token: 0x060017B4 RID: 6068 RVA: 0x00068CCA File Offset: 0x00066ECA
 			public bool IsActive
 			{
 				get
@@ -2279,26 +1874,19 @@ namespace LBoL.Presentation.UI.Panels
 					this.Image.gameObject.SetActive(value);
 				}
 			}
-
-			// Token: 0x060017B5 RID: 6069 RVA: 0x00068CDD File Offset: 0x00066EDD
 			public void Clear()
 			{
 				this.IsActive = false;
 				this.Image.sprite = null;
 			}
 		}
-
-		// Token: 0x020002F2 RID: 754
 		private class AdvSlot
 		{
-			// Token: 0x060017B6 RID: 6070 RVA: 0x00068CF2 File Offset: 0x00066EF2
 			public AdvSlot(RawImage fore, RawImage back)
 			{
 				this._foreImage = fore;
 				this._backImage = back;
 			}
-
-			// Token: 0x060017B7 RID: 6071 RVA: 0x00068D08 File Offset: 0x00066F08
 			private RawImage GetImage(bool front)
 			{
 				if (!front)
@@ -2307,8 +1895,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 				return this._foreImage;
 			}
-
-			// Token: 0x060017B8 RID: 6072 RVA: 0x00068D1C File Offset: 0x00066F1C
 			public void SetImage(bool front, string path, float alpha, bool isSlotFour = false)
 			{
 				if (front)
@@ -2326,8 +1912,6 @@ namespace LBoL.Presentation.UI.Panels
 					image.rectTransform.localScale = new Vector3(1.2f, 1.2f, 1.2f);
 				}
 			}
-
-			// Token: 0x060017B9 RID: 6073 RVA: 0x00068D99 File Offset: 0x00066F99
 			public void SetAlpha(bool front, float alpha)
 			{
 				if (front)
@@ -2336,8 +1920,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 				this.GetImage(front).color = new Color(1f, 1f, 1f, alpha);
 			}
-
-			// Token: 0x060017BA RID: 6074 RVA: 0x00068DC6 File Offset: 0x00066FC6
 			public IEnumerator CrossfadeImage(string path, float time)
 			{
 				this._path = path;
@@ -2361,8 +1943,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 				yield break;
 			}
-
-			// Token: 0x060017BB RID: 6075 RVA: 0x00068DE3 File Offset: 0x00066FE3
 			public YieldInstruction FadeAsync(bool front, float alpha, float time)
 			{
 				if (front)
@@ -2371,8 +1951,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 				return this.GetImage(front).DOFade(alpha, time).WaitForCompletion();
 			}
-
-			// Token: 0x060017BC RID: 6076 RVA: 0x00068E02 File Offset: 0x00067002
 			public void SetScale(bool front, float scale)
 			{
 				if (front)
@@ -2381,8 +1959,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 				this.GetImage(front).transform.localScale = new Vector3(scale, scale, scale);
 			}
-
-			// Token: 0x060017BD RID: 6077 RVA: 0x00068E27 File Offset: 0x00067027
 			public YieldInstruction ZoomAsync(bool front, float scale, float time)
 			{
 				if (front)
@@ -2391,10 +1967,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 				return this.GetImage(true).transform.DOScale(scale, time).SetEase(Ease.OutQuint).WaitForCompletion();
 			}
-
-			// Token: 0x170004A8 RID: 1192
-			// (get) Token: 0x060017BE RID: 6078 RVA: 0x00068E52 File Offset: 0x00067052
-			// (set) Token: 0x060017BF RID: 6079 RVA: 0x00068E64 File Offset: 0x00067064
 			public bool IsActive
 			{
 				get
@@ -2410,8 +1982,6 @@ namespace LBoL.Presentation.UI.Panels
 					}
 				}
 			}
-
-			// Token: 0x060017C0 RID: 6080 RVA: 0x00068E8C File Offset: 0x0006708C
 			public void Clear()
 			{
 				this.IsActive = false;
@@ -2420,8 +1990,6 @@ namespace LBoL.Presentation.UI.Panels
 				this._backImage.texture = null;
 				this._backImage.gameObject.SetActive(false);
 			}
-
-			// Token: 0x060017C1 RID: 6081 RVA: 0x00068EDC File Offset: 0x000670DC
 			public AdvSlotSaveData Save()
 			{
 				if (this._backImage.gameObject.activeSelf)
@@ -2439,8 +2007,6 @@ namespace LBoL.Presentation.UI.Panels
 				}
 				return null;
 			}
-
-			// Token: 0x060017C2 RID: 6082 RVA: 0x00068F44 File Offset: 0x00067144
 			public void Restore(AdvSlotSaveData saveData)
 			{
 				if (saveData != null)
@@ -2457,20 +2023,10 @@ namespace LBoL.Presentation.UI.Panels
 				}
 				this.Clear();
 			}
-
-			// Token: 0x040012CA RID: 4810
 			private readonly RawImage _foreImage;
-
-			// Token: 0x040012CB RID: 4811
 			private readonly RawImage _backImage;
-
-			// Token: 0x040012CC RID: 4812
 			private string _path;
-
-			// Token: 0x040012CD RID: 4813
 			private float _scale;
-
-			// Token: 0x040012CE RID: 4814
 			private float _alpha;
 		}
 	}

@@ -8,15 +8,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Neutral.Blue
 {
-	// Token: 0x0200031C RID: 796
 	[UsedImplicitly]
 	public sealed class PlayWithWater : Card
 	{
-		// Token: 0x17000154 RID: 340
-		// (get) Token: 0x06000BBF RID: 3007 RVA: 0x00017645 File Offset: 0x00015845
 		public override bool DiscardCard
 		{
 			get
@@ -24,8 +20,6 @@ namespace LBoL.EntityLib.Cards.Neutral.Blue
 				return true;
 			}
 		}
-
-		// Token: 0x06000BC0 RID: 3008 RVA: 0x00017648 File Offset: 0x00015848
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return new DrawManyCardAction(base.Value1);

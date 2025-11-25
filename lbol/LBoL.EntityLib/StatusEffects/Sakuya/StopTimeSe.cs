@@ -6,19 +6,14 @@ using LBoL.Core.Battle;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.Exhibits.Shining;
-
 namespace LBoL.EntityLib.StatusEffects.Sakuya
 {
-	// Token: 0x02000022 RID: 34
 	public sealed class StopTimeSe : StatusEffect
 	{
-		// Token: 0x06000051 RID: 81 RVA: 0x00002818 File Offset: 0x00000A18
 		protected override void OnAdded(Unit unit)
 		{
 			base.HandleOwnerEvent<ManaEventArgs>(base.Battle.ManaLosing, new GameEventHandler<ManaEventArgs>(this.OnManaLosing));
 		}
-
-		// Token: 0x06000052 RID: 82 RVA: 0x00002838 File Offset: 0x00000A38
 		private void OnManaLosing(ManaEventArgs args)
 		{
 			if (args.Cause == ActionCause.TurnEnd)

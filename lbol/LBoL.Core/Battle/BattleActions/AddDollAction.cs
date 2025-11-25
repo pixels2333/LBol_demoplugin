@@ -2,13 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using LBoL.Core.Units;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x0200015F RID: 351
 	public sealed class AddDollAction : EventBattleAction<DollEventArgs>
 	{
-		// Token: 0x06000DCD RID: 3533 RVA: 0x00025EB2 File Offset: 0x000240B2
 		public AddDollAction(Doll doll)
 		{
 			base.Args = new DollEventArgs
@@ -16,8 +13,6 @@ namespace LBoL.Core.Battle.BattleActions
 				Doll = doll
 			};
 		}
-
-		// Token: 0x06000DCE RID: 3534 RVA: 0x00025ECC File Offset: 0x000240CC
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			yield return base.CreateEventPhase<DollEventArgs>("DollAdding", base.Args, base.Battle.DollAdding);

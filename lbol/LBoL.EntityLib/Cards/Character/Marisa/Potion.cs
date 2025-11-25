@@ -12,14 +12,10 @@ using LBoL.EntityLib.StatusEffects.Cirno;
 using LBoL.EntityLib.StatusEffects.Marisa;
 using LBoL.EntityLib.StatusEffects.Others;
 using UnityEngine;
-
 namespace LBoL.EntityLib.Cards.Character.Marisa
 {
-	// Token: 0x02000437 RID: 1079
 	public sealed class Potion : Card
 	{
-		// Token: 0x1700019E RID: 414
-		// (get) Token: 0x06000EBB RID: 3771 RVA: 0x0001ADDD File Offset: 0x00018FDD
 		protected override int AdditionalDamage
 		{
 			get
@@ -37,14 +33,10 @@ namespace LBoL.EntityLib.Cards.Character.Marisa
 				return potionBaseDamageSe.Level;
 			}
 		}
-
-		// Token: 0x06000EBC RID: 3772 RVA: 0x0001AE0B File Offset: 0x0001900B
 		public override IEnumerable<BattleAction> OnDraw()
 		{
 			return this.EnterHandReactor(true);
 		}
-
-		// Token: 0x06000EBD RID: 3773 RVA: 0x0001AE14 File Offset: 0x00019014
 		public override IEnumerable<BattleAction> OnMove(CardZone srcZone, CardZone dstZone)
 		{
 			if (dstZone != CardZone.Hand)
@@ -53,8 +45,6 @@ namespace LBoL.EntityLib.Cards.Character.Marisa
 			}
 			return this.EnterHandReactor(true);
 		}
-
-		// Token: 0x06000EBE RID: 3774 RVA: 0x0001AE23 File Offset: 0x00019023
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			if (base.Zone == CardZone.Hand)
@@ -62,8 +52,6 @@ namespace LBoL.EntityLib.Cards.Character.Marisa
 				base.React(new LazySequencedReactor(this.AddToHandReactor));
 			}
 		}
-
-		// Token: 0x06000EBF RID: 3775 RVA: 0x0001AE40 File Offset: 0x00019040
 		private IEnumerable<BattleAction> AddToHandReactor()
 		{
 			base.NotifyActivating();
@@ -87,14 +75,10 @@ namespace LBoL.EntityLib.Cards.Character.Marisa
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x06000EC0 RID: 3776 RVA: 0x0001AE50 File Offset: 0x00019050
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			return this.EnterHandReactor(false);
 		}
-
-		// Token: 0x06000EC1 RID: 3777 RVA: 0x0001AE59 File Offset: 0x00019059
 		private IEnumerable<BattleAction> EnterHandReactor(bool ensureInHand = true)
 		{
 			if (base.Battle.BattleShouldEnd)
@@ -151,12 +135,8 @@ namespace LBoL.EntityLib.Cards.Character.Marisa
 			base.Battle.IncreaseCounter<Potion.PotionAchievementCounter>();
 			yield break;
 		}
-
-		// Token: 0x02000982 RID: 2434
 		private sealed class PotionAchievementCounter : ICustomCounter
 		{
-			// Token: 0x1700094B RID: 2379
-			// (get) Token: 0x060030B7 RID: 12471 RVA: 0x00074297 File Offset: 0x00072497
 			public CustomCounterResetTiming AutoResetTiming
 			{
 				get
@@ -164,8 +144,6 @@ namespace LBoL.EntityLib.Cards.Character.Marisa
 					return CustomCounterResetTiming.PlayerActionStart;
 				}
 			}
-
-			// Token: 0x060030B8 RID: 12472 RVA: 0x0007429C File Offset: 0x0007249C
 			public void Increase(BattleController battle)
 			{
 				this._counter++;
@@ -174,14 +152,10 @@ namespace LBoL.EntityLib.Cards.Character.Marisa
 					battle.GameRun.AchievementHandler.UnlockAchievement(AchievementKey.Potion);
 				}
 			}
-
-			// Token: 0x060030B9 RID: 12473 RVA: 0x000742F1 File Offset: 0x000724F1
 			public void Reset(BattleController battle)
 			{
 				this._counter = 0;
 			}
-
-			// Token: 0x0400154C RID: 5452
 			private int _counter;
 		}
 	}

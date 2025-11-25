@@ -6,14 +6,11 @@ using LBoL.EntityLib.Adventures.FirstPlace;
 using LBoL.EntityLib.Adventures.Shared12;
 using LBoL.EntityLib.Adventures.Shared23;
 using LBoL.EntityLib.Adventures.Stage2;
-
 namespace LBoL.EntityLib.Stages.NormalStages
 {
-	// Token: 0x02000104 RID: 260
 	[UsedImplicitly]
 	public sealed class XuanwuRavine : NormalStageBase
 	{
-		// Token: 0x060003A2 RID: 930 RVA: 0x0000A20C File Offset: 0x0000840C
 		public XuanwuRavine()
 		{
 			base.Level = 2;
@@ -127,8 +124,6 @@ namespace LBoL.EntityLib.Stages.NormalStages
 				}
 			};
 		}
-
-		// Token: 0x0400003A RID: 58
 		private const float W = 1.4f;
 	}
 }

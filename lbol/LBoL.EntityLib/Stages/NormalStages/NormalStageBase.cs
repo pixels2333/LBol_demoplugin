@@ -3,13 +3,10 @@ using LBoL.Core;
 using LBoL.Core.Randoms;
 using LBoL.EntityLib.Adventures;
 using LBoL.EntityLib.Exhibits;
-
 namespace LBoL.EntityLib.Stages.NormalStages
 {
-	// Token: 0x02000102 RID: 258
 	public abstract class NormalStageBase : Stage
 	{
-		// Token: 0x0600039F RID: 927 RVA: 0x00009C38 File Offset: 0x00007E38
 		protected NormalStageBase()
 		{
 			this.isNormalStage = true;
@@ -38,8 +35,6 @@ namespace LBoL.EntityLib.Stages.NormalStages
 			base.BossCardNeutralWeight = new CardWeightTable(RarityWeightTable.OnlyRare, OwnerWeightTable.OnlyNeutral, CardTypeWeightTable.CanBeLoot, false);
 			base.BossCardWeight = new CardWeightTable(RarityWeightTable.OnlyRare, OwnerWeightTable.Hierarchy, CardTypeWeightTable.CanBeLoot, false);
 		}
-
-		// Token: 0x060003A0 RID: 928 RVA: 0x00009F31 File Offset: 0x00008131
 		public override Type GetAdventure()
 		{
 			if (base.AdventureHistory.Count == 0 && base.FirstAdventure != null)

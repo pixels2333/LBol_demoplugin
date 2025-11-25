@@ -10,20 +10,15 @@ using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.EntityLib.Cards.Character.Reimu;
 using LBoL.EntityLib.StatusEffects.Neutral.TwoColor;
-
 namespace LBoL.EntityLib.Cards.Neutral.TwoColor
 {
-	// Token: 0x020002BB RID: 699
 	[UsedImplicitly]
 	public sealed class YinyangQueen : Card
 	{
-		// Token: 0x06000AB9 RID: 2745 RVA: 0x00016101 File Offset: 0x00014301
 		public override IEnumerable<BattleAction> OnTurnEndingInHand()
 		{
 			return this.GetPassiveActions();
 		}
-
-		// Token: 0x06000ABA RID: 2746 RVA: 0x00016109 File Offset: 0x00014309
 		public override IEnumerable<BattleAction> GetPassiveActions()
 		{
 			if (!base.Summoned || base.Battle.BattleShouldEnd)
@@ -44,8 +39,6 @@ namespace LBoL.EntityLib.Cards.Neutral.TwoColor
 			}
 			yield break;
 		}
-
-		// Token: 0x06000ABB RID: 2747 RVA: 0x00016119 File Offset: 0x00014319
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (precondition == null || ((MiniSelectCardInteraction)precondition).SelectedCard.FriendToken == FriendToken.Active)
@@ -76,8 +69,6 @@ namespace LBoL.EntityLib.Cards.Neutral.TwoColor
 			}
 			yield break;
 		}
-
-		// Token: 0x06000ABC RID: 2748 RVA: 0x00016130 File Offset: 0x00014330
 		public YinyangQueen()
 		{
 			List<Type> list = new List<Type>();
@@ -88,8 +79,6 @@ namespace LBoL.EntityLib.Cards.Neutral.TwoColor
 			this._types = list;
 			base..ctor();
 		}
-
-		// Token: 0x040000F1 RID: 241
 		private readonly List<Type> _types;
 	}
 }

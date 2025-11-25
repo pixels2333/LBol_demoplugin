@@ -12,14 +12,11 @@ using LBoL.Core.Units;
 using LBoL.EntityLib.EnemyUnits.Character;
 using LBoL.EntityLib.StatusEffects.Enemy;
 using UnityEngine;
-
 namespace LBoL.EntityLib.Cards.Enemy
 {
-	// Token: 0x0200035D RID: 861
 	[UsedImplicitly]
 	public sealed class Bribery : Card
 	{
-		// Token: 0x06000C6A RID: 3178 RVA: 0x00018302 File Offset: 0x00016502
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			List<EnemyUnit> list = Enumerable.ToList<EnemyUnit>(Enumerable.Where<EnemyUnit>(base.Battle.EnemyGroup, (EnemyUnit u) => u is Long && u.IsAlive));

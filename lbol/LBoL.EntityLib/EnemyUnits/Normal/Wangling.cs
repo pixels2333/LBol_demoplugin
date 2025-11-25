@@ -7,14 +7,11 @@ using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.EnemyUnits.Character;
 using LBoL.EntityLib.StatusEffects.Enemy;
-
 namespace LBoL.EntityLib.EnemyUnits.Normal
 {
-	// Token: 0x020001E4 RID: 484
 	[UsedImplicitly]
 	public sealed class Wangling : EnemyUnit
 	{
-		// Token: 0x06000790 RID: 1936 RVA: 0x00010EC8 File Offset: 0x0000F0C8
 		public override void OnSpawn(EnemyUnit spawner)
 		{
 			Yuyuko yuyuko = spawner as Yuyuko;
@@ -24,8 +21,6 @@ namespace LBoL.EntityLib.EnemyUnits.Normal
 			}
 			this.React(PerformAction.Sfx("GhostSpawn", 0f));
 		}
-
-		// Token: 0x06000791 RID: 1937 RVA: 0x00010F00 File Offset: 0x0000F100
 		private IEnumerable<BattleAction> Graze()
 		{
 			yield return new EnemyMoveAction(this, base.GetMove(1), true);
@@ -36,8 +31,6 @@ namespace LBoL.EntityLib.EnemyUnits.Normal
 			yield return new ApplyStatusEffectAction<Graze>(unit, num, default(int?), default(int?), default(int?), 0f, flag);
 			yield break;
 		}
-
-		// Token: 0x06000792 RID: 1938 RVA: 0x00010F10 File Offset: 0x0000F110
 		protected override IEnumerable<IEnemyMove> GetTurnMoves()
 		{
 			if ((base.TurnCounter + base.RootIndex) % 3 == 0)
@@ -54,8 +47,6 @@ namespace LBoL.EntityLib.EnemyUnits.Normal
 			}
 			yield break;
 		}
-
-		// Token: 0x04000079 RID: 121
 		private EnemyUnit _grazeTarget;
 	}
 }

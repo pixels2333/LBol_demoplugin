@@ -7,15 +7,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
-
 namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 {
-	// Token: 0x020004DB RID: 1243
 	[UsedImplicitly]
 	public sealed class LilyFriend : Card
 	{
-		// Token: 0x170001CF RID: 463
-		// (get) Token: 0x06001076 RID: 4214 RVA: 0x0001CFEB File Offset: 0x0001B1EB
 		[UsedImplicitly]
 		public ManaGroup TurnMana
 		{
@@ -24,9 +20,6 @@ namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 				return base.Mana;
 			}
 		}
-
-		// Token: 0x170001D0 RID: 464
-		// (get) Token: 0x06001077 RID: 4215 RVA: 0x0001CFF3 File Offset: 0x0001B1F3
 		[UsedImplicitly]
 		public ManaGroup ActiveMana
 		{
@@ -39,9 +32,6 @@ namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 				return ManaGroup.Philosophies(1) + ManaGroup.Greens(2);
 			}
 		}
-
-		// Token: 0x170001D1 RID: 465
-		// (get) Token: 0x06001078 RID: 4216 RVA: 0x0001D020 File Offset: 0x0001B220
 		[UsedImplicitly]
 		public int Heal
 		{
@@ -54,14 +44,10 @@ namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 				return 8;
 			}
 		}
-
-		// Token: 0x06001079 RID: 4217 RVA: 0x0001D02D File Offset: 0x0001B22D
 		public override IEnumerable<BattleAction> OnTurnStartedInHand()
 		{
 			return this.GetPassiveActions();
 		}
-
-		// Token: 0x0600107A RID: 4218 RVA: 0x0001D035 File Offset: 0x0001B235
 		public override IEnumerable<BattleAction> GetPassiveActions()
 		{
 			if (!base.Summoned || base.Battle.BattleShouldEnd)
@@ -84,8 +70,6 @@ namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 			}
 			yield break;
 		}
-
-		// Token: 0x0600107B RID: 4219 RVA: 0x0001D045 File Offset: 0x0001B245
 		protected override IEnumerable<BattleAction> SummonActions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			base.CardGuns = new Guns(base.GunName, base.Value1, true);
@@ -102,8 +86,6 @@ namespace LBoL.EntityLib.Cards.Character.Cirno.Friend
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x0600107C RID: 4220 RVA: 0x0001D06A File Offset: 0x0001B26A
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			if (precondition == null || ((MiniSelectCardInteraction)precondition).SelectedCard.FriendToken == FriendToken.Active)

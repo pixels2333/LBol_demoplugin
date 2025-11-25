@@ -7,19 +7,14 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.StatusEffects.Neutral.TwoColor
 {
-	// Token: 0x02000045 RID: 69
 	public sealed class ModuoluoFireSe : StatusEffect
 	{
-		// Token: 0x060000D6 RID: 214 RVA: 0x0000386D File Offset: 0x00001A6D
 		protected override void OnAdded(Unit unit)
 		{
 			base.ReactOwnerEvent<ManaEventArgs>(base.Battle.ManaConsumed, new EventSequencedReactor<ManaEventArgs>(this.OnManaConsumed));
 		}
-
-		// Token: 0x060000D7 RID: 215 RVA: 0x0000388C File Offset: 0x00001A8C
 		private IEnumerable<BattleAction> OnManaConsumed(ManaEventArgs args)
 		{
 			ManaGroup value = args.Value;

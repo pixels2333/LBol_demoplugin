@@ -4,13 +4,10 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Pool;
 using UnityEngine.UI;
-
 namespace LBoL.Presentation.UI.Widgets
 {
-	// Token: 0x0200006C RID: 108
 	public class RecyclableScrollRectWidget : MonoBehaviour
 	{
-		// Token: 0x060005C8 RID: 1480 RVA: 0x00018DD8 File Offset: 0x00016FD8
 		public void ReloadData(RecyclableScrollRectWidget.IRecyclableScrollRectDataSource d)
 		{
 			if (this._cellsPool == null)
@@ -38,8 +35,6 @@ namespace LBoL.Presentation.UI.Widgets
 			this._lastScrollRectVec = this.scrollRect.normalizedPosition;
 			this._lastScrollRectTime = Time.time;
 		}
-
-		// Token: 0x060005C9 RID: 1481 RVA: 0x00018F70 File Offset: 0x00017170
 		public void OnValueChangedListener(Vector2 vec)
 		{
 			if (this._dataSource == null)
@@ -67,8 +62,6 @@ namespace LBoL.Presentation.UI.Widgets
 			this._lastScrollRectVec = vec;
 			this._lastScrollRectTime = Time.time;
 		}
-
-		// Token: 0x060005CA RID: 1482 RVA: 0x000190C8 File Offset: 0x000172C8
 		private void Awake()
 		{
 			if (this.scrollRect == null)
@@ -88,8 +81,6 @@ namespace LBoL.Presentation.UI.Widgets
 				this.InitCellPool();
 			}
 		}
-
-		// Token: 0x060005CB RID: 1483 RVA: 0x00019170 File Offset: 0x00017370
 		private void InitCellPool()
 		{
 			int i = 0;
@@ -113,8 +104,6 @@ namespace LBoL.Presentation.UI.Widgets
 				widget.actionOnDestroy();
 			}, true, 10, this.minPoolSize * 2);
 		}
-
-		// Token: 0x060005CC RID: 1484 RVA: 0x00019210 File Offset: 0x00017410
 		public void ShowWithDelay()
 		{
 			foreach (KeyValuePair<int, RecyclableScrollRectWidget.RecyclableCell> keyValuePair in this._cellsDic)
@@ -126,57 +115,25 @@ namespace LBoL.Presentation.UI.Widgets
 				recyclableCell.ShowWithDelay((float)num2 * 0.2f);
 			}
 		}
-
-		// Token: 0x04000379 RID: 889
 		private RecyclableScrollRectWidget.IRecyclableScrollRectDataSource _dataSource;
-
-		// Token: 0x0400037A RID: 890
 		public int minPoolSize = 10;
-
-		// Token: 0x0400037B RID: 891
 		public float recyclingThreshold = 0.2f;
-
-		// Token: 0x0400037C RID: 892
 		public RectTransform prototypeCell;
-
-		// Token: 0x0400037D RID: 893
 		public ScrollRect scrollRect;
-
-		// Token: 0x0400037E RID: 894
 		private readonly Dictionary<int, RecyclableScrollRectWidget.RecyclableCell> _cellsDic = new Dictionary<int, RecyclableScrollRectWidget.RecyclableCell>();
-
-		// Token: 0x0400037F RID: 895
 		private ObjectPool<RecyclableScrollRectWidget.RecyclableCell> _cellsPool;
-
-		// Token: 0x04000380 RID: 896
 		private Vector2 _lastScrollRectVec;
-
-		// Token: 0x04000381 RID: 897
 		private float _lastScrollRectTime;
-
-		// Token: 0x020001DA RID: 474
 		public interface IRecyclableScrollRectDataSource
 		{
-			// Token: 0x06001347 RID: 4935
 			int GetItemCount();
-
-			// Token: 0x06001348 RID: 4936
 			void SetCell(RecyclableScrollRectWidget.RecyclableCell cell, int index);
 		}
-
-		// Token: 0x020001DB RID: 475
 		public abstract class RecyclableCell : MonoBehaviour
 		{
-			// Token: 0x06001349 RID: 4937
 			public abstract void actionOnGet();
-
-			// Token: 0x0600134A RID: 4938
 			public abstract void actionOnRelease();
-
-			// Token: 0x0600134B RID: 4939
 			public abstract void actionOnDestroy();
-
-			// Token: 0x0600134C RID: 4940
 			public abstract void ShowWithDelay(float delay);
 		}
 	}

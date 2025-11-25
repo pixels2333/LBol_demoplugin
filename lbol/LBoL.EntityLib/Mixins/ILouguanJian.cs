@@ -7,30 +7,16 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.Mixins
 {
-	// Token: 0x0200010C RID: 268
 	internal interface ILouguanJian : INotifyActivating
 	{
-		// Token: 0x17000064 RID: 100
-		// (get) Token: 0x060003AB RID: 939
 		BattleController Battle { get; }
-
-		// Token: 0x17000065 RID: 101
-		// (get) Token: 0x060003AC RID: 940
 		Unit LouguanJianOwner { get; }
-
-		// Token: 0x17000066 RID: 102
-		// (get) Token: 0x060003AD RID: 941
 		int Multiplier { get; }
-
-		// Token: 0x060003AE RID: 942 RVA: 0x0000A529 File Offset: 0x00008729
 		void OnTriggered()
 		{
 		}
-
-		// Token: 0x060003AF RID: 943 RVA: 0x0000A52B File Offset: 0x0000872B
 		IEnumerable<BattleAction> OnStatisticalDamageDealt(StatisticalDamageEventArgs args)
 		{
 			if (this.Battle.BattleShouldEnd)

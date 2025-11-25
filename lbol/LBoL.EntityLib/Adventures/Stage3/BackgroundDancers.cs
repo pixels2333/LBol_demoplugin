@@ -11,14 +11,11 @@ using LBoL.Core.Randoms;
 using LBoL.EntityLib.Exhibits.Common;
 using UnityEngine;
 using Yarn;
-
 namespace LBoL.EntityLib.Adventures.Stage3
 {
-	// Token: 0x02000504 RID: 1284
 	[AdventureInfo(WeighterType = typeof(BackgroundDancers.BackgroundDancersWeighter))]
 	public sealed class BackgroundDancers : Adventure
 	{
-		// Token: 0x060010DF RID: 4319 RVA: 0x0001DF58 File Offset: 0x0001C158
 		protected override void InitVariables(IVariableStorage storage)
 		{
 			this._1Out10Hp = Mathf.CeilToInt((float)base.GameRun.Player.MaxHp * 0.09f);
@@ -33,8 +30,6 @@ namespace LBoL.EntityLib.Adventures.Stage3
 			storage.SetValue("$maxHpGain", (float)this._maxHp);
 			storage.SetValue("$power", (float)this._power);
 		}
-
-		// Token: 0x060010E0 RID: 4320 RVA: 0x0001E010 File Offset: 0x0001C210
 		[RuntimeCommand("rollOptions", "")]
 		[UsedImplicitly]
 		public void RollOptions()
@@ -89,8 +84,6 @@ namespace LBoL.EntityLib.Adventures.Stage3
 				}
 			}
 		}
-
-		// Token: 0x060010E1 RID: 4321 RVA: 0x0001E31C File Offset: 0x0001C51C
 		[RuntimeCommand("selectOption", "")]
 		[UsedImplicitly]
 		public IEnumerator SelectOption(int index)
@@ -178,8 +171,6 @@ namespace LBoL.EntityLib.Adventures.Stage3
 			}
 			yield break;
 		}
-
-		// Token: 0x060010E2 RID: 4322 RVA: 0x0001E332 File Offset: 0x0001C532
 		private void ChangeAlpha()
 		{
 			if (this._img2Alpha < 100)
@@ -189,8 +180,6 @@ namespace LBoL.EntityLib.Adventures.Stage3
 			}
 			Debug.Log(this._img2Alpha);
 		}
-
-		// Token: 0x060010E3 RID: 4323 RVA: 0x0001E374 File Offset: 0x0001C574
 		private void ForMoney()
 		{
 			base.GameRun.Damage(this._1Out10Hp, DamageType.HpLose, true, true, this);
@@ -203,8 +192,6 @@ namespace LBoL.EntityLib.Adventures.Stage3
 				SourceType = VisualSourceType.Vn
 			});
 		}
-
-		// Token: 0x060010E4 RID: 4324 RVA: 0x0001E3C3 File Offset: 0x0001C5C3
 		private void ForTechnique()
 		{
 			base.GameRun.Damage(this._2Out10Hp, DamageType.HpLose, true, true, this);
@@ -214,8 +201,6 @@ namespace LBoL.EntityLib.Adventures.Stage3
 			}
 			base.GameRun.AddDeckCards(this.toolCards, false, null);
 		}
-
-		// Token: 0x060010E5 RID: 4325 RVA: 0x0001E3FC File Offset: 0x0001C5FC
 		private void ForStrength()
 		{
 			base.GameRun.Damage(this._1Out10Hp, DamageType.HpLose, true, true, this);
@@ -225,8 +210,6 @@ namespace LBoL.EntityLib.Adventures.Stage3
 			}
 			base.GameRun.GainMaxHp(this._maxHp, true, true);
 		}
-
-		// Token: 0x060010E6 RID: 4326 RVA: 0x0001E435 File Offset: 0x0001C635
 		private void ForPower()
 		{
 			base.GameRun.Damage(this._1Out10Hp, DamageType.HpLose, true, true, this);
@@ -236,8 +219,6 @@ namespace LBoL.EntityLib.Adventures.Stage3
 			}
 			base.GameRun.GainPower(this._power, false);
 		}
-
-		// Token: 0x060010E7 RID: 4327 RVA: 0x0001E46D File Offset: 0x0001C66D
 		private IEnumerator ForExhibit()
 		{
 			base.GameRun.Damage(this._2Out10Hp, DamageType.HpLose, true, true, this);
@@ -257,8 +238,6 @@ namespace LBoL.EntityLib.Adventures.Stage3
 			}
 			yield break;
 		}
-
-		// Token: 0x060010E8 RID: 4328 RVA: 0x0001E47C File Offset: 0x0001C67C
 		private void ForAbility()
 		{
 			base.GameRun.Damage(this._1Out10Hp, DamageType.HpLose, true, true, this);
@@ -268,47 +247,20 @@ namespace LBoL.EntityLib.Adventures.Stage3
 			}
 			base.GameRun.AddDeckCards(this.abilityCard, false, null);
 		}
-
-		// Token: 0x0400011B RID: 283
 		private int _1Out10Hp;
-
-		// Token: 0x0400011C RID: 284
 		private int _money;
-
-		// Token: 0x0400011D RID: 285
 		private int _maxHp;
-
-		// Token: 0x0400011E RID: 286
 		private int _2Out10Hp;
-
-		// Token: 0x0400011F RID: 287
 		private int _power;
-
-		// Token: 0x04000120 RID: 288
 		private int _img2Alpha;
-
-		// Token: 0x04000121 RID: 289
 		private readonly string[] _optionTitles = new string[6];
-
-		// Token: 0x04000122 RID: 290
 		private readonly string[] _optionDialogues = new string[6];
-
-		// Token: 0x04000123 RID: 291
 		private int[] _optionIndices;
-
-		// Token: 0x04000124 RID: 292
 		private Card[] toolCards;
-
-		// Token: 0x04000125 RID: 293
 		private Exhibit exhibitReward;
-
-		// Token: 0x04000126 RID: 294
 		private Card[] abilityCard;
-
-		// Token: 0x02000A5D RID: 2653
 		private class BackgroundDancersWeighter : IAdventureWeighter
 		{
-			// Token: 0x06003721 RID: 14113 RVA: 0x00085BC9 File Offset: 0x00083DC9
 			public float WeightFor(Type type, GameRunController gameRun)
 			{
 				return (float)((gameRun.Player.Hp >= gameRun.Player.MaxHp / 2) ? 1 : 0);

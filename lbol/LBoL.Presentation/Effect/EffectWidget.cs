@@ -2,13 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-
 namespace LBoL.Presentation.Effect
 {
-	// Token: 0x020000FF RID: 255
 	public class EffectWidget : MonoBehaviour
 	{
-		// Token: 0x06000E3F RID: 3647 RVA: 0x00043C2C File Offset: 0x00041E2C
 		private void Awake()
 		{
 			this._particleSystemRawStartColors = new ParticleSystem.MinMaxGradient[this.particleSystemElements.Length];
@@ -38,8 +35,6 @@ namespace LBoL.Presentation.Effect
 				}
 			}
 		}
-
-		// Token: 0x06000E40 RID: 3648 RVA: 0x00043D84 File Offset: 0x00041F84
 		public void RefindElements()
 		{
 			List<EffectWidget.ParticleSystemElement> list = new List<EffectWidget.ParticleSystemElement>();
@@ -81,8 +76,6 @@ namespace LBoL.Presentation.Effect
 			}
 			this.trailRendererElements = list3.ToArray();
 		}
-
-		// Token: 0x06000E41 RID: 3649 RVA: 0x00043E90 File Offset: 0x00042090
 		public void CheckColor(string path)
 		{
 			foreach (EffectWidget.ParticleSystemElement particleSystemElement in this.particleSystemElements)
@@ -120,8 +113,6 @@ namespace LBoL.Presentation.Effect
 				}
 			}
 		}
-
-		// Token: 0x06000E42 RID: 3650 RVA: 0x00043FA8 File Offset: 0x000421A8
 		public void ResetColors()
 		{
 			for (int i = 0; i < this.particleSystemElements.Length; i++)
@@ -140,8 +131,6 @@ namespace LBoL.Presentation.Effect
 				}
 			}
 		}
-
-		// Token: 0x06000E43 RID: 3651 RVA: 0x00044060 File Offset: 0x00042260
 		public void Modify(float hue, bool isDecolor)
 		{
 			foreach (EffectWidget.ParticleSystemElement particleSystemElement in this.particleSystemElements)
@@ -217,8 +206,6 @@ namespace LBoL.Presentation.Effect
 				}
 			}
 		}
-
-		// Token: 0x06000E44 RID: 3652 RVA: 0x00044320 File Offset: 0x00042520
 		private static Color ReplaceHue(Color color, float hue, bool decolor)
 		{
 			float a = color.a;
@@ -230,8 +217,6 @@ namespace LBoL.Presentation.Effect
 			color.a = a;
 			return color;
 		}
-
-		// Token: 0x06000E45 RID: 3653 RVA: 0x0004436C File Offset: 0x0004256C
 		private static Gradient ReplaceHue(Gradient g, float hue, bool decolor)
 		{
 			GradientColorKey[] colorKeys = g.colorKeys;
@@ -242,8 +227,6 @@ namespace LBoL.Presentation.Effect
 			g.colorKeys = colorKeys;
 			return g;
 		}
-
-		// Token: 0x06000E46 RID: 3654 RVA: 0x000443C0 File Offset: 0x000425C0
 		public void DieOut()
 		{
 			foreach (EffectWidget.ParticleSystemElement particleSystemElement in this.particleSystemElements)
@@ -270,8 +253,6 @@ namespace LBoL.Presentation.Effect
 			}
 			Object.Destroy(base.gameObject, 3f);
 		}
-
-		// Token: 0x06000E47 RID: 3655 RVA: 0x00044480 File Offset: 0x00042680
 		public void SetSortingOrder(int order)
 		{
 			EffectWidget.ParticleSystemElement[] array = this.particleSystemElements;
@@ -280,66 +261,33 @@ namespace LBoL.Presentation.Effect
 				array[i].particleSystem.GetComponent<Renderer>().sortingOrder = order;
 			}
 		}
-
-		// Token: 0x04000A9C RID: 2716
 		[SerializeField]
 		private EffectWidget.ParticleSystemElement[] particleSystemElements;
-
-		// Token: 0x04000A9D RID: 2717
 		[SerializeField]
 		private EffectWidget.TrailRendererElement[] trailRendererElements;
-
-		// Token: 0x04000A9E RID: 2718
 		private ParticleSystem.MinMaxGradient[] _particleSystemRawStartColors;
-
-		// Token: 0x04000A9F RID: 2719
 		private ParticleSystem.MinMaxGradient[] _particleSystemRawLifetimeColors;
-
-		// Token: 0x04000AA0 RID: 2720
 		private Gradient[] _trailRenderRawColors;
-
-		// Token: 0x02000324 RID: 804
 		public enum DieType
 		{
-			// Token: 0x04001385 RID: 4997
 			Inactivate,
-			// Token: 0x04001386 RID: 4998
 			StopEmission,
-			// Token: 0x04001387 RID: 4999
 			DoNothing
 		}
-
-		// Token: 0x02000325 RID: 805
 		[Serializable]
 		public class ParticleSystemElement
 		{
-			// Token: 0x04001388 RID: 5000
 			public ParticleSystem particleSystem;
-
-			// Token: 0x04001389 RID: 5001
 			public bool changeColor;
-
-			// Token: 0x0400138A RID: 5002
 			public EffectWidget.DieType dieType;
-
-			// Token: 0x0400138B RID: 5003
 			public bool lowPerformance;
 		}
-
-		// Token: 0x02000326 RID: 806
 		[Serializable]
 		public class TrailRendererElement
 		{
-			// Token: 0x0400138C RID: 5004
 			public TrailRenderer trailRenderer;
-
-			// Token: 0x0400138D RID: 5005
 			public bool changeColor;
-
-			// Token: 0x0400138E RID: 5006
 			public EffectWidget.DieType dieType;
-
-			// Token: 0x0400138F RID: 5007
 			public bool lowPerformance;
 		}
 	}

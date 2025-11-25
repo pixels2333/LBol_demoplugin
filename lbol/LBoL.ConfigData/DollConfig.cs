@@ -4,13 +4,10 @@ using System.IO;
 using System.Linq;
 using LBoL.Base;
 using UnityEngine;
-
 namespace LBoL.ConfigData
 {
-	// Token: 0x0200000B RID: 11
 	public sealed class DollConfig
 	{
-		// Token: 0x0600015A RID: 346 RVA: 0x00005AB4 File Offset: 0x00003CB4
 		private DollConfig(string Id, bool Flip, int? Damage, int? Value1, int? Value2, ManaGroup? Mana, bool Usable, bool HasMagic, int InitialMagic, int MagicCost, int MaxMagic, Keyword Keywords, IReadOnlyList<string> RelativeEffects)
 		{
 			this.Id = Id;
@@ -27,88 +24,30 @@ namespace LBoL.ConfigData
 			this.Keywords = Keywords;
 			this.RelativeEffects = RelativeEffects;
 		}
-
-		// Token: 0x1700007A RID: 122
-		// (get) Token: 0x0600015B RID: 347 RVA: 0x00005B2C File Offset: 0x00003D2C
-		// (set) Token: 0x0600015C RID: 348 RVA: 0x00005B34 File Offset: 0x00003D34
 		public string Id { get; private set; }
-
-		// Token: 0x1700007B RID: 123
-		// (get) Token: 0x0600015D RID: 349 RVA: 0x00005B3D File Offset: 0x00003D3D
-		// (set) Token: 0x0600015E RID: 350 RVA: 0x00005B45 File Offset: 0x00003D45
 		public bool Flip { get; private set; }
-
-		// Token: 0x1700007C RID: 124
-		// (get) Token: 0x0600015F RID: 351 RVA: 0x00005B4E File Offset: 0x00003D4E
-		// (set) Token: 0x06000160 RID: 352 RVA: 0x00005B56 File Offset: 0x00003D56
 		public int? Damage { get; private set; }
-
-		// Token: 0x1700007D RID: 125
-		// (get) Token: 0x06000161 RID: 353 RVA: 0x00005B5F File Offset: 0x00003D5F
-		// (set) Token: 0x06000162 RID: 354 RVA: 0x00005B67 File Offset: 0x00003D67
 		public int? Value1 { get; private set; }
-
-		// Token: 0x1700007E RID: 126
-		// (get) Token: 0x06000163 RID: 355 RVA: 0x00005B70 File Offset: 0x00003D70
-		// (set) Token: 0x06000164 RID: 356 RVA: 0x00005B78 File Offset: 0x00003D78
 		public int? Value2 { get; private set; }
-
-		// Token: 0x1700007F RID: 127
-		// (get) Token: 0x06000165 RID: 357 RVA: 0x00005B81 File Offset: 0x00003D81
-		// (set) Token: 0x06000166 RID: 358 RVA: 0x00005B89 File Offset: 0x00003D89
 		public ManaGroup? Mana { get; private set; }
-
-		// Token: 0x17000080 RID: 128
-		// (get) Token: 0x06000167 RID: 359 RVA: 0x00005B92 File Offset: 0x00003D92
-		// (set) Token: 0x06000168 RID: 360 RVA: 0x00005B9A File Offset: 0x00003D9A
 		public bool Usable { get; private set; }
-
-		// Token: 0x17000081 RID: 129
-		// (get) Token: 0x06000169 RID: 361 RVA: 0x00005BA3 File Offset: 0x00003DA3
-		// (set) Token: 0x0600016A RID: 362 RVA: 0x00005BAB File Offset: 0x00003DAB
 		public bool HasMagic { get; private set; }
-
-		// Token: 0x17000082 RID: 130
-		// (get) Token: 0x0600016B RID: 363 RVA: 0x00005BB4 File Offset: 0x00003DB4
-		// (set) Token: 0x0600016C RID: 364 RVA: 0x00005BBC File Offset: 0x00003DBC
 		public int InitialMagic { get; private set; }
-
-		// Token: 0x17000083 RID: 131
-		// (get) Token: 0x0600016D RID: 365 RVA: 0x00005BC5 File Offset: 0x00003DC5
-		// (set) Token: 0x0600016E RID: 366 RVA: 0x00005BCD File Offset: 0x00003DCD
 		public int MagicCost { get; private set; }
-
-		// Token: 0x17000084 RID: 132
-		// (get) Token: 0x0600016F RID: 367 RVA: 0x00005BD6 File Offset: 0x00003DD6
-		// (set) Token: 0x06000170 RID: 368 RVA: 0x00005BDE File Offset: 0x00003DDE
 		public int MaxMagic { get; private set; }
-
-		// Token: 0x17000085 RID: 133
-		// (get) Token: 0x06000171 RID: 369 RVA: 0x00005BE7 File Offset: 0x00003DE7
-		// (set) Token: 0x06000172 RID: 370 RVA: 0x00005BEF File Offset: 0x00003DEF
 		public Keyword Keywords { get; private set; }
-
-		// Token: 0x17000086 RID: 134
-		// (get) Token: 0x06000173 RID: 371 RVA: 0x00005BF8 File Offset: 0x00003DF8
-		// (set) Token: 0x06000174 RID: 372 RVA: 0x00005C00 File Offset: 0x00003E00
 		public IReadOnlyList<string> RelativeEffects { get; private set; }
-
-		// Token: 0x06000175 RID: 373 RVA: 0x00005C09 File Offset: 0x00003E09
 		public static IReadOnlyList<DollConfig> AllConfig()
 		{
 			ConfigDataManager.Initialize();
 			return Array.AsReadOnly<DollConfig>(DollConfig._data);
 		}
-
-		// Token: 0x06000176 RID: 374 RVA: 0x00005C1C File Offset: 0x00003E1C
 		public static DollConfig FromId(string Id)
 		{
 			ConfigDataManager.Initialize();
 			DollConfig dollConfig;
 			return (!DollConfig._IdTable.TryGetValue(Id, out dollConfig)) ? null : dollConfig;
 		}
-
-		// Token: 0x06000177 RID: 375 RVA: 0x00005C48 File Offset: 0x00003E48
 		public override string ToString()
 		{
 			string[] array = new string[27];
@@ -141,8 +80,6 @@ namespace LBoL.ConfigData
 			array[26] = "]}";
 			return string.Concat(array);
 		}
-
-		// Token: 0x06000178 RID: 376 RVA: 0x00005E9C File Offset: 0x0000409C
 		private static void Load(byte[] bytes)
 		{
 			using (BinaryReader binaryReader = new BinaryReader(new MemoryStream(bytes)))
@@ -156,8 +93,6 @@ namespace LBoL.ConfigData
 				DollConfig._IdTable = Enumerable.ToDictionary<DollConfig, string>(DollConfig._data, (DollConfig elem) => elem.Id);
 			}
 		}
-
-		// Token: 0x06000179 RID: 377 RVA: 0x00006058 File Offset: 0x00004258
 		internal static void Reload()
 		{
 			TextAsset textAsset = Resources.Load<TextAsset>("ConfigData/DollConfig");
@@ -178,11 +113,7 @@ namespace LBoL.ConfigData
 				Debug.LogError("Cannot load config data of 'DollConfig', please reimport config data");
 			}
 		}
-
-		// Token: 0x040000B8 RID: 184
 		private static DollConfig[] _data = Array.Empty<DollConfig>();
-
-		// Token: 0x040000B9 RID: 185
 		private static Dictionary<string, DollConfig> _IdTable = Enumerable.ToDictionary<DollConfig, string>(DollConfig._data, (DollConfig elem) => elem.Id);
 	}
 }

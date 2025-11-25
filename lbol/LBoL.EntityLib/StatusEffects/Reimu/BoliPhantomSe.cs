@@ -9,15 +9,11 @@ using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.Cards.Character.Reimu;
-
 namespace LBoL.EntityLib.StatusEffects.Reimu
 {
-	// Token: 0x02000027 RID: 39
 	[UsedImplicitly]
 	public sealed class BoliPhantomSe : StatusEffect
 	{
-		// Token: 0x17000008 RID: 8
-		// (get) Token: 0x06000066 RID: 102 RVA: 0x00002B2F File Offset: 0x00000D2F
 		[UsedImplicitly]
 		public ManaGroup Mana
 		{
@@ -26,14 +22,10 @@ namespace LBoL.EntityLib.StatusEffects.Reimu
 				return ManaGroup.Empty;
 			}
 		}
-
-		// Token: 0x06000067 RID: 103 RVA: 0x00002B36 File Offset: 0x00000D36
 		protected override void OnAdded(Unit unit)
 		{
 			base.ReactOwnerEvent<CardEventArgs>(base.Battle.CardExiled, new EventSequencedReactor<CardEventArgs>(this.OnCardExiled));
 		}
-
-		// Token: 0x06000068 RID: 104 RVA: 0x00002B55 File Offset: 0x00000D55
 		private IEnumerable<BattleAction> OnCardExiled(CardEventArgs args)
 		{
 			if (args.Cause != ActionCause.AutoExile && !(args.Card is Fengmozhen))

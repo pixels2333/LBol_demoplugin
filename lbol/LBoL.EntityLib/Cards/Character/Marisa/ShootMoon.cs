@@ -6,15 +6,11 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
-
 namespace LBoL.EntityLib.Cards.Character.Marisa
 {
-	// Token: 0x02000446 RID: 1094
 	[UsedImplicitly]
 	public sealed class ShootMoon : Card
 	{
-		// Token: 0x170001A3 RID: 419
-		// (get) Token: 0x06000EE7 RID: 3815 RVA: 0x0001B0F5 File Offset: 0x000192F5
 		[UsedImplicitly]
 		public int AttackTimes
 		{
@@ -23,8 +19,6 @@ namespace LBoL.EntityLib.Cards.Character.Marisa
 				return 2;
 			}
 		}
-
-		// Token: 0x06000EE8 RID: 3816 RVA: 0x0001B0F8 File Offset: 0x000192F8
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			base.CardGuns = new Guns(base.GunName, this.AttackTimes, true);

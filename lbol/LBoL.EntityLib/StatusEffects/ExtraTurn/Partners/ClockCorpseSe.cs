@@ -6,14 +6,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.StatusEffects.ExtraTurn.Partners
 {
-	// Token: 0x02000087 RID: 135
 	[UsedImplicitly]
 	public sealed class ClockCorpseSe : ExtraTurnPartner
 	{
-		// Token: 0x060001E8 RID: 488 RVA: 0x00005E30 File Offset: 0x00004030
 		protected override void OnAdded(Unit unit)
 		{
 			base.ThisTurnActivating = false;
@@ -27,8 +24,6 @@ namespace LBoL.EntityLib.StatusEffects.ExtraTurn.Partners
 			base.HandleOwnerEvent<CardEventArgs>(base.Battle.Predraw, new GameEventHandler<CardEventArgs>(this.OnPredraw));
 			base.ReactOwnerEvent<UnitEventArgs>(base.Battle.Player.TurnEnded, new EventSequencedReactor<UnitEventArgs>(this.OnPlayerTurnEnded));
 		}
-
-		// Token: 0x060001E9 RID: 489 RVA: 0x00005EA8 File Offset: 0x000040A8
 		private void OnPredraw(CardEventArgs args)
 		{
 			if (!base.ThisTurnActivating || args.Cause == ActionCause.TurnStart)
@@ -46,8 +41,6 @@ namespace LBoL.EntityLib.StatusEffects.ExtraTurn.Partners
 			args.CancelBy(this);
 			base.NotifyActivating();
 		}
-
-		// Token: 0x060001EA RID: 490 RVA: 0x00005F08 File Offset: 0x00004108
 		private IEnumerable<BattleAction> OnPlayerTurnEnded(UnitEventArgs args)
 		{
 			if (base.ThisTurnActivating)

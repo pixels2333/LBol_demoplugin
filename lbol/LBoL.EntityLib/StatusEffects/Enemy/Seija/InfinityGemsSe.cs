@@ -7,14 +7,10 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
 using LBoL.EntityLib.Exhibits.Seija;
-
 namespace LBoL.EntityLib.StatusEffects.Enemy.Seija
 {
-	// Token: 0x020000CE RID: 206
 	public sealed class InfinityGemsSe : SeijaSe
 	{
-		// Token: 0x17000047 RID: 71
-		// (get) Token: 0x060002CC RID: 716 RVA: 0x00007992 File Offset: 0x00005B92
 		protected override Type ExhibitType
 		{
 			get
@@ -22,8 +18,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy.Seija
 				return typeof(InfinityGems);
 			}
 		}
-
-		// Token: 0x060002CD RID: 717 RVA: 0x000079A0 File Offset: 0x00005BA0
 		protected override void OnAdded(Unit unit)
 		{
 			base.OnAdded(unit);
@@ -33,8 +27,6 @@ namespace LBoL.EntityLib.StatusEffects.Enemy.Seija
 			this.React(PerformAction.EffectMessage(unit, "SeijaExhibitManager", "AddExhibit", this));
 			base.Highlight = true;
 		}
-
-		// Token: 0x060002CE RID: 718 RVA: 0x00007A15 File Offset: 0x00005C15
 		private IEnumerable<BattleAction> OnOwnerTurnStarted(UnitEventArgs args)
 		{
 			if (base.Battle.BattleShouldEnd || base.Owner.HasStatusEffect<DragonBallSe>() || !base.Owner.IsAlive || base.Count == 0)

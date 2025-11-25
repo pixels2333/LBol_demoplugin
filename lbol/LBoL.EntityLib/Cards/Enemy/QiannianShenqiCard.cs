@@ -10,14 +10,11 @@ using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.EnemyUnits.Character;
 using LBoL.EntityLib.StatusEffects.Enemy.Seija;
-
 namespace LBoL.EntityLib.Cards.Enemy
 {
-	// Token: 0x0200036B RID: 875
 	[UsedImplicitly]
 	public sealed class QiannianShenqiCard : Card
 	{
-		// Token: 0x06000C94 RID: 3220 RVA: 0x000185E0 File Offset: 0x000167E0
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			EnemyUnit enemyUnit = Enumerable.FirstOrDefault<EnemyUnit>(base.Battle.EnemyGroup, (EnemyUnit u) => u is Seija && u.IsAlive);

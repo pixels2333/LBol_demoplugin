@@ -11,13 +11,10 @@ using LBoL.EntityLib.Exhibits.Adventure;
 using LBoL.EntityLib.Exhibits.Common;
 using UnityEngine;
 using Yarn;
-
 namespace LBoL.EntityLib.Adventures
 {
-	// Token: 0x02000501 RID: 1281
 	public sealed class RinnosukeTrade : Adventure
 	{
-		// Token: 0x060010D2 RID: 4306 RVA: 0x0001D830 File Offset: 0x0001BA30
 		protected override void InitVariables(IVariableStorage storage)
 		{
 			List<Exhibit> list = Enumerable.ToList<Exhibit>(Enumerable.Where<Exhibit>(base.GameRun.Player.Exhibits, (Exhibit e) => e.LosableType == ExhibitLosableType.Losable).SampleManyOrAll(2, base.GameRun.AdventureRng));
@@ -42,8 +39,6 @@ namespace LBoL.EntityLib.Adventures
 			storage.SetValue("$canSell1", false);
 			storage.SetValue("$canSell2", false);
 		}
-
-		// Token: 0x060010D3 RID: 4307 RVA: 0x0001D974 File Offset: 0x0001BB74
 		private int GetExhibitPrice(Exhibit exhibit)
 		{
 			int num;
@@ -65,8 +60,6 @@ namespace LBoL.EntityLib.Adventures
 			float num3 = base.GameRun.ShopRng.NextFloat(-0.08f, 0f) + 1f;
 			return Mathf.RoundToInt((float)Mathf.RoundToInt(num2 * num3) * 60f / 100f);
 		}
-
-		// Token: 0x060010D4 RID: 4308 RVA: 0x0001DA08 File Offset: 0x0001BC08
 		[RuntimeCommand("sellExhibit", "")]
 		[UsedImplicitly]
 		public void SellExhibit(string id)
@@ -81,8 +74,6 @@ namespace LBoL.EntityLib.Adventures
 				base.GameRun.AchievementHandler.UnlockAchievement(AchievementKey.RinnosukeAdventure);
 			}
 		}
-
-		// Token: 0x060010D5 RID: 4309 RVA: 0x0001DA81 File Offset: 0x0001BC81
 		[RuntimeCommand("trade", "")]
 		[UsedImplicitly]
 		public IEnumerator Trade(int index)
@@ -95,8 +86,6 @@ namespace LBoL.EntityLib.Adventures
 			});
 			yield break;
 		}
-
-		// Token: 0x04000118 RID: 280
 		private const float SellPricePercentage = 60f;
 	}
 }

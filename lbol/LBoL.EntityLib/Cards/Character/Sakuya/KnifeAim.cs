@@ -11,15 +11,11 @@ using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.StatusEffects.Sakuya;
-
 namespace LBoL.EntityLib.Cards.Character.Sakuya
 {
-	// Token: 0x02000392 RID: 914
 	[UsedImplicitly]
 	public sealed class KnifeAim : Card
 	{
-		// Token: 0x17000174 RID: 372
-		// (get) Token: 0x06000D08 RID: 3336 RVA: 0x00018E69 File Offset: 0x00017069
 		public override bool DiscardCard
 		{
 			get
@@ -27,8 +23,6 @@ namespace LBoL.EntityLib.Cards.Character.Sakuya
 				return true;
 			}
 		}
-
-		// Token: 0x06000D09 RID: 3337 RVA: 0x00018E6C File Offset: 0x0001706C
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			yield return base.AttackAction(selector, null);

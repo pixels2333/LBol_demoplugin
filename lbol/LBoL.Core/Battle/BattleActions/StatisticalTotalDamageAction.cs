@@ -2,13 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using LBoL.Core.Units;
-
 namespace LBoL.Core.Battle.BattleActions
 {
-	// Token: 0x020001A9 RID: 425
 	public sealed class StatisticalTotalDamageAction : EventBattleAction<StatisticalDamageEventArgs>
 	{
-		// Token: 0x06000F49 RID: 3913 RVA: 0x00029204 File Offset: 0x00027404
 		private static int UnitOrder(Unit unit)
 		{
 			int num;
@@ -34,8 +31,6 @@ namespace LBoL.Core.Battle.BattleActions
 			}
 			return num;
 		}
-
-		// Token: 0x06000F4A RID: 3914 RVA: 0x0002924C File Offset: 0x0002744C
 		public StatisticalTotalDamageAction(IEnumerable<DamageAction> allBattleActions)
 		{
 			Unit unit = null;
@@ -64,8 +59,6 @@ namespace LBoL.Core.Battle.BattleActions
 				CanCancel = false
 			};
 		}
-
-		// Token: 0x06000F4B RID: 3915 RVA: 0x00029328 File Offset: 0x00027528
 		internal override IEnumerable<Phase> GetPhases()
 		{
 			yield return base.CreatePhase("Main", delegate
@@ -91,8 +84,6 @@ namespace LBoL.Core.Battle.BattleActions
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x06000F4C RID: 3916 RVA: 0x00029338 File Offset: 0x00027538
 		internal static IEnumerable<BattleAction> WrapReactorWithStats(IEnumerable<BattleAction> reactor, List<DamageAction> list)
 		{
 			foreach (BattleAction battleAction in reactor)
@@ -108,11 +99,8 @@ namespace LBoL.Core.Battle.BattleActions
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x02000313 RID: 787
 		private class UnitComparer : IComparer<Unit>
 		{
-			// Token: 0x06001689 RID: 5769 RVA: 0x0003FA14 File Offset: 0x0003DC14
 			public int Compare(Unit a, Unit b)
 			{
 				return StatisticalTotalDamageAction.UnitOrder(a).CompareTo(StatisticalTotalDamageAction.UnitOrder(b));

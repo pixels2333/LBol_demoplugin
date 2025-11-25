@@ -10,20 +10,15 @@ using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.EntityLib.Cards.Character.Cirno;
 using LBoL.EntityLib.Cards.Character.Cirno.Friend;
-
 namespace LBoL.EntityLib.StatusEffects.Cirno
 {
-	// Token: 0x020000E8 RID: 232
 	[UsedImplicitly]
 	public sealed class StarFriendSe : StatusEffect
 	{
-		// Token: 0x0600033F RID: 831 RVA: 0x000089E3 File Offset: 0x00006BE3
 		protected override void OnAdded(Unit unit)
 		{
 			base.ReactOwnerEvent<StatisticalDamageEventArgs>(base.Battle.Player.StatisticalTotalDamageDealt, new EventSequencedReactor<StatisticalDamageEventArgs>(this.OnStatisticalDamageDealt));
 		}
-
-		// Token: 0x06000340 RID: 832 RVA: 0x00008A07 File Offset: 0x00006C07
 		private IEnumerable<BattleAction> OnStatisticalDamageDealt(StatisticalDamageEventArgs args)
 		{
 			if (base.Battle.BattleShouldEnd)

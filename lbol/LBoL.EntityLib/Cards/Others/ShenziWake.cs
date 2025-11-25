@@ -9,20 +9,15 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
-
 namespace LBoL.EntityLib.Cards.Others
 {
-	// Token: 0x02000270 RID: 624
 	[UsedImplicitly]
 	public sealed class ShenziWake : Card
 	{
-		// Token: 0x060009EE RID: 2542 RVA: 0x000150E5 File Offset: 0x000132E5
 		public override ManaGroup GetXCostFromPooled(ManaGroup pooledMana)
 		{
 			return pooledMana;
 		}
-
-		// Token: 0x060009EF RID: 2543 RVA: 0x000150E8 File Offset: 0x000132E8
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			int num = consumingMana.Amount;

@@ -11,30 +11,14 @@ using LBoL.Core.Units;
 using LBoL.EntityLib.Cards.Enemy;
 using LBoL.EntityLib.StatusEffects.Enemy;
 using UnityEngine;
-
 namespace LBoL.EntityLib.EnemyUnits.Character
 {
-	// Token: 0x02000240 RID: 576
 	[UsedImplicitly]
 	public sealed class Long : EnemyUnit
 	{
-		// Token: 0x170000F4 RID: 244
-		// (get) Token: 0x060008E4 RID: 2276 RVA: 0x000132BD File Offset: 0x000114BD
-		// (set) Token: 0x060008E5 RID: 2277 RVA: 0x000132C5 File Offset: 0x000114C5
 		private Long.MoveType LastAttack { get; set; }
-
-		// Token: 0x170000F5 RID: 245
-		// (get) Token: 0x060008E6 RID: 2278 RVA: 0x000132CE File Offset: 0x000114CE
-		// (set) Token: 0x060008E7 RID: 2279 RVA: 0x000132D6 File Offset: 0x000114D6
 		private Long.MoveType Next { get; set; }
-
-		// Token: 0x170000F6 RID: 246
-		// (get) Token: 0x060008E8 RID: 2280 RVA: 0x000132DF File Offset: 0x000114DF
-		// (set) Token: 0x060008E9 RID: 2281 RVA: 0x000132E7 File Offset: 0x000114E7
 		private Type SpecialReport { get; set; }
-
-		// Token: 0x170000F7 RID: 247
-		// (get) Token: 0x060008EA RID: 2282 RVA: 0x000132F0 File Offset: 0x000114F0
 		private int LightLevel
 		{
 			get
@@ -47,8 +31,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 				return statusEffect.Level;
 			}
 		}
-
-		// Token: 0x060008EB RID: 2283 RVA: 0x00013304 File Offset: 0x00011504
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			this.LastAttack = (this.Next = Long.MoveType.ShootAddCard);
@@ -103,8 +85,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			base.HandleBattleEvent<StatusEffectApplyEventArgs>(base.StatusEffectAdded, new GameEventHandler<StatusEffectApplyEventArgs>(this.OnStatusEffectAdded));
 			base.HandleBattleEvent<DamageEventArgs>(base.DamageReceived, new GameEventHandler<DamageEventArgs>(this.OnDamageReceived));
 		}
-
-		// Token: 0x060008EC RID: 2284 RVA: 0x0001345E File Offset: 0x0001165E
 		private IEnumerable<BattleAction> OnBattleStarted(GameEventArgs arg)
 		{
 			if (base.GameRun.Difficulty == GameDifficulty.Lunatic)
@@ -114,8 +94,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield return new AddCardsToHandAction(Library.CreateCards<Bribery>(1, false), AddCardsType.Normal);
 			yield break;
 		}
-
-		// Token: 0x060008ED RID: 2285 RVA: 0x00013470 File Offset: 0x00011670
 		private void OnStatusEffectAdded(StatusEffectApplyEventArgs arg)
 		{
 			if (arg.Effect is LongEscape)
@@ -133,8 +111,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 				}
 			}
 		}
-
-		// Token: 0x060008EE RID: 2286 RVA: 0x000134C0 File Offset: 0x000116C0
 		private void OnDamageReceived(DamageEventArgs args)
 		{
 			if (base.HasStatusEffect<LongEscape>())
@@ -150,8 +126,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 				}
 			}
 		}
-
-		// Token: 0x060008EF RID: 2287 RVA: 0x000134FF File Offset: 0x000116FF
 		private IEnumerable<BattleAction> SpellActions()
 		{
 			foreach (BattleAction battleAction in this.AttackActions(null, base.Gun3, base.Damage3, 1, true, "Instant"))
@@ -167,8 +141,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x060008F0 RID: 2288 RVA: 0x0001350F File Offset: 0x0001170F
 		private IEnumerable<BattleAction> AddPapersAction()
 		{
 			if (!this._paperChatOnce)
@@ -233,8 +205,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			yield break;
 		}
-
-		// Token: 0x060008F1 RID: 2289 RVA: 0x0001351F File Offset: 0x0001171F
 		private IEnumerable<BattleAction> EscapeActions()
 		{
 			yield return PerformAction.Chat(this, "Chat.LongEscape1".Localize(true), 3f, 0f, 3.2f, true);
@@ -242,8 +212,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			yield return new EscapeAction(this);
 			yield break;
 		}
-
-		// Token: 0x060008F2 RID: 2290 RVA: 0x0001352F File Offset: 0x0001172F
 		protected override IEnumerable<IEnemyMove> GetTurnMoves()
 		{
 			switch (this.Next)
@@ -323,8 +291,6 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			yield break;
 		}
-
-		// Token: 0x060008F3 RID: 2291 RVA: 0x00013540 File Offset: 0x00011740
 		protected override void UpdateMoveCounters()
 		{
 			if (base.HasStatusEffect<LongEscape>())
@@ -358,25 +324,14 @@ namespace LBoL.EntityLib.EnemyUnits.Character
 			}
 			this.LastAttack = (this.Next = Long.MoveType.ShootAddCard);
 		}
-
-		// Token: 0x040000BD RID: 189
 		private bool _paperChatOnce;
-
-		// Token: 0x040000BE RID: 190
 		private int _paperCountDown;
-
-		// Token: 0x02000747 RID: 1863
 		private enum MoveType
 		{
-			// Token: 0x04000AC8 RID: 2760
 			ShootGraze,
-			// Token: 0x04000AC9 RID: 2761
 			ShootAddCard,
-			// Token: 0x04000ACA RID: 2762
 			BuffAddCard,
-			// Token: 0x04000ACB RID: 2763
 			Spell,
-			// Token: 0x04000ACC RID: 2764
 			Escape
 		}
 	}

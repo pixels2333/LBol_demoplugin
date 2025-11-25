@@ -11,15 +11,11 @@ using LBoL.Core.Units;
 using LBoL.EntityLib.EnemyUnits.Normal.Yinyangyus;
 using LBoL.EntityLib.StatusEffects.Basic;
 using LBoL.EntityLib.StatusEffects.Others;
-
 namespace LBoL.EntityLib.EnemyUnits.Opponent
 {
-	// Token: 0x020001D0 RID: 464
 	[UsedImplicitly]
 	public sealed class Reimu : EnemyUnit
 	{
-		// Token: 0x170000A3 RID: 163
-		// (get) Token: 0x060006EE RID: 1774 RVA: 0x0000FC9C File Offset: 0x0000DE9C
 		private string SpellCard
 		{
 			get
@@ -27,18 +23,8 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 				return base.GetSpellCardName(new int?(5), 6);
 			}
 		}
-
-		// Token: 0x170000A4 RID: 164
-		// (get) Token: 0x060006EF RID: 1775 RVA: 0x0000FCAB File Offset: 0x0000DEAB
-		// (set) Token: 0x060006F0 RID: 1776 RVA: 0x0000FCB3 File Offset: 0x0000DEB3
 		private Reimu.MoveType LastAttack { get; set; }
-
-		// Token: 0x170000A5 RID: 165
-		// (get) Token: 0x060006F1 RID: 1777 RVA: 0x0000FCBC File Offset: 0x0000DEBC
-		// (set) Token: 0x060006F2 RID: 1778 RVA: 0x0000FCC4 File Offset: 0x0000DEC4
 		private Reimu.MoveType Next { get; set; }
-
-		// Token: 0x060006F3 RID: 1779 RVA: 0x0000FCCD File Offset: 0x0000DECD
 		protected override void OnEnterBattle(BattleController battle)
 		{
 			this.LastAttack = Reimu.MoveType.ShootAccuracy;
@@ -47,24 +33,18 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 			this._defendCount = 2;
 			base.ReactBattleEvent<GameEventArgs>(base.Battle.BattleStarted, new Func<GameEventArgs, IEnumerable<BattleAction>>(this.OnBattleStarted));
 		}
-
-		// Token: 0x060006F4 RID: 1780 RVA: 0x0000FD08 File Offset: 0x0000DF08
 		private IEnumerable<BattleAction> OnBattleStarted(GameEventArgs arg)
 		{
 			yield return new CastBlockShieldAction(this, 0, base.Defend, BlockShieldType.Normal, false);
 			yield return new ApplyStatusEffectAction<Amulet>(this, new int?(1), default(int?), default(int?), default(int?), 0f, true);
 			yield break;
 		}
-
-		// Token: 0x060006F5 RID: 1781 RVA: 0x0000FD18 File Offset: 0x0000DF18
 		public override void OnSpawn(EnemyUnit spawner)
 		{
 			this.React(new CastBlockShieldAction(this, 0, base.Defend, BlockShieldType.Normal, false));
 			this.React(new ApplyStatusEffectAction<Amulet>(this, new int?(1), default(int?), default(int?), default(int?), 0f, true));
 			this.React(new ApplyStatusEffectAction<MirrorImage>(this, default(int?), default(int?), default(int?), default(int?), 0f, true));
 		}
-
-		// Token: 0x060006F6 RID: 1782 RVA: 0x0000FDB2 File Offset: 0x0000DFB2
 		private IEnumerable<BattleAction> HakureiDefend()
 		{
 			yield return new EnemyMoveAction(this, base.GetMove(3), true);
@@ -75,8 +55,6 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 			}
 			yield break;
 		}
-
-		// Token: 0x060006F7 RID: 1783 RVA: 0x0000FDC2 File Offset: 0x0000DFC2
 		private IEnumerable<BattleAction> SummonActions()
 		{
 			yield return new EnemyMoveAction(this, base.GetMove(4), true);
@@ -92,8 +70,6 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 			this._vacancy = 7;
 			yield break;
 		}
-
-		// Token: 0x060006F8 RID: 1784 RVA: 0x0000FDD2 File Offset: 0x0000DFD2
 		private IEnumerable<BattleAction> SpellActions()
 		{
 			foreach (BattleAction battleAction in this.AttackActions(this.SpellCard, base.Gun4, base.Damage4, 3, true, "Instant"))
@@ -105,8 +81,6 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 			yield break;
 			yield break;
 		}
-
-		// Token: 0x060006F9 RID: 1785 RVA: 0x0000FDE2 File Offset: 0x0000DFE2
 		protected override IEnumerable<IEnemyMove> GetTurnMoves()
 		{
 			switch (this.Next)
@@ -151,8 +125,6 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 			}
 			yield break;
 		}
-
-		// Token: 0x060006FA RID: 1786 RVA: 0x0000FDF4 File Offset: 0x0000DFF4
 		protected override void UpdateMoveCounters()
 		{
 			int num = base.CountDown - 1;
@@ -181,8 +153,6 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 			this.Next = this._pool.Without(this.LastAttack).Sample(base.EnemyMoveRng);
 			this.LastAttack = this.Next;
 		}
-
-		// Token: 0x0400005D RID: 93
 		private readonly RepeatableRandomPool<Reimu.MoveType> _pool = new RepeatableRandomPool<Reimu.MoveType>
 		{
 			{
@@ -198,27 +168,15 @@ namespace LBoL.EntityLib.EnemyUnits.Opponent
 				1f
 			}
 		};
-
-		// Token: 0x0400005E RID: 94
 		private int _defendCount;
-
-		// Token: 0x0400005F RID: 95
 		private int _vacancy;
-
-		// Token: 0x02000692 RID: 1682
 		private enum MoveType
 		{
-			// Token: 0x040007C2 RID: 1986
 			MultiShoot,
-			// Token: 0x040007C3 RID: 1987
 			ShootAccuracy,
-			// Token: 0x040007C4 RID: 1988
 			ShootDebuff,
-			// Token: 0x040007C5 RID: 1989
 			Defend,
-			// Token: 0x040007C6 RID: 1990
 			Summon,
-			// Token: 0x040007C7 RID: 1991
 			Spell
 		}
 	}

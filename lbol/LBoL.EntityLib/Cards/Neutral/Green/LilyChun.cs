@@ -9,14 +9,11 @@ using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.Randoms;
-
 namespace LBoL.EntityLib.Cards.Neutral.Green
 {
-	// Token: 0x020002FA RID: 762
 	[UsedImplicitly]
 	public sealed class LilyChun : Card
 	{
-		// Token: 0x06000B57 RID: 2903 RVA: 0x00016D2E File Offset: 0x00014F2E
 		protected override IEnumerable<BattleAction> Actions(UnitSelector selector, ManaGroup consumingMana, Interaction precondition)
 		{
 			List<Card> list;

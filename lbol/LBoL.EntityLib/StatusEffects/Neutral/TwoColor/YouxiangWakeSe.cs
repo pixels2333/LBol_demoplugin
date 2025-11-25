@@ -10,15 +10,11 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
-
 namespace LBoL.EntityLib.StatusEffects.Neutral.TwoColor
 {
-	// Token: 0x02000051 RID: 81
 	[UsedImplicitly]
 	public sealed class YouxiangWakeSe : StatusEffect
 	{
-		// Token: 0x17000015 RID: 21
-		// (get) Token: 0x06000103 RID: 259 RVA: 0x00003CD9 File Offset: 0x00001ED9
 		[UsedImplicitly]
 		public ManaGroup Mana
 		{
@@ -27,8 +23,6 @@ namespace LBoL.EntityLib.StatusEffects.Neutral.TwoColor
 				return ManaGroup.Empty;
 			}
 		}
-
-		// Token: 0x06000104 RID: 260 RVA: 0x00003CE0 File Offset: 0x00001EE0
 		protected override string GetBaseDescription()
 		{
 			if (base.Count != 1)
@@ -37,14 +31,10 @@ namespace LBoL.EntityLib.StatusEffects.Neutral.TwoColor
 			}
 			return base.ExtraDescription;
 		}
-
-		// Token: 0x06000105 RID: 261 RVA: 0x00003CF8 File Offset: 0x00001EF8
 		protected override void OnAdded(Unit unit)
 		{
 			base.ReactOwnerEvent<UnitEventArgs>(base.Battle.Player.TurnStarted, new EventSequencedReactor<UnitEventArgs>(this.OnPlayerTurnStarted));
 		}
-
-		// Token: 0x06000106 RID: 262 RVA: 0x00003D1C File Offset: 0x00001F1C
 		private IEnumerable<BattleAction> OnPlayerTurnStarted(UnitEventArgs args)
 		{
 			if (base.Battle.BattleShouldEnd)

@@ -10,14 +10,11 @@ using LBoL.EntityLib.Exhibits.Seija;
 using LBoL.EntityLib.Stages.NormalStages;
 using UnityEngine;
 using Yarn;
-
 namespace LBoL.EntityLib.Adventures.Stage2
 {
-	// Token: 0x02000508 RID: 1288
 	[AdventureInfo(WeighterType = typeof(BuduSuanming.BuduSuanmingWeighter))]
 	public sealed class BuduSuanming : Adventure
 	{
-		// Token: 0x060010F2 RID: 4338 RVA: 0x0001E5BC File Offset: 0x0001C7BC
 		protected override void InitVariables(IVariableStorage storage)
 		{
 			Stage stage3 = Enumerable.FirstOrDefault<Stage>(base.GameRun.Stages, (Stage stage) => stage.Level == 3);
@@ -66,8 +63,6 @@ namespace LBoL.EntityLib.Adventures.Stage2
 				storage.SetValue("$seijaItemName", exhibit.Name);
 			}
 		}
-
-		// Token: 0x060010F3 RID: 4339 RVA: 0x0001E78C File Offset: 0x0001C98C
 		public BuduSuanming()
 		{
 			List<Type> list = new List<Type>();
@@ -77,17 +72,10 @@ namespace LBoL.EntityLib.Adventures.Stage2
 			this._pool = list;
 			base..ctor();
 		}
-
-		// Token: 0x04000129 RID: 297
 		private const int CostMoney = 10;
-
-		// Token: 0x0400012A RID: 298
 		private readonly List<Type> _pool;
-
-		// Token: 0x02000A64 RID: 2660
 		private class BuduSuanmingWeighter : IAdventureWeighter
 		{
-			// Token: 0x06003742 RID: 14146 RVA: 0x000864BD File Offset: 0x000846BD
 			public float WeightFor(Type type, GameRunController gameRun)
 			{
 				return (float)((gameRun.Money >= 10) ? 1 : 0);

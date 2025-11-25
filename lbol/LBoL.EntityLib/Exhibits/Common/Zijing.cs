@@ -8,15 +8,12 @@ using LBoL.Core.Battle.Interactions;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
 using UnityEngine;
-
 namespace LBoL.EntityLib.Exhibits.Common
 {
-	// Token: 0x020001B7 RID: 439
 	[UsedImplicitly]
 	[ExhibitInfo(WeighterType = typeof(Zijing.ZijingWeighter))]
 	public sealed class Zijing : Exhibit
 	{
-		// Token: 0x06000651 RID: 1617 RVA: 0x0000E9FB File Offset: 0x0000CBFB
 		protected override IEnumerator SpecialGain(PlayerUnit player)
 		{
 			int num = base.Value1;
@@ -41,11 +38,8 @@ namespace LBoL.EntityLib.Exhibits.Common
 			base.Blackout = true;
 			yield break;
 		}
-
-		// Token: 0x02000672 RID: 1650
 		private class ZijingWeighter : IExhibitWeighter
 		{
-			// Token: 0x06001AC5 RID: 6853 RVA: 0x000373EF File Offset: 0x000355EF
 			public float WeightFor(Type type, GameRunController gameRun)
 			{
 				if (gameRun.CurrentStage.Level <= 1 && gameRun.CurrentStation.Level <= 5)
