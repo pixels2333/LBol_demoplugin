@@ -1,15 +1,15 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
 using HarmonyLib;
 using LBoL.Core;
 using LBoL.Core.Cards;
 using LBoL.Core.Stations;
 using LBoL.Core.Units;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -31,11 +31,16 @@ public class ShopSyncPatch
     {
         try
         {
-            if (serviceProvider == null) return;
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             // 在合作模式下，广播商店进入事件
             var shopData = new
@@ -69,11 +74,16 @@ public class ShopSyncPatch
     {
         try
         {
-            if (serviceProvider == null) return;
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             var shopData = new
             {
@@ -126,11 +136,16 @@ public class ShopSyncPatch
     {
         try
         {
-            if (serviceProvider == null) return;
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             // 检查是否真的购买了（状态从未售出变为已售出）
             if (__state?.IsSoldOut == false && cardItem.IsSoldOut)
@@ -225,11 +240,16 @@ public class ShopSyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider?.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 // 检查是否真的购买了（金币减少了）
                 bool purchaseSuccess = __instance.Money < __state;
@@ -273,11 +293,16 @@ public class ShopSyncPatch
     {
         try
         {
-            if (serviceProvider == null) return;
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             var upgradeData = new
             {
@@ -312,11 +337,16 @@ public class ShopSyncPatch
     {
         try
         {
-            if (serviceProvider == null) return;
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             var removeData = new
             {
@@ -349,11 +379,16 @@ public class ShopSyncPatch
     {
         try
         {
-            if (serviceProvider == null) return;
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             var stateData = new
             {
@@ -380,11 +415,16 @@ public class ShopSyncPatch
     {
         try
         {
-            if (serviceProvider == null) return;
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider?.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             var requestData = new
             {
@@ -412,11 +452,16 @@ public class ShopSyncPatch
         try
         {
             var shopStation = GetCurrentShopStation();
-            if (shopStation == null || serviceProvider == null) return;
+            if (shopStation == null || serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider?.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             var inventoryData = new
             {
@@ -522,7 +567,9 @@ public class ShopSyncPatch
         try
         {
             if (gameRun?.Player == null)
+            {
                 return 0;
+            }
 
             // 尝试获取玩家的所有卡牌数量
             var player = gameRun.Player;
@@ -621,7 +668,9 @@ public class ShopSyncPatch
         try
         {
             if (shop == null)
+            {
                 return 0;
+            }
 
             var totalSpent = 0;
 

@@ -1,11 +1,11 @@
+using System;
+using System.Text.Json;
 using HarmonyLib;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Units;
-using System;
-using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace NetworkPlugin.Patch.Actions;
 

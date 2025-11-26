@@ -20,7 +20,7 @@ public class NetworkServer
     private readonly ManualLogSource _logger;
 
     // 管理玩家会话
-    private readonly Dictionary<int, PlayerSession> _playerSessions = new Dictionary<int, PlayerSession>();
+    private readonly Dictionary<int, PlayerSession> _playerSessions = [];
 
     // 游戏事件处理委托
     public delegate void GameEventHandler(string eventType, object eventData, PlayerSession sender);
@@ -326,7 +326,9 @@ public class NetworkServer
         foreach (var kvp in _playerSessions)
         {
             if (excludePeerId.HasValue && kvp.Key == excludePeerId.Value)
+            {
                 continue;
+            }
 
             if (kvp.Value.IsConnected)
             {
@@ -430,6 +432,6 @@ public class NetworkServer
         Console.WriteLine("[Server] Server stopped.");
     }
 
-   
+
 }
 

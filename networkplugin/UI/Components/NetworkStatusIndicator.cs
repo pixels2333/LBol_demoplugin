@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
+using Microsoft.Extensions.DependencyInjection;
+using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Utils;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using NetworkPlugin.Network.Client;
-using NetworkPlugin.Network.Utils;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace NetworkPlugin.UI.Components;
 
@@ -127,13 +127,19 @@ public class NetworkStatusIndicator : MonoBehaviour
     private ConnectionState GetConnectionState()
     {
         if (_networkClient == null)
+        {
             return ConnectionState.Disconnected;
+        }
 
         if (_networkClient.IsConnected)
+        {
             return ConnectionState.Connected;
+        }
 
         if (_networkClient.IsConnecting)
+        {
             return ConnectionState.Connecting;
+        }
 
         return ConnectionState.Disconnected;
     }
@@ -182,10 +188,14 @@ public class NetworkStatusIndicator : MonoBehaviour
     private void UpdatePingDisplay()
     {
         if (Time.time - lastPingUpdate < pingUpdateInterval)
+        {
             return;
+        }
 
         if (pingText == null || _networkClient == null)
+        {
             return;
+        }
 
         var ping = GetPingValue();
         pingText.text = $"延迟: {ping}ms";
@@ -223,7 +233,10 @@ public class NetworkStatusIndicator : MonoBehaviour
     /// </summary>
     private void UpdatePlayerCount()
     {
-        if (playerCountText == null) return;
+        if (playerCountText == null)
+        {
+            return;
+        }
 
         var playerCount = GetConnectedPlayerCount();
         playerCountText.text = $"玩家: {playerCount}";
@@ -324,7 +337,7 @@ public class NetworkStatusIndicator : MonoBehaviour
             details.AppendLine($"远程地址: {_networkClient.RemoteEndPoint?.ToString() ?? "Unknown"}");
         }
 
-        details.AppendLine($"UPnP状态: {_upnpEnabled ? "已启用" : "未启用"}");
+        details.AppendLine($"UPnP状态: {(_upnpEnabled ? "已启用" : "未启用")}");
         details.AppendLine($"NAT类型: {_natType}");
 
         return details.ToString();

@@ -1,15 +1,15 @@
-using HarmonyLib;
-using LBoL.Core;
-using LBoL.Core.Units;
-using LBoL.EntityLib;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
+using HarmonyLib;
+using LBoL.Core;
+using LBoL.Core.Units;
+using LBoL.EntityLib;
+using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -31,11 +31,16 @@ public class ExhibitSyncPatch
     {
         try
         {
-            if (serviceProvider == null) return;
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             // 构建宝物详细信息
             var exhibitData = new
@@ -80,11 +85,16 @@ public class ExhibitSyncPatch
     {
         try
         {
-            if (serviceProvider == null) return;
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             var exhibitData = new
             {
@@ -123,7 +133,7 @@ public class ExhibitSyncPatch
     [HarmonyPatch]
     public static class ExhibitActivationSync
     {
-        private static readonly Dictionary<Exhibit, bool> _activationStates = new Dictionary<Exhibit, bool>();
+        private static readonly Dictionary<Exhibit, bool> _activationStates = [];
 
         [HarmonyTargetMethods]
         static System.Collections.Generic.IEnumerable<System.Reflection.MethodBase> TargetMethods()
@@ -190,8 +200,15 @@ public class ExhibitSyncPatch
         {
             try
             {
-                if (!(__instance is Exhibit exhibit)) return;
-                if (exhibit.Active == __state) return; // 状态没有变化
+                if (!(__instance is Exhibit exhibit))
+                {
+                    return;
+                }
+
+                if (exhibit.Active == __state)
+                {
+                    return; // 状态没有变化
+                }
 
                 SendExhibitActivationEvent(exhibit, __state, exhibit.Active);
 
@@ -213,7 +230,7 @@ public class ExhibitSyncPatch
     [HarmonyPatch]
     public static class ExhibitCounterSync
     {
-        private static readonly Dictionary<Exhibit, int> _counterStates = new Dictionary<Exhibit, int>();
+        private static readonly Dictionary<Exhibit, int> _counterStates = [];
 
         [HarmonyTargetMethods]
         static System.Collections.Generic.IEnumerable<System.Reflection.MethodBase> TargetMethods()
@@ -281,9 +298,20 @@ public class ExhibitSyncPatch
         {
             try
             {
-                if (!(__instance is Exhibit exhibit)) return;
-                if (!exhibit.HasCounter) return;
-                if (exhibit.Counter == __state) return; // 计数器没有变化
+                if (!(__instance is Exhibit exhibit))
+                {
+                    return;
+                }
+
+                if (!exhibit.HasCounter)
+                {
+                    return;
+                }
+
+                if (exhibit.Counter == __state)
+                {
+                    return; // 计数器没有变化
+                }
 
                 SendExhibitCounterEvent(exhibit, __state, exhibit.Counter);
 
@@ -308,12 +336,21 @@ public class ExhibitSyncPatch
     {
         try
         {
-            if (__instance.Exhibits == null) return;
-            if (serviceProvider == null) return;
+            if (__instance.Exhibits == null)
+            {
+                return;
+            }
+
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             // 检查所有宝物的状态变化
             foreach (var exhibit in __instance.Exhibits)
@@ -367,11 +404,16 @@ public class ExhibitSyncPatch
     {
         try
         {
-            if (serviceProvider == null) return;
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             var message = new
             {
@@ -418,11 +460,16 @@ public class ExhibitSyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 // TODO: 验证购买是否成功
                 bool purchaseSuccess = exhibitItem.IsSoldOut && __instance.Money < __state;
@@ -469,7 +516,9 @@ public class ExhibitSyncPatch
     public static object BuildFullExhibitInfo(PlayerUnit player)
     {
         if (player?.Exhibits == null)
+        {
             return new { Exhibits = new List<object>(), Count = 0 };
+        }
 
         var exhibits = player.Exhibits.Select(exhibit => new
         {
@@ -533,7 +582,10 @@ public class ExhibitSyncPatch
     {
         try
         {
-            if (serviceProvider == null) return;
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var message = new
             {
@@ -559,8 +611,15 @@ public class ExhibitSyncPatch
     {
         try
         {
-            if (!exhibit.HasCounter) return;
-            if (serviceProvider == null) return;
+            if (!exhibit.HasCounter)
+            {
+                return;
+            }
+
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var message = new
             {

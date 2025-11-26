@@ -16,7 +16,7 @@ public interface INetworkManager
 
     //是否处于联机状态
     bool IsConnected => GetPlayerCount() > 0;
-    
+
 
 
 }

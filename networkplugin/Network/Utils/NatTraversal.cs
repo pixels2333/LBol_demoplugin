@@ -18,7 +18,7 @@ namespace NetworkPlugin.Network.Utils;
 public class NatTraversal
 {
     private static readonly ManualLogSource _logger;
-    private static readonly Dictionary<string, NatInfo> _peerNatInfo = new Dictionary<string, NatInfo>();
+    private static readonly Dictionary<string, NatInfo> _peerNatInfo = [];
     private static bool _upnpEnabled = false;
 
     static NatTraversal()
@@ -55,7 +55,7 @@ public class NatTraversal
         public bool SupportsHolePunching { get; set; }
         public bool SupportsUPnP { get; set; }
         public DateTime LastUpdate { get; set; }
-        public List<string> StunServers { get; set; } = new List<string>();
+        public List<string> StunServers { get; set; } = [];
     }
 
     /// <summary>
@@ -94,7 +94,9 @@ public class NatTraversal
         try
         {
             if (externalPort == 0)
+            {
                 externalPort = internalPort;
+            }
 
             var result = new UpnpMappingResult
             {
@@ -171,8 +173,8 @@ public class NatTraversal
     /// <summary>
     /// 默认STUN服务器列表
     /// </summary>
-    private static readonly List<string> DefaultStunServers = new List<string>
-    {
+    private static readonly List<string> DefaultStunServers =
+    [
         "stun.l.google.com:19302",
         "stun1.l.google.com:19302",
         "stun2.l.google.com:19302",
@@ -182,7 +184,7 @@ public class NatTraversal
         "stun.ideasip.com:3478",
         "stun.sipgate.net:3478",
         "stun.xten.com:3478"
-    };
+    ];
 
     /// <summary>
     /// 通过STUN服务器检测NAT类型

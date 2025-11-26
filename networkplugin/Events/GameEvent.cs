@@ -7,7 +7,6 @@ namespace NetworkPlugin.Events
 {
     /// <summary>
     /// 游戏事件类型枚举
-    /// 基于杀戮尖塔联机Mod的事件类型适配LBoL
     /// </summary>
     public enum GameEventType
     {
@@ -125,7 +124,7 @@ namespace NetworkPlugin.Events
             CardId = cardId;
             CardName = cardName;
             CardType = cardType;
-            ManaCost = manaCost ?? new int[4] { 0, 0, 0, 0 };
+            ManaCost = manaCost ?? [0, 0, 0, 0];
             TargetSelector = targetSelector ?? "Nobody";
         }
 
@@ -165,8 +164,8 @@ namespace NetworkPlugin.Events
             string source, object additionalData = null)
             : base(GameEventType.ManaConsumeStart, sourcePlayerId, additionalData)
         {
-            ManaBefore = manaBefore ?? new int[4] { 0, 0, 0, 0 };
-            ManaConsumed = manaConsumed ?? new int[4] { 0, 0, 0, 0 };
+            ManaBefore = manaBefore ?? [0, 0, 0, 0];
+            ManaConsumed = manaConsumed ?? [0, 0, 0, 0];
             Source = source ?? "Unknown";
         }
 

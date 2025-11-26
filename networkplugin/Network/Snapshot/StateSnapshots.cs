@@ -24,7 +24,7 @@ public class FullStateSnapshot
     /// <summary>
     /// 所有玩家的状态
     /// </summary>
-    public List<PlayerStateSnapshot> PlayerStates { get; set; } = new();
+    public List<PlayerStateSnapshot> PlayerStates { get; set; } = [];
 
     /// <summary>
     /// 战斗状态（如果在战斗中）
@@ -151,7 +151,7 @@ public class PlayerStateSnapshot
     /// <summary>
     /// 法力组（红、蓝、绿、白）
     /// </summary>
-    public int[] ManaGroup { get; set; } = new[] { 3, 3, 3, 3 };
+    public int[] ManaGroup { get; set; } = [3, 3, 3, 3];
 
     /// <summary>
     /// 最大法力
@@ -166,22 +166,22 @@ public class PlayerStateSnapshot
     /// <summary>
     /// 卡牌状态
     /// </summary>
-    public List<CardStateSnapshot> Cards { get; set; } = new();
+    public List<CardStateSnapshot> Cards { get; set; } = [];
 
     /// <summary>
     /// 宝物状态
     /// </summary>
-    public List<ExhibitStateSnapshot> Exhibits { get; set; } = new();
+    public List<ExhibitStateSnapshot> Exhibits { get; set; } = [];
 
     /// <summary>
     /// 药水状态（药水ID -> 数量）
     /// </summary>
-    public Dictionary<string, int> Potions { get; set; } = new();
+    public Dictionary<string, int> Potions { get; set; } = [];
 
     /// <summary>
     /// 状态效果
     /// </summary>
-    public List<StatusEffectStateSnapshot> StatusEffects { get; set; } = new();
+    public List<StatusEffectStateSnapshot> StatusEffects { get; set; } = [];
 
     /// <summary>
     /// 游戏内位置
@@ -307,7 +307,7 @@ public class CardStateSnapshot
     /// <summary>
     /// 额外元数据
     /// </summary>
-    public Dictionary<string, object> Metadata { get; set; } = new();
+    public Dictionary<string, object> Metadata { get; set; } = [];
 }
 
 /// <summary>
@@ -378,7 +378,7 @@ public class ExhibitStateSnapshot
     /// <summary>
     /// 额外配置
     /// </summary>
-    public Dictionary<string, object> Config { get; set; } = new();
+    public Dictionary<string, object> Config { get; set; } = [];
 }
 
 /// <summary>
@@ -470,7 +470,7 @@ public class BattleStateSnapshot
     /// <summary>
     /// 敌人状态
     /// </summary>
-    public List<EnemyStateSnapshot> Enemies { get; set; } = new();
+    public List<EnemyStateSnapshot> Enemies { get; set; } = [];
 
     /// <summary>
     /// 战斗开始时间
@@ -536,7 +536,7 @@ public class EnemyStateSnapshot
     /// <summary>
     /// 当前状态效果
     /// </summary>
-    public List<StatusEffectStateSnapshot> StatusEffects { get; set; } = new();
+    public List<StatusEffectStateSnapshot> StatusEffects { get; set; } = [];
 
     /// <summary>
     /// 当前意图
@@ -597,8 +597,8 @@ public class MapStateSnapshot
 
     /// <summary>
     /// 已访问的节点
-/// </summary>
-    public List<string> VisitedNodes { get; set; } = new();
+    /// </summary>
+    public List<string> VisitedNodes { get; set; } = [];
 
     /// <summary>
     /// 当前位置
@@ -608,12 +608,12 @@ public class MapStateSnapshot
     /// <summary>
     /// 已揭示的节点
     /// </summary>
-    public List<string> RevealedNodes { get; set; } = new();
+    public List<string> RevealedNodes { get; set; } = [];
 
     /// <summary>
     /// 路径历史
     /// </summary>
-    public List<LocationSnapshot> PathHistory { get; set; } = new();
+    public List<LocationSnapshot> PathHistory { get; set; } = [];
 
     /// <summary>
     /// 地图是否完成
@@ -675,17 +675,17 @@ public class BattleRewardSnapshot
     /// <summary>
     /// 卡牌奖励
     /// </summary>
-    public List<string> CardRewards { get; set; } = new();
+    public List<string> CardRewards { get; set; } = [];
 
     /// <summary>
     /// 宝物奖励
     /// </summary>
-    public List<string> ExhibitRewards { get; set; } = new();
+    public List<string> ExhibitRewards { get; set; } = [];
 
     /// <summary>
     /// 药水奖励
     /// </summary>
-    public List<string> PotionRewards { get; set; } = new();
+    public List<string> PotionRewards { get; set; } = [];
 
     /// <summary>
     /// 奖励是否已领取

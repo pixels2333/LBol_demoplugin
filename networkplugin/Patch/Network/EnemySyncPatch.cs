@@ -1,15 +1,15 @@
-using HarmonyLib;
-using LBoL.Core.Units;
-using LBoL.Core.Battle;
 using System;
-using System.Text.Json;
-using NetworkPlugin.Network.Client;
-using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Generic;
-using LBoL.Core.StatusEffects;
-using NetworkPlugin.Network;
 using System.Linq;
+using System.Text.Json;
+using HarmonyLib;
 using LBoL.Core;
+using LBoL.Core.Battle;
+using LBoL.Core.StatusEffects;
+using LBoL.Core.Units;
+using Microsoft.Extensions.DependencyInjection;
+using NetworkPlugin.Network;
+using NetworkPlugin.Network.Client;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -31,20 +31,29 @@ public class EnemySyncPatch
     {
         try
         {
-            if (serviceProvider == null) return;
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             // 只同步在战斗中的敌人
             if (__instance.Battle == null)
+            {
                 return;
+            }
 
             // 检查HP是否真的改变
             int oldHp = __state;
             if (oldHp == hp)
+            {
                 return;
+            }
 
             var enemyData = BuildEnemyUpdateData(__instance, "HpChanged", new
             {
@@ -83,18 +92,27 @@ public class EnemySyncPatch
     {
         try
         {
-            if (serviceProvider == null) return;
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             if (__instance.Battle == null)
+            {
                 return;
+            }
 
             int oldBlock = __state;
             if (oldBlock == block)
+            {
                 return;
+            }
 
             var enemyData = BuildEnemyUpdateData(__instance, "BlockChanged", new
             {
@@ -130,18 +148,27 @@ public class EnemySyncPatch
     {
         try
         {
-            if (serviceProvider == null) return;
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             if (__instance.Battle == null)
+            {
                 return;
+            }
 
             int oldShield = __state;
             if (oldShield == shield)
+            {
                 return;
+            }
 
             var enemyData = BuildEnemyUpdateData(__instance, "ShieldChanged", new
             {
@@ -177,14 +204,21 @@ public class EnemySyncPatch
     {
         try
         {
-            if (serviceProvider == null) return;
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             if (target is not EnemyUnit enemy)
+            {
                 return;
+            }
 
             var statusEffects = GetEnemyStatusEffects(enemy);
 
@@ -214,14 +248,21 @@ public class EnemySyncPatch
     {
         try
         {
-            if (serviceProvider == null) return;
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             if (target is not EnemyUnit enemy)
+            {
                 return;
+            }
 
             var statusEffects = GetEnemyStatusEffects(enemy);
 
@@ -251,14 +292,21 @@ public class EnemySyncPatch
     {
         try
         {
-            if (serviceProvider == null) return;
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             if (enemy == null || !enemy.Intentions.Any())
+            {
                 return;
+            }
 
             var intentionData = GetEnemyIntention(enemy);
 
@@ -287,14 +335,21 @@ public class EnemySyncPatch
     {
         try
         {
-            if (serviceProvider == null) return;
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             if (unit is not EnemyUnit enemy)
+            {
                 return;
+            }
 
             var enemyData = BuildEnemyUpdateData(enemy, "Died", new
             {
@@ -356,7 +411,9 @@ public class EnemySyncPatch
                                        .GetValue<OrderedList<StatusEffect>>();
 
             if (statusEffects == null)
+            {
                 return effects;
+            }
 
             foreach (var effect in statusEffects)
             {
@@ -385,7 +442,9 @@ public class EnemySyncPatch
     private static EnemyIntentionInfo GetEnemyIntention(EnemyUnit enemy)
     {
         if (enemy.Intentions == null)
+        {
             return new EnemyIntentionInfo { Type = "None" };
+        }
 
         try
         {

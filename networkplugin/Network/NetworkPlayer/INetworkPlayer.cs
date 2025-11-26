@@ -154,7 +154,7 @@ public interface INetworkPlayer
 
     void UpdateEndTurn(bool updateServer);
 
-    void UpdateLocation(MapNode visitingnode,bool updateServer=true);
+    void UpdateLocation(MapNode visitingnode, bool updateServer = true);
 
     void UpdateLiveStatus(bool updateServer);
 

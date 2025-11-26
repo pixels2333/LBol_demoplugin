@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using NetworkPlugin.Network.Client;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
+using NetworkPlugin.Network.Client;
 
 namespace NetworkPlugin.Authority;
 
@@ -45,9 +45,9 @@ public class HostAuthorityManager
 
     public HostAuthorityManager()
     {
-        _authoritativeState = new Dictionary<string, object>();
+        _authoritativeState = [];
         _pendingRequests = new Queue<ClientRequest>();
-        _requestHistory = new List<ProcessedRequest>();
+        _requestHistory = [];
         HostPlayerId = string.Empty;
         IsLocalHost = false;
     }
@@ -276,7 +276,9 @@ public class HostAuthorityManager
     private void BroadcastActionToClients(AuthoritativeAction action)
     {
         if (!IsLocalHost)
+        {
             return;
+        }
 
         // TODO: 实现广播逻辑
         // 1. 序列化操作
@@ -375,7 +377,7 @@ public class ClientRequest
     public string RequestId { get; set; } = string.Empty;
     public string PlayerId { get; set; } = string.Empty;
     public string ActionType { get; set; } = string.Empty;
-    public Dictionary<string, object> Parameters { get; set; } = new();
+    public Dictionary<string, object> Parameters { get; set; } = [];
     public long Timestamp { get; set; }
 }
 
@@ -388,7 +390,7 @@ public class AuthoritativeAction
     public string RequestId { get; set; } = string.Empty;
     public string ActionType { get; set; } = string.Empty;
     public string PlayerId { get; set; } = string.Empty;
-    public Dictionary<string, object> Parameters { get; set; } = new();
+    public Dictionary<string, object> Parameters { get; set; } = [];
     public long Timestamp { get; set; }
     public string Source { get; set; } = string.Empty;
 }
@@ -421,8 +423,8 @@ public class ProcessedRequest
 /// </summary>
 public class ReconnectionSnapshot
 {
-    public Dictionary<string, object> GameState { get; set; } = new();
-    public List<ProcessedRequest> RecentActions { get; set; } = new();
+    public Dictionary<string, object> GameState { get; set; } = [];
+    public List<ProcessedRequest> RecentActions { get; set; } = [];
     public long Timestamp { get; set; }
     public string HostPlayerId { get; set; } = string.Empty;
 }

@@ -1,6 +1,6 @@
-using LBoL.Core.Units;
 using System;
 using System.Collections.Generic;
+using LBoL.Core.Units;
 
 namespace NetworkPlugin.Utils
 {
@@ -17,7 +17,9 @@ namespace NetworkPlugin.Utils
         public static object GetUnitStatus(GameUnit unit)
         {
             if (unit == null)
+            {
                 return null;
+            }
 
             try
             {
@@ -56,7 +58,9 @@ namespace NetworkPlugin.Utils
         public static object GetPlayerStatus(PlayerUnit player)
         {
             if (player == null)
+            {
                 return null;
+            }
 
             try
             {
@@ -94,7 +98,9 @@ namespace NetworkPlugin.Utils
         public static object GetEnemyStatus(EnemyUnit enemy)
         {
             if (enemy == null)
+            {
                 return null;
+            }
 
             try
             {
@@ -229,7 +235,9 @@ namespace NetworkPlugin.Utils
             try
             {
                 if (player == null)
+                {
                     return 0;
+                }
 
                 // 尝试获取最大能量属性
                 var maxPowerProperties = new[] { "MaxPower", "MaxEnergy", "PowerLimit", "EnergyLimit" };
@@ -284,22 +292,22 @@ namespace NetworkPlugin.Utils
 
                     if (redProperty != null && blueProperty != null && greenProperty != null && whiteProperty != null)
                     {
-                        return new int[4]
-                        {
+                        return
+                        [
                             (int)(redProperty.GetValue(manaGroup) ?? 0),
                             (int)(blueProperty.GetValue(manaGroup) ?? 0),
                             (int)(greenProperty.GetValue(manaGroup) ?? 0),
                             (int)(whiteProperty.GetValue(manaGroup) ?? 0)
-                        };
+                        ];
                     }
                 }
 
-                return new int[4] { 0, 0, 0, 0 };
+                return [0, 0, 0, 0];
             }
             catch (Exception ex)
             {
                 Plugin.Logger?.LogError($"[UnitUtils] Error getting player current mana: {ex.Message}");
-                return new int[4] { 0, 0, 0, 0 };
+                return [0, 0, 0, 0];
             }
         }
 
@@ -313,7 +321,9 @@ namespace NetworkPlugin.Utils
             try
             {
                 if (enemy == null)
+                {
                     return new { IntentionType = "Unknown", Description = "No enemy" };
+                }
 
                 // 尝试获取意图信息
                 var intentionProperty = enemy.GetType().GetProperty("Intention");
@@ -527,9 +537,20 @@ namespace NetworkPlugin.Utils
                 }
 
                 var typeName = intention.GetType().Name.ToLower();
-                if (typeName.Contains("self")) return "Self";
-                if (typeName.Contains("player")) return "Player";
-                if (typeName.Contains("random")) return "Random";
+                if (typeName.Contains("self"))
+                {
+                    return "Self";
+                }
+
+                if (typeName.Contains("player"))
+                {
+                    return "Player";
+                }
+
+                if (typeName.Contains("random"))
+                {
+                    return "Random";
+                }
 
                 return "Unknown";
             }
@@ -566,8 +587,8 @@ namespace NetworkPlugin.Utils
                 return 0;
             }
         }
-        }
     }
+}
 }
                 return new int[4] { 0, 0, 0, 0 };
             }
@@ -579,68 +600,74 @@ namespace NetworkPlugin.Utils
         /// <param name="enemy">敌人单位</param>
         /// <returns>意图列表</returns>
         public static List<object> GetCurrentIntentions(EnemyUnit enemy)
+{
+    var intentions = new List<object>();
+
+    try
+    {
+        // TODO: 实现获取敌人意图的逻辑
+        // 敌人意图通常包含接下来要执行的动作
+    }
+    catch (Exception ex)
+    {
+        Plugin.Logger?.LogError($"[UnitUtils] Error getting current intentions: {ex.Message}");
+    }
+
+    return intentions;
+}
+
+/// <summary>
+/// 创建单位的完整状态快照
+/// </summary>
+/// <param name="unit">游戏单位</param>
+/// <returns>完整状态快照</returns>
+public static object CreateUnitSnapshot(GameUnit unit)
+{
+    if (unit == null)
+    {
+        return null;
+    }
+
+    try
+    {
+        if (unit is PlayerUnit player)
         {
-            var intentions = new List<object>();
-
-            try
-            {
-                // TODO: 实现获取敌人意图的逻辑
-                // 敌人意图通常包含接下来要执行的动作
-            }
-            catch (Exception ex)
-            {
-                Plugin.Logger?.LogError($"[UnitUtils] Error getting current intentions: {ex.Message}");
-            }
-
-            return intentions;
+            return GetPlayerStatus(player);
         }
 
-        /// <summary>
-        /// 创建单位的完整状态快照
-        /// </summary>
-        /// <param name="unit">游戏单位</param>
-        /// <returns>完整状态快照</returns>
-        public static object CreateUnitSnapshot(GameUnit unit)
+        if (unit is EnemyUnit enemy)
         {
-            if (unit == null)
-                return null;
-
-            try
-            {
-                if (unit is PlayerUnit player)
-                    return GetPlayerStatus(player);
-
-                if (unit is EnemyUnit enemy)
-                    return GetEnemyStatus(enemy);
-
-                // 其他类型的单位
-                return GetUnitStatus(unit);
-            }
-            catch (Exception ex)
-            {
-                Plugin.Logger?.LogError($"[UnitUtils] Error creating unit snapshot: {ex.Message}");
-                return new { Error = "Failed to create unit snapshot" };
-            }
+            return GetEnemyStatus(enemy);
         }
 
-        /// <summary>
-        /// 检查单位是否受到特定状态效果
-        /// </summary>
-        /// <param name="unit">游戏单位</param>
-        /// <param name="statusEffectName">状态效果名称</param>
-        /// <returns>如果受到该状态效果返回true</returns>
-        public static bool HasStatusEffect(GameUnit unit, string statusEffectName)
-        {
-            try
-            {
-                // TODO: 实现检查状态效果的逻辑
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Plugin.Logger?.LogError($"[UnitUtils] Error checking status effect: {ex.Message}");
-                return false;
-            }
-        }
+        // 其他类型的单位
+        return GetUnitStatus(unit);
+    }
+    catch (Exception ex)
+    {
+        Plugin.Logger?.LogError($"[UnitUtils] Error creating unit snapshot: {ex.Message}");
+        return new { Error = "Failed to create unit snapshot" };
+    }
+}
+
+/// <summary>
+/// 检查单位是否受到特定状态效果
+/// </summary>
+/// <param name="unit">游戏单位</param>
+/// <param name="statusEffectName">状态效果名称</param>
+/// <returns>如果受到该状态效果返回true</returns>
+public static bool HasStatusEffect(GameUnit unit, string statusEffectName)
+{
+    try
+    {
+        // TODO: 实现检查状态效果的逻辑
+        return false;
+    }
+    catch (Exception ex)
+    {
+        Plugin.Logger?.LogError($"[UnitUtils] Error checking status effect: {ex.Message}");
+        return false;
+    }
+}
     }
 }

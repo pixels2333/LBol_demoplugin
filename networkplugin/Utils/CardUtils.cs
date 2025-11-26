@@ -1,9 +1,9 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using LBoL.Core;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
-using System.Collections.Generic;
-using System.Linq;
-using System;
 
 namespace NetworkPlugin.Utils
 {
@@ -20,7 +20,9 @@ namespace NetworkPlugin.Utils
         public static object GetCardInfo(Card card)
         {
             if (card == null)
+            {
                 return null;
+            }
 
             try
             {
@@ -35,7 +37,7 @@ namespace NetworkPlugin.Utils
                     Block = card.Config?.Block1 ?? 0,
                     Upgraded = card.IsUpgraded,
                     Description = card.Config?.Description ?? "",
-                    Keywords = card.Config?.Keywords ?? new System.Collections.Generic.List<string>(),
+                    Keywords = card.Config?.Keywords ?? [],
                     TargetType = card.Config?.TargetType.ToString() ?? "Unknown",
                     Color = card.Config?.Color.ToString() ?? "Unknown"
                 };
@@ -59,7 +61,9 @@ namespace NetworkPlugin.Utils
             try
             {
                 if (player?.HandZone == null)
+                {
                     return handCards;
+                }
 
                 foreach (var card in player.HandZone)
                 {
@@ -86,7 +90,9 @@ namespace NetworkPlugin.Utils
             try
             {
                 if (gameRun?.BaseDeck == null)
+                {
                     return drawDeck;
+                }
 
                 foreach (var card in gameRun.BaseDeck)
                 {
@@ -113,7 +119,9 @@ namespace NetworkPlugin.Utils
             try
             {
                 if (player?.DiscardZone == null)
+                {
                     return discardPile;
+                }
 
                 foreach (var card in player.DiscardZone)
                 {
@@ -138,7 +146,9 @@ namespace NetworkPlugin.Utils
             try
             {
                 if (player == null)
+                {
                     return new { Error = "Player is null" };
+                }
 
                 return new
                 {
@@ -170,7 +180,9 @@ namespace NetworkPlugin.Utils
             try
             {
                 if (player == null)
+                {
                     return 0;
+                }
 
                 // 尝试从游戏运行状态获取抽牌堆
                 var gameRun = GameStateUtils.GetCurrentGameRun();
@@ -226,15 +238,21 @@ namespace NetworkPlugin.Utils
             try
             {
                 if (card == null || player == null)
+                {
                     return false;
+                }
 
                 // 基本检查
                 if (!card.CanUse || card.IsForbidden)
+                {
                     return false;
+                }
 
                 // 检查是否在手牌区域
                 if (card.Zone?.ToString() != "Hand")
+                {
                     return false;
+                }
 
                 // 检查法力是否足够
                 var battle = player.Battle;
@@ -247,7 +265,9 @@ namespace NetworkPlugin.Utils
                     for (int i = 0; i < 4; i++)
                     {
                         if (availableMana[i] < requiredMana[i])
+                        {
                             return false;
+                        }
                     }
                 }
 
@@ -256,14 +276,21 @@ namespace NetworkPlugin.Utils
                 {
                     var targetType = card.Config.TargetType;
                     if (targetType == "Enemy" && !HasValidEnemyTarget(card, player))
+                    {
                         return false;
+                    }
+
                     if (targetType == "Ally" && !HasValidAllyTarget(card, player))
+                    {
                         return false;
+                    }
                 }
 
                 // 检查特殊条件
                 if (card.IsEthereal && !IsEtherealPlayable(card))
+                {
                     return false;
+                }
 
                 return true;
             }
@@ -282,7 +309,9 @@ namespace NetworkPlugin.Utils
         public static object GetCardStateSnapshot(Card card)
         {
             if (card == null)
+            {
                 return null;
+            }
 
             try
             {
@@ -394,7 +423,9 @@ namespace NetworkPlugin.Utils
                     foreach (var card in player.HandZone.Cards)
                     {
                         if (card?.IsUpgraded == true)
+                        {
                             count++;
+                        }
                     }
                 }
 
@@ -405,7 +436,9 @@ namespace NetworkPlugin.Utils
                     foreach (var card in gameRun.DeckZone.Cards)
                     {
                         if (card?.IsUpgraded == true)
+                        {
                             count++;
+                        }
                     }
                 }
 
@@ -432,7 +465,9 @@ namespace NetworkPlugin.Utils
                     foreach (var card in player.HandZone.Cards)
                     {
                         if (card != null && (card.IsEthereal || card.IsColorless))
+                        {
                             count++;
+                        }
                     }
                 }
 
@@ -476,7 +511,9 @@ namespace NetworkPlugin.Utils
                 {
                     // 检查玩家自己
                     if (card.Zone?.Owner == player && !player.IsDeadOrEscaped)
+                    {
                         return true;
+                    }
 
                     // 检查是否有其他友方单位
                     // 这里可以扩展检查人偶等其他友方单位
@@ -576,7 +613,7 @@ namespace NetworkPlugin.Utils
             {
                 Plugin.Logger?.LogError($"[CardUtils] Error getting card state snapshot: {ex.Message}");
                 return new { Error = "Failed to get card state snapshot" };
-            }
+}
         }
     }
 }

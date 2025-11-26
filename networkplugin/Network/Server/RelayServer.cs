@@ -6,9 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using LiteNetLib;
 using LiteNetLib.Utils;
-using NetworkPlugin.Network.Client;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using NetworkPlugin.Network.Client;
 
 namespace NetworkPlugin.Network.Server;
 
@@ -58,7 +58,7 @@ public class RelayServer
     /// <summary>
     /// 用于线程安全的锁对象
     /// </summary>
-    private readonly object _lock = new object();
+    private readonly object _lock = new();
 
     /// <summary>
     /// 实例化中继服务器
@@ -68,8 +68,8 @@ public class RelayServer
         _config = config;
         _logger = logger;
         _serviceProvider = serviceProvider;
-        _rooms = new Dictionary<string, NetworkRoom>();
-        _playerSessions = new Dictionary<NetPeer, PlayerSession>();
+        _rooms = [];
+        _playerSessions = [];
         _isRunning = false;
 
         InitializeNetManager();
@@ -359,7 +359,9 @@ public class RelayServer
     public void Stop()
     {
         if (!_isRunning)
+        {
             return;
+        }
 
         _logger.LogInformation("[RelayServer] Stopping server...");
 

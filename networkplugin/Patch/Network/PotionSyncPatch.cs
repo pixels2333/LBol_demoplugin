@@ -1,13 +1,13 @@
-using HarmonyLib;
-using LBoL.Core;
-using LBoL.Core.Units;
-using LBoL.ConfigData;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-using NetworkPlugin.Network.Client;
+using HarmonyLib;
+using LBoL.ConfigData;
+using LBoL.Core;
+using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
+using NetworkPlugin.Network.Client;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -40,11 +40,16 @@ public class PotionSyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var obtainData = new
                 {
@@ -75,11 +80,16 @@ public class PotionSyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var initData = new
                 {
@@ -114,11 +124,16 @@ public class PotionSyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var useData = new
                 {
@@ -149,11 +164,16 @@ public class PotionSyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var effectData = new
                 {
@@ -190,11 +210,16 @@ public class PotionSyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var discardData = new
                 {

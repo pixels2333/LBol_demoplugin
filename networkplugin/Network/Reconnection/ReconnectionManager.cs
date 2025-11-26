@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using NetworkPlugin.Network.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using NetworkPlugin.Network.Client;
 
 namespace NetworkPlugin.Network.Reconnection;
 
@@ -33,7 +33,7 @@ public class ReconnectionManager
 
     /// <summary>
     /// 最近游戏事件历史（用于断线追赶）
- /// Key: 时间戳
+    /// Key: 时间戳
     /// Value: 游戏事件
     /// </summary>
     private readonly SortedList<long, GameEvent> _eventHistory;
@@ -66,8 +66,8 @@ public class ReconnectionManager
         _config = config;
         _logger = logger;
         _serviceProvider = serviceProvider;
-        _playerSnapshots = new Dictionary<string, PlayerStateSnapshot>();
-        _eventHistory = new SortedList<long, GameEvent>();
+        _playerSnapshots = [];
+        _eventHistory = [];
         IsConnected = false;
         IsReconnecting = false;
 
@@ -95,13 +95,17 @@ public class ReconnectionManager
     private void SavePeriodicSnapshot(object? state)
     {
         if (!IsConnected)
+        {
             return;
+        }
 
         try
         {
             var networkClient = _serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             // 创建完整快照
             var snapshot = CreateFullSnapshot();
@@ -378,18 +382,18 @@ public class ReconnectionManager
     public ReconnectionManagerStats GetStats()
     {
         lock (_playerSnapshots)
-        lock (_eventHistory)
-        {
-            return new ReconnectionManagerStats
+            lock (_eventHistory)
             {
-                ActiveSnapshots = _playerSnapshots.Count,
-                TotalEvents = _eventHistory.Count,
-                IsConnected = IsConnected,
-                IsReconnecting = IsReconnecting,
-                MaxReconnectionMinutes = _config.MaxReconnectionMinutes,
-                SnapshotIntervalSeconds = _config.SnapshotIntervalSeconds
-            };
-        }
+                return new ReconnectionManagerStats
+                {
+                    ActiveSnapshots = _playerSnapshots.Count,
+                    TotalEvents = _eventHistory.Count,
+                    IsConnected = IsConnected,
+                    IsReconnecting = IsReconnecting,
+                    MaxReconnectionMinutes = _config.MaxReconnectionMinutes,
+                    SnapshotIntervalSeconds = _config.SnapshotIntervalSeconds
+                };
+            }
     }
 
     /// <summary>

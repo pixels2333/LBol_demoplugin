@@ -39,5 +39,5 @@ public class NetworkManager(INetworkClient networkClient) : INetworkManager
         throw new NotImplementedException();
     }
 
-    
+
 }

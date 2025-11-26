@@ -1,7 +1,7 @@
+using System;
 using LBoL.Base;
 using LBoL.Core;
 using LBoL.Core.Units;
-using System;
 
 namespace NetworkPlugin.Utils
 {
@@ -19,15 +19,17 @@ namespace NetworkPlugin.Utils
         public static int[] ManaGroupToArray(ManaGroup manaGroup)
         {
             if (manaGroup == null)
-                return new int[4] { 0, 0, 0, 0 };
-
-            return new int[4]
             {
+                return [0, 0, 0, 0];
+            }
+
+            return
+            [
                 manaGroup.Red,
                 manaGroup.Blue,
                 manaGroup.Green,
                 manaGroup.White
-            };
+            ];
         }
 
         /// <summary>
@@ -38,7 +40,9 @@ namespace NetworkPlugin.Utils
         public static ManaGroup ArrayToManaGroup(int[] manaArray)
         {
             if (manaArray == null || manaArray.Length < 4)
+            {
                 return new ManaGroup(0, 0, 0, 0);
+            }
 
             return new ManaGroup(
                 manaArray[0], // Red
@@ -56,7 +60,9 @@ namespace NetworkPlugin.Utils
         public static string ManaGroupToString(ManaGroup manaGroup)
         {
             if (manaGroup == null)
+            {
                 return "R0B0G0W0";
+            }
 
             return $"R{manaGroup.Red}B{manaGroup.Blue}G{manaGroup.Green}W{manaGroup.White}";
         }
@@ -72,16 +78,33 @@ namespace NetworkPlugin.Utils
             try
             {
                 if (string.IsNullOrEmpty(manaString))
+                {
                     return new ManaGroup(0, 0, 0, 0);
+                }
 
-                var parts = manaString.Split(new[] { 'R', 'B', 'G', 'W' }, StringSplitOptions.RemoveEmptyEntries);
+                var parts = manaString.Split(['R', 'B', 'G', 'W'], StringSplitOptions.RemoveEmptyEntries);
 
                 int red = 0, blue = 0, green = 0, white = 0;
 
-                if (parts.Length > 0) int.TryParse(parts[0], out red);
-                if (parts.Length > 1) int.TryParse(parts[1], out blue);
-                if (parts.Length > 2) int.TryParse(parts[2], out green);
-                if (parts.Length > 3) int.TryParse(parts[3], out white);
+                if (parts.Length > 0)
+                {
+                    int.TryParse(parts[0], out red);
+                }
+
+                if (parts.Length > 1)
+                {
+                    int.TryParse(parts[1], out blue);
+                }
+
+                if (parts.Length > 2)
+                {
+                    int.TryParse(parts[2], out green);
+                }
+
+                if (parts.Length > 3)
+                {
+                    int.TryParse(parts[3], out white);
+                }
 
                 return new ManaGroup(red, blue, green, white);
             }
@@ -101,13 +124,19 @@ namespace NetworkPlugin.Utils
         public static ManaGroup CalculateManaDifference(ManaGroup from, ManaGroup to)
         {
             if (from == null && to == null)
+            {
                 return new ManaGroup(0, 0, 0, 0);
+            }
 
             if (from == null)
+            {
                 return new ManaGroup(to.Red, to.Blue, to.Green, to.White);
+            }
 
             if (to == null)
+            {
                 return new ManaGroup(-from.Red, -from.Blue, -from.Green, -from.White);
+            }
 
             return new ManaGroup(
                 to.Red - from.Red,
@@ -126,7 +155,9 @@ namespace NetworkPlugin.Utils
         public static bool CanAffordMana(ManaGroup available, ManaGroup cost)
         {
             if (available == null || cost == null)
+            {
                 return false;
+            }
 
             return available.Red >= cost.Red &&
                    available.Blue >= cost.Blue &&
@@ -161,7 +192,9 @@ namespace NetworkPlugin.Utils
         public static ManaGroup CloneManaGroup(ManaGroup original)
         {
             if (original == null)
+            {
                 return null;
+            }
 
             return new ManaGroup(original.Red, original.Blue, original.Green, original.White);
         }

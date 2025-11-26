@@ -81,8 +81,8 @@ public class PlayerEntity
         IsMyTurn = new SyncVar<bool>(nameof(IsMyTurn), false);
         EndTurnFlag = new SyncVar<bool>(nameof(EndTurnFlag), false);
 
-        ActiveStatusEffects = new SyncVar<List<string>>(nameof(ActiveStatusEffects), new List<string>());
-        Exhibits = new SyncVar<List<string>>(nameof(Exhibits), new List<string>());
+        ActiveStatusEffects = new SyncVar<List<string>>(nameof(ActiveStatusEffects), []);
+        Exhibits = new SyncVar<List<string>>(nameof(Exhibits), []);
 
         IsConnected = new SyncVar<bool>(nameof(IsConnected), true);
     }

@@ -445,8 +445,8 @@ namespace NetworkPlugin.Network.Messages
         /// <summary>
         /// 系统消息
         /// </summary>
-        public static readonly string[] System = new[]
-        {
+        public static readonly string[] System =
+        [
             NetworkMessageTypes.PlayerJoined,
             NetworkMessageTypes.PlayerLeft,
             NetworkMessageTypes.PlayerListUpdate,
@@ -456,13 +456,13 @@ namespace NetworkPlugin.Network.Messages
             NetworkMessageTypes.HostChanged,
             NetworkMessageTypes.GetSelf_REQUEST,
             NetworkMessageTypes.GetSelf_RESPONSE
-        };
+        ];
 
         /// <summary>
         /// 游戏同步消息
         /// </summary>
-        public static readonly string[] GameSync = new[]
-        {
+        public static readonly string[] GameSync =
+        [
             NetworkMessageTypes.OnCardPlayStart,
             NetworkMessageTypes.OnCardPlayComplete,
             NetworkMessageTypes.ManaConsumeStarted,
@@ -471,13 +471,13 @@ namespace NetworkPlugin.Network.Messages
             NetworkMessageTypes.OnTurnEnd,
             NetworkMessageTypes.OnBattleStart,
             NetworkMessageTypes.OnBattleEnd
-        };
+        ];
 
         /// <summary>
         /// 状态管理消息
         /// </summary>
-        public static readonly string[] StateManagement = new[]
-        {
+        public static readonly string[] StateManagement =
+        [
             NetworkMessageTypes.StateSyncRequest,
             NetworkMessageTypes.StateSyncResponse,
             NetworkMessageTypes.FullStateSyncRequest,
@@ -485,7 +485,7 @@ namespace NetworkPlugin.Network.Messages
             NetworkMessageTypes.OnConnectionEstablished,
             NetworkMessageTypes.OnConnectionLost,
             NetworkMessageTypes.OnReconnectionAttempt
-        };
+        ];
     }
 
     /// <summary>

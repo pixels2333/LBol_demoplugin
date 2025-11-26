@@ -41,7 +41,7 @@ public class GameEvent
     /// <summary>
     /// 事件数据
     /// </summary>
-    public Dictionary<string, object> Data { get; set; } = new();
+    public Dictionary<string, object> Data { get; set; } = [];
 
     /// <summary>
     /// 事件是否已处理
@@ -326,7 +326,7 @@ public class PlayerDisconnectedEvent : GameEvent
 
 /// <summary>
 /// 同步请求事件（客户端请求状态同步）
-    /// </summary>
+/// </summary>
 public class SyncRequestedEvent : GameEvent
 {
     public SyncRequestedEvent() : base()

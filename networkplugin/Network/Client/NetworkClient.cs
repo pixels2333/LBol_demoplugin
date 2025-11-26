@@ -2,11 +2,13 @@ using System;
 using System.Text.Json;
 using LiteNetLib;
 using LiteNetLib.Utils;
-using NetworkPlugin.Network.NetworkPlayer;
 using NetworkPlugin.Core;
 using NetworkPlugin.Events;
+using NetworkPlugin.Network.NetworkPlayer;
 
 namespace NetworkPlugin.Network.Client;
+
+
 
 public class NetworkClient : INetworkClient
 {
@@ -16,6 +18,18 @@ public class NetworkClient : INetworkClient
     private string _connectionKey;
 
     private INetworkManager _networkManager;
+
+    // 事件定义
+    public event Action<string> OnConnected;
+    public event Action<string, string> OnDisconnected;
+    public event Action<string, object> OnGameEventReceived;
+    public event Action<string, object> OnResponseReceived;
+    public event Action<bool> OnConnectionStateChanged;
+
+    // 高级功能字段
+    private bool _autoReconnectEnabled = false;
+    private int _retryInterval = 5000;
+    private int _connectionTimeout = 5000;
 
     /// <summary>
     /// 初始化 NetworkClient 实例并注册事件监听。
@@ -30,6 +44,22 @@ public class NetworkClient : INetworkClient
         RegisterEvents();
     }
 
+    public void Start()
+    {
+        // 设置连接超时
+        _netManager.DisconnectTimeout = _connectionTimeout;
+
+        // 启动网络管理器
+        if (_netManager.Start())
+        {
+            Console.WriteLine("[Client] Network client started successfully.");
+        }
+        else
+        {
+            Console.WriteLine("[Client] Failed to start network client.");
+            throw new Exception("Failed to start NetworkClient");
+        }
+    }
     /// <summary>
     /// 注册网络事件，包括连接、断开和数据接收。
     /// </summary>
@@ -39,6 +69,10 @@ public class NetworkClient : INetworkClient
         {
             Console.WriteLine($"[Client] Connected to server: {peer.EndPoint}");
             _serverPeer = peer;
+
+            // 触发连接事件
+            OnConnected?.Invoke(peer.EndPoint.ToString());
+            OnConnectionStateChanged?.Invoke(true);
 
             // 通知SynchronizationManager连接已建立
             try
@@ -56,8 +90,8 @@ public class NetworkClient : INetworkClient
             // 发送玩家信息
             var playerInfo = new
             {
-                PlayerId = networkPlayer.Id,
-                PlayerName = networkPlayer.Name,
+                PlayerId = networkPlayer.username,
+                PlayerName = networkPlayer.username,
                 ConnectionTime = DateTime.Now.Ticks
             };
 
@@ -69,7 +103,26 @@ public class NetworkClient : INetworkClient
             Console.WriteLine($"[Client] Disconnected from server: {peer.EndPoint}, Reason: {disconnectInfo.Reason}");
             _serverPeer = null;
 
-            // TODO: 可以在这里触发重连逻辑
+            // 触发断开连接事件
+            OnDisconnected?.Invoke(peer.EndPoint.ToString(), disconnectInfo.Reason.ToString());
+            OnConnectionStateChanged?.Invoke(false);
+
+            // 通知SynchronizationManager连接丢失
+            try
+            {
+                SynchronizationManager.Instance.OnConnectionLost();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Client] Error notifying sync manager: {ex.Message}");
+            }
+
+            // 如果启用自动重连，启动重连逻辑
+            if (_autoReconnectEnabled)
+            {
+                Console.WriteLine($"[Client] Auto-reconnect enabled, will retry in {_retryInterval}ms");
+                // TODO: 实现自动重连逻辑
+            }
         };
 
         _listener.NetworkReceiveEvent += (fromPeer, dataReader, deliveryMethod) =>
@@ -128,6 +181,9 @@ public class NetworkClient : INetworkClient
 
             Console.WriteLine($"[Client] Received game event: {eventType}");
 
+            // 触发游戏事件接收事件
+            OnGameEventReceived?.Invoke(eventType, eventData);
+
             // 交给SynchronizationManager处理
             SynchronizationManager.Instance.ProcessNetworkEvent(new
             {
@@ -140,15 +196,6 @@ public class NetworkClient : INetworkClient
         {
             Console.WriteLine($"[Client] Error handling game event: {ex.Message}");
         }
-    }
-
-    /// <summary>
-    /// 启动客户端服务。
-    /// </summary>
-    public void Start()
-    {
-        _netManager.Start(); // 启动网络管理器
-        Console.WriteLine("[Client] Client services started.");
     }
 
     /// <summary>
@@ -204,7 +251,7 @@ public class NetworkClient : INetworkClient
         try
         {
             var json = JsonSerializer.Serialize(eventData);
-            NetDataWriter writer = new NetDataWriter();
+            NetDataWriter writer = new();
             writer.Put(eventType);
             writer.Put(json);
 
@@ -224,7 +271,7 @@ public class NetworkClient : INetworkClient
     {
         if (IsConnected)
         {
-            NetDataWriter writer = new NetDataWriter();
+            NetDataWriter writer = new();
             writer.Put(requestHeader);
 
             // 支持JSON序列化复杂对象
@@ -262,24 +309,74 @@ public class NetworkClient : INetworkClient
     /// </summary>
     private void HandleRequestResponse(NetPeer fromPeer, NetDataReader dataReader)
     {
-        object result = null;
         try
         {
             string responseHeader = dataReader.GetString(); // 读取响应类型
             Console.WriteLine($"[Client] Received response: Type = '{responseHeader}' from {fromPeer.EndPoint}");
 
-        
+            string responseData = dataReader.GetString(); // 读取消息内容
+            Console.WriteLine($"[Client] Message: {responseData}");
 
-            string responsedata = dataReader.GetString(); // 读取消息内容
-            Console.WriteLine($"[Client] Message: {responsedata}");
+            // 触发响应接收事件
+            OnResponseReceived?.Invoke(responseHeader, responseData);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[Client] Error handling response: {ex.Message}");
         }
-    
     }
 
+    #region 高级功能实现
 
+    /// <summary>
+    /// 获取当前连接的统计信息
+    /// 包括延迟、丢包率等网络质量指标
+    /// </summary>
+    /// <returns>连接统计信息</returns>
+    public object GetConnectionStats()
+    {
+        if (_serverPeer == null)
+        {
+            return new { Status = "Not Connected" };
+        }
 
+        return new
+        {
+            Status = "Connected",
+            Ping = _serverPeer.Ping,
+            Mtu = _serverPeer.Mtu,
+            ConnectionTime = DateTime.Now.Ticks,
+            Address = _serverPeer.EndPoint.ToString()
+        };
+    }
+
+    /// <summary>
+    /// 设置连接超时时间
+    /// </summary>
+    /// <param name="timeoutMs">超时时间（毫秒）</param>
+    public void SetConnectionTimeout(int timeoutMs)
+    {
+        _connectionTimeout = timeoutMs;
+        if (_netManager != null)
+        {
+            _netManager.DisconnectTimeout = timeoutMs;
+        }
+        Console.WriteLine($"[Client] Connection timeout set to {timeoutMs}ms");
+    }
+
+    /// <summary>
+    /// 启用或断开自动重连
+    /// </summary>
+    /// <param name="enabled">是否启用自动重连</param>
+    /// <param name="retryInterval">重试间隔（毫秒）</param>
+    public void EnableAutoReconnect(bool enabled, int retryInterval = 5000)
+    {
+        _autoReconnectEnabled = enabled;
+        _retryInterval = retryInterval;
+        Console.WriteLine($"[Client] Auto-reconnect {(enabled ? "enabled" : "disabled")}, retry interval: {retryInterval}ms");
+    }
+
+    
+
+    #endregion
 }

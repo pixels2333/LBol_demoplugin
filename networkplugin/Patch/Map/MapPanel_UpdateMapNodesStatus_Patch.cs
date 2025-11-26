@@ -1,11 +1,11 @@
 using System;
+using System.Text.Json;
 using HarmonyLib;
 using LBoL.Core;
 using LBoL.Presentation.UI.Panels;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
-using System.Text.Json;
 
 namespace NetworkPlugin.Patch.Map;
 

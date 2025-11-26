@@ -74,8 +74,8 @@ public class PlayerStateSnapshot
 
     public PlayerStateSnapshot()
     {
-        StatusEffects = new List<string>();
-        Exhibits = new List<string>();
+        StatusEffects = [];
+        Exhibits = [];
         Mana = new int[4];
         Timestamp = DateTime.Now;
     }

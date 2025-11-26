@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using NetworkPlugin.Network.Client;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using LBoL.Core;
 using LBoL.Core.Cards;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using NetworkPlugin.Network.Client;
 
 namespace NetworkPlugin.Network.MidGameJoin;
 
@@ -35,7 +35,7 @@ public class MidGameJoinManager
     /// <summary>
     /// 用于线程安全
     /// </summary>
-    private readonly object _lock = new object();
+    private readonly object _lock = new();
 
     /// <summary>
     /// 快速同步服务
@@ -52,8 +52,8 @@ public class MidGameJoinManager
         _config = config;
         _logger = logger;
         _serviceProvider = serviceProvider;
-        _pendingRequests = new List<GameJoinRequest>();
-        _approvedJoins = new Dictionary<string, ApprovedJoin>();
+        _pendingRequests = [];
+        _approvedJoins = [];
         _fastSyncService = new FastSyncService(_logger);
         AIController = new AIPlayerController(logger);
     }
@@ -286,11 +286,12 @@ public class MidGameJoinManager
     /// </summary>
     private List<string> GenerateStartingCards(int progress)
     {
-        var cards = new List<string>();
-
-        // 基础卡牌
-        cards.Add("Strike");
-        cards.Add("Defend");
+        var cards = new List<string>
+        {
+            // 基础卡牌
+            "Strike",
+            "Defend"
+        };
 
         // 根据进度添加额外卡牌
         if (progress > 20)
@@ -399,14 +400,14 @@ public class MidGameJoinManager
     // Stub methods - TODO: Implement
     private RoomInfo? GetRoomInfo(string roomId) => null;
     private void NotifyHostOfJoinRequest(string hostPlayerId, GameJoinRequest request) { }
-    private FullStateSyncResult RequestFullStateSync(string roomId, string playerId) => new FullStateSyncResult { Success = true };
-    private JoinRoomResult JoinRoom(string roomId, string playerId) => new JoinRoomResult { Success = true };
+    private FullStateSyncResult RequestFullStateSync(string roomId, string playerId) => new() { Success = true };
+    private JoinRoomResult JoinRoom(string roomId, string playerId) => new() { Success = true };
     private void NotifyPlayersOfNewPlayer(string roomId, string playerId, string playerName) { }
-    private object GetRoomGameState(string roomId) => new object();
+    private object GetRoomGameState(string roomId) => new();
     private int CalculateAppropriateLevel(int progress) => 1;
     private int CalculateAppropriateHealth(int progress) => 80;
     private int CalculateAppropriateGold(int progress) => 100;
-    private List<GameEvent> GetMissedEvents(long lastEventIndex) => new List<GameEvent>();
+    private List<GameEvent> GetMissedEvents(long lastEventIndex) => [];
     private bool ReplayEvent(string playerId, GameEvent gameEvent) => true;
 }
 
@@ -461,9 +462,9 @@ public class PlayerBootstrappedState
     public int Health { get; set; }
     public int MaxHealth { get; set; }
     public int Gold { get; set; }
-    public List<string> Cards { get; set; } = new();
-    public List<string> Exhibits { get; set; } = new();
-    public Dictionary<string, int> Potions { get; set; } = new();
+    public List<string> Cards { get; set; } = [];
+    public List<string> Exhibits { get; set; } = [];
+    public Dictionary<string, int> Potions { get; set; } = [];
     public long LastEventIndex { get; set; }
 }
 
@@ -514,7 +515,7 @@ public class RoomInfo
 public class JoinRoomResult { public bool Success { get; set; } public string? ErrorMessage { get; set; } }
 public class FullStateSyncResult { public bool Success { get; set; } public string? ErrorMessage { get; set; } }
 public class CatchUpResult { public bool Success { get; set; } public int EventsApplied { get; set; } public string? ErrorMessage { get; set; } }
-public class FullStateSyncResult { public bool Success { get; set; } public List<GameEvent> Events { get; set; } = new(); }
+public class FullStateSyncResult { public bool Success { get; set; } public List<GameEvent> Events { get; set; } = []; }
 
 public enum JoinRequestStatus
 {
@@ -533,7 +534,7 @@ public class AIPlayerController
     public AIPlayerController(ILogger logger)
     {
         _logger = logger;
-        _controlledPlayers = new HashSet<string>();
+        _controlledPlayers = [];
     }
 
     public void StartControlling(string playerId)

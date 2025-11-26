@@ -1,17 +1,17 @@
-using HarmonyLib;
-using LBoL.Core;
-using LBoL.Core.Units;
-using LBoL.Core.Cards;
-using LBoL.Core.Battle.BattleActions;
-using LBoL.ConfigData;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
+using HarmonyLib;
+using LBoL.ConfigData;
+using LBoL.Core;
+using LBoL.Core.Battle.BattleActions;
+using LBoL.Core.Cards;
+using LBoL.Core.Units;
+using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -99,11 +99,16 @@ public class PotionSyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var afterCount = GetCurrentToolCount();
                 var obtainedCount = afterCount - __state.BeforeCount;
@@ -146,10 +151,16 @@ public class PotionSyncPatch
         __state = new ToolUseState();
         try
         {
-            if (!IsToolCard(__instance)) return;
+            if (!IsToolCard(__instance))
+            {
+                return;
+            }
 
             var player = GetCurrentPlayer();
-            if (player == null) return;
+            if (player == null)
+            {
+                return;
+            }
 
             // 记录使用前的状态
             __state.ToolId = __instance.Id;
@@ -172,17 +183,32 @@ public class PotionSyncPatch
     {
         try
         {
-            if (!IsToolCard(__instance)) return;
-            if (string.IsNullOrEmpty(__state.ToolId)) return;
+            if (!IsToolCard(__instance))
+            {
+                return;
+            }
 
-            if (serviceProvider == null) return;
+            if (string.IsNullOrEmpty(__state.ToolId))
+            {
+                return;
+            }
+
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             var player = GetCurrentPlayer();
-            if (player == null) return;
+            if (player == null)
+            {
+                return;
+            }
 
             // 计算状态变化
             var useData = new
@@ -293,13 +319,21 @@ public class PotionSyncPatch
         {
             try
             {
-                if (string.IsNullOrEmpty(__state.ToolId)) return;
+                if (string.IsNullOrEmpty(__state.ToolId))
+                {
+                    return;
+                }
 
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var afterCount = GetCurrentToolCount();
                 var discardedCount = __state.BeforeCount - afterCount;
@@ -344,7 +378,10 @@ public class PotionSyncPatch
         {
             try
             {
-                if (player == null) return new { Error = "Player is null" };
+                if (player == null)
+                {
+                    return new { Error = "Player is null" };
+                }
 
                 var toolCards = GetAllToolCards(player);
                 var tools = toolCards.Select(tool => new
@@ -419,7 +456,9 @@ public class PotionSyncPatch
         try
         {
             if (player != null)
+            {
                 return $"Player_{player.Index}";
+            }
             // TODO: 从GameStateUtils获取
             return "current_player";
         }
@@ -468,11 +507,20 @@ public class PotionSyncPatch
         try
         {
             if (instance?.GetType().Name.Contains("Shop") == true)
+            {
                 return "Shop";
+            }
+
             if (instance?.GetType().Name.Contains("Event") == true)
+            {
                 return "Event";
+            }
+
             if (instance?.GetType().Name.Contains("Battle") == true)
+            {
                 return "Battle";
+            }
+
             return "Unknown";
         }
         catch (Exception ex)
@@ -514,7 +562,7 @@ public class PotionSyncPatch
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[PotionSync] Error getting all tool cards: {ex.Message}");
-            return new List<Card>();
+            return [];
         }
     }
 
@@ -535,7 +583,9 @@ public class PotionSyncPatch
     private static object GetManaSnapshot(ManaGroup manaGroup)
     {
         if (manaGroup == null)
+        {
             return new { Red = 0, Blue = 0, Green = 0, White = 0, Total = 0 };
+        }
 
         return new
         {
@@ -552,7 +602,9 @@ public class PotionSyncPatch
         try
         {
             if (before == null || after == null)
+            {
                 return new { Red = 0, Blue = 0, Green = 0, White = 0, Total = 0 };
+            }
 
             // TODO: 计算法力差值
             return new { Red = 0, Blue = 0, Green = 0, White = 0, Total = 0 };
@@ -569,9 +621,15 @@ public class PotionSyncPatch
         try
         {
             if (instance?.GetType().Name.Contains("Shop") == true)
+            {
                 return "Sell";
+            }
+
             if (args.Any(arg => arg?.ToString().Contains("Exhaust") == true))
+            {
                 return "Exhaust";
+            }
+
             return "Discard";
         }
         catch (Exception ex)

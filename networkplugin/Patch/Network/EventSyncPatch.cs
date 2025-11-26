@@ -1,11 +1,11 @@
-using HarmonyLib;
-using LBoL.Core;
-using LBoL.Core.Adventures;
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
-using NetworkPlugin.Network.Client;
+using HarmonyLib;
+using LBoL.Core;
+using LBoL.Core.Adventures;
 using Microsoft.Extensions.DependencyInjection;
+using NetworkPlugin.Network.Client;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -37,11 +37,16 @@ public class EventSyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var eventData = new
                 {
@@ -82,11 +87,16 @@ public class EventSyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var selectionData = new
                 {
@@ -117,11 +127,16 @@ public class EventSyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var resultData = new
                 {
@@ -161,11 +176,16 @@ public class EventSyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var dialogData = new
                 {
@@ -194,11 +214,16 @@ public class EventSyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var optionsData = new
                 {
@@ -243,11 +268,16 @@ public class EventSyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var rewardData = new
                 {
@@ -276,11 +306,16 @@ public class EventSyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var shopData = new
                 {
@@ -305,11 +340,16 @@ public class EventSyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var treasureData = new
                 {
@@ -334,7 +374,7 @@ public class EventSyncPatch
     /// </summary>
     public class EventVotingSystem
     {
-        private static Dictionary<string, List<string>> _playerVotes = new();
+        private static Dictionary<string, List<string>> _playerVotes = [];
 
         /// <summary>
         /// 判断事件是否需要投票
@@ -355,7 +395,9 @@ public class EventSyncPatch
         public static void RecordVote(string playerId, string eventId, int optionIndex)
         {
             if (!_playerVotes.ContainsKey(eventId))
-                _playerVotes[eventId] = new List<string>();
+            {
+                _playerVotes[eventId] = [];
+            }
 
             _playerVotes[eventId].Add($"{playerId}:{optionIndex}");
 
@@ -384,7 +426,9 @@ public class EventSyncPatch
         private static void ResolveVoting(string eventId)
         {
             if (!_playerVotes.ContainsKey(eventId))
+            {
                 return;
+            }
 
             var votes = _playerVotes[eventId];
             var optionCounts = new Dictionary<int, int>();
@@ -426,11 +470,16 @@ public class EventSyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var resultData = new
                 {

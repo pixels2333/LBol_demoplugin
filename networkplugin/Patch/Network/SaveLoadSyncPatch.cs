@@ -1,15 +1,15 @@
-using HarmonyLib;
-using LBoL.Core;
-using LBoL.Core.Units;
-using LBoL.Core.SaveData;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using HarmonyLib;
+using LBoL.Core;
+using LBoL.Core.SaveData;
+using LBoL.Core.Units;
+using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -22,8 +22,8 @@ namespace NetworkPlugin.Patch.Network;
 public class SaveLoadSyncPatch
 {
     private static IServiceProvider serviceProvider => ModService.ServiceProvider;
-    private static readonly Dictionary<string, GameStateSnapshot> _syncedSnapshots = new Dictionary<string, GameStateSnapshot>();
-    private static readonly object _syncLock = new object();
+    private static readonly Dictionary<string, GameStateSnapshot> _syncedSnapshots = [];
+    private static readonly object _syncLock = new();
 
     /// <summary>
     /// 游戏保存同步 - 当游戏保存时同步状态
@@ -95,11 +95,16 @@ public class SaveLoadSyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 // 只同步主机保存，避免客户端重复同步
                 if (!IsHostPlayer())
@@ -220,11 +225,16 @@ public class SaveLoadSyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var loadTime = DateTime.Now - __state.LoadStartTime;
                 var gameStateAfter = CaptureGameState();
@@ -315,13 +325,21 @@ public class SaveLoadSyncPatch
                     return; // 避免过于频繁的快速保存同步
                 }
 
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
-                if (!IsHostPlayer()) return; // 只有主机执行快速保存同步
+                if (!IsHostPlayer())
+                {
+                    return; // 只有主机执行快速保存同步
+                }
 
                 var gameState = CaptureGameState();
                 var syncData = new
@@ -358,11 +376,16 @@ public class SaveLoadSyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var requestData = new
                 {
@@ -390,13 +413,21 @@ public class SaveLoadSyncPatch
         {
             try
             {
-                if (!IsHostPlayer()) return;
+                if (!IsHostPlayer())
+                {
+                    return;
+                }
 
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var gameState = CaptureGameState();
                 var responseData = new
@@ -522,11 +553,20 @@ public class SaveLoadSyncPatch
         try
         {
             if (instance?.GetType().Name.Contains("Auto") == true)
+            {
                 return "AutoSave";
+            }
+
             if (args.Any(arg => arg?.ToString().Contains("Quick") == true))
+            {
                 return "QuickSave";
+            }
+
             if (args.Any(arg => arg?.ToString().Contains("Manual") == true))
+            {
                 return "ManualSave";
+            }
+
             return "UnknownSave";
         }
         catch (Exception ex)
@@ -541,11 +581,20 @@ public class SaveLoadSyncPatch
         try
         {
             if (args.Any(arg => arg?.ToString().Contains("Auto") == true))
+            {
                 return "AutoLoad";
+            }
+
             if (args.Any(arg => arg?.ToString().Contains("Quick") == true))
+            {
                 return "QuickLoad";
+            }
+
             if (args.Any(arg => arg?.ToString().Contains("Manual") == true))
+            {
                 return "ManualLoad";
+            }
+
             return "UnknownLoad";
         }
         catch (Exception ex)

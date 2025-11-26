@@ -79,8 +79,8 @@ public class Plugin : BaseUnityPlugin
         services.AddSingleton<INetworkManager, NetworkManager>(); // 注册网络管理器
         services.AddSingleton<INetworkClient, NetworkClient>(); // 注册网络客户端
 
-    
-    
+
+
     }
 
     void Update()

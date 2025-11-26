@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Extensions.DependencyInjection;
+using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Messages;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using NetworkPlugin.Network.Client;
-using NetworkPlugin.Network.Messages;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace NetworkPlugin.UI.Components;
 
@@ -29,8 +29,8 @@ public class ChatUI : MonoBehaviour
     public Color systemMessageColor = Color.yellow;
     public float messageFadeTime = 10f;
 
-    private Queue<ChatMessage> messageQueue = new Queue<ChatMessage>();
-    private List<GameObject> messageObjects = new List<GameObject>();
+    private Queue<ChatMessage> messageQueue = new();
+    private List<GameObject> messageObjects = [];
     private IServiceProvider _serviceProvider;
     private INetworkClient _networkClient;
 
@@ -133,7 +133,9 @@ public class ChatUI : MonoBehaviour
     public void SendMessage(string message)
     {
         if (string.IsNullOrEmpty(message) || _networkClient == null || !_networkClient.IsConnected)
+        {
             return;
+        }
 
         var chatMessage = new ChatMessage
         {
@@ -204,7 +206,10 @@ public class ChatUI : MonoBehaviour
     /// </summary>
     private void CreateMessageObject(ChatMessage message)
     {
-        if (messagePrefab == null || chatContainer == null) return;
+        if (messagePrefab == null || chatContainer == null)
+        {
+            return;
+        }
 
         var messageObj = Instantiate(messagePrefab, chatContainer.transform);
         var textComponent = messageObj.GetComponent<TextMeshProUGUI>();
@@ -264,7 +269,10 @@ public class ChatUI : MonoBehaviour
 
         foreach (var messageObj in messageObjects)
         {
-            if (messageObj == null) continue;
+            if (messageObj == null)
+            {
+                continue;
+            }
 
             var textComponent = messageObj.GetComponent<TextMeshProUGUI>();
             if (textComponent != null)

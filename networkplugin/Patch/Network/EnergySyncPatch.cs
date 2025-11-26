@@ -1,12 +1,12 @@
+using System;
+using System.Text.Json;
 using HarmonyLib;
+using LBoL.Base;
 using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
-using LBoL.Base;
-using System;
-using System.Text.Json;
-using NetworkPlugin.Network.Client;
 using Microsoft.Extensions.DependencyInjection;
+using NetworkPlugin.Network.Client;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -29,15 +29,21 @@ public class EnergySyncPatch
         try
         {
             if (serviceProvider == null)
+            {
                 return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             var battle = __instance.Battle;
             if (battle?.BattleMana == null)
+            {
                 return;
+            }
 
             var manaBefore = new
             {
@@ -82,15 +88,21 @@ public class EnergySyncPatch
         try
         {
             if (serviceProvider == null)
+            {
                 return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             var battle = __instance.Battle;
             if (battle?.BattleMana == null)
+            {
                 return;
+            }
 
             var manaAfter = new
             {
@@ -138,11 +150,15 @@ public class EnergySyncPatch
         try
         {
             if (serviceProvider == null)
+            {
                 return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             // 只在回合开始时同步一次（检查法力状态变化）
             // 这里可能需要添加额外的逻辑来避免重复发送
@@ -213,11 +229,16 @@ public class EnergySyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 // TODO: 检查是否是当前玩家回合的操作
                 // 在LBoL中，不同角色可能有不同的法力管理机制
@@ -293,11 +314,16 @@ public class EnergySyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var regainData = new
                 {
@@ -336,11 +362,16 @@ public class EnergySyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var spendData = new
                 {
@@ -388,11 +419,16 @@ public class EnergySyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var changeData = new
                 {
@@ -432,11 +468,16 @@ public class EnergySyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var resetData = new
                 {
@@ -469,7 +510,9 @@ public class EnergySyncPatch
     public static object BuildFullManaStateSnapshot(BattleController battle)
     {
         if (battle?.BattleMana == null)
+        {
             return new { Error = "Battle or BattleMana is null" };
+        }
 
         var mana = battle.BattleMana;
 

@@ -1,14 +1,14 @@
-using HarmonyLib;
-using LBoL.Core;
-using LBoL.Core.Cards;
-using LBoL.EntityLib;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using HarmonyLib;
+using LBoL.Core;
+using LBoL.Core.Cards;
+using LBoL.EntityLib;
+using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -46,14 +46,22 @@ public class CardLibrarySyncPatch
     {
         try
         {
-            if (serviceProvider == null) return;
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             var cardsDrawn = (__instance.Unit?.Hand?.Count ?? 0) - __state;
-            if (cardsDrawn <= 0) return;
+            if (cardsDrawn <= 0)
+            {
+                return;
+            }
 
             var drawData = new
             {
@@ -131,7 +139,7 @@ public class CardLibrarySyncPatch
         [HarmonyPrefix]
         public static void Discard_Prefix(object __instance, out List<Card> __state, params object[] __args)
         {
-            __state = new List<Card>();
+            __state = [];
             try
             {
                 // 从参数中提取要弃置的卡牌
@@ -158,11 +166,16 @@ public class CardLibrarySyncPatch
         {
             try
             {
-                if (serviceProvider == null || __state.Count == 0) return;
+                if (serviceProvider == null || __state.Count == 0)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var discardData = new
                 {
@@ -244,11 +257,16 @@ public class CardLibrarySyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var operationType = DetermineOperationType(__originalMethod);
                 var operationData = new
@@ -337,11 +355,16 @@ public class CardLibrarySyncPatch
         {
             try
             {
-                if (serviceProvider == null) return;
+                if (serviceProvider == null)
+                {
+                    return;
+                }
 
                 var networkClient = serviceProvider.GetService<INetworkClient>();
                 if (networkClient == null || !networkClient.IsConnected)
+                {
                     return;
+                }
 
                 var changeType = DetermineChangeType(__instance, __state);
                 var stateChangeData = new
@@ -382,11 +405,16 @@ public class CardLibrarySyncPatch
     {
         try
         {
-            if (serviceProvider == null) return;
+            if (serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             var syncRequest = new
             {
@@ -415,11 +443,16 @@ public class CardLibrarySyncPatch
         try
         {
             var deckState = BuildFullDeckState();
-            if (deckState == null || serviceProvider == null) return;
+            if (deckState == null || serviceProvider == null)
+            {
+                return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             var syncResponse = new
             {
@@ -477,7 +510,10 @@ public class CardLibrarySyncPatch
     {
         try
         {
-            if (unit == null) return "null_unit";
+            if (unit == null)
+            {
+                return "null_unit";
+            }
             // TODO: 获取单位的唯一标识符
             return unit.GetType().Name;
         }
@@ -560,12 +596,36 @@ public class CardLibrarySyncPatch
 
     private static string DetermineOperationType(string methodName)
     {
-        if (methodName.Contains("Shuffle")) return "Shuffle";
-        if (methodName.Contains("TopDeck")) return "TopDeck";
-        if (methodName.Contains("BottomDeck")) return "BottomDeck";
-        if (methodName.Contains("Random")) return "Random";
-        if (methodName.Contains("Search")) return "Search";
-        if (methodName.Contains("Reorder")) return "Reorder";
+        if (methodName.Contains("Shuffle"))
+        {
+            return "Shuffle";
+        }
+
+        if (methodName.Contains("TopDeck"))
+        {
+            return "TopDeck";
+        }
+
+        if (methodName.Contains("BottomDeck"))
+        {
+            return "BottomDeck";
+        }
+
+        if (methodName.Contains("Random"))
+        {
+            return "Random";
+        }
+
+        if (methodName.Contains("Search"))
+        {
+            return "Search";
+        }
+
+        if (methodName.Contains("Reorder"))
+        {
+            return "Reorder";
+        }
+
         return "Unknown";
     }
 
@@ -613,10 +673,26 @@ public class CardLibrarySyncPatch
 
     private static string DetermineChangeType(Card current, CardState previous)
     {
-        if (current.IsUpgraded != previous.IsUpgraded) return "Upgrade";
-        if (current.Id != previous.CardId) return "Transform";
-        if (current.IsEthereal != previous.IsEthereal) return "EtherealChange";
-        if (current.IsTemporary != previous.IsTemporary) return "TemporaryChange";
+        if (current.IsUpgraded != previous.IsUpgraded)
+        {
+            return "Upgrade";
+        }
+
+        if (current.Id != previous.CardId)
+        {
+            return "Transform";
+        }
+
+        if (current.IsEthereal != previous.IsEthereal)
+        {
+            return "EtherealChange";
+        }
+
+        if (current.IsTemporary != previous.IsTemporary)
+        {
+            return "TemporaryChange";
+        }
+
         return "Unknown";
     }
 

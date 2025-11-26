@@ -1,16 +1,16 @@
+using System;
+using System.Collections.Generic;
+using System.Text.Json;
 using HarmonyLib;
+using LBoL.Base;
+using LBoL.Core;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
-using LBoL.Core;
-using LBoL.Base;
-using System;
-using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
-using Microsoft.Extensions.DependencyInjection;
-using System.Collections.Generic;
 
 namespace NetworkPlugin.Patch.Actions;
 
@@ -33,19 +33,27 @@ public class PlayCardAction_Patch
         try
         {
             if (serviceProvider == null || args == null)
+            {
                 return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             var card = args.Card;
             if (card == null)
+            {
                 return;
+            }
 
             // 只同步玩家使用的卡牌
             if (card.Zone?.Owner == null || !(card.Zone.Owner is PlayerUnit))
+            {
                 return;
+            }
 
             var player = card.Zone.Owner as PlayerUnit;
             var battle = player.Battle;
@@ -66,7 +74,7 @@ public class PlayCardAction_Patch
                     MaxHp = player.MaxHp,
                     Block = player.Block,
                     Shield = player.Shield,
-                    Mana = battle?.BattleMana != null ? GetManaGroup(battle.BattleMana) : new int[4] { 0, 0, 0, 0 },
+                    Mana = battle?.BattleMana != null ? GetManaGroup(battle.BattleMana) : [0, 0, 0, 0],
                     CardsInHand = player.HandZone?.Count ?? 0,
                     CardsInDraw = battle?.DrawZone?.Count ?? 0,
                     CardsInDiscard = battle?.DiscardZone?.Count ?? 0,
@@ -95,19 +103,27 @@ public class PlayCardAction_Patch
         try
         {
             if (serviceProvider == null || args == null)
+            {
                 return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             var card = args.Card;
             if (card == null)
+            {
                 return;
+            }
 
             // 只同步玩家使用的卡牌
             if (card.Zone?.Owner == null || !(card.Zone.Owner is PlayerUnit))
+            {
                 return;
+            }
 
             var player = card.Zone.Owner as PlayerUnit;
             var battle = player.Battle;
@@ -127,7 +143,7 @@ public class PlayCardAction_Patch
                     MaxHp = player.MaxHp,
                     Block = player.Block,
                     Shield = player.Shield,
-                    Mana = battle?.BattleMana != null ? GetManaGroup(battle.BattleMana) : new int[4] { 0, 0, 0, 0 },
+                    Mana = battle?.BattleMana != null ? GetManaGroup(battle.BattleMana) : [0, 0, 0, 0],
                     CardsInHand = player.HandZone?.Count ?? 0,
                     CardsInDraw = battle?.DrawZone?.Count ?? 0,
                     CardsInDiscard = battle?.DiscardZone?.Count ?? 0,
@@ -157,15 +173,21 @@ public class PlayCardAction_Patch
         try
         {
             if (serviceProvider == null || __instance?.Args?.Card == null)
+            {
                 return;
+            }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
+            {
                 return;
+            }
 
             var card = __instance.Args.Card;
             if (card.Zone?.Owner == null || !(card.Zone.Owner is PlayerUnit))
+            {
                 return;
+            }
 
             // 发送卡牌阶段开始事件
             var phaseData = new
@@ -270,21 +292,25 @@ public class PlayCardAction_Patch
     private static int[] GetManaGroup(ManaGroup manaGroup)
     {
         if (manaGroup == null)
-            return new int[4] { 0, 0, 0, 0 };
-
-        return new int[4]
         {
+            return [0, 0, 0, 0];
+        }
+
+        return
+        [
             manaGroup.Red,
             manaGroup.Blue,
             manaGroup.Green,
             manaGroup.White
-        };
+        ];
     }
 
     private static int[] GetManaCost(Card card)
     {
         if (card == null || card.ManaGroup == null)
-            return new int[4] { 0, 0, 0, 0 };
+        {
+            return [0, 0, 0, 0];
+        }
 
         return GetManaGroup(card.ManaGroup);
     }

@@ -11,7 +11,7 @@ namespace NetworkPlugin.Network.Server;
 public class NetworkRoom
 {
     private readonly ILogger _logger;
-    private readonly object _lock = new object();
+    private readonly object _lock = new();
 
     /// <summary>
     /// 房间ID
@@ -63,7 +63,7 @@ public class NetworkRoom
         RoomId = roomId;
         Config = config;
         _logger = logger;
-        _players = new Dictionary<string, NetworkConnection>();
+        _players = [];
         CreatedAt = DateTime.UtcNow;
     }
 
@@ -108,7 +108,9 @@ public class NetworkRoom
         lock (_lock)
         {
             if (!_players.ContainsKey(playerId))
+            {
                 return;
+            }
 
             _players.Remove(playerId);
 
@@ -138,7 +140,9 @@ public class NetworkRoom
             foreach (var kvp in _players)
             {
                 if (kvp.Key == excludePlayerId)
+                {
                     continue;
+                }
 
                 try
                 {
@@ -323,7 +327,7 @@ public class RoomStatus
     public string HostPlayerId { get; set; } = string.Empty;
     public bool IsInGame { get; set; }
     public DateTime CreatedAt { get; set; }
-    public List<string> PlayerIds { get; set; } = new();
+    public List<string> PlayerIds { get; set; } = [];
     public int Ping { get; set; }
 }
 

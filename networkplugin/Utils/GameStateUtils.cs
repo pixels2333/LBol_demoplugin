@@ -1,8 +1,8 @@
-using LBoL.Core;
-using LBoL.Core.Units;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using LBoL.Core;
+using LBoL.Core.Units;
 
 namespace NetworkPlugin.Utils
 {
@@ -50,7 +50,7 @@ namespace NetworkPlugin.Utils
             return player?.Id?.ToString() ?? "unknown_player";
         }
 
-      /// <summary>
+        /// <summary>
         /// 获取当前战斗控制器
         /// </summary>
         /// <returns>GameRunController实例，如果无法获取则返回null</returns>
@@ -311,7 +311,9 @@ namespace NetworkPlugin.Utils
             try
             {
                 if (entity == null)
+                {
                     return defaultValue;
+                }
 
                 var property = entity.GetType().GetProperty(propertyName);
                 return property?.GetValue(entity) is T value ? value : defaultValue;
@@ -356,7 +358,9 @@ namespace NetworkPlugin.Utils
             try
             {
                 if (player == null)
+                {
                     return 0;
+                }
 
                 // 尝试获取Power属性
                 var powerProperty = player.GetType().GetProperty("Power");
@@ -395,7 +399,9 @@ namespace NetworkPlugin.Utils
             try
             {
                 if (player == null)
+                {
                     return CreateEmptyManaGroup();
+                }
 
                 // 尝试从战斗中获取法力
                 var battleProperty = player.GetType().GetProperty("Battle");
@@ -444,8 +450,8 @@ namespace NetworkPlugin.Utils
                 var manaGroupType = typeof(LBoL.Base.ManaGroup);
                 if (manaGroupType != null)
                 {
-                    var constructor = manaGroupType.GetConstructor(new Type[0]);
-                    return constructor?.Invoke(new object[0]);
+                    var constructor = manaGroupType.GetConstructor([]);
+                    return constructor?.Invoke([]);
                 }
 
                 return new { Red = 0, Blue = 0, Green = 0, White = 0, Total = 0 };
