@@ -7,17 +7,17 @@ namespace NetworkPlugin.Commands;
 /// 参考: 杀戮尖塔Together in Spire的命令系统
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
-public class CommandAttribute : Attribute
+public class CommandAttribute(string name, string description) : Attribute
 {
     /// <summary>
     /// 命令名称
     /// </summary>
-    public string Name { get; }
+    public string Name { get; } = name ?? throw new ArgumentNullException(nameof(name));
 
     /// <summary>
     /// 命令描述
     /// </summary>
-    public string Description { get; }
+    public string Description { get; } = description ?? throw new ArgumentNullException(nameof(description));
 
     /// <summary>
     /// 是否需要管理员权限
@@ -28,10 +28,4 @@ public class CommandAttribute : Attribute
     /// 参数格式说明
     /// </summary>
     public string Usage { get; set; }
-
-    public CommandAttribute(string name, string description)
-    {
-        Name = name ?? throw new ArgumentNullException(nameof(name));
-        Description = description ?? throw new ArgumentNullException(nameof(description));
-    }
 }

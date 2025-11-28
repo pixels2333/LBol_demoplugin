@@ -526,16 +526,10 @@ public enum JoinRequestStatus
 }
 
 // AI Controller stub
-public class AIPlayerController
+public class AIPlayerController(ILogger logger)
 {
-    private readonly ILogger _logger;
-    private readonly HashSet<string> _controlledPlayers;
-
-    public AIPlayerController(ILogger logger)
-    {
-        _logger = logger;
-        _controlledPlayers = [];
-    }
+    private readonly ILogger _logger = logger;
+    private readonly HashSet<string> _controlledPlayers = [];
 
     public void StartControlling(string playerId)
     {
@@ -551,14 +545,9 @@ public class AIPlayerController
 }
 
 // Fast sync service stub
-public class FastSyncService
+public class FastSyncService(ILogger logger)
 {
-    private readonly ILogger _logger;
-
-    public FastSyncService(ILogger logger)
-    {
-        _logger = logger;
-    }
+    private readonly ILogger _logger = logger;
 
     public void SyncPlayerState(string playerId, PlayerBootstrappedState state)
     {

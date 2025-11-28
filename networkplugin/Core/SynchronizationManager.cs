@@ -346,7 +346,7 @@ namespace NetworkPlugin.Core
                     InitializeNetworkClient();
                 }
 
-                _isNetworkAvailable = _networkClient?.IsConnected == true;
+                _isNetworkAvailable = _networkClient?.IsConnected ?? false;
                 return _isNetworkAvailable;
             }
             catch (Exception ex)
@@ -626,17 +626,13 @@ namespace NetworkPlugin.Core
     /// <summary>
     /// 通用游戏事件类，用于处理未明确定义的事件类型
     /// </summary>
-    public class GenericGameEvent : GameEvent
+    /// <remarks>
+    /// 构造函数，创建一个通用游戏事件
+    /// </remarks>
+    /// <param name="eventType">事件类型字符串</param>
+    /// <param name="data">事件数据</param>
+    public class GenericGameEvent(string eventType, object data) : GameEvent(ParseEventType(eventType), "unknown_player", data)
     {
-        /// <summary>
-        /// 构造函数，创建一个通用游戏事件
-        /// </summary>
-        /// <param name="eventType">事件类型字符串</param>
-        /// <param name="data">事件数据</param>
-        public GenericGameEvent(string eventType, object data)
-            : base(ParseEventType(eventType), "unknown_player", data)
-        {
-        }
 
         /// <summary>
         /// 解析事件类型字符串为枚举值，失败时返回Error类型

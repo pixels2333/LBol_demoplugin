@@ -8,30 +8,30 @@ namespace NetworkPlugin.Network.Server;
 /// <summary>
 /// 网络房间 - 管理房间内的玩家和消息广播
 /// </summary>
-public class NetworkRoom
+public class NetworkRoom(string roomId, RoomConfig config, ILogger logger)
 {
-    private readonly ILogger _logger;
+    private readonly ILogger _logger = logger;
     private readonly object _lock = new();
 
     /// <summary>
     /// 房间ID
     /// </summary>
-    public string RoomId { get; }
+    public string RoomId { get; } = roomId;
 
     /// <summary>
     /// 房间配置
     /// </summary>
-    public RoomConfig Config { get; }
+    public RoomConfig Config { get; } = config;
 
     /// <summary>
     /// 房间内的玩家连接
     /// </summary>
-    private readonly Dictionary<string, NetworkConnection> _players;
+    private readonly Dictionary<string, NetworkConnection> _players = [];
 
     /// <summary>
     /// 房间创建时间
     /// </summary>
-    public DateTime CreatedAt { get; }
+    public DateTime CreatedAt { get; } = DateTime.UtcNow;
 
     /// <summary>
     /// 房主ID
@@ -57,15 +57,6 @@ public class NetworkRoom
     /// 房间是否在游戏中
     /// </summary>
     public bool IsInGame { get; private set; }
-
-    public NetworkRoom(string roomId, RoomConfig config, ILogger logger)
-    {
-        RoomId = roomId;
-        Config = config;
-        _logger = logger;
-        _players = [];
-        CreatedAt = DateTime.UtcNow;
-    }
 
     /// <summary>
     /// 添加玩家到房间
