@@ -77,20 +77,12 @@ namespace NetworkPlugin.Events
     /// <summary>
     /// 游戏事件基类
     /// </summary>
-    public abstract class GameEvent
+    public abstract class GameEvent(GameEventType eventType, string sourcePlayerId, object data = null)
     {
-        public GameEventType EventType { get; protected set; }
-        public DateTime Timestamp { get; protected set; }
-        public string SourcePlayerId { get; protected set; }
-        public object Data { get; protected set; }
-
-        protected GameEvent(GameEventType eventType, string sourcePlayerId, object data = null)
-        {
-            EventType = eventType;
-            Timestamp = DateTime.Now;
-            SourcePlayerId = sourcePlayerId ?? "unknown";
-            Data = data;
-        }
+        public GameEventType EventType { get; protected set; } = eventType;
+        public DateTime Timestamp { get; protected set; } = DateTime.Now;
+        public string SourcePlayerId { get; protected set; } = sourcePlayerId ?? "unknown";
+        public object Data { get; protected set; } = data;
 
         /// <summary>
         /// 将事件转换为网络传输格式
@@ -109,24 +101,14 @@ namespace NetworkPlugin.Events
     /// <summary>
     /// 卡牌使用事件
     /// </summary>
-    public class CardPlayEvent : GameEvent
+    public class CardPlayEvent(string sourcePlayerId, string cardId, string cardName, string cardType,
+        int[] manaCost, string targetSelector, object additionalData = null) : GameEvent(GameEventType.CardPlayStart, sourcePlayerId, additionalData)
     {
-        public string CardId { get; private set; }
-        public string CardName { get; private set; }
-        public string CardType { get; private set; }
-        public int[] ManaCost { get; private set; }
-        public string TargetSelector { get; private set; }
-
-        public CardPlayEvent(string sourcePlayerId, string cardId, string cardName, string cardType,
-            int[] manaCost, string targetSelector, object additionalData = null)
-            : base(GameEventType.CardPlayStart, sourcePlayerId, additionalData)
-        {
-            CardId = cardId;
-            CardName = cardName;
-            CardType = cardType;
-            ManaCost = manaCost ?? [0, 0, 0, 0];
-            TargetSelector = targetSelector ?? "Nobody";
-        }
+        public string CardId { get; private set; } = cardId;
+        public string CardName { get; private set; } = cardName;
+        public string CardType { get; private set; } = cardType;
+        public int[] ManaCost { get; private set; } = manaCost ?? [0, 0, 0, 0];
+        public string TargetSelector { get; private set; } = targetSelector ?? "Nobody";
 
         public override object ToNetworkData()
         {
@@ -154,20 +136,12 @@ namespace NetworkPlugin.Events
     /// <summary>
     /// 法力消耗事件
     /// </summary>
-    public class ManaConsumeEvent : GameEvent
+    public class ManaConsumeEvent(string sourcePlayerId, int[] manaBefore, int[] manaConsumed,
+        string source, object additionalData = null) : GameEvent(GameEventType.ManaConsumeStart, sourcePlayerId, additionalData)
     {
-        public int[] ManaBefore { get; private set; }
-        public int[] ManaConsumed { get; private set; }
-        public string Source { get; private set; }
-
-        public ManaConsumeEvent(string sourcePlayerId, int[] manaBefore, int[] manaConsumed,
-            string source, object additionalData = null)
-            : base(GameEventType.ManaConsumeStart, sourcePlayerId, additionalData)
-        {
-            ManaBefore = manaBefore ?? [0, 0, 0, 0];
-            ManaConsumed = manaConsumed ?? [0, 0, 0, 0];
-            Source = source ?? "Unknown";
-        }
+        public int[] ManaBefore { get; private set; } = manaBefore ?? [0, 0, 0, 0];
+        public int[] ManaConsumed { get; private set; } = manaConsumed ?? [0, 0, 0, 0];
+        public string Source { get; private set; } = source ?? "Unknown";
 
         public override object ToNetworkData()
         {
@@ -193,22 +167,13 @@ namespace NetworkPlugin.Events
     /// <summary>
     /// 伤害事件
     /// </summary>
-    public class DamageEvent : GameEvent
+    public class DamageEvent(string sourcePlayerId, string sourceId, string targetId,
+        int damageAmount, string damageType, object additionalData = null) : GameEvent(GameEventType.DamageDealt, sourcePlayerId, additionalData)
     {
-        public string SourceId { get; private set; }
-        public string TargetId { get; private set; }
-        public int DamageAmount { get; private set; }
-        public string DamageType { get; private set; }
-
-        public DamageEvent(string sourcePlayerId, string sourceId, string targetId,
-            int damageAmount, string damageType, object additionalData = null)
-            : base(GameEventType.DamageDealt, sourcePlayerId, additionalData)
-        {
-            SourceId = sourceId;
-            TargetId = targetId;
-            DamageAmount = damageAmount;
-            DamageType = damageType ?? "Unknown";
-        }
+        public string SourceId { get; private set; } = sourceId;
+        public string TargetId { get; private set; } = targetId;
+        public int DamageAmount { get; private set; } = damageAmount;
+        public string DamageType { get; private set; } = damageType ?? "Unknown";
 
         public override object ToNetworkData()
         {

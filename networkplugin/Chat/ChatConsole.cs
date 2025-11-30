@@ -19,22 +19,28 @@ namespace NetworkPlugin.Chat;
 ///
 /// 设计参考: 杀戮尖塔 Together in Spire 的聊天系统
 /// </remarks>
-public class ChatConsole
+/// <remarks>
+/// 初始化聊天控制台实例
+/// </remarks>
+/// <param name="networkClient">网络客户端接口，用于发送消息</param>
+/// <param name="logger">日志记录器，用于记录操作日志</param>
+/// <exception cref="ArgumentNullException">当任一参数为 null 时抛出</exception>
+public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
 {
     /// <summary>
     /// 网络客户端接口，用于发送聊天消息
     /// </summary>
-    private readonly INetworkClient _networkClient;
+    private readonly INetworkClient _networkClient = networkClient ?? throw new ArgumentNullException(nameof(networkClient));
 
     /// <summary>
     /// 日志记录器，用于记录聊天相关的操作和错误
     /// </summary>
-    private readonly ManualLogSource _logger;
+    private readonly ManualLogSource _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     /// <summary>
     /// 聊天历史记录列表，按时间顺序存储所有消息
     /// </summary>
-    private readonly List<ChatMessage> _chatHistory;
+    private readonly List<ChatMessage> _chatHistory = [];
 
     /// <summary>
     /// 聊天历史记录的最大条数，超过此数量将删除最旧的消息
@@ -50,19 +56,6 @@ public class ChatConsole
     /// 当成功发送聊天消息时触发的事件
     /// </summary>
     public event Action<ChatMessage> OnMessageSent;
-
-    /// <summary>
-    /// 初始化聊天控制台实例
-    /// </summary>
-    /// <param name="networkClient">网络客户端接口，用于发送消息</param>
-    /// <param name="logger">日志记录器，用于记录操作日志</param>
-    /// <exception cref="ArgumentNullException">当任一参数为 null 时抛出</exception>
-    public ChatConsole(INetworkClient networkClient, ManualLogSource logger)
-    {
-        _networkClient = networkClient ?? throw new ArgumentNullException(nameof(networkClient));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _chatHistory = [];
-    }
 
     /// <summary>
     /// 发送聊天消息到网络中的其他玩家
