@@ -270,6 +270,8 @@ public class NetworkRoom(string roomId, RoomConfig config, ILogger logger)
     }
 }
 
+} // 网络房间类：管理房间内的玩家连接、消息广播和游戏状态
+
 /// <summary>
 /// 加入房间结果
 /// </summary>

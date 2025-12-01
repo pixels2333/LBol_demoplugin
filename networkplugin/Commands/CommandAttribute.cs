@@ -43,6 +43,7 @@ public class CommandAttribute(string name, string description) : Attribute
     /// - 示例："help", "kick", "ban", "status"
     /// </remarks>
     public string Name { get; } = name ?? throw new ArgumentNullException(nameof(name));
+  // 命令名称标识符，用于命令解析和调用
 
     /// <summary>
     /// 命令描述
@@ -56,6 +57,7 @@ public class CommandAttribute(string name, string description) : Attribute
     /// - 用于生成帮助菜单和命令列表
     /// </remarks>
     public string Description { get; } = description ?? throw new ArgumentNullException(nameof(description));
+// 命令功能的详细说明文本，用于帮助文档显示
 
     /// <summary>
     /// 是否需要管理员权限
@@ -69,6 +71,7 @@ public class CommandAttribute(string name, string description) : Attribute
     /// - 管理员命令通常包括：踢出玩家、封禁用户、修改设置等
     /// </remarks>
     public bool RequireAdmin { get; set; }
+// 权限控制标志，为true时需要管理员权限才能执行命令
 
     /// <summary>
     /// 参数格式说明

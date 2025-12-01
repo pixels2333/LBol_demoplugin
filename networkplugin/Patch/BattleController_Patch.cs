@@ -26,21 +26,21 @@ namespace NetworkPlugin.Patch;
 public class BattleController_Patch
 {
     /// <summary>
-    /// 服务提供者实例，用于获取依赖注入的服务
-    /// 主要用于获取网络客户端实例进行状态同步
+    /// 服务提供者访问器，用于获取依赖注入的组件
+    /// 通过模块服务获取网络客户端和其他服务
     /// </summary>
     private static IServiceProvider serviceProvider = ModService.ServiceProvider;
-
+    
     /// <summary>
-    /// 获取网络客户端实例的便捷属性
-    /// 用于发送网络同步请求到服务器
+    /// 网络客户端属性，用于发送网络请求
+    /// 采用延迟加载模式，避免初始化时的依赖问题
     /// </summary>
     private static INetworkClient networkClient => serviceProvider?.GetRequiredService<INetworkClient>();
 
+
     /// <summary>
-    /// 伤害同步补丁方法
-    /// 在BattleController.Damage方法执行完成后被调用
-    /// 将本地玩家的伤害结果同步到网络中的其他玩家
+    /// 伤害同步补丁 - 在伤害应用后同步本地玩家的状态
+    /// 重要: 只同步本地玩家的状态变化，避免同步所有玩家造成冲突
     /// </summary>
     /// <param name="__instance">被补丁的BattleController实例（Harmony自动注入）</param>
     /// <param name="damageinfo">包含伤害详细信息的DamageInfo结构体</param>
@@ -90,7 +90,7 @@ public class BattleController_Patch
                 return; // 非玩家单位（如敌人）不进行网络同步
             }
 
-            // 确保是本地玩家 - 避免同步其他玩家的状态
+            // 确保是本地玩家 - 避免同步其他玩家的状态造成冲突
             var battle = __instance;
             if (battle.Player == null || battle.Player != playerTarget)
             {
@@ -100,15 +100,15 @@ public class BattleController_Patch
             // 构建详细的伤害同步数据 - 包含完整的伤害信息和目标状态
             var damageData = new
             {
-                TotalDamage = damageinfo.Amount,         // 总伤害值（包含所有修正）
-                HpDamage = damageinfo.Damage,            // 实际HP伤害
-                BlockedDamage = damageinfo.DamageBlocked, // 被格挡的伤害
-                ShieldedDamage = damageinfo.DamageShielded, // 被护盾吸收的伤害
-                damageinfo.DamageType,                   // 伤害类型
-                damageinfo.IsGrazed,                     // 是否被擦过（部分伤害）
-                damageinfo.IsAccuracy,                   // 是否命中判定
-                damageinfo.OverDamage,                   // 溢出伤害
-                TargetState = new                        // 目标受伤后的完整状态
+                TotalDamage = damageinfo.Amount, // 总伤害值，包含所有类型的伤害
+                HpDamage = damageinfo.Damage,    // 实际HP伤害，对玩家血量有直接影响
+                BlockedDamage = damageinfo.DamageBlocked, // 被格挡的伤害量
+                ShieldedDamage = damageinfo.DamageShielded, // 被护盾吸收的伤害量
+                damageinfo.DamageType, // 伤害类型（物理、魔法等）
+                damageinfo.IsGrazed,    // 是否是擦伤伤害
+                damageinfo.IsAccuracy,  // 是否是精准命中
+                damageinfo.OverDamage,  // 溢出伤害量
+                TargetState = new       // 目标单位当前状态
                 {
                     playerTarget.Id,                     // 玩家唯一标识
                     playerTarget.Hp,                     // 当前HP
@@ -118,10 +118,10 @@ public class BattleController_Patch
                     Status = playerTarget.Status.ToString(), // 状态效果摘要
                     playerTarget.IsAlive                 // 存活状态
                 },
-                Timestamp = DateTime.Now.Ticks          // 事件时间戳
+                Timestamp = DateTime.Now.Ticks // 时间戳，用于时序同步
             };
 
-            // 序列化伤害数据并发送到网络服务器
+            // 序列化伤害数据并发送到服务器
             var json = JsonSerializer.Serialize(damageData);
             networkClient.SendRequest("OnPlayerDamage", json);
 
@@ -211,9 +211,7 @@ public class BattleController_Patch
     [HarmonyPostfix]
     public static void RemoveStatusEffect_Postfix(BattleController __instance, Unit target)
     {
-        try
-        {
-            // 向服务器上传玩家移除状态效果后的完整状态信息
+        // 向服务器上传player的状态信息，确保移除操作在网络中同步
 
             // 验证服务提供者是否已初始化
             if (serviceProvider == null)

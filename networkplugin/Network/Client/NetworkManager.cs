@@ -17,22 +17,33 @@ namespace NetworkPlugin.Network.Client;
 /// </remarks>
 public class NetworkManager(INetworkClient networkClient) : INetworkManager
 {
+    #region 私有字段
+
     /// <summary>
-    /// 网络客户端实例，用于处理与服务器的通信
+    /// 网络客户端实例，用于与服务器通信
     /// </summary>
     private readonly INetworkClient _networkClient = networkClient;
 
     /// <summary>
-    /// 获取所有已注册的网络玩家集合
+    /// 玩家列表，存储所有已连接的玩家信息
+    /// 键为玩家ID，值为网络玩家实例
     /// </summary>
-    /// <returns>包含所有网络玩家的枚举集合</returns>
-    /// <exception cref="NotImplementedException">当前方法尚未实现</exception>
-    /// <remarks>
-    /// 待实现功能：
-    /// 1. 从内部玩家集合中返回所有已注册的玩家
-    /// 2. 确保返回的集合是线程安全的
-    /// 3. 考虑返回玩家集合的副本以避免外部修改
-    /// </remarks>
+    private readonly Dictionary<string, INetworkPlayer> _players = new();
+
+    /// <summary>
+    /// 当前客户端的玩家实例
+    /// </summary>
+    private INetworkPlayer _selfPlayer;
+
+    #endregion
+
+    #region INetworkManager 实现
+
+    /// <summary>
+    /// 获取所有已连接的网络玩家
+    /// 返回当前会话中所有玩家的只读集合
+    /// </summary>
+    /// <returns>所有网络玩家的枚举集合</returns>
     public IEnumerable<INetworkPlayer> GetAllPlayers()
     {
         // TODO: 实现获取所有玩家的逻辑
@@ -56,6 +67,8 @@ public class NetworkManager(INetworkClient networkClient) : INetworkManager
     /// </remarks>
     public INetworkPlayer GetPlayer(string id)
     {
+        _players.TryGetValue(id, out var player);
+        return player;
         // TODO: 实现根据ID获取玩家的逻辑
         // 1. 验证输入的ID参数
         // 2. 在内部玩家集合中查找匹配的玩家
@@ -161,4 +174,41 @@ public class NetworkManager(INetworkClient networkClient) : INetworkManager
         // 5. 通知其他系统玩家已离开
         throw new NotImplementedException("RemovePlayer method is not implemented yet.");
     }
+
+    #endregion
+
+    #region 内部方法
+
+    /// <summary>
+    /// 设置本地玩家实例
+    /// 在连接建立后由网络组件调用
+    /// </summary>
+    /// <param name="player">本地玩家实例</param>
+    internal void SetSelfPlayer(INetworkPlayer player)
+    {
+        _selfPlayer = player;
+    }
+
+    /// <summary>
+    /// 清空所有玩家数据
+    /// 在断开连接时调用
+    /// </summary>
+    internal void ClearAllPlayers()
+    {
+        _players.Clear();
+        _selfPlayer = null;
+    }
+
+    /// <summary>
+    /// 更新玩家信息
+    /// 当接收到玩家状态更新时调用
+    /// </summary>
+    /// <param name="playerInfo">更新后的玩家信息</param>
+    internal void UpdatePlayerInfo(dynamic playerInfo)
+    {
+        // TODO: 实现玩家信息更新逻辑
+        // 解析玩家信息并更新相应的玩家实例
+    }
+
+    #endregion
 }

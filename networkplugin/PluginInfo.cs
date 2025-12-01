@@ -4,8 +4,9 @@ using HarmonyLib;
 namespace NetworkPlugin;
 
 /// <summary>
-/// LBoL联机MOD的插件信息类
-/// 包含插件的基本标识信息和Harmony补丁实例
+/// 网络插件的配置信息类
+/// 定义了插件的基本标识信息、版本号和补丁管理器
+/// 为整个网络插件系统提供统一的配置和补丁管理入口
 /// </summary>
 public class PluginInfo
 {
@@ -18,21 +19,21 @@ public class PluginInfo
 
     /// <summary>
     /// 插件的显示名称
-    /// 在游戏内插件列表和管理界面中显示
+    /// 在BepInEx管理界面和日志中显示的用户友好名称
     /// </summary>
     public const string PLUGIN_NAME = "Network Plugin";
 
     /// <summary>
     /// 插件的版本号
-    /// 遵循语义化版本控制 (SemVer) 规范
-    /// 格式：主版本号.次版本号.修订号
+    /// 采用语义化版本控制，格式为 主版本号.次版本号.修订号
+    /// 用于插件更新管理和版本兼容性检查
     /// </summary>
     public const string PLUGIN_VERSION = "1.0.1";
 
     /// <summary>
-    /// Harmony补丁实例
-    /// 用于运行时动态修改游戏方法，实现联机功能的核心组件
-    /// Harmony ID：pixels.lbol.mods.networkmod
+    /// Harmony补丁管理器实例
+    /// 用于运行时修改和扩展游戏逻辑，实现网络功能的无缝集成
+    /// 通过反射机制安全地修改和注入游戏代码
     /// </summary>
     public static readonly Harmony harmony = new("pixels.lbol.mods.networkmod");
 }

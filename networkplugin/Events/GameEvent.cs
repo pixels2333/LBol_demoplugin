@@ -920,7 +920,7 @@ namespace NetworkPlugin.Events
         {
             // 直接创建并返回新的CardPlayEvent实例
             return new CardPlayEvent(playerId, cardId, cardName, cardType, manaCost, targetSelector);
-        }
+        }    
 
         /// <summary>
         /// 创建法力消耗事件
@@ -953,7 +953,7 @@ namespace NetworkPlugin.Events
         {
             // 直接创建并返回新的ManaConsumeEvent实例
             return new ManaConsumeEvent(playerId, manaBefore, manaConsumed, source);
-        }
+        }    
 
         /// <summary>
         /// 创建伤害事件
@@ -987,7 +987,7 @@ namespace NetworkPlugin.Events
         {
             // 直接创建并返回新的DamageEvent实例
             return new DamageEvent(playerId, sourceId, targetId, damageAmount, damageType);
-        }
+        }    
 
         /// <summary>
         /// 从网络数据创建事件

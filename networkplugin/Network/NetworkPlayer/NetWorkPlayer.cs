@@ -68,39 +68,47 @@ public class NetWorkPlayer
     /// <summary>
     /// 初始化玩家属性的构造函数。
     /// </summary>
+    /// <summary>
+    /// 初始化玩家属性的构造函数
+     /// 设置所有玩家属性的默认值，准备游戏开始状态
+     /// </summary>
     public NetWorkPlayer()
     {
-        username = "Player"; // 默认用户名
+        // 玩家身份信息初始化
+        username = "Player"; // 默认用户名，实际游戏中应从配置获取
 
-        HP = 100; // 初始生命值
+        // 战斗状态属性初始化
+        HP = 100; // 初始生命值，标准角色的起始生命
+        maxHP = 100; // 初始最大生命值，与初始HP保持一致
+        block = 0; // 初始格挡值，新角色无格挡
+        shield = 0; // 初始护盾值，新角色无护盾
 
-        maxHP = 100; // 初始最大生命值
+        // 经济系统初始化
+        coins = 0; // 初始金币数量，新角色无金币
 
-        block = 0; // 初始格挡值
+        // 角色和位置信息初始化
+        chara = ""; // 初始角色标识，空表示未选择角色
 
-        shield = 0; // 初始护盾值
+        UltimatePower = 0; // 初始终极能量，新角色无大招能量
 
-        coins = 0; // 初始金币数量
+        location = ""; // 初始位置描述，空表示未在特定位置
 
-        chara = ""; // 初始角色标识
+        // 回合制状态初始化
+        endturn = false; // 初始回合状态，表示未结束回合
 
-        UltimatePower = 0; // 初始终极能量
+        // 资源系统初始化 - 4色法力
+        mana = new int[4]; // 初始化法力数组，支持红、蓝、绿、白四色法力
 
-        location = ""; // 初始位置描述
+        stance = ""; //TODO:需修改，初始姿态，空表示默认姿态
 
-        endturn = false; // 初始回合状态
+        // 装备系统初始化
+        exhibits = new string[4]; // 初始化展品数组，最多携带4个展品
 
-        mana = new int[4]; // 初始化法力数组
+        tradingStatus = false; // 初始交易状态，表示不在交易中
 
-        stance = ""; //TODO:需修改，初始姿态
-
-        exhibits = new string[4]; // 初始化展品数组
-
-        tradingStatus = false; // 初始交易状态
-
-        location_X = VisitingNode.X; // 设置X坐标
-
-        location_Y = VisitingNode.Y; // 设置Y坐标
+        // 位置坐标初始化 - 从访问节点获取坐标
+        location_X = VisitingNode.X; // 设置X坐标，与当前访问节点同步
+        location_Y = VisitingNode.Y; // 设置Y坐标，与当前访问节点同步
     }
 
     /// <summary>

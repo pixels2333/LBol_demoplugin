@@ -260,7 +260,7 @@ public class CommandResult
     public static CommandResult FailureResult(string message, bool broadcast = false)
     {
         return new CommandResult(false, message, broadcast);
-    }
+    }    // 创建失败结果的工厂方法
 
     /// <summary>
     /// 获取结果的简短描述

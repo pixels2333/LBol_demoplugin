@@ -74,7 +74,7 @@ namespace NetworkPlugin.Utils
                 Plugin.Logger?.LogError($"[CardUtils] Error getting card info: {ex.Message}");
                 return new { Error = "Failed to get card info" };
             }
-        }
+        } // 获取卡牌的详细信息对象，包含ID、名称、类型、稀有度、费用等属性
 
         /// <summary>
         /// 获取手牌中所有卡牌的信息
@@ -107,7 +107,7 @@ namespace NetworkPlugin.Utils
             }
 
             return handCards;
-        }
+        } // 遍历玩家手牌区域，收集所有手牌的详细信息并返回列表
 
         /// <summary>
         /// 获取抽牌堆中所有卡牌的信息
@@ -139,7 +139,7 @@ namespace NetworkPlugin.Utils
             }
 
             return drawDeck;
-        }
+        } // 遍历游戏运行基础的牌组，收集所有卡牌的详细信息并返回列表
 
         /// <summary>
         /// 获取弃牌堆中所有卡牌的信息
@@ -171,7 +171,7 @@ namespace NetworkPlugin.Utils
             }
 
             return discardPile;
-        }
+        } // 遍历玩家弃牌堆，收集所有弃置卡牌的详细信息并返回列表
 
         /// <summary>
         /// 获取卡牌区域的完整统计信息
@@ -214,7 +214,7 @@ namespace NetworkPlugin.Utils
                 Plugin.Logger?.LogError($"[CardUtils] Error getting card zone info: {ex.Message}");
                 return new { Error = "Failed to get card zone info" };
             }
-        }
+        } // 获取玩家所有卡牌区域的统计信息，包含手牌、牌组、弃牌堆等数量统计
 
         /// <summary>
         /// 获取抽牌堆的卡牌数量
@@ -274,7 +274,7 @@ namespace NetworkPlugin.Utils
                 Plugin.Logger?.LogError($"[CardUtils] Error getting draw deck count: {ex.Message}");
                 return 0;
             }
-        }
+        } // 获取抽牌堆数量，通过反射访问游戏状态获取实际数值
 
         /// <summary>
         /// 检查卡牌是否可以被当前玩家打出
@@ -354,7 +354,7 @@ namespace NetworkPlugin.Utils
                 Plugin.Logger?.LogError($"[CardUtils] Error checking if card can be played: {ex.Message}");
                 return false; // 出错时默认返回false
             }
-        }
+        } // 综合检查卡牌是否可以打出，验证基础条件、法力消耗、目标有效性等
 
         /// <summary>
         /// 获取卡牌的完整状态快照
@@ -406,7 +406,7 @@ namespace NetworkPlugin.Utils
                 Plugin.Logger?.LogError($"[CardUtils] Error getting card state snapshot: {ex.Message}");
                 return new { Error = "Failed to get card state snapshot", Timestamp = DateTime.Now.Ticks };
             }
-        }
+        } // 获取卡牌的完整状态快照，包含基础信息、临时状态和位置信息
 
         // ========================================
         // 私有辅助方法 - 用于复杂的统计和检查逻辑
@@ -720,5 +720,7 @@ namespace NetworkPlugin.Utils
                 return false;
             }
         }
+
+        #endregion
     }
 }

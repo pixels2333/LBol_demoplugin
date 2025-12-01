@@ -135,7 +135,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
             // 记录发送失败的错误日志
             _logger.LogError($"[Chat] 消息发送失败: {ex.Message}\n{ex.StackTrace}");
         }
-    }
+    } // 发送聊天消息到网络，序列化后通过网络客户端传输并添加到历史记录
 
     /// <summary>
     /// 接收并处理来自网络的聊天消息
@@ -211,7 +211,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
             // 其他异常处理
             _logger.LogError($"[Chat] 消息接收处理异常: {ex.Message}\n{ex.StackTrace}");
         }
-    }
+    } // 接收并反序列化网络聊天消息，添加到历史记录并触发事件通知
 
     /// <summary>
     /// 发送系统消息
@@ -238,7 +238,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
     {
         // 调用基础发送方法，指定系统消息类型
         SendMessage(content, ChatMessageType.System);
-    }
+    } // 发送系统消息，用于显示重要的游戏状态和通知信息
 
     /// <summary>
     /// 发送动作消息
@@ -266,7 +266,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
     {
         // 调用基础发送方法，指定动作消息类型
         SendMessage(actionDescription, ChatMessageType.Action);
-    }
+    } // 发送动作消息，通知其他玩家的游戏内重要操作和行动
 
     /// <summary>
     /// 获取聊天历史记录的只读副本
@@ -294,7 +294,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
     {
         // 返回历史记录的只读包装，确保外部无法修改原数据
         return _chatHistory.AsReadOnly();
-    }
+    } // 获取聊天历史记录的只读副本，确保外部无法修改内部数据
 
     /// <summary>
     /// 清空聊天历史记录

@@ -1412,24 +1412,28 @@ public class SynchronizationManager
         /// 控制卡牌使用、抽取、洗牌等行为的网络同步
         /// </summary>
         public bool EnableCardSync { get; set; } = true;
+        // 控制卡牌使用、抽取等行为的同步开关
 
         /// <summary>
         /// 法力同步开关
         /// 控制法力消耗、恢复、增益等行为的网络同步
         /// </summary>
         public bool EnableManaSync { get; set; } = true;
+        // 控制法力消耗、恢复等行为的同步开关
 
         /// <summary>
         /// 战斗同步开关
         /// 控制伤害计算、状态效果、战斗结果的同步
         /// </summary>
         public bool EnableBattleSync { get; set; } = true;
+        // 控制伤害、状态效果等战斗行为的同步开关
 
         /// <summary>
         /// 地图同步开关
         /// 控制地图探索、节点状态、地图事件的同步
         /// </summary>
         public bool EnableMapSync { get; set; } = true;
+        // 控制地图探索、节点状态等地图行为的同步开关
 
         /// <summary>
         /// 事件队列最大容量
@@ -1437,6 +1441,7 @@ public class SynchronizationManager
         /// 超过此容量的新事件会被丢弃
         /// </summary>
         public int MaxQueueSize { get; set; } = 100;
+        // 网络不可用时，事件队列的最大容量限制
 
         /// <summary>
         /// 状态缓存存活时间
@@ -1444,5 +1449,6 @@ public class SynchronizationManager
         /// 默认为5分钟，可以根据需要调整
         /// </summary>
         public TimeSpan StateCacheExpiry { get; set; } = TimeSpan.FromMinutes(5);
+        // 状态缓存的存活时间，超过此时间的缓存将被自动清理
     }
 }

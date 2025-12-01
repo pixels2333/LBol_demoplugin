@@ -29,10 +29,10 @@ public class ChatUI : MonoBehaviour
     public Color systemMessageColor = Color.yellow;
     public float messageFadeTime = 10f;
 
-    private Queue<ChatMessage> messageQueue = new();
-    private List<GameObject> messageObjects = [];
-    private IServiceProvider _serviceProvider;
-    private INetworkClient _networkClient;
+    private Queue<ChatMessage> messageQueue = new();      // 存储聊天消息的队列，先进先出
+    private List<GameObject> messageObjects = [];          // 存储UI消息对象列表，用于管理和清理
+    private IServiceProvider _serviceProvider;            // 依赖注入服务提供者
+    private INetworkClient _networkClient;                // 网络客户端接口，负责消息发送
 
     private void Start()
     {
@@ -41,18 +41,18 @@ public class ChatUI : MonoBehaviour
 
         SetupUI();
         RegisterNetworkEvents();
-    }
+    }    // 初始化聊天UI，设置服务依赖和事件注册
 
     private void Update()
     {
         // 处理消息淡出
         UpdateMessageFading();
-    }
+    }    // 每帧更新，处理消息淡出等视觉效果
 
     private void OnDestroy()
     {
         UnregisterNetworkEvents();
-    }
+    }    // 组件销毁时清理网络事件监听
 
     /// <summary>
     /// 设置UI组件
@@ -125,7 +125,7 @@ public class ChatUI : MonoBehaviour
                 }
             }
         }
-    }
+    }    // 切换聊天窗口的显示/隐藏状态
 
     /// <summary>
     /// 发送聊天消息
@@ -157,7 +157,7 @@ public class ChatUI : MonoBehaviour
             Plugin.Logger?.LogError($"[ChatUI] Failed to send chat message: {ex.Message}");
             AddSystemMessage("消息发送失败，请检查网络连接");
         }
-    }
+    }    // 发送聊天消息到网络并显示在本地聊天窗口
 
     /// <summary>
     /// 添加消息到聊天显示
@@ -380,12 +380,12 @@ public class ChatUI : MonoBehaviour
 [Serializable]
 public class ChatMessage
 {
-    public string MessageId { get; set; }
-    public string PlayerId { get; set; }
-    public string PlayerName { get; set; }
-    public string Content { get; set; }
-    public DateTime Timestamp { get; set; }
-    public ChatMessageType MessageType { get; set; }
+    public string MessageId { get; set; }     // 消息的唯一标识符，用于消息追踪和管理
+    public string PlayerId { get; set; }     // 发送消息的玩家ID
+    public string PlayerName { get; set; }   // 发送消息的玩家显示名称
+    public string Content { get; set; }      // 消息的具体内容文本
+    public DateTime Timestamp { get; set; }  // 消息发送的时间戳
+    public ChatMessageType MessageType { get; set; } // 消息类型（玩家消息/系统消息/错误消息）
 }
 
 /// <summary>

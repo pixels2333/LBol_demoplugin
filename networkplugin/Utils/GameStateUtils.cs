@@ -38,7 +38,7 @@ namespace NetworkPlugin.Utils
                 Plugin.Logger?.LogError($"[GameStateUtils] Error getting current player: {ex.Message}");
                 return null;
             }
-        }
+        } // 通过反射机制获取当前玩家实例，支持网络环境下的玩家获取
 
         /// <summary>
         /// 获取当前玩家ID
@@ -48,7 +48,7 @@ namespace NetworkPlugin.Utils
         {
             var player = GetCurrentPlayer();
             return player?.Id?.ToString() ?? "unknown_player";
-        }
+        } // 获取当前玩家的唯一标识符字符串
 
         /// <summary>
         /// 获取当前战斗控制器
@@ -68,7 +68,7 @@ namespace NetworkPlugin.Utils
                 Plugin.Logger?.LogError($"[GameStateUtils] Error getting current game run: {ex.Message}");
                 return null;
             }
-        }
+        } // 获取当前游戏运行控制器实例，负责管理整个游戏流程
 
         /// <summary>
         /// 检查是否在战斗中
@@ -93,7 +93,7 @@ namespace NetworkPlugin.Utils
                 Plugin.Logger?.LogError($"[GameStateUtils] Error checking battle state: {ex.Message}");
                 return false;
             }
-        }
+        } // 检查当前游戏是否处于战斗状态，通过反射检查Battle属性是否存在
 
         /// <summary>
         /// 获取当前战斗中的所有玩家
@@ -216,7 +216,7 @@ namespace NetworkPlugin.Utils
                 Plugin.Logger?.LogError($"[GameStateUtils] Error checking host status: {ex.Message}");
                 return false;
             }
-        }
+        } // 检查当前玩家是否为主机/房主，支持网络游戏的房主识别
 
         /// <summary>
         /// 获取当前游戏模式
@@ -296,7 +296,7 @@ namespace NetworkPlugin.Utils
                 Plugin.Logger?.LogError($"[GameStateUtils] Error getting map state: {ex.Message}");
                 return new { Error = "Failed to get map state", Timestamp = DateTime.Now.Ticks };
             }
-        }
+        } // 获取当前游戏地图状态，包含关卡信息、节点类型和节点标识符
 
         /// <summary>
         /// 安全地获取实体的属性

@@ -435,6 +435,8 @@ namespace NetworkPlugin.Utils
             }
         }
 
+      // 检查状态效果的等级属性，优先查找Level、Amount、Stack、Power等属性
+
         /// <summary>
         /// 获取状态效果持续时间
         /// </summary>
@@ -462,6 +464,8 @@ namespace NetworkPlugin.Utils
                 return -1;
             }
         }
+
+    // 检查状态效果的持续时间，优先查找Duration、TurnsLeft、RemainingTurns、TimeLeft等属性
 
         /// <summary>
         /// 检查状态效果是否激活
@@ -491,6 +495,8 @@ namespace NetworkPlugin.Utils
             }
         }
 
+      // 检查状态效果的激活状态，优先查找IsActive、Active、Enabled等布尔属性
+
         /// <summary>
         /// 检查意图是否为攻击
         /// </summary>
@@ -507,6 +513,8 @@ namespace NetworkPlugin.Utils
             }
         }
 
+      // 通过类型名称判断是否为攻击意图，包含attack、damage、offense等关键词
+
         /// <summary>
         /// 检查意图是否为防御
         /// </summary>
@@ -522,6 +530,8 @@ namespace NetworkPlugin.Utils
                 return false;
             }
         }
+
+    // 通过类型名称判断是否为防御意图，包含defend、block、guard等关键词
 
         /// <summary>
         /// 获取意图目标
@@ -560,6 +570,8 @@ namespace NetworkPlugin.Utils
             }
         }
 
+    // 根据意图对象获取目标，优先查找Target属性，否则根据类型名称推断目标类型
+
         /// <summary>
         /// 获取意图数值
         /// </summary>
@@ -587,6 +599,8 @@ namespace NetworkPlugin.Utils
                 return 0;
             }
         }
+
+  // 从意图对象中获取数值，优先查找Damage、Block、Amount、Value、Power等属性
     }
 }
 }

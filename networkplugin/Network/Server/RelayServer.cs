@@ -9,6 +9,7 @@ using LiteNetLib.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Server;
 
 namespace NetworkPlugin.Network.Server;
 
@@ -73,7 +74,7 @@ public class RelayServer
         _isRunning = false;
 
         InitializeNetManager();
-    }
+    } 
 
     /// <summary>
     /// 初始化LiteNetLib网络管理器
@@ -93,7 +94,7 @@ public class RelayServer
         };
 
         RegisterEvents();
-    }
+    } // 初始化LiteNetLib网络管理器：配置网络参数、设置连接超时并注册事件处理器
 
     /// <summary>
     /// 注册LiteNetLib事件监听器
@@ -270,7 +271,7 @@ public class RelayServer
                 _logger.LogDebug($"[RelayServer] Player {session.PlayerId} ping updated: {latency}ms");
             }
         };
-    }
+    } // 注册LiteNetLib事件监听器：监听连接、断开、消息接收等网络事件并处理
 
     /// <summary>
     /// 处理收到的消息
@@ -312,7 +313,7 @@ public class RelayServer
                     break;
             }
         }
-    }
+    } // 处理收到的消息：根据消息类型路由到相应的处理方法，支持房间创建、加入、消息等功能
 
     /// <summary>
     /// 启动中继服务器
@@ -351,7 +352,7 @@ public class RelayServer
             Stop();
             throw;
         }
-    }
+    } // 启动中继服务器：启动网络管理器，开始监听连接并启动服务器主循环
 
     /// <summary>
     /// 停止中继服务器
@@ -391,7 +392,7 @@ public class RelayServer
         }
 
         _logger.LogInformation("[RelayServer] Server stopped");
-    }
+    } // 停止中继服务器：断开所有连接，停止网络管理器并清理资源
 
     /// <summary>
     /// 服务器主循环
@@ -420,7 +421,7 @@ public class RelayServer
                 _logger.LogError($"[RelayServer] Error in server loop: {ex.Message}");
             }
         }
-    }
+    } // 服务器主循环：处理网络事件、清理超时连接和空房间，维持服务器运行状态
 
     /// <summary>
     /// 处理创建房间请求
@@ -483,7 +484,7 @@ public class RelayServer
             _logger.LogError($"[RelayServer] Error handling CreateRoom: {ex.Message}");
             SendErrorMessage(fromPeer, "CreateRoomError", ex.Message);
         }
-    }
+    } // 处理创建房间请求：为新玩家创建游戏房间，分配唯一ID并设置房主权限
 
     // TODO: 继续实现其他消息处理方法
 
@@ -493,7 +494,7 @@ public class RelayServer
     private string GeneratePlayerId()
     {
         return Guid.NewGuid().ToString("N");
-    }
+    } // 生成玩家ID：为每个连接的玩家生成唯一标识符
 
     /// <summary>
     /// 生成房间ID
@@ -505,7 +506,7 @@ public class RelayServer
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         return new string(Enumerable.Repeat(chars, 6)
             .Select(s => s[random.Next(s.Length)]).ToArray());
-    }
+    } // 生成房间ID：为游戏房间生成6位随机字母数字组合的标识符
 
     /// <summary>
     /// 向对等节点发送消息
@@ -523,7 +524,7 @@ public class RelayServer
         {
             _logger.LogError($"[RelayServer] Failed to send message to peer: {ex.Message}");
         }
-    }
+    } // 向对等节点发送消息：序列化消息并通过LiteNetLib发送给指定客户端
 
     /// <summary>
     /// 发送错误消息
@@ -541,7 +542,7 @@ public class RelayServer
             SenderPlayerId = "SERVER"
         };
         SendMessageToPeer(peer, errorMessageObj, DeliveryMethod.ReliableOrdered);
-    }
+    } // 发送错误消息：向客户端发送错误类型和错误信息的网络消息
 
     /// <summary>
     /// 清理超时连接
@@ -549,7 +550,7 @@ public class RelayServer
     private void CleanupTimeoutConnections()
     {
         // TODO: 实现连接超时检测逻辑
-    }
+    } // 清理超时连接：检测并断开超过指定时间没有心跳的客户端连接
 
     /// <summary>
     /// 获取玩家ID
@@ -557,23 +558,23 @@ public class RelayServer
     private string GetPlayerId(NetPeer peer)
     {
         return _playerSessions.TryGetValue(peer, out var session) ? session.PlayerId : "unknown";
-    }
+    } // 获取玩家ID：根据网络对等节点获取对应的玩家会话ID
 
     // TODO: 实现其他消息处理方法
     // HandleJoinRoom, HandleLeaveRoom, HandleRoomMessage, HandleDirectMessage, HandleHeartbeat, HandleGetRoomList, HandleKickPlayer
-}
+} // 基于LiteNetLib的中继服务器：为NAT穿透和P2P连接提供支持，管理房间创建、玩家连接和消息转发
 
 /// <summary>
 /// 中继服务器配置
 /// </summary>
 public class RelayServerConfig
 {
-    public int Port { get; set; } = 8888;
-    public int MaxConnections { get; set; } = 1000;
-    public int MaxRooms { get; set; } = 100;
-    public int MaxPlayersPerRoom { get; set; } = 4;
-    public int DisconnectTimeoutSeconds { get; set; } = 30;
-    public string ServerName { get; set; } = "LBoL Relay Server";
-    public string ConnectionKey { get; set; } = "LBoL_Network_Plugin";
-    public bool EnableNatPunchthrough { get; set; } = true;
+    public int Port { get; set; } = 8888; // 服务器监听端口：默认8888端口
+    public int MaxConnections { get; set; } = 1000; // 最大连接数：服务器最多支持的客户端连接数
+    public int MaxRooms { get; set; } = 100; // 最大房间数：服务器最多支持的游戏房间数量
+    public int MaxPlayersPerRoom { get; set; } = 4; // 每间房最大玩家数：单个房间支持的最大玩家数量
+    public int DisconnectTimeoutSeconds { get; set; } = 30; // 断开连接超时：连接断开检测的超时时间
+    public string ServerName { get; set; } = "LBoL Relay Server"; // 服务器名称：显示给客户端的服务器标识
+    public string ConnectionKey { get; set; } = "LBoL_Network_Plugin"; // 连接密钥：客户端连接时需要验证的安全密钥
+    public bool EnableNatPunchthrough { get; set; } = true; // 启用NAT穿透：是否开启NAT穿透功能
 }

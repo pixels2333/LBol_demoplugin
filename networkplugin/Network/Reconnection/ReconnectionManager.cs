@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Snapshot;
+using PlayerStateSnapshot = NetworkPlugin.Network.Snapshot.PlayerStateSnapshot;
 
 namespace NetworkPlugin.Network.Reconnection;
 
@@ -75,6 +77,7 @@ public class ReconnectionManager
         _heartbeatTimer = new Timer(CheckHeartbeats, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
         _snapshotTimer = new Timer(SavePeriodicSnapshot, null, TimeSpan.FromSeconds(config.SnapshotIntervalSeconds), TimeSpan.FromSeconds(config.SnapshotIntervalSeconds));
     }
+
 
     /// <summary>
     /// 初始化重连管理器
@@ -232,7 +235,7 @@ public class ReconnectionManager
             IsInBattle = false, // TODO: 检查是否在战斗
             ReconnectToken = string.Empty
         };
-
+ 
         return snapshot;
     }
 

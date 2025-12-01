@@ -17,13 +17,15 @@ public interface INetworkManager
     INetworkPlayer GetSelf();
 
     /// <summary>
-    /// 注册新的网络玩家到管理器中
+    /// 注册新的网络玩家
+    /// 当有新玩家加入游戏时调用此方法
     /// </summary>
-    /// <param name="player">要注册的网络玩家实例</param>
+    /// <param name="player">要注册的网络玩家对象</param>
     void RegisterPlayer(INetworkPlayer player);
 
     /// <summary>
-    /// 从管理器中移除指定的网络玩家
+    /// 移除指定ID的网络玩家
+    /// 当玩家离开游戏时调用此方法
     /// </summary>
     /// <param name="id">要移除的玩家ID</param>
     void RemovePlayer(string id);
@@ -48,8 +50,8 @@ public interface INetworkManager
     int GetPlayerCount();
 
     /// <summary>
-    /// 检查当前是否处于联机状态
-    /// 当有一个或更多玩家连接时认为处于联机状态
+    /// 获取是否处于联机状态
+    /// 通过判断玩家数量大于0来确定是否在联机
     /// </summary>
     bool IsConnected => GetPlayerCount() > 0;
 }
