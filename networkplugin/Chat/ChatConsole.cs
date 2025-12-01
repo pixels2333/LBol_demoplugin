@@ -94,7 +94,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
         {
             _logger.LogError($"[Chat] Failed to send message: {ex.Message}");
         }
-    }
+    } // 发送聊天消息到网络，序列化后通过网络客户端传输并添加到历史记录
 
     /// <summary>
     /// 接收并处理来自网络的聊天消息
@@ -133,7 +133,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
         {
             _logger.LogError($"[Chat] Failed to receive message: {ex.Message}");
         }
-    }
+    } // 接收并反序列化网络聊天消息，添加到历史记录并触发事件通知
 
     /// <summary>
     /// 发送系统消息
@@ -146,7 +146,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
     public void SendSystemMessage(string content)
     {
         SendMessage(content, ChatMessageType.System);
-    }
+    } // 发送系统消息，用于显示重要的游戏状态和通知信息
 
     /// <summary>
     /// 发送动作消息
@@ -162,7 +162,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
     public void SendActionMessage(string actionDescription)
     {
         SendMessage(actionDescription, ChatMessageType.Action);
-    }
+    } // 发送动作消息，通知其他玩家的游戏内重要操作和行动
 
     /// <summary>
     /// 获取聊天历史记录的只读副本
@@ -175,7 +175,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
     public IReadOnlyList<ChatMessage> GetChatHistory()
     {
         return _chatHistory.AsReadOnly();
-    }
+    } // 获取聊天历史记录的只读副本，确保外部无法修改内部数据
 
     /// <summary>
     /// 清空聊天历史记录
@@ -187,7 +187,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
     public void ClearHistory()
     {
         _chatHistory.Clear();
-    }
+    } // 清空聊天历史记录，通常在重新开始游戏或断开连接时调用
 
     /// <summary>
     /// 将消息添加到聊天历史记录中
@@ -206,7 +206,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
         {
             _chatHistory.RemoveAt(0);
         }
-    }
+    } // 消息添加到历史记录，遵循FIFO原则移除最旧消息保持容量限制
 
     #region TODO 功能实现
     // 以下方法待实现，用于完善聊天系统的完整功能

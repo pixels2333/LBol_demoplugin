@@ -30,7 +30,7 @@ namespace NetworkPlugin.Utils
                 manaGroup.Green,
                 manaGroup.White
             ];
-        }
+        } // 将法力组转换为数组格式 [红, 蓝, 绿, 白]，便于网络传输和计算
 
         /// <summary>
         /// 将数组转换为ManaGroup
@@ -50,7 +50,7 @@ namespace NetworkPlugin.Utils
                 manaArray[2], // Green
                 manaArray[3]  // White
             );
-        }
+        } // 将数组格式 [红, 蓝, 绿, 白] 转换为法力组对象，用于游戏逻辑处理
 
         /// <summary>
         /// 获取ManaGroup的字符串表示
@@ -65,7 +65,7 @@ namespace NetworkPlugin.Utils
             }
 
             return $"R{manaGroup.Red}B{manaGroup.Blue}G{manaGroup.Green}W{manaGroup.White}";
-        }
+        } // 将法力组转换为紧凑的字符串表示，格式为R红B蓝G绿W白
 
         /// <summary>
         /// 从字符串解析ManaGroup

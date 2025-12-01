@@ -67,7 +67,7 @@ namespace NetworkPlugin.Core
         {
             try
             {
-                
+
                 _networkClient = _serviceProvider?.GetService<INetworkClient>(); // 从服务容器获取网络客户端
 
                 if (_networkClient != null) // 检查网络客户端是否成功获取
@@ -75,19 +75,20 @@ namespace NetworkPlugin.Core
                     Plugin.Logger?.LogInfo("[SyncManager] Network client initialized successfully"); // 记录成功日志
                 }
                 else
-                
+
                 {
-                
+
                     Plugin.Logger?.LogWarning("[SyncManager] Network client not available - running in offline mode"); // 记录警告日志
                 }
-                
+
             }
-            
+
             catch (Exception ex) // 捕获初始化异常
             {
                 Plugin.Logger?.LogError($"[SyncManager] Error initializing network client: {ex.Message}"); // 记录错误日志
             }
         }
+
 
         /// <summary>
         /// 处理游戏事件的主要入口点
@@ -126,6 +127,7 @@ namespace NetworkPlugin.Core
                 Plugin.Logger?.LogError($"[SyncManager] Error processing game event {gameEvent.EventType}: {ex.Message}"); // 记录错误日志
             }
         }
+
 
         /// <summary>
         /// 接收、解析并应用来自网络的事件到本地游戏状态
@@ -168,6 +170,7 @@ namespace NetworkPlugin.Core
             }
         }
 
+
         /// <summary>
         /// 发送卡牌使用事件，同步卡牌信息、法力消耗和目标选择
         /// </summary>
@@ -196,6 +199,7 @@ namespace NetworkPlugin.Core
             SendGameEvent(NetworkMessageTypes.OnCardPlayStart, eventData); // 发送卡牌使用事件
         }
 
+
         /// <summary>
         /// 发送法力消耗事件，同步法力变化给远程玩家
         /// </summary>
@@ -217,6 +221,8 @@ namespace NetworkPlugin.Core
 
             SendGameEvent(NetworkMessageTypes.ManaConsumeStarted, eventData); // 发送法力消耗事件
         }
+
+        // 发送法力消耗事件，同步法力变化信息到远程玩家
 
         /// <summary>
         /// 发送篝火选项事件，同步选择信息给远程玩家
@@ -271,6 +277,7 @@ namespace NetworkPlugin.Core
                 Plugin.Logger?.LogError($"[SyncManager] Error requesting full sync: {ex.Message}"); // 记录错误日志
             }
         }
+
 
         /// <summary>
         /// 处理连接恢复事件，处理队列事件并请求完整状态同步
@@ -405,6 +412,8 @@ namespace NetworkPlugin.Core
             }
         }
 
+        // 将游戏事件转换为网络数据格式并发送到网络
+
         /// <summary>
         /// 将事件数据存储到本地缓存中，避免重复同步
         /// </summary>
@@ -422,6 +431,8 @@ namespace NetworkPlugin.Core
                 Plugin.Logger?.LogError($"[SyncManager] Error updating local state: {ex.Message}"); // 记录错误日志
             }
         }
+
+        // 更新本地状态缓存，存储已同步的事件数据以避免重复处理
 
         /// <summary>
         /// 根据事件类型分发到相应的具体事件创建方法
@@ -694,30 +705,36 @@ namespace NetworkPlugin.Core
         /// 控制卡牌使用、抽取等行为的同步
         /// </summary>
         public bool EnableCardSync { get; set; } = true;
+        // 控制卡牌使用、抽取等行为的同步开关
 
         /// <summary>
         /// 控制法力消耗、恢复等行为的同步
         /// </summary>
         public bool EnableManaSync { get; set; } = true;
+        // 控制法力消耗、恢复等行为的同步开关
 
         /// <summary>
         /// 控制伤害、状态效果等战斗行为的同步
         /// </summary>
         public bool EnableBattleSync { get; set; } = true;
+        // 控制伤害、状态效果等战斗行为的同步开关
 
         /// <summary>
         /// 控制地图探索、节点状态等地图行为的同步
         /// </summary>
         public bool EnableMapSync { get; set; } = true;
+        // 控制地图探索、节点状态等地图行为的同步开关
 
         /// <summary>
         /// 网络不可用时，事件队列的最大容量
         /// </summary>
         public int MaxQueueSize { get; set; } = 100;
+        // 网络不可用时，事件队列的最大容量限制
 
         /// <summary>
         /// 状态缓存的存活时间，超过此时间的缓存将被清理
         /// </summary>
         public TimeSpan StateCacheExpiry { get; set; } = TimeSpan.FromMinutes(5);
+        // 状态缓存的存活时间，超过此时间的缓存将被自动清理
     }
 }

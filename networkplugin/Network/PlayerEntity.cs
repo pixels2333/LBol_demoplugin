@@ -54,36 +54,49 @@ public class PlayerEntity
     public SyncVar<bool> IsConnected { get; private set; }
     public DateTime LastUpdate { get; private set; }
 
+    /// <summary>
+    /// 构造函数，初始化玩家实体的所有属性
+     /// 设置默认值并创建所有SyncVar同步变量
+     /// </summary>
+    /// <param name="playerId">玩家唯一标识符</param>
+    /// <param name="username">玩家显示用户名</param>
+    /// <param name="isHost">是否为游戏主机，默认为false</param>
     public PlayerEntity(string playerId, string username, bool isHost = false)
     {
+        // 基础玩家信息
         PlayerId = playerId;
         Username = username;
         IsHost = isHost;
 
-        // 初始化SyncVar属性
+        // 初始化SyncVar属性，确保网络同步功能正常工作
         HP = new SyncVar<int>(nameof(HP), 100);
         MaxHP = new SyncVar<int>(nameof(MaxHP), 100);
         Block = new SyncVar<int>(nameof(Block), 0);
         Shield = new SyncVar<int>(nameof(Shield), 0);
         Coins = new SyncVar<int>(nameof(Coins), 0);
 
+        // 战斗和技能资源初始化
         Power = new SyncVar<int>(nameof(Power), 0);
         UltimatePower = new SyncVar<int>(nameof(UltimatePower), 0);
-        Mana = new SyncVar<int[]>(nameof(Mana), new int[4]); // 4色法力
+        Mana = new SyncVar<int[]>(nameof(Mana), new int[4]); // 4色法力：0=红,1=蓝,2=绿,3=白
 
+        // 位置和进度信息初始化
         LocationX = new SyncVar<int>(nameof(LocationX), 0);
         LocationY = new SyncVar<int>(nameof(LocationY), 0);
         CurrentLocation = new SyncVar<string>(nameof(CurrentLocation), "");
         CurrentStage = new SyncVar<int>(nameof(CurrentStage), 1);
         CharacterId = new SyncVar<string>(nameof(CharacterId), "");
 
+        // 回合制状态初始化
         IsInBattle = new SyncVar<bool>(nameof(IsInBattle), false);
         IsMyTurn = new SyncVar<bool>(nameof(IsMyTurn), false);
         EndTurnFlag = new SyncVar<bool>(nameof(EndTurnFlag), false);
 
+        // 状态效果和宝物系统初始化
         ActiveStatusEffects = new SyncVar<List<string>>(nameof(ActiveStatusEffects), []);
         Exhibits = new SyncVar<List<string>>(nameof(Exhibits), []);
 
+        // 网络连接状态初始化
         IsConnected = new SyncVar<bool>(nameof(IsConnected), true);
     }
 

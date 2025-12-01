@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace NetworkPlugin.Network.Messages
 {
     /// <summary>
@@ -328,10 +330,6 @@ namespace NetworkPlugin.Network.Messages
         /// </summary>
         public const string OnShopExit = "OnShopExit";
 
-        /// <summary>
-        /// 商店购买事件
-        /// </summary>
-        public const string OnShopPurchase = "OnShopPurchase";
 
         /// <summary>
         /// 聊天消息
@@ -404,10 +402,6 @@ namespace NetworkPlugin.Network.Messages
         /// </summary>
         public const string OnPotionObtained = "OnPotionObtained";
 
-        /// <summary>
-        /// 药水使用事件
-        /// </summary>
-        public const string OnPotionUsed = "OnPotionUsed";
 
         /// <summary>
         /// 药水丢弃事件
@@ -504,7 +498,7 @@ namespace NetworkPlugin.Network.Messages
     /// </summary>
     public static class MessagePriorities
     {
-        private static readonly Dictionary<string, MessagePriority> _priorities = new Dictionary<string, MessagePriority>
+        private static readonly Dictionary<string, MessagePriority> _priorities = new()
         {
             // 系统消息 - 高优先级
             [NetworkMessageTypes.Heartbeat] = MessagePriority.High,

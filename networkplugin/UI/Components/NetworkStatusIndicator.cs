@@ -35,10 +35,10 @@ public class NetworkStatusIndicator : MonoBehaviour
     public float highPingThreshold = 200f;
     public float mediumPingThreshold = 100f;
 
-    private IServiceProvider _serviceProvider;
-    private INetworkClient _networkClient;
-    private float lastPingUpdate;
-    private ConnectionState _lastConnectionState;
+    private IServiceProvider _serviceProvider;    // 依赖注入服务提供者
+    private INetworkClient _networkClient;      // 网络客户端接口
+    private float lastPingUpdate;                // 上次延迟更新时间
+    private ConnectionState _lastConnectionState; // 上次连接状态，用于状态变化检测
 
     private void Start()
     {
@@ -48,18 +48,18 @@ public class NetworkStatusIndicator : MonoBehaviour
         SetupUI();
         RegisterNetworkEvents();
         UpdateConnectionStatus();
-    }
+    } // 组件启动时初始化依赖注入，设置UI和注册网络事件
 
     private void Update()
     {
         UpdatePingDisplay();
         UpdateConnectionStatus();
-    }
+    } // 每帧更新延迟显示和连接状态
 
     private void OnDestroy()
     {
         UnregisterNetworkEvents();
-    }
+    } // 组件销毁时取消注册网络事件，避免内存泄漏
 
     /// <summary>
     /// 设置UI组件
@@ -77,7 +77,7 @@ public class NetworkStatusIndicator : MonoBehaviour
         }
 
         _lastConnectionState = ConnectionState.Disconnected;
-    }
+    } // 设置UI组件，监听按钮点击事件并初始化连接状态
 
     /// <summary>
     /// 注册网络事件
@@ -90,7 +90,7 @@ public class NetworkStatusIndicator : MonoBehaviour
             // _networkClient.OnDisconnected += OnDisconnected;
             // _networkClient.OnPingUpdate += OnPingUpdate;
         }
-    }
+    } // 注册网络连接事件，监听连接状态、断开连接和延迟更新事件
 
     /// <summary>
     /// 取消注册网络事件
@@ -103,7 +103,7 @@ public class NetworkStatusIndicator : MonoBehaviour
             // _networkClient.OnDisconnected -= OnDisconnected;
             // _networkClient.OnPingUpdate -= OnPingUpdate;
         }
-    }
+    } // 取消注册网络事件，防止重复调用和内存泄漏
 
     /// <summary>
     /// 更新连接状态显示
@@ -119,7 +119,7 @@ public class NetworkStatusIndicator : MonoBehaviour
         }
 
         UpdatePlayerCount();
-    }
+    } // 更新连接状态显示，检测状态变化并更新UI和玩家数量
 
     /// <summary>
     /// 获取当前连接状态
@@ -142,7 +142,7 @@ public class NetworkStatusIndicator : MonoBehaviour
         }
 
         return ConnectionState.Disconnected;
-    }
+    } // 获取当前连接状态，根据网络客户端属性返回相应的状态枚举
 
     /// <summary>
     /// 更新连接状态UI
@@ -180,7 +180,7 @@ public class NetworkStatusIndicator : MonoBehaviour
         {
             // 可以根据需要控制面板的显示
         }
-    }
+    } // 更新连接状态UI，根据状态设置图标颜色、状态文本和按钮可用性
 
     /// <summary>
     /// 更新延迟显示
@@ -209,7 +209,7 @@ public class NetworkStatusIndicator : MonoBehaviour
 
         pingText.color = pingColor;
         lastPingUpdate = Time.time;
-    }
+    } // 更新延迟显示，根据延迟值设置颜色并在指定间隔内更新
 
     /// <summary>
     /// 获取延迟值
@@ -226,7 +226,7 @@ public class NetworkStatusIndicator : MonoBehaviour
             Plugin.Logger?.LogError($"[NetworkStatusIndicator] Error getting ping: {ex.Message}");
             return 0;
         }
-    }
+    } // 获取网络延迟值，从网络客户端获取实际延迟或返回0
 
     /// <summary>
     /// 更新玩家数量显示
@@ -240,7 +240,7 @@ public class NetworkStatusIndicator : MonoBehaviour
 
         var playerCount = GetConnectedPlayerCount();
         playerCountText.text = $"玩家: {playerCount}";
-    }
+    } // 更新玩家数量显示，获取连接玩家数量并更新UI文本
 
     /// <summary>
     /// 获取连接的玩家数量
@@ -257,7 +257,7 @@ public class NetworkStatusIndicator : MonoBehaviour
             Plugin.Logger?.LogError($"[NetworkStatusIndicator] Error getting player count: {ex.Message}");
             return 0;
         }
-    }
+    } // 获取连接的玩家数量，根据网络连接状态返回玩家数量
 
     /// <summary>
     /// 处理重连按钮点击
@@ -278,7 +278,7 @@ public class NetworkStatusIndicator : MonoBehaviour
             Plugin.Logger?.LogError($"[NetworkStatusIndicator] Reconnect failed: {ex.Message}");
             AddSystemLog("重连失败，请检查网络设置");
         }
-    }
+    } // 处理重连按钮点击，尝试重新连接网络并记录状态
 
     /// <summary>
     /// 处理连接成功事件
@@ -286,7 +286,7 @@ public class NetworkStatusIndicator : MonoBehaviour
     private void OnConnected()
     {
         AddSystemLog("连接成功");
-    }
+    } // 处理连接成功事件，记录连接成功的系统日志
 
     /// <summary>
     /// 处理连接断开事件
@@ -294,7 +294,7 @@ public class NetworkStatusIndicator : MonoBehaviour
     private void OnDisconnected()
     {
         AddSystemLog("连接断开");
-    }
+    } // 处理连接断开事件，记录连接断开的系统日志
 
     /// <summary>
     /// 添加系统日志到UI
@@ -302,7 +302,7 @@ public class NetworkStatusIndicator : MonoBehaviour
     private void AddSystemLog(string message)
     {
         Plugin.Logger?.LogInfo($"[NetworkStatusIndicator] {message}");
-    }
+    } // 添加系统日志到控制台，包含组件标识符信息
 
     /// <summary>
     /// 显示连接详情面板
@@ -318,7 +318,7 @@ public class NetworkStatusIndicator : MonoBehaviour
         {
             Plugin.Logger?.LogError($"[NetworkStatusIndicator] Error showing connection details: {ex.Message}");
         }
-    }
+    } // 显示连接详情面板，生成并输出详细的网络连接信息
 
     /// <summary>
     /// 生成连接详情
@@ -341,7 +341,7 @@ public class NetworkStatusIndicator : MonoBehaviour
         details.AppendLine($"NAT类型: {_natType}");
 
         return details.ToString();
-    }
+    } // 生成连接详情字符串，包含状态、延迟、地址和NAT信息
 
     // 静态属性用于状态存储
     private static bool _upnpEnabled = false;
@@ -353,7 +353,7 @@ public class NetworkStatusIndicator : MonoBehaviour
     public static void SetUpnpStatus(bool enabled)
     {
         _upnpEnabled = enabled;
-    }
+    } // 设置UPnP状态，用于网络连接详情显示
 
     /// <summary>
     /// 设置NAT类型
@@ -361,7 +361,7 @@ public class NetworkStatusIndicator : MonoBehaviour
     public static void SetNatType(string natType)
     {
         _natType = natType;
-    }
+    } // 设置NAT类型，用于网络连接详情显示
 
     /// <summary>
     /// 获取连接状态字符串
@@ -376,7 +376,7 @@ public class NetworkStatusIndicator : MonoBehaviour
             ConnectionState.Reconnecting => "重连中",
             _ => "未知"
         };
-    }
+    } // 获取连接状态字符串表示，用于UI显示和日志记录
 }
 
 /// <summary>

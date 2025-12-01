@@ -43,11 +43,19 @@ public class HostAuthorityManager
     /// </summary>
     private List<ProcessedRequest> _requestHistory;
 
+    /// <summary>
+/// 构造函数，初始化权威管理器的所有组件
+     /// 设置默认的空状态，准备接收和处理客户端请求
+     /// </summary>
     public HostAuthorityManager()
     {
+        // 初始化权威状态字典，用于存储游戏权威数据
         _authoritativeState = [];
+        // 初始化请求队列，管理待处理的客户端操作
         _pendingRequests = new Queue<ClientRequest>();
+        // 初始化请求历史列表，记录所有已处理的请求
         _requestHistory = [];
+        // 设置默认值，等待主机信息初始化
         HostPlayerId = string.Empty;
         IsLocalHost = false;
     }

@@ -27,6 +27,10 @@ public class NatTraversal
         // _logger = BepInEx.Logging.Logger.CreateLogSource("NATTraversal");
     }
 
+} // 静态构造函数：初始化 NAT 穿透组件的静态字段和资源
+
+} // 静态构造函数：初始化 NAT 穿透组件的静态字段和资源
+
     /// <summary>
     /// NAT类型枚举
     /// </summary>
@@ -128,7 +132,7 @@ public class NatTraversal
                 Protocol = "UDP"
             };
         }
-    }
+    } // 启用UPnP端口映射：创建内部端口到外部端口的映射，支持NAT穿透
 
     /// <summary>
     /// 禁用UPnP端口映射
@@ -147,7 +151,7 @@ public class NatTraversal
             _logger?.LogError($"[NATTraversal] Failed to disable UPnP mapping: {ex.Message}");
             return false;
         }
-    }
+    } // 禁用UPnP端口映射：删除已创建的端口映射，释放网络资源
 
     /// <summary>
     /// 检查UPnP可用性
@@ -164,7 +168,7 @@ public class NatTraversal
             _logger?.LogError($"[NATTraversal] UPnP availability check failed: {ex.Message}");
             return false;
         }
-    }
+    } // 检查UPnP可用性：检测系统是否支持UPnP协议，用于NAT穿透
 
     #endregion
 
@@ -221,7 +225,7 @@ public class NatTraversal
                 DetectedNatType = NatType.Unknown
             };
         }
-    }
+    } // 通过STUN服务器检测NAT类型：使用STUN协议检测网络地址转换类型
 
     /// <summary>
     /// 使用多个STUN服务器检测NAT类型
@@ -242,7 +246,7 @@ public class NatTraversal
 
         _logger?.LogInfo($"[NATTraversal] NAT type detection completed: {results.Count} responses");
         return results;
-    }
+    } // 使用多个STUN服务器检测NAT类型：并发查询多个STUN服务器，提高检测准确性
 
     #endregion
 
@@ -286,7 +290,7 @@ public class NatTraversal
                 NatType = NatType.Blocked
             };
         }
-    }
+    } // 检测本地连接能力：检测本地网络端口和UPnP支持情况，用于NAT穿透评估
 
     /// <summary>
     /// 检测P2P连接能力
@@ -317,7 +321,7 @@ public class NatTraversal
             _logger?.LogDebug($"[NATTraversal] P2P connectivity test failed: {ex.Message}");
             return false;
         }
-    }
+    } // 检测P2P连接能力：测试与远程端点的直接连接能力，用于NAT穿透验证
 
     #endregion
 
@@ -330,7 +334,7 @@ public class NatTraversal
     {
         var data = $"{peerId}:{endPoint.Address}:{endPoint.Port}:{DateTime.Now.Ticks}";
         return Convert.ToBase64String(Encoding.UTF8.GetBytes(data));
-    }
+    } // 生成连接令牌：为P2P连接创建包含时间戳的安全令牌
 
     /// <summary>
     /// 验证连接令牌
@@ -360,7 +364,7 @@ public class NatTraversal
             endPoint = null;
             return false;
         }
-    }
+    } // 验证连接令牌：验证P2P连接令牌的有效性和安全性
 
     /// <summary>
     /// 获取本地IP地址
@@ -379,7 +383,7 @@ public class NatTraversal
             _logger?.LogError($"[NATTraversal] Failed to get local IP: {ex.Message}");
             return IPAddress.Loopback;
         }
-    }
+    } // 获取本地IP地址：获取本机非回环的IPv4地址，用于网络连接
 
     /// <summary>
     /// 获取公网IP地址（通过HTTP服务）
@@ -403,7 +407,7 @@ public class NatTraversal
         }
 
         return null;
-    }
+    } // 获取公网IP地址：通过HTTP服务获取本机的公网IP地址
 
     #endregion
 
@@ -416,7 +420,7 @@ public class NatTraversal
     {
         _peerNatInfo[peerId] = natInfo;
         _logger?.LogInfo($"[NATTraversal] Registered NAT info for peer: {peerId}");
-    }
+    } // 注册对等方NAT信息：存储对等方的网络地址转换信息，用于P2P连接
 
     /// <summary>
     /// 获取对等方NAT信息
@@ -425,7 +429,7 @@ public class NatTraversal
     {
         _peerNatInfo.TryGetValue(peerId, out var info);
         return info;
-    }
+    } // 获取对等方NAT信息：从缓存中获取指定对等方的网络地址转换信息
 
     /// <summary>
     /// 移除对等方NAT信息
@@ -434,7 +438,7 @@ public class NatTraversal
     {
         _peerNatInfo.Remove(peerId);
         _logger?.LogInfo($"[NATTraversal] Removed NAT info for peer: {peerId}");
-    }
+    } // 移除对等方NAT信息：从缓存中删除对等方的网络地址转换信息
 
     /// <summary>
     /// 获取所有注册的对等方NAT信息
@@ -442,7 +446,7 @@ public class NatTraversal
     public static Dictionary<string, NatInfo> GetAllPeerNatInfo()
     {
         return new Dictionary<string, NatInfo>(_peerNatInfo);
-    }
+    } // 获取所有注册的对等方NAT信息：返回所有对等方的网络地址转换信息副本
 
     /// <summary>
     /// 检查是否支持NAT穿透
@@ -461,7 +465,7 @@ public class NatTraversal
             NatType.Blocked => false,
             _ => false
         };
-    }
+    } // 检查是否支持NAT穿透：根据NAT类型判断是否支持P2P连接穿透
 
     /// <summary>
     /// 生成NAT穿透报告
@@ -496,7 +500,7 @@ public class NatTraversal
             _logger?.LogError($"[NATTraversal] Failed to generate report: {ex.Message}");
             return "Error generating NAT report";
         }
-    }
+    } // 生成NAT穿透报告：生成包含所有对等方NAT类型和连接状态的详细报告
 
     #endregion
-}
+} // NAT穿透工具类：实现P2P连接辅助功能，支持UPnP端口映射、STUN服务器交互、连接类型检测

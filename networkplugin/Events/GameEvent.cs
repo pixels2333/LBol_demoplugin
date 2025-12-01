@@ -79,23 +79,23 @@ namespace NetworkPlugin.Events
     /// </summary>
     public abstract class GameEvent(GameEventType eventType, string sourcePlayerId, object data = null)
     {
-        public GameEventType EventType { get; protected set; } = eventType;
-        public DateTime Timestamp { get; protected set; } = DateTime.Now;
-        public string SourcePlayerId { get; protected set; } = sourcePlayerId ?? "unknown";
-        public object Data { get; protected set; } = data;
+        public GameEventType EventType { get; protected set; } = eventType;    // 事件的具体类型枚举值
+        public DateTime Timestamp { get; protected set; } = DateTime.Now;      // 事件发生的时间戳
+        public string SourcePlayerId { get; protected set; } = sourcePlayerId ?? "unknown";      // 触发事件的玩家ID
+        public object Data { get; protected set; } = data;                      // 事件相关的附加数据
 
         /// <summary>
         /// 将事件转换为网络传输格式
         /// </summary>
         /// <returns>事件数据对象</returns>
-        public abstract object ToNetworkData();
+        public abstract object ToNetworkData();     // 将事件序列化为网络传输数据格式
 
         /// <summary>
         /// 从网络数据创建事件实例
         /// </summary>
         /// <param name="data">网络数据</param>
         /// <returns>事件实例</returns>
-        public abstract GameEvent FromNetworkData(object data);
+        public abstract GameEvent FromNetworkData(object data);     // 从网络数据反序列化为事件对象
     }
 
     /// <summary>
@@ -104,11 +104,11 @@ namespace NetworkPlugin.Events
     public class CardPlayEvent(string sourcePlayerId, string cardId, string cardName, string cardType,
         int[] manaCost, string targetSelector, object additionalData = null) : GameEvent(GameEventType.CardPlayStart, sourcePlayerId, additionalData)
     {
-        public string CardId { get; private set; } = cardId;
-        public string CardName { get; private set; } = cardName;
-        public string CardType { get; private set; } = cardType;
-        public int[] ManaCost { get; private set; } = manaCost ?? [0, 0, 0, 0];
-        public string TargetSelector { get; private set; } = targetSelector ?? "Nobody";
+        public string CardId { get; private set; } = cardId;                // 卡牌的唯一标识符
+        public string CardName { get; private set; } = cardName;              // 卡牌的显示名称
+        public string CardType { get; private set; } = cardType;              // 卡牌的类型分类
+        public int[] ManaCost { get; private set; } = manaCost ?? [0, 0, 0, 0];      // 卡牌消耗的法力值数组
+        public string TargetSelector { get; private set; } = targetSelector ?? "Nobody";  // 目标选择器名称
 
         public override object ToNetworkData()
         {
@@ -124,13 +124,13 @@ namespace NetworkPlugin.Events
                 TargetSelector,
                 Data
             };
-        }
+        }    // 将卡牌使用事件序列化为网络传输对象
 
         public override GameEvent FromNetworkData(object data)
         {
             // TODO: 实现从网络数据重建事件
             return this;
-        }
+        }    // 从网络数据反序列化重建卡牌使用事件
     }
 
     /// <summary>
@@ -139,9 +139,9 @@ namespace NetworkPlugin.Events
     public class ManaConsumeEvent(string sourcePlayerId, int[] manaBefore, int[] manaConsumed,
         string source, object additionalData = null) : GameEvent(GameEventType.ManaConsumeStart, sourcePlayerId, additionalData)
     {
-        public int[] ManaBefore { get; private set; } = manaBefore ?? [0, 0, 0, 0];
-        public int[] ManaConsumed { get; private set; } = manaConsumed ?? [0, 0, 0, 0];
-        public string Source { get; private set; } = source ?? "Unknown";
+        public int[] ManaBefore { get; private set; } = manaBefore ?? [0, 0, 0, 0];     // 消耗前的法力值数组
+        public int[] ManaConsumed { get; private set; } = manaConsumed ?? [0, 0, 0, 0];     // 实际消耗的法力值数组
+        public string Source { get; private set; } = source ?? "Unknown";               // 消耗法力的来源描述
 
         public override object ToNetworkData()
         {
@@ -155,13 +155,13 @@ namespace NetworkPlugin.Events
                 Source,
                 Data
             };
-        }
+        }    // 将法力消耗事件序列化为网络传输对象
 
         public override GameEvent FromNetworkData(object data)
         {
             // TODO: 实现从网络数据重建事件
             return this;
-        }
+        }    // 从网络数据反序列化重建法力消耗事件
     }
 
     /// <summary>
@@ -170,11 +170,12 @@ namespace NetworkPlugin.Events
     public class DamageEvent(string sourcePlayerId, string sourceId, string targetId,
         int damageAmount, string damageType, object additionalData = null) : GameEvent(GameEventType.DamageDealt, sourcePlayerId, additionalData)
     {
-        public string SourceId { get; private set; } = sourceId;
-        public string TargetId { get; private set; } = targetId;
-        public int DamageAmount { get; private set; } = damageAmount;
-        public string DamageType { get; private set; } = damageType ?? "Unknown";
+        public string SourceId { get; private set; } = sourceId;                 // 伤害来源的单位ID
+        public string TargetId { get; private set; } = targetId;                 // 伤害目标单位的ID
+        public int DamageAmount { get; private set; } = damageAmount;            // 伤害的具体数值
+        public string DamageType { get; private set; } = damageType ?? "Unknown";   // 伤害的类型分类
 
+        // 将伤害事件序列化为网络传输对象
         public override object ToNetworkData()
         {
             return new
@@ -190,6 +191,7 @@ namespace NetworkPlugin.Events
             };
         }
 
+        // 从网络数据反序列化重建伤害事件
         public override GameEvent FromNetworkData(object data)
         {
             // TODO: 实现从网络数据重建事件
@@ -209,7 +211,7 @@ namespace NetworkPlugin.Events
             string cardType, int[] manaCost, string targetSelector)
         {
             return new CardPlayEvent(playerId, cardId, cardName, cardType, manaCost, targetSelector);
-        }
+        }    
 
         /// <summary>
         /// 创建法力消耗事件
@@ -218,7 +220,7 @@ namespace NetworkPlugin.Events
             int[] manaConsumed, string source)
         {
             return new ManaConsumeEvent(playerId, manaBefore, manaConsumed, source);
-        }
+        }    
 
         /// <summary>
         /// 创建伤害事件
@@ -227,7 +229,7 @@ namespace NetworkPlugin.Events
             int damageAmount, string damageType)
         {
             return new DamageEvent(playerId, sourceId, targetId, damageAmount, damageType);
-        }
+        }    
 
         /// <summary>
         /// 从网络数据创建事件
@@ -236,6 +238,6 @@ namespace NetworkPlugin.Events
         {
             // TODO: 实现从网络数据创建相应事件的逻辑
             return null;
-        }
+        }    
     }
 }
