@@ -430,6 +430,7 @@ namespace NetworkPlugin.Core
             {
                 Plugin.Logger?.LogError($"[SyncManager] Error creating game event from network data: {ex.Message}");
                 return null;
+                
             }
         }
 
