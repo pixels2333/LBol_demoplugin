@@ -27,9 +27,7 @@ public class NatTraversal
         // _logger = BepInEx.Logging.Logger.CreateLogSource("NATTraversal");
     }
 
-} // 静态构造函数：初始化 NAT 穿透组件的静态字段和资源
-
-} // 静态构造函数：初始化 NAT 穿透组件的静态字段和资源
+    #region NAT类型定义
 
     /// <summary>
     /// NAT类型枚举

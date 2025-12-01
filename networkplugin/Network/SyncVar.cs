@@ -3,10 +3,24 @@ using System.Collections.Generic;
 
 namespace NetworkPlugin.Network;
 
+/// <summary>
+/// 同步变量类 - 用于网络同步的可观察变量
+/// 支持泛型，可以在服务端和客户端之间自动同步状态变化
+/// </summary>
+/// <typeparam name="T">变量类型，支持值类型和引用类型</typeparam>
 public class SyncVar<T>(string name, T initialValue)
 {
-    public string Name { get; } = name;
+    /// <summary>
+/// 同步变量的名称标识符
+/// </summary>
+public string Name { get; } = name;
+
     private T _value = initialValue;
+
+    /// <summary>
+    /// 同步变量的值
+    /// 设置值时会自动触发网络同步（服务端）或本地事件（客户端）
+    /// </summary>
     public T Value
     {
         get => _value;
@@ -24,9 +38,16 @@ public class SyncVar<T>(string name, T initialValue)
         }
     }
 
-    // 当 SyncVar 的值发生改变时触发的事件
+    /// <summary>
+    /// 当 SyncVar 的值发生改变时触发的事件
+    /// 在服务端用于触发网络发送，在客户端用于触发本地逻辑（如UI更新）
+    /// </summary>
     public event Action<T> OnValueChanged;
 
+    /// <summary>
+    /// 返回同步变量的字符串表示形式
+    /// </summary>
+    /// <returns>包含变量名称和值的字符串</returns>
     public override string ToString()
     {
         return $"SyncVar '{Name}': {Value}";
