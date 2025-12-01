@@ -2,3 +2,4 @@
 lbol/**/bin
 lbol/**/obj
 remove_tokens.py
+debugtools/*

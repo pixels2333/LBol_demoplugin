@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace NetworkPlugin.Network.Messages
 {
     /// <summary>
@@ -536,7 +538,10 @@ namespace NetworkPlugin.Network.Messages
         /// <returns>消息优先级</returns>
         public static MessagePriority GetPriority(string messageType)
         {
-            return _priorities.TryGetValue(messageType, out var priority) ? priority : MessagePriority.Normal;
+            // 尝试从优先级字典中查找指定消息类型的优先级
+            return _priorities.TryGetValue(messageType, out var priority)
+                ? priority  // 如果找到则返回对应的优先级
+                : MessagePriority.Normal; // 如果未找到则返回默认的正常优先级
         }
     }
 }
