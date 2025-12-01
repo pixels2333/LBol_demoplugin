@@ -16,17 +16,26 @@ namespace NetworkPlugin.Core
     /// </summary>
     public class SynchronizationManager
     {
-        private static SynchronizationManager _instance; // 单例模式的静态实例
-        private readonly IServiceProvider _serviceProvider; // 依赖注入服务提供者
-        private INetworkClient _networkClient; // 网络客户端接口
+        // 单例模式的静态实例
+        private static SynchronizationManager _instance;
+        // 依赖注入服务提供者
+        private readonly IServiceProvider _serviceProvider;
+        // 网络客户端接口
+        private INetworkClient _networkClient;
 
-        private readonly Queue<GameEvent> _eventQueue = new(); // 网络不可用时的事件队列
-        private readonly Dictionary<string, object> _stateCache = []; // 本地状态缓存字典
-        private readonly SyncConfiguration _config = new(); // 同步配置对象
+        // 网络不可用时的事件队列
+        private readonly Queue<GameEvent> _eventQueue = new();
+        // 本地状态缓存字典
+        private readonly Dictionary<string, object> _stateCache = [];
+        // 同步配置对象
+        private readonly SyncConfiguration _config = new();
 
-        private bool _isNetworkAvailable = false; // 网络连接状态标志
-        private DateTime _lastConnectionTime = DateTime.MinValue; // 最后连接时间
-        private DateTime _lastSyncTime = DateTime.MinValue; // 最后同步时间
+        // 网络连接状态标志
+        private bool _isNetworkAvailable = false;
+        // 最后连接时间
+        private DateTime _lastConnectionTime = DateTime.MinValue;
+        // 最后同步时间
+        private DateTime _lastSyncTime = DateTime.MinValue;
 
         /// <summary>
         /// 获取全局唯一的同步管理器实例
@@ -45,9 +54,10 @@ namespace NetworkPlugin.Core
         /// </summary>
         private SynchronizationManager()
         {
-            _serviceProvider = ModService.ServiceProvider;
-            InitializeNetworkClient();
-            Plugin.Logger?.LogInfo("[SyncManager] Synchronization Manager initialized");
+            _serviceProvider = ModService.ServiceProvider; // 获取MOD服务提供者
+            InitializeNetworkClient(); // 初始化网络客户端
+            Plugin.Logger?.LogInfo("[SyncManager] Synchronization Manager initialized"); // 记录初始化日志
+
         }
 
         /// <summary>
@@ -57,20 +67,25 @@ namespace NetworkPlugin.Core
         {
             try
             {
-                _networkClient = _serviceProvider?.GetService<INetworkClient>();
+                
+                _networkClient = _serviceProvider?.GetService<INetworkClient>(); // 从服务容器获取网络客户端
 
-                if (_networkClient != null)
+                if (_networkClient != null) // 检查网络客户端是否成功获取
                 {
-                    Plugin.Logger?.LogInfo("[SyncManager] Network client initialized successfully");
+                    Plugin.Logger?.LogInfo("[SyncManager] Network client initialized successfully"); // 记录成功日志
                 }
                 else
+                
                 {
-                    Plugin.Logger?.LogWarning("[SyncManager] Network client not available - running in offline mode");
+                
+                    Plugin.Logger?.LogWarning("[SyncManager] Network client not available - running in offline mode"); // 记录警告日志
                 }
+                
             }
-            catch (Exception ex)
+            
+            catch (Exception ex) // 捕获初始化异常
             {
-                Plugin.Logger?.LogError($"[SyncManager] Error initializing network client: {ex.Message}");
+                Plugin.Logger?.LogError($"[SyncManager] Error initializing network client: {ex.Message}"); // 记录错误日志
             }
         }
 
@@ -80,35 +95,35 @@ namespace NetworkPlugin.Core
         /// <param name="gameEvent">需要处理的游戏事件对象</param>
         public void ProcessGameEvent(GameEvent gameEvent)
         {
-            if (gameEvent == null)
+            if (gameEvent == null) // 检查事件是否为空
             {
-                Plugin.Logger?.LogWarning("[SyncManager] Attempted to process null game event");
-                return;
+                Plugin.Logger?.LogWarning("[SyncManager] Attempted to process null game event"); // 记录空事件警告
+                return; // 退出方法
             }
 
             try
             {
-                if (!IsNetworkAvailable())
+                if (!IsNetworkAvailable()) // 检查网络是否可用
                 {
-                    Plugin.Logger?.LogDebug("[SyncManager] Network not available, queuing event");
-                    _eventQueue.Enqueue(gameEvent);
-                    return;
+                    Plugin.Logger?.LogDebug("[SyncManager] Network not available, queuing event"); // 记录调试信息
+                    _eventQueue.Enqueue(gameEvent); // 将事件加入队列
+                    return; // 退出方法
                 }
 
-                if (!ShouldSyncEvent(gameEvent))
+                if (!ShouldSyncEvent(gameEvent)) // 检查事件是否需要同步
                 {
-                    Plugin.Logger?.LogDebug($"[SyncManager] Event {gameEvent.EventType} filtered out by sync rules");
-                    return;
+                    Plugin.Logger?.LogDebug($"[SyncManager] Event {gameEvent.EventType} filtered out by sync rules"); // 记录过滤信息
+                    return; // 退出方法
                 }
 
-                SendEventToNetwork(gameEvent);
-                UpdateLocalState(gameEvent);
+                SendEventToNetwork(gameEvent); // 发送事件到网络
+                UpdateLocalState(gameEvent); // 更新本地状态
 
-                Plugin.Logger?.LogDebug($"[SyncManager] Processed event: {gameEvent.EventType} from {gameEvent.SourcePlayerId}");
+                Plugin.Logger?.LogDebug($"[SyncManager] Processed event: {gameEvent.EventType} from {gameEvent.SourcePlayerId}"); // 记录处理完成信息
             }
-            catch (Exception ex)
+            catch (Exception ex) // 捕获处理异常
             {
-                Plugin.Logger?.LogError($"[SyncManager] Error processing game event {gameEvent.EventType}: {ex.Message}");
+                Plugin.Logger?.LogError($"[SyncManager] Error processing game event {gameEvent.EventType}: {ex.Message}"); // 记录错误日志
             }
         }
 
@@ -118,38 +133,38 @@ namespace NetworkPlugin.Core
         /// <param name="eventData">来自网络的原始事件数据</param>
         public void ProcessNetworkEvent(object eventData)
         {
-            if (eventData == null)
+            if (eventData == null) // 检查事件数据是否为空
             {
-                Plugin.Logger?.LogWarning("[SyncManager] Received null network event data");
-                return;
+                Plugin.Logger?.LogWarning("[SyncManager] Received null network event data"); // 记录空数据警告
+                return; // 退出方法
             }
 
             try
             {
-                var eventDict = eventData as Dictionary<string, object>;
-                if (eventDict == null || !eventDict.ContainsKey("EventType"))
+                var eventDict = eventData as Dictionary<string, object>; // 将事件数据转换为字典
+                if (eventDict == null || !eventDict.ContainsKey("EventType")) // 检查数据格式是否正确
                 {
-                    Plugin.Logger?.LogWarning("[SyncManager] Invalid network event data format");
-                    return;
+                    Plugin.Logger?.LogWarning("[SyncManager] Invalid network event data format"); // 记录格式错误警告
+                    return; // 退出方法
                 }
 
-                var eventType = eventDict["EventType"].ToString();
-                var payload = eventDict.ContainsKey("Payload") ? eventDict["Payload"] : null;
-                var timestamp = eventDict.ContainsKey("Timestamp") ? eventDict["Timestamp"] : DateTime.Now.Ticks;
+                var eventType = eventDict["EventType"].ToString(); // 获取事件类型
+                var payload = eventDict.ContainsKey("Payload") ? eventDict["Payload"] : null; // 获取事件载荷
+                var timestamp = eventDict.ContainsKey("Timestamp") ? eventDict["Timestamp"] : DateTime.Now.Ticks; // 获取时间戳
 
-                var gameEvent = CreateGameEventFromNetworkData(eventType, payload);
-                if (gameEvent == null)
+                var gameEvent = CreateGameEventFromNetworkData(eventType, payload); // 根据网络数据创建游戏事件
+                if (gameEvent == null) // 检查事件是否创建成功
                 {
-                    Plugin.Logger?.LogWarning($"[SyncManager] Failed to create game event from network data: {eventType}");
-                    return;
+                    Plugin.Logger?.LogWarning($"[SyncManager] Failed to create game event from network data: {eventType}"); // 记录创建失败警告
+                    return; // 退出方法
                 }
 
-                ApplyRemoteEvent(gameEvent);
-                Plugin.Logger?.LogDebug($"[SyncManager] Applied remote event: {gameEvent.EventType} from {gameEvent.SourcePlayerId}");
+                ApplyRemoteEvent(gameEvent); // 应用远程事件到本地状态
+                Plugin.Logger?.LogDebug($"[SyncManager] Applied remote event: {gameEvent.EventType} from {gameEvent.SourcePlayerId}"); // 记录应用成功信息
             }
-            catch (Exception ex)
+            catch (Exception ex) // 捕获处理异常
             {
-                Plugin.Logger?.LogError($"[SyncManager] Error processing network event: {ex.Message}");
+                Plugin.Logger?.LogError($"[SyncManager] Error processing network event: {ex.Message}"); // 记录错误日志
             }
         }
 
@@ -165,20 +180,20 @@ namespace NetworkPlugin.Core
         public void SendCardPlayEvent(string cardId, string cardName, string cardType,
             int[] manaCost, string targetSelector, object playerState)
         {
-            var playerId = GameStateUtils.GetCurrentPlayerId();
+            var playerId = GameStateUtils.GetCurrentPlayerId(); // 获取当前玩家ID
 
-            var eventData = new
+            var eventData = new // 创建事件数据对象
             {
-                Timestamp = DateTime.Now.Ticks,
-                CardId = cardId,
-                CardName = cardName,
-                CardType = cardType,
-                ManaCost = ConvertManaArray(manaCost),
-                TargetSelector = targetSelector,
-                PlayerState = playerState
+                Timestamp = DateTime.Now.Ticks, // 添加时间戳
+                CardId = cardId, // 卡牌ID
+                CardName = cardName, // 卡牌名称
+                CardType = cardType, // 卡牌类型
+                ManaCost = ConvertManaArray(manaCost), // 转换法力数组格式
+                TargetSelector = targetSelector, // 目标选择器
+                PlayerState = playerState // 玩家状态
             };
 
-            SendGameEvent(NetworkMessageTypes.OnCardPlayStart, eventData);
+            SendGameEvent(NetworkMessageTypes.OnCardPlayStart, eventData); // 发送卡牌使用事件
         }
 
         /// <summary>
@@ -189,18 +204,18 @@ namespace NetworkPlugin.Core
         /// <param name="source">法力消耗的来源（如使用卡牌、技能等）</param>
         public void SendManaConsumeEvent(int[] manaBefore, int[] manaConsumed, string source)
         {
-            var playerId = GameStateUtils.GetCurrentPlayerId();
+            var playerId = GameStateUtils.GetCurrentPlayerId(); // 获取当前玩家ID
 
-            var eventData = new
+            var eventData = new // 创建法力消耗事件数据
             {
-                Timestamp = DateTime.Now.Ticks,
-                PlayerId = playerId,
-                ManaBefore = ConvertManaArray(manaBefore),
-                ManaConsumed = ConvertManaArray(manaConsumed),
-                Source = source
+                Timestamp = DateTime.Now.Ticks, // 添加时间戳
+                PlayerId = playerId, // 玩家ID
+                ManaBefore = ConvertManaArray(manaBefore), // 转换消耗前法力数组
+                ManaConsumed = ConvertManaArray(manaConsumed), // 转换消耗法力数组
+                Source = source // 法力消耗来源
             };
 
-            SendGameEvent(NetworkMessageTypes.ManaConsumeStarted, eventData);
+            SendGameEvent(NetworkMessageTypes.ManaConsumeStarted, eventData); // 发送法力消耗事件
         }
 
         /// <summary>
@@ -211,18 +226,18 @@ namespace NetworkPlugin.Core
         /// <param name="playerState">选择时的玩家状态</param>
         public void SendGapStationEvent(string eventType, object optionData, object playerState)
         {
-            var playerId = GameStateUtils.GetCurrentPlayerId();
+            var playerId = GameStateUtils.GetCurrentPlayerId(); // 获取当前玩家ID
 
-            var eventData = new
+            var eventData = new // 创建篝火事件数据
             {
-                Timestamp = DateTime.Now.Ticks,
-                EventType = eventType,
-                PlayerId = playerId,
-                OptionData = optionData,
-                PlayerState = playerState
+                Timestamp = DateTime.Now.Ticks, // 添加时间戳
+                EventType = eventType, // 篝火事件类型
+                PlayerId = playerId, // 玩家ID
+                OptionData = optionData, // 选项数据
+                PlayerState = playerState // 玩家状态
             };
 
-            SendGameEvent(eventType, eventData);
+            SendGameEvent(eventType, eventData); // 发送篝火事件
         }
 
         /// <summary>
@@ -232,28 +247,28 @@ namespace NetworkPlugin.Core
         {
             try
             {
-                if (!IsNetworkAvailable())
+                if (!IsNetworkAvailable()) // 检查网络是否可用
                 {
-                    Plugin.Logger?.LogWarning("[SyncManager] Cannot request full sync - network not available");
-                    return;
+                    Plugin.Logger?.LogWarning("[SyncManager] Cannot request full sync - network not available"); // 记录网络不可用警告
+                    return; // 退出方法
                 }
 
-                var syncRequest = new
+                var syncRequest = new // 创建同步请求数据
                 {
-                    Timestamp = DateTime.Now.Ticks,
-                    RequestType = "FullSync",
-                    PlayerId = GameStateUtils.GetCurrentPlayerId(),
-                    RequestReason = "ManualRequest"
+                    Timestamp = DateTime.Now.Ticks, // 添加时间戳
+                    RequestType = "FullSync", // 请求类型
+                    PlayerId = GameStateUtils.GetCurrentPlayerId(), // 获取当前玩家ID
+                    RequestReason = "ManualRequest" // 请求原因
                 };
 
-                SendGameEvent(NetworkMessageTypes.FullStateSyncRequest, syncRequest);
-                _lastSyncTime = DateTime.Now;
+                SendGameEvent(NetworkMessageTypes.FullStateSyncRequest, syncRequest); // 发送完整同步请求
+                _lastSyncTime = DateTime.Now; // 更新最后同步时间
 
-                Plugin.Logger?.LogInfo("[SyncManager] Full state sync requested");
+                Plugin.Logger?.LogInfo("[SyncManager] Full state sync requested"); // 记录同步请求日志
             }
-            catch (Exception ex)
+            catch (Exception ex) // 捕获请求异常
             {
-                Plugin.Logger?.LogError($"[SyncManager] Error requesting full sync: {ex.Message}");
+                Plugin.Logger?.LogError($"[SyncManager] Error requesting full sync: {ex.Message}"); // 记录错误日志
             }
         }
 
@@ -264,28 +279,28 @@ namespace NetworkPlugin.Core
         {
             try
             {
-                _isNetworkAvailable = true;
-                _lastConnectionTime = DateTime.Now;
+                _isNetworkAvailable = true; // 设置网络状态为可用
+                _lastConnectionTime = DateTime.Now; // 更新最后连接时间
 
-                Plugin.Logger?.LogInfo("[SyncManager] Connection restored, processing queued events");
+                Plugin.Logger?.LogInfo("[SyncManager] Connection restored, processing queued events"); // 记录连接恢复日志
 
-                while (_eventQueue.Count > 0 && IsNetworkAvailable())
+                while (_eventQueue.Count > 0 && IsNetworkAvailable()) // 处理队列中的所有事件
                 {
-                    var gameEvent = _eventQueue.Dequeue();
-                    ProcessGameEvent(gameEvent);
+                    var gameEvent = _eventQueue.Dequeue(); // 从队列中取出事件
+                    ProcessGameEvent(gameEvent); // 处理事件
                 }
 
-                RequestFullSync();
+                RequestFullSync(); // 请求完整状态同步
 
-                SendGameEvent(NetworkMessageTypes.OnConnectionEstablished, new
+                SendGameEvent(NetworkMessageTypes.OnConnectionEstablished, new // 发送连接建立事件
                 {
-                    Timestamp = DateTime.Now.Ticks,
-                    PlayerId = GameStateUtils.GetCurrentPlayerId()
+                    Timestamp = DateTime.Now.Ticks, // 添加时间戳
+                    PlayerId = GameStateUtils.GetCurrentPlayerId() // 获取当前玩家ID
                 });
             }
-            catch (Exception ex)
+            catch (Exception ex) // 捕获处理异常
             {
-                Plugin.Logger?.LogError($"[SyncManager] Error handling connection restoration: {ex.Message}");
+                Plugin.Logger?.LogError($"[SyncManager] Error handling connection restoration: {ex.Message}"); // 记录错误日志
             }
         }
 
@@ -296,20 +311,20 @@ namespace NetworkPlugin.Core
         {
             try
             {
-                _isNetworkAvailable = false;
+                _isNetworkAvailable = false; // 设置网络状态为不可用
 
-                Plugin.Logger?.LogWarning("[SyncManager] Connection lost, switching to offline mode");
+                Plugin.Logger?.LogWarning("[SyncManager] Connection lost, switching to offline mode"); // 记录连接丢失警告
 
-                SendGameEvent(NetworkMessageTypes.OnConnectionLost, new
+                SendGameEvent(NetworkMessageTypes.OnConnectionLost, new // 发送连接丢失事件
                 {
-                    Timestamp = DateTime.Now.Ticks,
-                    PlayerId = GameStateUtils.GetCurrentPlayerId(),
-                    QueuedEvents = _eventQueue.Count
+                    Timestamp = DateTime.Now.Ticks, // 添加时间戳
+                    PlayerId = GameStateUtils.GetCurrentPlayerId(), // 获取当前玩家ID
+                    QueuedEvents = _eventQueue.Count // 队列中待处理的事件数量
                 });
             }
-            catch (Exception ex)
+            catch (Exception ex) // 捕获处理异常
             {
-                Plugin.Logger?.LogError($"[SyncManager] Error handling connection loss: {ex.Message}");
+                Plugin.Logger?.LogError($"[SyncManager] Error handling connection loss: {ex.Message}"); // 记录错误日志
             }
         }
 
@@ -319,14 +334,14 @@ namespace NetworkPlugin.Core
         /// <returns>包含同步统计数据的对象</returns>
         public object GetSyncStatistics()
         {
-            return new
+            return new // 创建统计信息对象
             {
-                QueuedEvents = _eventQueue.Count,
-                CachedStates = _stateCache.Count,
-                IsNetworkAvailable = _isNetworkAvailable,
-                LastSyncTime = _lastSyncTime,
-                LastConnectionTime = _lastConnectionTime,
-                Configuration = _config
+                QueuedEvents = _eventQueue.Count, // 队列中的事件数量
+                CachedStates = _stateCache.Count, // 缓存的状态数量
+                IsNetworkAvailable = _isNetworkAvailable, // 网络连接状态
+                LastSyncTime = _lastSyncTime, // 最后同步时间
+                LastConnectionTime = _lastConnectionTime, // 最后连接时间
+                Configuration = _config // 同步配置对象
             };
         }
 
@@ -341,19 +356,19 @@ namespace NetworkPlugin.Core
         {
             try
             {
-                if (_networkClient == null)
+                if (_networkClient == null) // 检查网络客户端是否为空
                 {
-                    InitializeNetworkClient();
+                    InitializeNetworkClient(); // 初始化网络客户端
                 }
 
-                _isNetworkAvailable = _networkClient?.IsConnected ?? false;
-                return _isNetworkAvailable;
+                _isNetworkAvailable = _networkClient?.IsConnected ?? false; // 检查网络连接状态
+                return _isNetworkAvailable; // 返回网络可用状态
             }
-            catch (Exception ex)
+            catch (Exception ex) // 捕获检查异常
             {
-                Plugin.Logger?.LogError($"[SyncManager] Error checking network availability: {ex.Message}");
-                _isNetworkAvailable = false;
-                return false;
+                Plugin.Logger?.LogError($"[SyncManager] Error checking network availability: {ex.Message}"); // 记录错误日志
+                _isNetworkAvailable = false; // 设置网络状态为不可用
+                return false; // 返回false
             }
         }
 
@@ -365,7 +380,7 @@ namespace NetworkPlugin.Core
         private bool ShouldSyncEvent(GameEvent gameEvent)
         {
             //TODO: 添加不同事件是否需要同步
-            return true;
+            return true; // 暂时返回true，表示所有事件都需要同步
         }
 
         /// <summary>
@@ -374,19 +389,19 @@ namespace NetworkPlugin.Core
         /// <param name="gameEvent">要发送的游戏事件</param>
         private void SendEventToNetwork(GameEvent gameEvent)
         {
-            if (!IsNetworkAvailable())
+            if (!IsNetworkAvailable()) // 检查网络是否可用
             {
-                return;
+                return; // 网络不可用时直接返回
             }
 
             try
             {
-                var networkData = gameEvent.ToNetworkData();
-                SendGameEvent(gameEvent.EventType.ToString(), networkData);
+                var networkData = gameEvent.ToNetworkData(); // 将事件转换为网络数据格式
+                SendGameEvent(gameEvent.EventType.ToString(), networkData); // 发送事件到网络
             }
-            catch (Exception ex)
+            catch (Exception ex) // 捕获发送异常
             {
-                Plugin.Logger?.LogError($"[SyncManager] Error sending event to network: {ex.Message}");
+                Plugin.Logger?.LogError($"[SyncManager] Error sending event to network: {ex.Message}"); // 记录错误日志
             }
         }
 
@@ -398,13 +413,13 @@ namespace NetworkPlugin.Core
         {
             try
             {
-                var stateKey = $"{gameEvent.EventType}_{gameEvent.SourcePlayerId}";
-                _stateCache[stateKey] = gameEvent.Data;
-                CleanupOldStates();
+                var stateKey = $"{gameEvent.EventType}_{gameEvent.SourcePlayerId}"; // 创建状态缓存键
+                _stateCache[stateKey] = gameEvent.Data; // 将事件数据存储到缓存
+                CleanupOldStates(); // 清理过期状态
             }
-            catch (Exception ex)
+            catch (Exception ex) // 捕获更新异常
             {
-                Plugin.Logger?.LogError($"[SyncManager] Error updating local state: {ex.Message}");
+                Plugin.Logger?.LogError($"[SyncManager] Error updating local state: {ex.Message}"); // 记录错误日志
             }
         }
 
@@ -418,19 +433,18 @@ namespace NetworkPlugin.Core
         {
             try
             {
-                return eventType switch
+                return eventType switch // 根据事件类型创建对应的事件对象
                 {
-                    NetworkMessageTypes.OnCardPlayStart => CreateCardPlayEvent(payload),
-                    NetworkMessageTypes.ManaConsumeStarted => CreateManaConsumeEvent(payload),
-                    NetworkMessageTypes.OnDamageDealt => CreateDamageEvent(payload),
-                    _ => new GenericGameEvent(eventType, payload)
+                    NetworkMessageTypes.OnCardPlayStart => CreateCardPlayEvent(payload), // 创建卡牌使用事件
+                    NetworkMessageTypes.ManaConsumeStarted => CreateManaConsumeEvent(payload), // 创建法力消耗事件
+                    NetworkMessageTypes.OnDamageDealt => CreateDamageEvent(payload), // 创建伤害事件
+                    _ => new GenericGameEvent(eventType, payload) // 创建通用事件
                 };
             }
-            catch (Exception ex)
+            catch (Exception ex) // 捕获创建异常
             {
-                Plugin.Logger?.LogError($"[SyncManager] Error creating game event from network data: {ex.Message}");
-                return null;
-                
+                Plugin.Logger?.LogError($"[SyncManager] Error creating game event from network data: {ex.Message}"); // 记录错误日志
+                return null; // 返回null表示创建失败
             }
         }
 
@@ -443,25 +457,25 @@ namespace NetworkPlugin.Core
         {
             try
             {
-                var dict = payload as Dictionary<string, object>;
-                if (dict == null)
+                var dict = payload as Dictionary<string, object>; // 将载荷转换为字典
+                if (dict == null) // 检查数据格式
                 {
-                    return null;
+                    return null; // 格式不正确时返回null
                 }
 
-                var cardId = dict.TryGetValue("CardId", out var id) ? id?.ToString() : "";
-                var cardName = dict.TryGetValue("CardName", out var name) ? name?.ToString() : "";
-                var cardType = dict.TryGetValue("CardType", out var type) ? type?.ToString() : "";
+                var cardId = dict.TryGetValue("CardId", out var id) ? id?.ToString() : ""; // 获取卡牌ID
+                var cardName = dict.TryGetValue("CardName", out var name) ? name?.ToString() : ""; // 获取卡牌名称
+                var cardType = dict.TryGetValue("CardType", out var type) ? type?.ToString() : ""; // 获取卡牌类型
 
-                int[] manaCost = [0, 0, 0, 0];
-                string targetSelector = "Nobody";
+                int[] manaCost = [0, 0, 0, 0]; // 默认法力消耗
+                string targetSelector = "Nobody"; // 默认目标选择器
 
-                return GameEventFactory.CreateCardPlayEvent("remote_player", cardId, cardName, cardType, manaCost, targetSelector);
+                return GameEventFactory.CreateCardPlayEvent("remote_player", cardId, cardName, cardType, manaCost, targetSelector); // 创建卡牌事件
             }
-            catch (Exception ex)
+            catch (Exception ex) // 捕获创建异常
             {
-                Plugin.Logger?.LogError($"[SyncManager] Error creating card play event: {ex.Message}");
-                return null;
+                Plugin.Logger?.LogError($"[SyncManager] Error creating card play event: {ex.Message}"); // 记录错误日志
+                return null; // 返回null表示创建失败
             }
         }
 
@@ -474,22 +488,22 @@ namespace NetworkPlugin.Core
         {
             try
             {
-                var dict = payload as Dictionary<string, object>;
-                if (dict == null)
+                var dict = payload as Dictionary<string, object>; // 将载荷转换为字典
+                if (dict == null) // 检查数据格式
                 {
-                    return null;
+                    return null; // 格式不正确时返回null
                 }
 
-                int[] manaBefore = [0, 0, 0, 0];
-                int[] manaConsumed = [0, 0, 0, 0];
-                string source = dict.TryGetValue("Source", out var src) ? src?.ToString() : "Unknown";
+                int[] manaBefore = [0, 0, 0, 0]; // 默认消耗前法力值
+                int[] manaConsumed = [0, 0, 0, 0]; // 默认消耗法力值
+                string source = dict.TryGetValue("Source", out var src) ? src?.ToString() : "Unknown"; // 获取法力消耗来源
 
-                return GameEventFactory.CreateManaConsumeEvent("remote_player", manaBefore, manaConsumed, source);
+                return GameEventFactory.CreateManaConsumeEvent("remote_player", manaBefore, manaConsumed, source); // 创建法力消耗事件
             }
-            catch (Exception ex)
+            catch (Exception ex) // 捕获创建异常
             {
-                Plugin.Logger?.LogError($"[SyncManager] Error creating mana consume event: {ex.Message}");
-                return null;
+                Plugin.Logger?.LogError($"[SyncManager] Error creating mana consume event: {ex.Message}"); // 记录错误日志
+                return null; // 返回null表示创建失败
             }
         }
 
@@ -502,23 +516,23 @@ namespace NetworkPlugin.Core
         {
             try
             {
-                var dict = payload as Dictionary<string, object>;
-                if (dict == null)
+                var dict = payload as Dictionary<string, object>; // 将载荷转换为字典
+                if (dict == null) // 检查数据格式
                 {
-                    return null;
+                    return null; // 格式不正确时返回null
                 }
 
-                string sourceId = dict.TryGetValue("SourceId", out var src) ? src?.ToString() : "";
-                string targetId = dict.TryGetValue("TargetId", out var tgt) ? tgt?.ToString() : "";
-                int damageAmount = dict.TryGetValue("DamageAmount", out var dmg) && dmg != null ? Convert.ToInt32(dmg) : 0;
-                string damageType = dict.TryGetValue("DamageType", out var dmgType) ? dmgType?.ToString() : "Unknown";
+                string sourceId = dict.TryGetValue("SourceId", out var src) ? src?.ToString() : ""; // 获取伤害源ID
+                string targetId = dict.TryGetValue("TargetId", out var tgt) ? tgt?.ToString() : ""; // 获取目标ID
+                int damageAmount = dict.TryGetValue("DamageAmount", out var dmg) && dmg != null ? Convert.ToInt32(dmg) : 0; // 获取伤害数值
+                string damageType = dict.TryGetValue("DamageType", out var dmgType) ? dmgType?.ToString() : "Unknown"; // 获取伤害类型
 
-                return GameEventFactory.CreateDamageEvent("remote_player", sourceId, targetId, damageAmount, damageType);
+                return GameEventFactory.CreateDamageEvent("remote_player", sourceId, targetId, damageAmount, damageType); // 创建伤害事件
             }
-            catch (Exception ex)
+            catch (Exception ex) // 捕获创建异常
             {
-                Plugin.Logger?.LogError($"[SyncManager] Error creating damage event: {ex.Message}");
-                return null;
+                Plugin.Logger?.LogError($"[SyncManager] Error creating damage event: {ex.Message}"); // 记录错误日志
+                return null; // 返回null表示创建失败
             }
         }
 
@@ -530,11 +544,11 @@ namespace NetworkPlugin.Core
         {
             try
             {
-                Plugin.Logger?.LogDebug($"[SyncManager] Applied remote event: {gameEvent.EventType}");
+                Plugin.Logger?.LogDebug($"[SyncManager] Applied remote event: {gameEvent.EventType}"); // 记录应用事件调试信息
             }
-            catch (Exception ex)
+            catch (Exception ex) // 捕获应用异常
             {
-                Plugin.Logger?.LogError($"[SyncManager] Error applying remote event: {ex.Message}");
+                Plugin.Logger?.LogError($"[SyncManager] Error applying remote event: {ex.Message}"); // 记录错误日志
             }
         }
 
@@ -547,26 +561,26 @@ namespace NetworkPlugin.Core
         {
             try
             {
-                if (!IsNetworkAvailable())
+                if (!IsNetworkAvailable()) // 检查网络是否可用
                 {
-                    Plugin.Logger?.LogDebug($"[SyncManager] Network not available for {eventType}");
-                    return;
+                    Plugin.Logger?.LogDebug($"[SyncManager] Network not available for {eventType}"); // 记录网络不可用调试信息
+                    return; // 退出方法
                 }
 
-                if (_networkClient is INetworkClient liteNetClient)
+                if (_networkClient is INetworkClient liteNetClient) // 检查网络客户端类型
                 {
-                    _networkClient.SendGameEvent(eventType, eventData);
+                    _networkClient.SendGameEvent(eventType, eventData); // 使用游戏事件发送方法
                 }
                 else
                 {
-                    _networkClient.SendRequest(eventType, eventData);
+                    _networkClient.SendRequest(eventType, eventData); // 使用通用请求发送方法
                 }
 
-                _lastSyncTime = DateTime.Now;
+                _lastSyncTime = DateTime.Now; // 更新最后同步时间
             }
-            catch (Exception ex)
+            catch (Exception ex) // 捕获发送异常
             {
-                Plugin.Logger?.LogError($"[SyncManager] Error sending game event {eventType}: {ex.Message}");
+                Plugin.Logger?.LogError($"[SyncManager] Error sending game event {eventType}: {ex.Message}"); // 记录错误日志
             }
         }
 
@@ -577,18 +591,18 @@ namespace NetworkPlugin.Core
         /// <returns>结构化的法力对象</returns>
         private object ConvertManaArray(int[] manaArray)
         {
-            if (manaArray == null || manaArray.Length < 4)
+            if (manaArray == null || manaArray.Length < 4) // 检查数组是否为空或长度不足
             {
-                return new { Red = 0, Blue = 0, Green = 0, White = 0, Total = 0 };
+                return new { Red = 0, Blue = 0, Green = 0, White = 0, Total = 0 }; // 返回默认法力对象
             }
 
-            return new
+            return new // 创建法力对象
             {
-                Red = manaArray[0],
-                Blue = manaArray[1],
-                Green = manaArray[2],
-                White = manaArray[3],
-                Total = manaArray[0] + manaArray[1] + manaArray[2] + manaArray[3]
+                Red = manaArray[0], // 红色法力
+                Blue = manaArray[1], // 蓝色法力
+                Green = manaArray[2], // 绿色法力
+                White = manaArray[3], // 白色法力
+                Total = manaArray[0] + manaArray[1] + manaArray[2] + manaArray[3] // 法力总量
             };
         }
 
@@ -599,25 +613,25 @@ namespace NetworkPlugin.Core
         {
             try
             {
-                var cutoffTime = DateTime.UtcNow - _config.StateCacheExpiry;
-                var keysToRemove = new List<string>();
+                var cutoffTime = DateTime.UtcNow - _config.StateCacheExpiry; // 计算截止时间
+                var keysToRemove = new List<string>(); // 创建待删除键列表
 
-                foreach (var kvp in _stateCache)
+                foreach (var kvp in _stateCache) // 遍历状态缓存
                 {
-                    if (kvp.Key.Contains("Old") || kvp.Key.Contains("Temp"))
+                    if (kvp.Key.Contains("Old") || kvp.Key.Contains("Temp")) // 检查是否为过期或临时状态
                     {
-                        keysToRemove.Add(kvp.Key);
+                        keysToRemove.Add(kvp.Key); // 添加到删除列表
                     }
                 }
 
-                foreach (var key in keysToRemove)
+                foreach (var key in keysToRemove) // 删除过期状态
                 {
-                    _stateCache.Remove(key);
+                    _stateCache.Remove(key); // 从缓存中移除
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) // 捕获清理异常
             {
-                Plugin.Logger?.LogError($"[SyncManager] Error cleaning up old states: {ex.Message}");
+                Plugin.Logger?.LogError($"[SyncManager] Error cleaning up old states: {ex.Message}"); // 记录错误日志
             }
         }
 
@@ -632,7 +646,7 @@ namespace NetworkPlugin.Core
     /// </remarks>
     /// <param name="eventType">事件类型字符串</param>
     /// <param name="data">事件数据</param>
-    public class GenericGameEvent(string eventType, object data) : GameEvent(ParseEventType(eventType), "unknown_player", data)
+    public class GenericGameEvent(string eventType, object data) : GameEvent(ParseEventType(eventType), "unknown_player", data) // 调用基类构造函数
     {
 
         /// <summary>
@@ -642,7 +656,7 @@ namespace NetworkPlugin.Core
         /// <returns>对应的游戏事件类型枚举</returns>
         private static GameEventType ParseEventType(string eventType)
         {
-            return Enum.TryParse<GameEventType>(eventType, out var result) ? result : GameEventType.Error;
+            return Enum.TryParse<GameEventType>(eventType, out var result) ? result : GameEventType.Error; // 尝试解析枚举，失败时返回Error类型
         }
 
         /// <summary>
@@ -651,12 +665,12 @@ namespace NetworkPlugin.Core
         /// <returns>网络传输格式的事件数据</returns>
         public override object ToNetworkData()
         {
-            return new
+            return new // 创建网络数据对象
             {
-                EventType = EventType.ToString(),
-                Timestamp = Timestamp.Ticks,
-                SourcePlayerId,
-                Data
+                EventType = EventType.ToString(), // 事件类型字符串
+                Timestamp = Timestamp.Ticks, // 时间戳
+                SourcePlayerId, // 来源玩家ID
+                Data // 事件数据
             };
         }
 
@@ -667,7 +681,7 @@ namespace NetworkPlugin.Core
         /// <returns>恢复的事件实例</returns>
         public override GameEvent FromNetworkData(object data)
         {
-            return this;
+            return this; // 直接返回当前实例
         }
     }
 
