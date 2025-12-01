@@ -388,7 +388,7 @@ namespace NetworkPlugin.Events
         /// 事件时间戳
         /// 记录事件发生的精确时间，用于事件排序和调试分析
         /// </summary>
-        public DateTime Timestamp { get; protected set; } = DateTime.Now;
+        public DateTime Timestamp { get; protected set; } = timestamp;
 
         /// <summary>
         /// 事件来源玩家ID

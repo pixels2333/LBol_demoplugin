@@ -285,7 +285,7 @@ public class SynchronizationManager
     /// <param name="eventData">来自网络的原始事件数据</param>
     /// <remarks>
     /// <para>
-    /// 网络事件处理流程：
+    /// 处理流程：
     /// 1. 数据验证：检查事件数据的完整性和格式
     /// 2. 数据解析：提取事件类型、载荷和时间戳信息
     /// 3. 事件重建：根据网络数据创建对应的游戏事件对象
@@ -298,11 +298,11 @@ public class SynchronizationManager
     /// - 必须包含"EventType"字段标识事件类型
     /// - 可选包含"Payload"字段携带事件数据
     /// - 可选包含"Timestamp"字段标识事件时间
-    /// - 支持Dictionary<string, object>格式的数据结构
+    /// - 支持Dictionary&lt;string, object&gt;格式
     /// </para>
     ///
     /// <para>
-    /// 安全性考虑：
+    /// 安全性保障：
     /// - 严格验证接收数据的格式和完整性
     /// - 防止恶意或损坏的数据影响游戏状态
     /// - 记录所有网络事件的接收和处理日志
@@ -319,11 +319,9 @@ public class SynchronizationManager
 
         try
         {
-            // 将事件数据转换为字典格式进行处理
-            var eventDict = eventData as Dictionary<string, object>;
 
             // 验证数据格式是否正确
-            if (eventDict == null || !eventDict.ContainsKey("EventType"))
+            if (eventData is not Dictionary<string, object> eventDict || !eventDict.ContainsKey("EventType"))
             {
                 Plugin.Logger?.LogWarning("[SyncManager] 无效的网络事件数据格式");
                 return;
@@ -335,7 +333,7 @@ public class SynchronizationManager
             var timestamp = eventDict.ContainsKey("Timestamp") ? eventDict["Timestamp"] : DateTime.Now.Ticks;
 
             // 根据网络数据创建对应的游戏事件对象
-            var gameEvent = CreateGameEventFromNetworkData(eventType, payload);
+            GameEvent gameEvent = CreateGameEventFromNetworkData(eventType, payload, timestamp);
             if (gameEvent == null)
             {
                 // 事件创建失败，可能数据格式不正确
@@ -919,7 +917,7 @@ public class SynchronizationManager
     /// - 其他游戏事件使用通用事件处理
     /// </para>
     /// </remarks>
-    private GameEvent CreateGameEventFromNetworkData(string eventType, object payload)
+    private GameEvent CreateGameEventFromNetworkData(string eventType, object payload, DateTime timestamp)
     {
         try
         {
@@ -927,19 +925,16 @@ public class SynchronizationManager
             return eventType switch
             {
                 // 卡牌使用事件
-                case NetworkMessageTypes.OnCardPlayStart:
-                    return CreateCardPlayEvent(payload),
+                NetworkMessageTypes.OnCardPlayStart => CreateCardPlayEvent(payload, timestamp),
 
                 // 法力消耗事件
-                case NetworkMessageTypes.ManaConsumeStarted:
-                    return CreateManaConsumeEvent(payload),
+                NetworkMessageTypes.ManaConsumeStarted => CreateManaConsumeEvent(payload, timestamp),
 
                 // 伤害事件
-                case NetworkMessageTypes.OnDamageDealt:
-                    return CreateDamageEvent(payload),
+                NetworkMessageTypes.OnDamageDealt => CreateDamageEvent(payload, timestamp),
 
                 // 未知类型使用通用事件处理
-                _ => new GenericGameEvent(eventType, payload)
+                _ => new GenericGameEvent(eventType, payload, timestamp)
             };
         }
         catch (Exception ex)
@@ -974,17 +969,17 @@ public class SynchronizationManager
     /// - 目标选择：攻击目标或效果范围
     /// </para>
     /// </remarks>
-    private CardPlayEvent CreateCardPlayEvent(object payload)
+    private CardPlayEvent CreateCardPlayEvent(object payload, DateTime timestamp)
     {
+        //TODO:将时间戳参数引入到代码中
         try
         {
             // 将载荷转换为字典格式
-            var dict = payload as Dictionary<string, object>;
-            if (dict == null)
+            if (payload is not Dictionary<string, object> dict)
             {
                 return null; // 数据格式不正确
             }
-
+            
             // 提取卡牌基本信息
             var cardId = dict.TryGetValue("CardId", out var id) ? id?.ToString() : "";
             var cardName = dict.TryGetValue("CardName", out var name) ? name?.ToString() : "";
@@ -1028,7 +1023,7 @@ public class SynchronizationManager
     /// - 消耗来源：导致法力消耗的操作
     /// </para>
     /// </remarks>
-    private ManaConsumeEvent CreateManaConsumeEvent(object payload)
+    private ManaConsumeEvent CreateManaConsumeEvent(object payload, DateTime timestamp)
     {
         try
         {
@@ -1080,7 +1075,7 @@ public class SynchronizationManager
     /// - 伤害类型：伤害的属性或效果类型
     /// </para>
     /// </remarks>
-    private DamageEvent CreateDamageEvent(object payload)
+    private DamageEvent CreateDamageEvent(object payload, DateTime timestamp)
     {
         try
         {
@@ -1328,7 +1323,7 @@ public class SynchronizationManager
     /// - Timestamp: 事件时间戳
     /// </para>
     /// </remarks>
-    public class GenericGameEvent(string eventType, object data) : GameEvent(ParseEventType(eventType), "unknown_player", data)
+    public class GenericGameEvent(string eventType, object data, DateTime timestamp) : GameEvent(ParseEventType(eventType), "unknown_player", data)
     {
         /// <summary>
         /// 重写基类方法，提供通用的事件序列化
