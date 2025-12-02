@@ -11,8 +11,9 @@ namespace NetworkPlugin;
 public class PluginInfo
 {
     /// <summary>
-    /// 插件的全局唯一标识符 (GUID)
-    /// 用于BepInEx插件识别和管理，确保插件在系统中的唯一性
+    /// 插件的唯一标识符 (GUID)
+    /// 用于BepInEx插件系统的唯一识别
+    /// 格式：通常是反向域名格式
     /// </summary>
     public const string PLUGIN_GUID = "NetworkPlugin";
 

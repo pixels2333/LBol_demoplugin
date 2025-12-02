@@ -4,15 +4,16 @@ using NetworkPlugin.Network.NetworkPlayer;
 namespace NetworkPlugin.Network.Client;
 
 /// <summary>
-/// 网络管理器接口，负责管理游戏中的网络玩家和连接状态
-/// 提供玩家注册、移除、查询等核心功能
+/// 网络管理器接口
+/// 负责管理连接到游戏的网络玩家，包括玩家的注册、移除和查询
+/// 提供统一的玩家状态管理和联机状态检测功能
 /// </summary>
 public interface INetworkManager
 {
     /// <summary>
-    /// 获取当前本地玩家实例
+    /// 获取当前本地玩家的网络玩家实例
     /// </summary>
-    /// <returns>本地网络玩家对象</returns>
+    /// <returns>当前玩家的INetworkPlayer实例，如果未注册则返回null</returns>
     INetworkPlayer GetSelf();
 
     /// <summary>
@@ -30,20 +31,20 @@ public interface INetworkManager
     void RemovePlayer(string id);
 
     /// <summary>
-    /// 根据玩家ID获取对应的网络玩家对象
+    /// 根据玩家ID获取对应的网络玩家实例
     /// </summary>
-    /// <param name="id">玩家ID</param>
-    /// <returns>对应的网络玩家对象，如果不存在则返回null</returns>
+    /// <param name="id">玩家的唯一标识符</param>
+    /// <returns>对应的INetworkPlayer实例，如果未找到则返回null</returns>
     INetworkPlayer GetPlayer(string id);
 
     /// <summary>
-    /// 获取所有已注册的网络玩家
+    /// 获取所有已注册的网络玩家集合
     /// </summary>
     /// <returns>包含所有网络玩家的枚举集合</returns>
     IEnumerable<INetworkPlayer> GetAllPlayers();
 
     /// <summary>
-    /// 获取当前游戏中的玩家数量
+    /// 获取当前已注册的网络玩家数量
     /// </summary>
     /// <returns>玩家总数</returns>
     int GetPlayerCount();

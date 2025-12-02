@@ -1,4 +1,4 @@
-﻿using BepInEx;
+using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,6 +8,10 @@ using NetworkPlugin.Network.NetworkPlayer;
 
 namespace NetworkPlugin;
 
+/// <summary>
+/// LBoL联机MOD的主插件类
+/// 负责插件的初始化、依赖注入配置和生命周期管理
+/// </summary>
 [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
 [BepInProcess("LBoL.exe")]
 /// <summary>
@@ -34,7 +38,6 @@ public class Plugin : BaseUnityPlugin
     /// 使用依赖注入模式，管理网络管理器、客户端等核心服务的生命周期
     /// </summary>
     private ServiceProvider serviceProvider;
-    // private IService service; // 你的服务接口
 
     /// <summary>
     /// Harmony补丁实例，用于运行时修改和扩展游戏逻辑
@@ -87,12 +90,14 @@ public class Plugin : BaseUnityPlugin
             Logger.LogError("GameObject is null, cannot call DontDestroyOnLoad.");
             return;
         }
-        
-        // 将插件对象设为不随场景切换而销毁，保证网络连接的稳定性
+
+        // 设置GameObject在场景切换时不被销毁，确保插件持久运行
         DontDestroyOnLoad(gameObject);
+
+        // 记录插件加载完成日志
         Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
-        
-        // 加载所有Harmony补丁，实现游戏逻辑的网络化扩展
+
+        // 应用所有Harmony补丁，修改游戏行为以支持联机功能
         harmony.PatchAll();
         Logger.LogInfo("补丁已加载");
     }
@@ -130,8 +135,13 @@ public class Plugin : BaseUnityPlugin
     /// </summary>
     void OnDestroy()
     {
+        // 释放依赖注入容器的资源
+        // 防止内存泄漏和资源未释放问题
         // 如果serviceProvider实现了IDisposable接口，需要在此处进行Dispose操作
-        // 避免内存泄漏和资源占用问题
+        
         serviceProvider?.Dispose();
+
+        // 记录插件销毁日志
+        Logger?.LogInfo("Plugin has been destroyed and resources cleaned up.");
     }
 }
