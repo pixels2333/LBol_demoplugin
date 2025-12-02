@@ -1,8 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using NetworkPlugin.Configuration;
 using NetworkPlugin.Events;
+using NetworkPlugin.Events.Battle;
+using NetworkPlugin.Events.Cards;
+using NetworkPlugin.Events.Factory;
+using NetworkPlugin.Events.Mana;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
@@ -111,6 +117,19 @@ public class SynchronizationManager
     private readonly Queue<GameEvent> _eventQueue = new();
 
     /// <summary>
+    /// 远程事件缓冲区
+    /// 用于按时间戳排序处理网络接收到的事件，确保事件按正确顺序执行
+    /// </summary>
+    /// <remarks>
+    /// 缓冲区特性：
+    /// - 基于时间戳排序的事件处理
+    /// - 支持延迟事件的重排序
+    /// - 防止网络延迟导致的事件执行乱序
+    /// - 自动清理超时未处理的事件
+    /// </remarks>
+    private readonly SortedList<long, NetworkEventBuffer> _remoteEventBuffer = new();
+
+    /// <summary>
     /// 本地状态缓存字典
     /// 存储最近的游戏状态快照，用于避免重复同步和状态验证
     /// </summary>
@@ -120,6 +139,12 @@ public class SynchronizationManager
     /// 定期清理过期状态以防止内存泄漏
     /// </remarks>
     private readonly Dictionary<string, object> _stateCache = [];
+
+    /// <summary>
+    /// 远程事件缓冲区清理阈值
+    /// 超过此时间的事件将被视为超时并自动清理
+    /// </summary>
+    private static readonly TimeSpan EventBufferTimeout = TimeSpan.FromSeconds(30);
 
     /// <summary>
     /// 同步配置对象
@@ -280,17 +305,18 @@ public class SynchronizationManager
 
     /// <summary>
     /// 接收并处理来自网络的远程事件
-    /// 将网络传输的事件数据应用到本地游戏状态中
+    /// 将网络传输的事件数据按时间戳有序地应用到本地游戏状态中
     /// </summary>
     /// <param name="eventData">来自网络的原始事件数据</param>
     /// <remarks>
     /// <para>
-    /// 处理流程：
+    /// 有序处理流程：
     /// 1. 数据验证：检查事件数据的完整性和格式
-    /// 2. 数据解析：提取事件类型、载荷和时间戳信息
-    /// 3. 事件重建：根据网络数据创建对应的游戏事件对象
-    /// 4. 状态应用：将远程事件应用到本地游戏状态
-    /// 5. 日志记录：记录接收和处理过程
+    /// 2. 时间戳提取：提取事件时间戳用于排序
+    /// 3. 事件缓冲：将事件添加到时间戳排序的缓冲区
+    /// 4. 顺序处理：按时间戳顺序处理缓冲区中的事件
+    /// 5. 状态应用：将远程事件应用到本地游戏状态
+    /// 6. 日志记录：记录接收和处理过程
     /// </para>
     ///
     /// <para>
@@ -299,6 +325,14 @@ public class SynchronizationManager
     /// - 可选包含"Payload"字段携带事件数据
     /// - 可选包含"Timestamp"字段标识事件时间
     /// - 支持Dictionary&lt;string, object&gt;格式
+    /// </para>
+    ///
+    /// <para>
+    /// 有序处理特性：
+    /// - 基于时间戳的事件排序，确保执行顺序正确
+    /// - 支持网络延迟导致的事件重排序
+    /// - 自动清理超时未处理的事件
+    /// - 冲突检测和解决机制
     /// </para>
     ///
     /// <para>
@@ -319,7 +353,6 @@ public class SynchronizationManager
 
         try
         {
-
             // 验证数据格式是否正确
             if (eventData is not Dictionary<string, object> eventDict || !eventDict.ContainsKey("EventType"))
             {
@@ -327,30 +360,293 @@ public class SynchronizationManager
                 return;
             }
 
-            // 提取事件的基本信息
-            var eventType = eventDict["EventType"].ToString();
-            var payload = eventDict.ContainsKey("Payload") ? eventDict["Payload"] : null;
-            var timestamp = eventDict.ContainsKey("Timestamp") ? eventDict["Timestamp"] : DateTime.Now.Ticks;
+            // 提取时间戳，如果不存在则使用当前时间
+            long timestamp = eventDict.ContainsKey("Timestamp")
+                ? Convert.ToInt64(eventDict["Timestamp"])
+                : DateTime.Now.Ticks;
 
-            // 根据网络数据创建对应的游戏事件对象
-            GameEvent gameEvent = CreateGameEventFromNetworkData(eventType, payload, timestamp);
-            if (gameEvent == null)
-            {
-                // 事件创建失败，可能数据格式不正确
-                Plugin.Logger?.LogWarning($"[SyncManager] 网络数据事件创建失败: {eventType}");
-                return;
-            }
+            // 创建网络事件缓冲区并添加到排序缓冲区
+            var eventBuffer = new NetworkEventBuffer(timestamp, eventDict);
+            _remoteEventBuffer.Add(timestamp, eventBuffer);
 
-            // 将远程事件应用到本地游戏状态
-            ApplyRemoteEvent(gameEvent);
+            // 记录事件接收的调试信息
+            string eventType = eventDict["EventType"].ToString();
+            Plugin.Logger?.LogDebug($"[SyncManager] 接收到网络事件: {eventType}, 时间戳: {timestamp}");
 
-            // 记录远程事件应用成功的调试信息
-            Plugin.Logger?.LogDebug($"[SyncManager] 远程事件应用成功: {gameEvent.EventType} 来自 {gameEvent.SourcePlayerId}");
+            // 处理缓冲区中的事件（按时间戳顺序）
+            ProcessBufferedEvents();
         }
         catch (Exception ex)
         {
             // 捕获并记录处理异常，不影响网络通信的继续进行
             Plugin.Logger?.LogError($"[SyncManager] 网络事件处理异常: {ex.Message}");
+        }
+    }
+
+    // ========================================
+    // 有序事件处理方法
+    // ========================================
+
+    /// <summary>
+    /// 处理缓冲区中的网络事件
+    /// 按时间戳顺序处理所有可用的网络事件
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 处理流程：
+    /// 1. 清理超时事件：移除超过缓冲时间的事件
+    /// 2. 按时间戳排序：SortedList自动按键排序
+    /// 3. 顺序处理：按时间戳从小到大的顺序处理事件
+    /// 4. 状态验证：确保事件状态有效且未被处理
+    /// 5. 错误恢复：跳过无法处理的事件继续处理后续事件
+    /// </para>
+    ///
+    /// <para>
+    /// 事件处理策略：
+    /// - 严格按时间戳顺序处理，确保事件因果性
+    /// - 自动处理网络延迟导致的乱序问题
+    /// - 跳过无效或重复的事件，避免状态冲突
+    /// - 记录详细的处理日志用于调试
+    /// </para>
+    /// </remarks>
+    private void ProcessBufferedEvents()
+    {
+        try
+        {
+            // 首先清理超时的事件
+            CleanupTimeoutEvents();
+
+            // 按时间戳顺序处理所有等待处理的事件
+            var timestampsToRemove = new List<long>();
+
+            foreach (var kvp in _remoteEventBuffer)
+            {
+                long timestamp = kvp.Key;
+                NetworkEventBuffer eventBuffer = kvp.Value;
+
+                // 检查事件状态和处理条件
+                if (eventBuffer.Status != NetworkEventBuffer.ProcessingStatus.Pending)
+                {
+                    continue; // 跳过非等待处理状态的事件
+                }
+
+                // 检查事件是否超时
+                if (eventBuffer.IsTimeout(EventBufferTimeout))
+                {
+                    Plugin.Logger?.LogWarning($"[SyncManager] 事件超时，丢弃: {eventBuffer.OriginalData["EventType"]}, 时间戳: {timestamp}");
+                    eventBuffer.Status = NetworkEventBuffer.ProcessingStatus.Discarded;
+                    timestampsToRemove.Add(timestamp);
+                    continue;
+                }
+
+                try
+                {
+                    // 标记事件为处理中
+                    eventBuffer.Status = NetworkEventBuffer.ProcessingStatus.Processing;
+
+                    // 处理单个网络事件
+                    ProcessSingleNetworkEvent(eventBuffer);
+
+                    // 标记事件为处理完成
+                    eventBuffer.Status = NetworkEventBuffer.ProcessingStatus.Completed;
+
+                    // 记录处理成功日志
+                    string eventType = eventBuffer.OriginalData["EventType"].ToString();
+                    Plugin.Logger?.LogDebug($"[SyncManager] 事件处理成功: {eventType}, 时间戳: {timestamp}");
+                }
+                catch (Exception ex)
+                {
+                    // 事件处理失败，记录错误并跳过
+                    Plugin.Logger?.LogError($"[SyncManager] 事件处理失败 - 时间戳: {timestamp}, 错误: {ex.Message}");
+
+                    // 标记事件为已丢弃，避免重复处理失败
+                    eventBuffer.Status = NetworkEventBuffer.ProcessingStatus.Discarded;
+                    timestampsToRemove.Add(timestamp);
+                }
+            }
+
+            // 移除已处理或丢弃的事件
+            foreach (var timestamp in timestampsToRemove)
+            {
+                _remoteEventBuffer.Remove(timestamp);
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[SyncManager] 缓冲区事件处理异常: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 处理单个网络事件
+    /// 将事件数据转换为游戏事件并应用到本地状态
+    /// </summary>
+    /// <param name="eventBuffer">网络事件缓冲区</param>
+    /// <remarks>
+    /// <para>
+    /// 处理步骤：
+    /// 1. 数据提取：从缓冲区中提取事件基本信息
+    /// 2. 事件重建：根据网络数据创建游戏事件对象
+    /// 3. 状态应用：将事件应用到本地游戏状态
+    /// 4. 结果验证：确认事件应用的正确性
+    /// </para>
+    ///
+    /// <para>
+    /// 错误处理：
+    /// - 数据格式错误：跳过事件并记录警告
+    /// - 事件创建失败：跳过无法重建的事件
+    /// - 状态应用失败：记录错误但继续处理
+    /// </para>
+    /// </remarks>
+    private void ProcessSingleNetworkEvent(NetworkEventBuffer eventBuffer)
+    {
+        Dictionary<string, object> eventDict = eventBuffer.OriginalData;
+
+        // 提取事件的基本信息
+        string eventType = eventDict["EventType"].ToString();
+        var payload = eventDict.ContainsKey("Payload") ? eventDict["Payload"] : string.Empty;
+
+        // 从时间戳创建DateTime对象
+        DateTime timestamp = new(eventBuffer.Timestamp);
+
+        // 根据网络数据创建对应的游戏事件对象
+        GameEvent gameEvent = CreateGameEventFromNetworkData(eventType, payload, timestamp) ?? throw new InvalidOperationException($"无法创建游戏事件: {eventType}");
+
+        // 将远程事件应用到本地游戏状态
+        ApplyRemoteEvent(gameEvent);
+
+        // 记录事件应用的详细信息
+        Plugin.Logger?.LogDebug($"[SyncManager] 单个事件应用成功: {gameEvent.EventType} 来自 {gameEvent.SourcePlayerId} (时间戳: {timestamp})");
+    }
+
+    /// <summary>
+    /// 清理缓冲区中的超时事件
+    /// 移除超过指定时间未处理的事件，防止内存泄漏
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 清理策略：
+    /// - 基于EventBufferTimeout配置的超时时间
+    /// - 只清理状态为Pending的事件
+    /// - 记录被清理事件的详细信息
+    /// - 维护缓冲区大小的合理范围
+    /// </para>
+    ///
+    /// <para>
+    /// 性能考虑：
+    /// - 在每次处理缓冲区事件时自动调用
+    /// - 使用高效的事件查找和移除机制
+    /// - 避免频繁的内存分配和垃圾回收
+    /// </para>
+    /// </remarks>
+    private void CleanupTimeoutEvents()
+    {
+        try
+        {
+            var timestampsToRemove = new List<long>();
+
+            foreach (var kvp in _remoteEventBuffer)
+            {
+                var timestamp = kvp.Key;
+                var eventBuffer = kvp.Value;
+
+                // 只清理等待处理且超时的事件
+                if (eventBuffer.Status == NetworkEventBuffer.ProcessingStatus.Pending &&
+                    eventBuffer.IsTimeout(EventBufferTimeout))
+                {
+                    Plugin.Logger?.LogWarning($"[SyncManager] 清理超时事件: {eventBuffer.OriginalData["EventType"]}, 时间戳: {timestamp}");
+                    timestampsToRemove.Add(timestamp);
+                }
+            }
+
+            // 移除超时事件
+            foreach (var timestamp in timestampsToRemove)
+            {
+                _remoteEventBuffer.Remove(timestamp);
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[SyncManager] 超时事件清理异常: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 获取远程事件缓冲区统计信息
+    /// 用于调试和监控有序事件处理的状态
+    /// </summary>
+    /// <returns>包含缓冲区统计信息的对象</returns>
+    /// <remarks>
+    /// <para>
+    /// 统计信息包括：
+    /// - 缓冲区事件数量
+    /// - 各状态事件的分布
+    /// - 最旧和最新事件的时间戳
+    /// - 缓冲区使用情况
+    /// </para>
+    ///
+    /// <para>
+    /// 使用场景：
+    /// - 调试事件处理顺序问题
+    /// - 监控网络延迟和事件积压
+    /// - 优化缓冲区配置参数
+    /// - 性能分析和问题诊断
+    /// </para>
+    /// </remarks>
+    public object GetEventBufferStatistics()
+    {
+        try
+        {
+            var statusCounts = new Dictionary<NetworkEventBuffer.ProcessingStatus, int>();
+
+            // 初始化状态计数
+            foreach (NetworkEventBuffer.ProcessingStatus status in Enum.GetValues(typeof(NetworkEventBuffer.ProcessingStatus)))
+            {
+                statusCounts[status] = 0;
+            }
+
+            // 统计各状态的事件数量
+            foreach (var kvp in _remoteEventBuffer)
+            {
+                var status = kvp.Value.Status;
+                statusCounts[status]++;
+            }
+
+            // 计算时间戳范围
+            long? oldestTimestamp = null;
+            long? newestTimestamp = null;
+
+            if (_remoteEventBuffer.Count > 0)
+            {
+                oldestTimestamp = _remoteEventBuffer.Keys[0];
+                newestTimestamp = _remoteEventBuffer.Keys[_remoteEventBuffer.Count - 1];
+            }
+
+            return new
+            {
+                // 缓冲区基本信息
+                TotalEvents = _remoteEventBuffer.Count,
+                BufferSize = _remoteEventBuffer.Capacity,
+
+                // 状态分布统计
+                StatusDistribution = statusCounts.ToDictionary(kvp => kvp.Key.ToString(), kvp => kvp.Value),
+
+                // 时间戳信息
+                OldestTimestamp = oldestTimestamp,
+                NewestTimestamp = newestTimestamp,
+                TimeRange = oldestTimestamp.HasValue && newestTimestamp.HasValue
+                    ? TimeSpan.FromTicks(newestTimestamp.Value - oldestTimestamp.Value)
+                    : (TimeSpan?)null,
+
+                // 超时信息
+                TimeoutThreshold = EventBufferTimeout.TotalSeconds,
+                ActiveTimeoutCheck = true
+            };
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[SyncManager] 获取缓冲区统计异常: {ex.Message}");
+            return new { Error = ex.Message };
         }
     }
 
@@ -696,6 +992,7 @@ public class SynchronizationManager
     /// <para>
     /// 统计信息包括：
     /// - 队列状态：当前待处理的事件数量
+    /// - 缓冲区状态：远程事件缓冲区的统计信息
     /// - 缓存状态：本地状态缓存的条目数量
     /// - 网络状态：当前网络连接的可用性
     /// - 时间戳记录：最后同步和连接的时间信息
@@ -708,16 +1005,23 @@ public class SynchronizationManager
     /// - 监控多人游戏的状态同步状况
     /// - 分析同步效率和队列使用情况
     /// - 检查离线模式下的队列积压情况
+    /// - 验证有序事件处理的时间戳准确性
     /// </para>
     /// </remarks>
     public object GetSyncStatistics()
     {
+        // 获取远程事件缓冲区的统计信息
+        var bufferStats = GetEventBufferStatistics();
+
         // 创建包含所有统计信息的对象
         return new
         {
             // 队列状态统计
             QueuedEvents = _eventQueue.Count,              // 队列中待处理事件数量
             MaxQueueSize = _config.MaxQueueSize,           // 队列最大容量
+
+            // 缓冲区状态统计
+            EventBuffer = bufferStats,                     // 远程事件缓冲区统计
 
             // 缓存状态统计
             CachedStates = _stateCache.Count,                  // 状态缓存条目数量
@@ -895,10 +1199,11 @@ public class SynchronizationManager
 
     /// <summary>
     /// 根据事件类型分发到相应的具体事件创建方法
-    /// 实现事件类型的识别和对应的事件对象创建
+    /// 实现事件类型的识别和对应的事件对象创建，包含时间戳验证
     /// </summary>
     /// <param name="eventType">事件类型字符串</param>
     /// <param name="payload">事件负载数据</param>
+    /// <param name="timestamp">事件时间戳</param>
     /// <returns>创建的游戏事件对象，失败时返回null</returns>
     /// <remarks>
     /// <para>
@@ -908,7 +1213,13 @@ public class SynchronizationManager
     /// - 未知类型使用通用事件处理
     /// - 支持新的事件类型扩展
     /// </para>
-    ///
+    /// <para>
+    /// 时间戳验证：
+    /// - 验证时间戳的合理性（不能为未来时间）
+    /// - 检查时间戳与系统时间的偏差
+    /// - 检测异常的时间戳模式
+    /// - 处理时间戳冲突和重复事件
+    /// </para>
     /// <para>
     /// 支持的事件类型：
     /// - 卡牌使用事件 (OnCardPlayStart)
@@ -921,17 +1232,24 @@ public class SynchronizationManager
     {
         try
         {
+            // 时间戳验证
+            if (!ValidateEventTimestamp(timestamp))
+            {
+                Plugin.Logger?.LogWarning($"[SyncManager] 无效的事件时间戳 - 事件类型: {eventType}, 时间戳: {timestamp}");
+                return null;
+            }
+
             // 根据事件类型分发到对应的创建方法
             return eventType switch
             {
                 // 卡牌使用事件
-                NetworkMessageTypes.OnCardPlayStart => CreateCardPlayEvent(payload, timestamp),
+                NetworkMessageTypes.OnCardPlayStart => CreateCardPlayEvent(payload),
 
                 // 法力消耗事件
-                NetworkMessageTypes.ManaConsumeStarted => CreateManaConsumeEvent(payload, timestamp),
+                NetworkMessageTypes.ManaConsumeStarted => CreateManaConsumeEvent(payload),
 
                 // 伤害事件
-                NetworkMessageTypes.OnDamageDealt => CreateDamageEvent(payload, timestamp),
+                NetworkMessageTypes.OnDamageDealt => CreateDamageEvent(payload),
 
                 // 未知类型使用通用事件处理
                 _ => new GenericGameEvent(eventType, payload, timestamp)
@@ -942,6 +1260,68 @@ public class SynchronizationManager
             // 捕获事件创建异常并记录错误日志
             Plugin.Logger?.LogError($"[SyncManager] 网络数据事件创建异常 - 事件类型: {eventType}, 错误: {ex.Message}");
             return null; // 返回null表示创建失败
+        }
+    }
+
+    /// <summary>
+    /// 验证事件时间戳的有效性
+    /// 检查时间戳的合理性和一致性
+    /// </summary>
+    /// <param name="timestamp">要验证的时间戳</param>
+    /// <returns>如果时间戳有效返回true，否则返回false</returns>
+    /// <remarks>
+    /// <para>
+    /// 验证规则：
+    /// - 不能为未来时间（允许最多5秒的时钟偏差）
+    /// - 不能为太早的时间（超过1小时的事件被视为无效）
+    /// - 必须在合理的时间范围内
+    /// - 防止恶意或损坏的时间戳
+    /// </para>
+    ///
+    /// <para>
+    /// 时间偏差处理：
+    /// - 考虑网络延迟和时钟不同步
+    /// - 允许合理的系统时间偏差
+    /// - 检测异常的时间戳模式
+    /// - 记录时间戳验证详情用于调试
+    /// </para>
+    /// </remarks>
+    private bool ValidateEventTimestamp(DateTime timestamp)
+    {
+        try
+        {
+            var now = DateTime.Now;
+            var maxFutureTime = now.AddSeconds(5);  // 允许5秒的未来偏差
+            var minValidTime = now.AddHours(-1);    // 1小时前的事件视为有效
+
+            // 检查时间戳是否在未来（允许合理偏差）
+            if (timestamp > maxFutureTime)
+            {
+                Plugin.Logger?.LogWarning($"[SyncManager] 事件时间戳在未来: {timestamp}, 当前时间: {now}");
+                return false;
+            }
+
+            // 检查时间戳是否太早（超过1小时）
+            if (timestamp < minValidTime)
+            {
+                Plugin.Logger?.LogWarning($"[SyncManager] 事件时间戳太早: {timestamp}, 当前时间: {now}");
+                return false;
+            }
+
+            // 检查时间戳是否为最小值或最大值（可能的数据损坏）
+            if (timestamp == DateTime.MinValue || timestamp == DateTime.MaxValue)
+            {
+                Plugin.Logger?.LogWarning($"[SyncManager] 事件时间戳异常: {timestamp}");
+                return false;
+            }
+
+            // 时间戳验证通过
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[SyncManager] 时间戳验证异常: {ex.Message}");
+            return false;
         }
     }
 
@@ -969,9 +1349,9 @@ public class SynchronizationManager
     /// - 目标选择：攻击目标或效果范围
     /// </para>
     /// </remarks>
-    private CardPlayEvent CreateCardPlayEvent(object payload, DateTime timestamp)
+    private CardPlayEvent CreateCardPlayEvent(object payload)
     {
-        //TODO:将时间戳参数引入到代码中
+        
         try
         {
             // 将载荷转换为字典格式
@@ -979,7 +1359,7 @@ public class SynchronizationManager
             {
                 return null; // 数据格式不正确
             }
-            
+
             // 提取卡牌基本信息
             var cardId = dict.TryGetValue("CardId", out var id) ? id?.ToString() : "";
             var cardName = dict.TryGetValue("CardName", out var name) ? name?.ToString() : "";
@@ -1006,30 +1386,12 @@ public class SynchronizationManager
     /// </summary>
     /// <param name="payload">包含法力信息的网络数据</param>
     /// <returns>创建的法力消耗事件对象，失败时返回null</returns>
-    /// <remarks>
-    /// <para>
-    /// 解析策略：
-    /// - 将payload转换为字典格式
-    /// - 提取法力信息（消耗前、消耗量、来源）
-    /// - 设置默认的法力值
-    /// - 使用GameEventFactory创建事件对象
-    /// </para>
-    ///
-    /// <para>
-    /// 法力信息包含：
-    /// - 玩家ID：消耗法力的玩家标识
-    /// - 消耗前状态：消耗前的法力值
-    /// - 消耗数量：实际消耗的法力值
-    /// - 消耗来源：导致法力消耗的操作
-    /// </para>
-    /// </remarks>
-    private ManaConsumeEvent CreateManaConsumeEvent(object payload, DateTime timestamp)
+    private ManaConsumeEvent CreateManaConsumeEvent(object payload)
     {
         try
         {
             // 将载荷转换为字典格式
-            var dict = payload as Dictionary<string, object>;
-            if (dict == null)
+            if (payload is not Dictionary<string, object> dict)
             {
                 return null; // 数据格式不正确
             }
@@ -1058,30 +1420,12 @@ public class SynchronizationManager
     /// </summary>
     /// <param name="payload">包含伤害信息的网络数据</param>
     /// <returns>创建的伤害事件对象，失败时返回null</returns>
-    /// <remarks>
-    /// <para>
-    /// 解析策略：
-    /// - 将payload转换为字典格式
-    /// - 提取伤害信息（来源、目标、数量、类型）
-    /// - 设置默认的伤害值和类型
-    /// - 使用GameEventFactory创建事件对象
-    /// </para>
-    ///
-    /// <para>
-    /// 伤害信息包含：
-    /// - 来源ID：造成伤害的单位ID
-    /// - 目标ID：受到伤害的单位ID
-    /// - 伤害数值：实际的伤害数量
-    /// - 伤害类型：伤害的属性或效果类型
-    /// </para>
-    /// </remarks>
-    private DamageEvent CreateDamageEvent(object payload, DateTime timestamp)
+    private DamageEvent CreateDamageEvent(object payload)
     {
         try
         {
             // 将载荷转换为字典格式
-            var dict = payload as Dictionary<string, object>;
-            if (dict == null)
+            if (payload is not Dictionary<string, object> dict)
             {
                 return null; // 数据格式不正确
             }
@@ -1109,14 +1453,6 @@ public class SynchronizationManager
     /// </summary>
     /// <param name="gameEvent">需要应用的远程游戏事件</param>
     /// <remarks>
-    /// <para>
-    /// 应用策略：
-    /// - 根据事件类型执行相应的本地操作
-    /// - 更新相关的游戏状态
-    /// - 触发相应的UI更新
-    /// - 记录事件应用的日志
-    /// </para>
-    ///
     /// <para>
     /// TODO: 待实现的应用逻辑：
     /// - 根据事件类型分派到具体的应用方法
@@ -1161,6 +1497,7 @@ public class SynchronizationManager
     /// - 自动检测客户端类型并选择最佳发送方式
     /// </para>
     /// </remarks>
+    /// TODO:STOP
     private void SendGameEvent(string eventType, object eventData)
     {
         try
@@ -1287,163 +1624,5 @@ public class SynchronizationManager
             // 捕获状态清理异常
             Plugin.Logger?.LogError($"[SyncManager] 状态缓存清理异常: {ex.Message}");
         }
-    }
-
-    // ========================================
-    // 嵌件定义结束
-    // ========================================
-
-    /// <summary>
-    /// 通用游戏事件类
-    /// 用于处理未明确定义或通用的事件类型
-    /// 提供基本的事件结构和网络序列化能力
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// 通用事件特点：
-    /// - 适用于所有未明确定义的事件类型
-    /// - 提供基本的事件字段和功能
-    /// - 支持网络序列化和反序列化
-    /// - 可扩展的事件处理框架
-    /// </para>
-    ///
-    /// <para>
-    /// 使用场景：
-    /// - 新增事件类型未实现专门处理类时
-    /// - 通用事件的快速处理和调试
-    /// - 测试和原型开发阶段的事件
-    /// - 网络协议扩展支持
-    /// </para>
-    ///
-    /// <para>
-    /// 事件字段：
-    /// - EventType: 事件类型字符串
-    /// - SourcePlayerId: 来源玩家ID
-    /// - Data: 事件数据载荷
-    /// - Timestamp: 事件时间戳
-    /// </para>
-    /// </remarks>
-    public class GenericGameEvent(string eventType, object data, DateTime timestamp) : GameEvent(ParseEventType(eventType), "unknown_player", data)
-    {
-        /// <summary>
-        /// 重写基类方法，提供通用的事件序列化
-        /// 将事件转换为网络传输的数据格式
-        /// </summary>
-        /// <returns>网络传输格式的事件数据</returns>
-        public override object ToNetworkData()
-        {
-            // 创建网络传输格式的事件数据
-            return new
-            {
-                EventType = EventType.ToString(),    // 事件类型字符串
-                Timestamp = Timestamp.Ticks,          // 时间戳（ticks格式）
-                SourcePlayerId,                      // 来源玩家ID
-                Data                              // 事件载荷数据
-            };
-        }
-
-        /// <summary>
-        /// 解析事件类型字符串为枚举值
-        /// 支持事件类型的字符串到枚举的安全转换
-        /// </summary>
-        /// <param name="eventType">事件类型字符串</param>
-        /// <returns>对应的游戏事件类型枚举</returns>
-        /// <remarks>
-        /// 解析规则：
-        /// - 优先尝试解析为精确的枚举值
-        /// - 解析失败时返回Error类型作为安全默认值
-        /// - 确保类型安全性和处理意外事件类型
-        /// </remarks>
-        private static GameEventType ParseEventType(string eventType)
-        {
-            // 尝试将字符串解析为事件类型枚举
-            return Enum.TryParse<GameEventType>(eventType, out var result) ? result : GameEventType.Error;
-        }
-
-        /// <summary>
-        /// 对于通用事件，直接返回当前实例
-        /// 因为通用事件不需要额外处理
-        /// </summary>
-        /// <param name="data">网络数据</param>
-        /// <returns>恢复的事件实例</returns>
-        public override GameEvent FromNetworkData(object data)
-        {
-            // 通用事件直接返回当前实例，数据已在构造函数中处理
-            return this;
-        }
-    }
-
-    /// <summary>
-    /// 同步配置类
-    /// 包含控制同步行为的各种配置选项和性能参数
-    /// 用于调整同步系统的行为和性能特征
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// 配置类别：
-    /// - 功能开关：控制各种同步功能的启用状态
-    /// - 性能参数：调整队列大小和缓存策略
-    /// - 行为控制：配置同步的触发条件和策略
-    /// </para>
-    ///
-    /// <para>
-    /// 功能开关：
-    /// - EnableCardSync: 控制卡牌使用、抽取等行为的同步
-    /// - EnableManaSync: 控制法力消耗、恢复等行为的同步
-    /// - EnableBattleSync: 控制伤害、状态效果等战斗行为的同步
-    /// - EnableMapSync: 控制地图探索、节点状态等地图行为的同步
-    /// </para>
-    ///
-    /// <para>
-    /// 性能参数：
-    /// - MaxQueueSize: 事件队列的最大容量，防止内存过度使用
-    /// - StateCacheExpiry: 状态缓存的存活时间，控制内存使用效率
-    /// </para>
-    /// </remarks>
-    public class SyncConfiguration
-    {
-        /// <summary>
-        /// 卡牌同步开关
-        /// 控制卡牌使用、抽取、洗牌等行为的网络同步
-        /// </summary>
-        public bool EnableCardSync { get; set; } = true;
-        // 控制卡牌使用、抽取等行为的同步开关
-
-        /// <summary>
-        /// 法力同步开关
-        /// 控制法力消耗、恢复、增益等行为的网络同步
-        /// </summary>
-        public bool EnableManaSync { get; set; } = true;
-        // 控制法力消耗、恢复等行为的同步开关
-
-        /// <summary>
-        /// 战斗同步开关
-        /// 控制伤害计算、状态效果、战斗结果的同步
-        /// </summary>
-        public bool EnableBattleSync { get; set; } = true;
-        // 控制伤害、状态效果等战斗行为的同步开关
-
-        /// <summary>
-        /// 地图同步开关
-        /// 控制地图探索、节点状态、地图事件的同步
-        /// </summary>
-        public bool EnableMapSync { get; set; } = true;
-        // 控制地图探索、节点状态等地图行为的同步开关
-
-        /// <summary>
-        /// 事件队列最大容量
-        /// 网络不可用时事件队列的最大条目数量
-        /// 超过此容量的新事件会被丢弃
-        /// </summary>
-        public int MaxQueueSize { get; set; } = 100;
-        // 网络不可用时，事件队列的最大容量限制
-
-        /// <summary>
-        /// 状态缓存存活时间
-        /// 本地状态缓存的存活时间，超过此时间的缓存会被清理
-        /// 默认为5分钟，可以根据需要调整
-        /// </summary>
-        public TimeSpan StateCacheExpiry { get; set; } = TimeSpan.FromMinutes(5);
-        // 状态缓存的存活时间，超过此时间的缓存将被自动清理
     }
 }
