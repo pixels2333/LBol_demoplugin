@@ -6,7 +6,6 @@ using System.Text.Json;
 using HarmonyLib;
 using LBoL.Core;
 using LBoL.Core.Units;
-using LBoL.EntityLib;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
@@ -148,7 +147,7 @@ public class ExhibitSyncPatch
                 "NotifyActivationChange"
             };
 
-            var methods = new List<System.Reflection.MethodBase>();
+            List<MethodBase> methods = [];
 
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
@@ -246,7 +245,7 @@ public class ExhibitSyncPatch
                 "ModifyCounter"
             };
 
-            var methods = new List<System.Reflection.MethodBase>();
+            List<MethodBase> methods = [];
 
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {

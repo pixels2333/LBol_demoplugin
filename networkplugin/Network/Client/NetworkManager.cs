@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using NetworkPlugin.Network.NetworkPlayer;
 
 namespace NetworkPlugin.Network.Client;
@@ -28,7 +27,7 @@ public class NetworkManager(INetworkClient networkClient) : INetworkManager
     /// 玩家列表，存储所有已连接的玩家信息
     /// 键为玩家ID，值为网络玩家实例
     /// </summary>
-    private readonly Dictionary<string, INetworkPlayer> _players = new();
+    private readonly Dictionary<string, INetworkPlayer> _players = [];
 
     /// <summary>
     /// 当前客户端的玩家实例

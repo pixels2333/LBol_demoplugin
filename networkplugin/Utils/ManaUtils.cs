@@ -1,7 +1,5 @@
 using System;
 using LBoL.Base;
-using LBoL.Core;
-using LBoL.Core.Units;
 
 namespace NetworkPlugin.Utils
 {

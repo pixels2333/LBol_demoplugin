@@ -85,7 +85,7 @@ public class PlayCardAction_Patch
             }
 
             // 获取玩家和战斗信息
-            var player = card.Zone.Owner as PlayerUnit;
+            PlayerUnit player = card.Zone.Owner as PlayerUnit;
             var battle = player.Battle;
 
             // 构建详细的卡牌使用同步数据
@@ -178,7 +178,7 @@ public class PlayCardAction_Patch
             }
 
             // 获取玩家和战斗信息
-            var player = card.Zone.Owner as PlayerUnit;
+            PlayerUnit player = card.Zone.Owner as PlayerUnit;
             var battle = player.Battle;
 
             // 构建卡牌使用完成的详细同步数据

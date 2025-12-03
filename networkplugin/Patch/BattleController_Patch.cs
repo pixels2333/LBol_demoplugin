@@ -7,7 +7,7 @@ using LBoL.Core.Battle;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
-using Mono.Cecil;
+using NetworkPlugin;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 
@@ -172,7 +172,7 @@ public class BattleController_Patch
 
             // 将所有StatusEffect对象转换为字符串形式
             // 使用ToString()方法确保序列化兼容性
-            var _statusEffectList = new List<string>();
+            List<string> _statusEffectList = [];
             foreach (var se in _statusEffects)
             {
                 _statusEffectList.Add(se.ToString());
@@ -225,8 +225,8 @@ public class BattleController_Patch
                                        .Field("_statusEffects")?
                                        .GetValue<OrderedList<StatusEffect>>();
 
-            // 将所有StatusEffect对象转换为字符串形式
-            var _statusEffectList = new List<string>();
+        // 将所有StatusEffect对象转换为字符串形式
+        List<string> _statusEffectList = [];
             foreach (var se in _statusEffects)
             {
                 _statusEffectList.Add(se.ToString());

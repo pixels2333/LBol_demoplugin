@@ -1,7 +1,4 @@
-
-using System;
 using LBoL.Core;
-using UnityEngine.InputSystem.EnhancedTouch;
 
 namespace NetworkPlugin.Network.NetworkPlayer;
 

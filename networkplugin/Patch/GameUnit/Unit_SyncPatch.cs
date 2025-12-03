@@ -1,8 +1,6 @@
 using System;
 using HarmonyLib;
-using LBoL.Core;
 using LBoL.Core.Units;
-using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 
 namespace NetworkPlugin.Patch.GameUnit;

@@ -1,15 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Threading;
-using System.Threading.Tasks;
 using LiteNetLib;
 using LiteNetLib.Utils;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NetworkPlugin.Network.Client;
-using NetworkPlugin.Network.Server;
 
 namespace NetworkPlugin.Network.Server;
 
@@ -152,7 +147,7 @@ public class RelayServer
                     _logger.LogInformation($"[RelayServer] Client connected: {peer.EndPoint}");
 
                     // 创建玩家会话
-                    var session = new PlayerSession
+                    PlayerSession session = new PlayerSession
                     {
                         Peer = peer,
                         PlayerId = GeneratePlayerId(),
@@ -445,7 +440,7 @@ public class RelayServer
             var roomId = GenerateRoomId();
 
             // 创建房间
-            var room = new NetworkRoom(roomId, roomConfig, _logger);
+            NetworkRoom room = new NetworkRoom(roomId, roomConfig, _logger);
 
             lock (_lock)
             {
@@ -502,7 +497,7 @@ public class RelayServer
     private string GenerateRoomId()
     {
         // 简单的6位随机ID
-        var random = new Random();
+        Random random = new Random();
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         return new string(Enumerable.Repeat(chars, 6)
             .Select(s => s[random.Next(s.Length)]).ToArray());
@@ -515,7 +510,7 @@ public class RelayServer
     {
         try
         {
-            var writer = new NetDataWriter();
+            NetDataWriter writer = new NetDataWriter();
             writer.Put(message.Type);
             writer.Put(JsonSerializer.Serialize(message.Payload));
             peer.Send(writer, deliveryMethod);

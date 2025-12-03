@@ -7,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Snapshot;
-using PlayerStateSnapshot = NetworkPlugin.Network.Snapshot.PlayerStateSnapshot;
 
 namespace NetworkPlugin.Network.Reconnection;
 
@@ -126,7 +125,7 @@ public class ReconnectionManager
     /// </summary>
     public FullStateSnapshot CreateFullSnapshot()
     {
-        var snapshot = new FullStateSnapshot
+        FullStateSnapshot snapshot = new FullStateSnapshot
         {
             Timestamp = DateTime.Now.Ticks,
             GameState = new GameStateSnapshot(),
@@ -217,7 +216,7 @@ public class ReconnectionManager
     /// </summary>
     private PlayerStateSnapshot CreatePlayerStateSnapshot(string playerId)
     {
-        var snapshot = new PlayerStateSnapshot
+        PlayerStateSnapshot snapshot = new PlayerStateSnapshot
         {
             PlayerId = playerId,
             Timestamp = DateTime.Now.Ticks,

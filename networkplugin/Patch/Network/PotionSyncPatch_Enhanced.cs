@@ -4,9 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using HarmonyLib;
-using LBoL.ConfigData;
 using LBoL.Core;
-using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,7 +40,7 @@ public class PotionSyncPatch
                 "ObtainTool"
             };
 
-            var methods = new List<System.Reflection.MethodBase>();
+            List<MethodBase> methods = [];
 
             // 搜索可能添加Tool卡的方法
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
@@ -264,7 +262,7 @@ public class PotionSyncPatch
                 "SellTool"
             };
 
-            var methods = new List<System.Reflection.MethodBase>();
+            List<MethodBase> methods = [];
 
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
@@ -555,7 +553,7 @@ public class PotionSyncPatch
     {
         try
         {
-            var toolCards = new List<Card>();
+            List<Card> toolCards = [];
             // TODO: 获取玩家所有的Tool卡（手牌、牌库、弃牌堆等）
             return toolCards;
         }

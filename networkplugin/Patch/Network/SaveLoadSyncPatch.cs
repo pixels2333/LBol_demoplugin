@@ -1,12 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using HarmonyLib;
-using LBoL.Core;
-using LBoL.Core.SaveData;
-using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
@@ -42,7 +39,7 @@ public class SaveLoadSyncPatch
                 "CreateSave"
             };
 
-            var methods = new List<System.Reflection.MethodBase>();
+            List<MethodBase> methods = [];
 
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
@@ -130,7 +127,7 @@ public class SaveLoadSyncPatch
                 };
 
                 // 缓存存档快照用于同步
-                var snapshot = new GameStateSnapshot
+                GameStateSnapshot snapshot = new GameStateSnapshot
                 {
                     PlayerId = __state.PlayerId,
                     SaveType = __state.SaveType,
@@ -171,7 +168,7 @@ public class SaveLoadSyncPatch
                 "LoadSave"
             };
 
-            var methods = new List<System.Reflection.MethodBase>();
+            List<MethodBase> methods = [];
 
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
@@ -288,7 +285,7 @@ public class SaveLoadSyncPatch
                 "CheckpointSave"
             };
 
-            var methods = new List<System.Reflection.MethodBase>();
+            List<MethodBase> methods = [];
 
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {

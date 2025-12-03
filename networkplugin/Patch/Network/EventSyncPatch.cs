@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
-using HarmonyLib;
-using LBoL.Core;
 using LBoL.Core.Adventures;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Client;
@@ -431,7 +429,7 @@ public class EventSyncPatch
             }
 
             var votes = _playerVotes[eventId];
-            var optionCounts = new Dictionary<int, int>();
+            Dictionary<int, int> optionCounts = [];
 
             // 统计投票
             foreach (var vote in votes)

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using BepInEx.Logging;
-using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Client;
 
 namespace NetworkPlugin.Chat;
@@ -111,7 +110,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
         // string username = GetLocalPlayerName();
 
         // 临时使用占位符信息创建消息对象
-        var message = new ChatMessage("local_player_id", "玩家", content, type);
+        ChatMessage message = new ChatMessage("local_player_id", "玩家", content, type);
 
         try
         {

@@ -137,7 +137,7 @@ public class ChatUI : MonoBehaviour
             return;
         }
 
-        var chatMessage = new ChatMessage
+        ChatMessage chatMessage = new ChatMessage
         {
             MessageId = Guid.NewGuid().ToString(),
             PlayerId = GetCurrentPlayerId(),
@@ -180,7 +180,7 @@ public class ChatUI : MonoBehaviour
     /// </summary>
     public void AddSystemMessage(string message)
     {
-        var systemMessage = new ChatMessage
+        ChatMessage systemMessage = new ChatMessage
         {
             MessageId = Guid.NewGuid().ToString(),
             PlayerId = "System",

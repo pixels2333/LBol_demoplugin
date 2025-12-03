@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
+using System.Reflection;
 using HarmonyLib;
-using LBoL.Core;
 using LBoL.Core.Cards;
-using LBoL.EntityLib;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
@@ -106,7 +104,7 @@ public class CardLibrarySyncPatch
                 "Exile"
             };
 
-            var methods = new List<System.Reflection.MethodBase>();
+            List<MethodBase> methods = [];
 
             // 搜索LBoL中包含弃牌逻辑的方法
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
@@ -225,7 +223,7 @@ public class CardLibrarySyncPatch
                 "ReorderDeck"
             };
 
-            var methods = new List<System.Reflection.MethodBase>();
+            List<MethodBase> methods = [];
 
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
@@ -310,7 +308,7 @@ public class CardLibrarySyncPatch
                 "MakeEthereal"
             };
 
-            var methods = new List<System.Reflection.MethodBase>();
+            List<MethodBase> methods = [];
 
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {

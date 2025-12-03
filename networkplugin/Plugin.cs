@@ -53,7 +53,7 @@ public class Plugin : BaseUnityPlugin
     private void Awake()
     {
         // 第1步：创建服务容器，用于依赖注入管理
-        var services = new ServiceCollection();
+        ServiceCollection services = new ServiceCollection();
 
         // 注入配置服务，BepInEx框架已内置配置服务，此处跳过
         // 使用 BepInEx 的原生配置系统进行插件配置管理

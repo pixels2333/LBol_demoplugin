@@ -164,7 +164,7 @@ public class HostAuthorityManager
         // TODO: 实现完整的四层验证逻辑
 
         // 初始化验证结果对象
-        var validationResult = new RequestValidationResult
+        RequestValidationResult validationResult = new RequestValidationResult
         {
             RequestId = request.RequestId,
             IsValid = false,                    // 默认为无效，直到验证通过
@@ -358,7 +358,7 @@ public class HostAuthorityManager
         // 5. 结束回合操作 - EndTurnAction
 
         // 创建权威操作对象
-        var authoritativeAction = new AuthoritativeAction
+        AuthoritativeAction authoritativeAction = new AuthoritativeAction
         {
             ActionId = Guid.NewGuid().ToString(),                // 生成唯一操作ID
             RequestId = request.RequestId,                        // 关联原请求ID
@@ -391,7 +391,7 @@ public class HostAuthorityManager
     private void RecordProcessedRequest(ClientRequest request, RequestValidationResult result)
     {
         // 创建处理记录对象
-        var processedRequest = new ProcessedRequest
+        ProcessedRequest processedRequest = new ProcessedRequest
         {
             RequestId = request.RequestId,                        // 请求ID
             PlayerId = request.PlayerId,                          // 玩家ID

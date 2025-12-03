@@ -1,6 +1,6 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using LBoL.Core;
 using LBoL.Core.Units;
 
@@ -101,7 +101,7 @@ namespace NetworkPlugin.Utils
         /// <returns>玩家列表</returns>
         public static List<PlayerUnit> GetPlayersInBattle()
         {
-            var players = new List<PlayerUnit>();
+            List<PlayerUnit> players = [];
 
             try
             {
@@ -129,7 +129,7 @@ namespace NetworkPlugin.Utils
         /// <returns>敌人列表</returns>
         public static List<EnemyUnit> GetEnemiesInBattle()
         {
-            var enemies = new List<EnemyUnit>();
+            List<EnemyUnit> enemies = [];
 
             try
             {
@@ -150,7 +150,7 @@ namespace NetworkPlugin.Utils
                         {
                             // 获取存活的敌人单位
                             var unitsProperty = enemyGroup.GetType().GetProperty("Units");
-                            var units = unitsProperty?.GetValue(enemyGroup) as System.Collections.IEnumerable;
+                            IEnumerable units = unitsProperty?.GetValue(enemyGroup) as System.Collections.IEnumerable;
 
                             if (units != null)
                             {

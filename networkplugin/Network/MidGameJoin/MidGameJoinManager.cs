@@ -1,13 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using LBoL.Core;
-using LBoL.Core.Cards;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NetworkPlugin.Network.Client;
 
 namespace NetworkPlugin.Network.MidGameJoin;
 
@@ -107,7 +101,7 @@ public class MidGameJoinManager
                 }
 
                 // 如果房间已在游戏中，进入请求队列
-                var request = new GameJoinRequest
+                GameJoinRequest request = new GameJoinRequest
                 {
                     RequestId = GenerateRequestId(),
                     RoomId = roomId,
@@ -156,7 +150,7 @@ public class MidGameJoinManager
             var joinToken = GenerateJoinToken();
 
             // 创建批准加入信息
-            var approvedJoin = new ApprovedJoin
+            ApprovedJoin approvedJoin = new ApprovedJoin
             {
                 RequestId = requestId,
                 RoomId = request.RoomId,
@@ -286,12 +280,12 @@ public class MidGameJoinManager
     /// </summary>
     private List<string> GenerateStartingCards(int progress)
     {
-        var cards = new List<string>
-        {
+        List<string> cards =
+        [
             // 基础卡牌
             "Strike",
             "Defend"
-        };
+        ];
 
         // 根据进度添加额外卡牌
         if (progress > 20)
@@ -313,7 +307,7 @@ public class MidGameJoinManager
     /// </summary>
     private List<string> GenerateStartingExhibits(int progress)
     {
-        var exhibits = new List<string>();
+        List<string> exhibits = [];
 
         if (progress > 10)
         {
@@ -334,7 +328,7 @@ public class MidGameJoinManager
     /// </summary>
     private Dictionary<string, int> GenerateStartingPotions(int progress)
     {
-        var potions = new Dictionary<string, int>();
+        Dictionary<string, int> potions = [];
 
         if (progress > 25)
         {

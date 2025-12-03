@@ -1,8 +1,4 @@
-using System;
 using System.Collections.Generic;
-using LBoL.Core;
-using LBoL.Core.Cards;
-using LBoL.Core.StatusEffects;
 
 namespace NetworkPlugin.Network.Snapshot;
 
@@ -50,11 +46,6 @@ public class FullStateSnapshot
     /// 模组版本（用于MOD兼容性）
     /// </summary>
     public string ModVersion { get; set; } = "1.0.0";
-
-    public static implicit operator FullStateSnapshot(FullStateSnapshot v)
-    {
-        throw new NotImplementedException();
-    }
 }
 
 /// <summary>

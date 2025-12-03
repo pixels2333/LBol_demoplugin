@@ -1,9 +1,8 @@
 using System;
-using System.Collections.Generic;
+using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
-using NetworkPlugin.Network.Utils;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -326,7 +325,7 @@ public class NetworkStatusIndicator : MonoBehaviour
     /// </summary>
     private string GenerateConnectionDetails()
     {
-        var details = new System.Text.StringBuilder();
+        StringBuilder details = new System.Text.StringBuilder();
         details.AppendLine("=== 网络连接详情 ===");
         details.AppendLine($"状态: {_lastConnectionState}");
         details.AppendLine($"延迟: {GetPingValue()}ms");

@@ -402,7 +402,7 @@ public class EnemySyncPatch
     /// </summary>
     private static List<EnemyStatusEffectInfo> GetEnemyStatusEffects(EnemyUnit enemy)
     {
-        var effects = new List<EnemyStatusEffectInfo>();
+        List<EnemyStatusEffectInfo> effects = [];
 
         try
         {

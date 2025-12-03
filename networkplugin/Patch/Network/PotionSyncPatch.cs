@@ -1,10 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
-using HarmonyLib;
-using LBoL.ConfigData;
-using LBoL.Core;
 using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Client;

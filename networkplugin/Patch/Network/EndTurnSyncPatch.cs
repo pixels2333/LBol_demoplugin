@@ -1,8 +1,4 @@
 using System;
-using HarmonyLib;
-using LBoL.Core.Battle.BattleActions;
-using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Network.Client;
 
 namespace NetworkPlugin.Patch.Network;
 

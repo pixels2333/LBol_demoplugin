@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using LBoL.Core.Units;
 
@@ -64,7 +65,7 @@ namespace NetworkPlugin.Utils
 
             try
             {
-                var basicStatus = GetUnitStatus(player) as dynamic;
+                dynamic basicStatus = GetUnitStatus(player) as dynamic;
 
                 return new
                 {
@@ -104,7 +105,7 @@ namespace NetworkPlugin.Utils
 
             try
             {
-                var basicStatus = GetUnitStatus(enemy) as dynamic;
+                dynamic basicStatus = GetUnitStatus(enemy) as dynamic;
 
                 return new
                 {
@@ -136,7 +137,7 @@ namespace NetworkPlugin.Utils
         /// <returns>状态效果列表</returns>
         public static List<object> GetStatusEffects(GameUnit unit)
         {
-            var statusEffects = new List<object>();
+            List<object> statusEffects = [];
 
             try
             {
@@ -144,7 +145,7 @@ namespace NetworkPlugin.Utils
                 var statusEffectsProperty = unit.GetType().GetProperty("StatusEffects");
                 if (statusEffectsProperty != null)
                 {
-                    var effects = statusEffectsProperty.GetValue(unit) as System.Collections.IEnumerable;
+                    IEnumerable effects = statusEffectsProperty.GetValue(unit) as System.Collections.IEnumerable;
                     if (effects != null)
                     {
                         foreach (var effect in effects)
@@ -174,7 +175,7 @@ namespace NetworkPlugin.Utils
                     var prop = unit.GetType().GetProperty(propName);
                     if (prop != null)
                     {
-                        var effects = prop.GetValue(unit) as System.Collections.IEnumerable;
+                        IEnumerable effects = prop.GetValue(unit) as System.Collections.IEnumerable;
                         if (effects != null)
                         {
                             foreach (var effect in effects)
@@ -615,7 +616,7 @@ namespace NetworkPlugin.Utils
         /// <returns>意图列表</returns>
         public static List<object> GetCurrentIntentions(EnemyUnit enemy)
 {
-    var intentions = new List<object>();
+    List<object> intentions = [];
 
     try
     {

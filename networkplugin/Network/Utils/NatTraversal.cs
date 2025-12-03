@@ -1,12 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
-using LiteNetLib;
-using LiteNetLib.Utils;
+using BepInEx.Logging;
 
 namespace NetworkPlugin.Network.Utils;
 
@@ -41,8 +40,8 @@ public class NatTraversal
         PortRestrictedCone, // 端口受限锥形NAT
         Symmetric,          // 对称NAT
         Blocked,            // 阻止NAT穿透
-        DoubleNat          // 双重NAT
-        Hairpin             // 发夹型NAT
+        DoubleNat,          // 双重NAT
+        Hairpin,            // 发夹型NAT
     }
 
     /// <summary>
@@ -100,19 +99,18 @@ public class NatTraversal
                 externalPort = internalPort;
             }
 
-            var result = new UpnpMappingResult
+            UpnpMappingResult result = new UpnpMappingResult
             {
                 InternalPort = internalPort,
                 ExternalPort = externalPort,
                 Protocol = "UDP",
-                Description = description
+                Description = description,
+                // TODO: 实现实际的UPnP映射
+                // 这里需要使用Windows的UPnP API或第三方库
+
+                // 模拟UPnP映射成功
+                Success = true
             };
-
-            // TODO: 实现实际的UPnP映射
-            // 这里需要使用Windows的UPnP API或第三方库
-
-            // 模拟UPnP映射成功
-            result.Success = true;
             _upnpEnabled = true;
 
             _logger?.LogInfo($"[NATTraversal] UPnP mapping enabled: {internalPort} -> {externalPort}");
@@ -196,19 +194,18 @@ public class NatTraversal
         try
         {
             var server = stunServer ?? DefaultStunServers[0];
-            var result = new StunResponse
+            StunResponse result = new StunResponse
             {
-                StunServer = server
+                StunServer = server,
+                // TODO: 实现真实的STUN协议交互
+                // 这里需要实现STUN绑定请求和响应解析
+
+                // 模拟STUN响应
+                Success = true,
+                DetectedNatType = NatType.OpenInternet, // 模拟开放网络
+                PublicEndPoint = new IPEndPoint(IPAddress.Parse("203.0.113.1"), 12345),
+                SupportsHairpinning = true
             };
-
-            // TODO: 实现真实的STUN协议交互
-            // 这里需要实现STUN绑定请求和响应解析
-
-            // 模拟STUN响应
-            result.Success = true;
-            result.DetectedNatType = NatType.OpenInternet; // 模拟开放网络
-            result.PublicEndPoint = new IPEndPoint(IPAddress.Parse("203.0.113.1"), 12345);
-            result.SupportsHairpinning = true;
 
             _logger?.LogInfo($"[NATTraversal] NAT type detected: {result.DetectedNatType}");
             return result;
@@ -230,8 +227,8 @@ public class NatTraversal
     /// </summary>
     public static async Task<List<StunResponse>> DetectNatTypeMultiple()
     {
-        var results = new List<StunResponse>();
-        var tasks = new List<Task<StunResponse>>();
+        List<StunResponse> results = [];
+        List<Task<StunResponse>> tasks = [];
 
         // 并发查询多个STUN服务器
         foreach (var server in DefaultStunServers.Take(3))
@@ -257,14 +254,14 @@ public class NatTraversal
     {
         try
         {
-            var info = new NatInfo
+            NatInfo info = new NatInfo
             {
                 LocalEndPoint = new IPEndPoint(GetLocalIpAddress(), listenPort),
                 LastUpdate = DateTime.Now
             };
 
             // 检测端口是否可用
-            using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
+            using (Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
             {
                 socket.Bind(info.LocalEndPoint);
                 var localPort = ((IPEndPoint)socket.LocalEndPoint).Port;
@@ -297,7 +294,7 @@ public class NatTraversal
     {
         try
         {
-            using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
+            using (Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
             {
                 socket.ReceiveTimeout = timeoutMs;
                 socket.Bind(new IPEndPoint(IPAddress.Any, 0));
@@ -390,7 +387,7 @@ public class NatTraversal
     {
         try
         {
-            using (var client = new System.Net.WebClient())
+            using (WebClient client = new System.Net.WebClient())
             {
                 var response = await client.DownloadStringTaskAsync("https://api.ipify.org");
                 if (IPAddress.TryParse(response.Trim(), out var ip))
@@ -472,7 +469,7 @@ public class NatTraversal
     {
         try
         {
-            var report = new StringBuilder();
+            StringBuilder report = new StringBuilder();
             report.AppendLine("=== NAT Traversal Report ===");
             report.AppendLine($"UPnP Enabled: {_upnpEnabled}");
             report.AppendLine($"Registered Peers: {_peerNatInfo.Count}");

@@ -3,7 +3,6 @@ using System.Text.Json;
 using LiteNetLib;
 using LiteNetLib.Utils;
 using NetworkPlugin.Core;
-using NetworkPlugin.Events;
 using NetworkPlugin.Network.NetworkPlayer;
 
 namespace NetworkPlugin.Network.Client;
@@ -220,7 +219,7 @@ public class NetworkClient : INetworkClient
             OnGameEventReceived?.Invoke(eventType, eventData);
 
             // 将事件传递给同步管理器处理
-            SynchronizationManager.Instance.ProcessNetworkEvent(new
+            SynchronizationManager.Instance.ProcessEventFromNetwork(new
             {
                 EventType = eventType,
                 Payload = eventData,

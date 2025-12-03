@@ -2,18 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using HarmonyLib;
-using LBoL.Core;
 using LBoL.Core.GapOptions;
 using LBoL.Core.Stations;
 using LBoL.Core.Units;
 using LBoL.Presentation.UI.Panels;
 using Microsoft.Extensions.DependencyInjection;
-using Mono.Cecil.Pdb;
 using NetworkPlugin;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Utils;
-using Spine;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -44,7 +41,7 @@ public class CampfireSyncPatch
                 return;
             }
 
-            var gapOptions = new List<object>();
+            List<object> gapOptions = [];
             foreach (var option in __instance.GapOptions)
             {
                 gapOptions.Add(new

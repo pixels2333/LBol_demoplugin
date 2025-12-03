@@ -62,7 +62,7 @@ public class PlayerSession
     /// <summary>
     /// 玩家元数据（可用于存储额外信息）
     /// </summary>
-    public Dictionary<string, object> Metadata { get; set; } = new(); // 玩家元数据：存储玩家的自定义扩展信息
+    public Dictionary<string, object> Metadata { get; set; } = []; // 玩家元数据：存储玩家的自定义扩展信息
 
     /// <summary>
     /// 获取远程终结点

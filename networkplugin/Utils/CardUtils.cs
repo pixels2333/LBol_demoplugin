@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using LBoL.Core;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
-using LBoL.EntityLib;
 
 namespace NetworkPlugin.Utils
 {
@@ -84,7 +82,7 @@ namespace NetworkPlugin.Utils
         /// <returns>包含手牌中所有卡牌信息的列表，如果玩家或手牌区域为空则返回空列表</returns>
         public static List<object> GetHandCardsInfo(PlayerUnit player)
         {
-            var handCards = new List<object>();
+            List<object> handCards = [];
 
             try
             {
@@ -117,7 +115,7 @@ namespace NetworkPlugin.Utils
         /// <returns>包含抽牌堆中所有卡牌信息的列表，如果游戏运行状态或牌库为空则返回空列表</returns>
         public static List<object> GetDrawDeckInfo(GameRunController gameRun)
         {
-            var drawDeck = new List<object>();
+            List<object> drawDeck = [];
 
             try
             {
@@ -149,7 +147,7 @@ namespace NetworkPlugin.Utils
         /// <returns>包含弃牌堆中所有卡牌信息的列表，如果玩家或弃牌区域为空则返回空列表</returns>
         public static List<object> GetDiscardPileInfo(PlayerUnit player)
         {
-            var discardPile = new List<object>();
+            List<object> discardPile = [];
 
             try
             {

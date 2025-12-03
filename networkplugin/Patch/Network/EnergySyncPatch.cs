@@ -2,7 +2,6 @@ using System;
 using System.Text.Json;
 using HarmonyLib;
 using LBoL.Base;
-using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using Microsoft.Extensions.DependencyInjection;

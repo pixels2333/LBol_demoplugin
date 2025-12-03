@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-using System.Threading;
 using BepInEx.Logging;
 using LiteNetLib;
 using LiteNetLib.Utils;
@@ -142,7 +141,7 @@ public class NetworkServer
             _logger?.LogInfo($"[Server] Client connected: {peer.EndPoint}");
 
             // 创建玩家会话
-            var session = new PlayerSession
+            PlayerSession session = new PlayerSession
             {
                 Peer = peer,
                 PlayerId = $"Player_{peer.Id}",
@@ -414,7 +413,7 @@ public class NetworkServer
             {
                 try
                 {
-                    var writer = new NetDataWriter();
+                NetDataWriter writer = new NetDataWriter();
                     writer.Put(eventType);
                     writer.Put(json);
                     kvp.Value.Peer.Send(writer, DeliveryMethod.ReliableOrdered);
@@ -465,7 +464,7 @@ public class NetworkServer
         try
         {
             var json = JsonSerializer.Serialize(data);
-            var writer = new NetDataWriter();
+        NetDataWriter writer = new NetDataWriter();
             writer.Put(messageType);
             writer.Put(json);
             peer.Send(writer, DeliveryMethod.ReliableOrdered);
