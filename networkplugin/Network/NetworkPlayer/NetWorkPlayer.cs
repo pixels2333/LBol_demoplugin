@@ -69,8 +69,8 @@ public class NetWorkPlayer
     /// </summary>
     /// <summary>
     /// 初始化玩家属性的构造函数
-     /// 设置所有玩家属性的默认值，准备游戏开始状态
-     /// </summary>
+    /// 设置所有玩家属性的默认值，准备游戏开始状态
+    /// </summary>
     public NetWorkPlayer()
     {
         // 玩家身份信息初始化

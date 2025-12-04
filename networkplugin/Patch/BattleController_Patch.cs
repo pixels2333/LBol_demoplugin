@@ -30,7 +30,7 @@ public class BattleController_Patch
     /// 通过模块服务获取网络客户端和其他服务
     /// </summary>
     private static IServiceProvider serviceProvider = ModService.ServiceProvider;
-    
+
     /// <summary>
     /// 网络客户端属性，用于发送网络请求
     /// 采用延迟加载模式，避免初始化时的依赖问题
@@ -213,42 +213,42 @@ public class BattleController_Patch
     {
         // 向服务器上传player的状态信息，确保移除操作在网络中同步
 
-            // 验证服务提供者是否已初始化
-            if (serviceProvider == null)
-            {
-                Plugin.Logger?.LogDebug("[StatusSync] ServiceProvider not initialized for RemoveStatusEffect");
-                return;
-            }
+        // 验证服务提供者是否已初始化
+        if (serviceProvider == null)
+        {
+            Plugin.Logger?.LogDebug("[StatusSync] ServiceProvider not initialized for RemoveStatusEffect");
+            return;
+        }
 
-            // 使用Harmony的Traverse工具访问私有的_statusEffects字段
-            var _statusEffects = Traverse.Create(target)
-                                       .Field("_statusEffects")?
-                                       .GetValue<OrderedList<StatusEffect>>();
+        // 使用Harmony的Traverse工具访问私有的_statusEffects字段
+        var _statusEffects = Traverse.Create(target)
+                                   .Field("_statusEffects")?
+                                   .GetValue<OrderedList<StatusEffect>>();
 
         // 将所有StatusEffect对象转换为字符串形式
         List<string> _statusEffectList = [];
-            foreach (var se in _statusEffects)
-            {
-                _statusEffectList.Add(se.ToString());
-            }
-
-            // 构建状态效果同步数据
-            var json = JsonSerializer.Serialize(new
-            {
-                statusEffects = _statusEffectList,
-                TargetId = target?.Id, // 添加目标ID用于服务器端识别
-                Timestamp = DateTime.Now.Ticks
-            });
-
-            // TODO: 请求应该添加用户ID - 需要在后续版本中完善
-            networkClient.SendRequest("UpdateAfterTryRemoveStatusEffects", json);
-
-            Plugin.Logger?.LogInfo($"[StatusSync] Status effects updated after removal for unit {target?.Id}");
+        foreach (var se in _statusEffects)
+        {
+            _statusEffectList.Add(se.ToString());
         }
+
+        // 构建状态效果同步数据
+        var json = JsonSerializer.Serialize(new
+        {
+            statusEffects = _statusEffectList,
+            TargetId = target?.Id, // 添加目标ID用于服务器端识别
+            Timestamp = DateTime.Now.Ticks
+        });
+
+        // TODO: 请求应该添加用户ID - 需要在后续版本中完善
+        networkClient.SendRequest("UpdateAfterTryRemoveStatusEffects", json);
+
+        Plugin.Logger?.LogInfo($"[StatusSync] Status effects updated after removal for unit {target?.Id}");
+    }
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[StatusSync] Error in RemoveStatusEffect_Postfix: {ex.Message}\n{ex.StackTrace}");
-        }
+}
     }
 
     /// <summary>
@@ -263,49 +263,49 @@ public class BattleController_Patch
     /// 确保网络中所有玩家看到的治疗结果一致
     /// </remarks>
     [HarmonyPatch(typeof(BattleController), "Heal")]
-    [HarmonyPostfix]
-    public static void Heal_Postfix(BattleController __instance, Unit target)
+[HarmonyPostfix]
+public static void Heal_Postfix(BattleController __instance, Unit target)
+{
+    try
     {
-        try
+        // 向服务器上传玩家治疗后的完整血量信息
+
+        // 验证服务提供者是否已初始化
+        if (serviceProvider == null)
         {
-            // 向服务器上传玩家治疗后的完整血量信息
-
-            // 验证服务提供者是否已初始化
-            if (serviceProvider == null)
-            {
-                Plugin.Logger?.LogDebug("[HealSync] ServiceProvider not initialized");
-                return;
-            }
-
-            // 验证网络客户端是否可用
-            if (networkClient == null)
-            {
-                Plugin.Logger?.LogDebug("[HealSync] Network client not available");
-                return;
-            }
-
-            // 构建治疗后的状态同步数据
-            var json = JsonSerializer.Serialize(new
-            {
-                Hp = target.Hp.ToString(),           // 当前HP
-                Block = target.Block.ToString(),     // 当前格挡值
-                Shield = target.Shield.ToString(),   // 当前护盾值
-                Status = target.Status.ToString(),   // 状态效果摘要
-                TargetId = target?.Id,               // 目标ID
-                MaxHp = target.MaxHp.ToString(),     // 最大HP
-                IsAlive = target.IsAlive,            // 存活状态
-                Timestamp = DateTime.Now.Ticks       // 治疗时间戳
-            });
-
-            // TODO: 请求应该添加用户ID - 需要在后续版本中完善
-            networkClient.SendRequest("UpdateHealthAfterHeal", json);
-
-            Plugin.Logger?.LogInfo($"[HealSync] Health updated after heal for unit {target?.Id}: " +
-                                  $"HP {target.Hp}/{target.MaxHp}, Block {target.Block}, Shield {target.Shield}");
+            Plugin.Logger?.LogDebug("[HealSync] ServiceProvider not initialized");
+            return;
         }
-        catch (Exception ex)
+
+        // 验证网络客户端是否可用
+        if (networkClient == null)
         {
-            Plugin.Logger?.LogError($"[HealSync] Error in Heal_Postfix: {ex.Message}\n{ex.StackTrace}");
+            Plugin.Logger?.LogDebug("[HealSync] Network client not available");
+            return;
         }
+
+        // 构建治疗后的状态同步数据
+        var json = JsonSerializer.Serialize(new
+        {
+            Hp = target.Hp.ToString(),           // 当前HP
+            Block = target.Block.ToString(),     // 当前格挡值
+            Shield = target.Shield.ToString(),   // 当前护盾值
+            Status = target.Status.ToString(),   // 状态效果摘要
+            TargetId = target?.Id,               // 目标ID
+            MaxHp = target.MaxHp.ToString(),     // 最大HP
+            IsAlive = target.IsAlive,            // 存活状态
+            Timestamp = DateTime.Now.Ticks       // 治疗时间戳
+        });
+
+        // TODO: 请求应该添加用户ID - 需要在后续版本中完善
+        networkClient.SendRequest("UpdateHealthAfterHeal", json);
+
+        Plugin.Logger?.LogInfo($"[HealSync] Health updated after heal for unit {target?.Id}: " +
+                              $"HP {target.Hp}/{target.MaxHp}, Block {target.Block}, Shield {target.Shield}");
     }
+    catch (Exception ex)
+    {
+        Plugin.Logger?.LogError($"[HealSync] Error in Heal_Postfix: {ex.Message}\n{ex.StackTrace}");
+    }
+}
 }

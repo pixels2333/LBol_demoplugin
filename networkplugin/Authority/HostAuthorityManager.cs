@@ -75,9 +75,9 @@ public class HostAuthorityManager
     private List<ProcessedRequest> _requestHistory;
 
     /// <summary>
-/// 构造函数，初始化权威管理器的所有组件
-     /// 设置默认的空状态，准备接收和处理客户端请求
-     /// </summary>
+    /// 构造函数，初始化权威管理器的所有组件
+    /// 设置默认的空状态，准备接收和处理客户端请求
+    /// </summary>
     public HostAuthorityManager()
     {
         // 初始化权威状态字典，用于存储游戏权威数据

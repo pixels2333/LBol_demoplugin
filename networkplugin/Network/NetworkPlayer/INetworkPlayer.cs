@@ -79,8 +79,8 @@ public interface INetworkPlayer
 
     /// <summary>
     /// 是否已结束回合
-     /// 回合制游戏中的重要状态，控制游戏流程
-     /// </summary>
+    /// 回合制游戏中的重要状态，控制游戏流程
+    /// </summary>
     bool endturn { get; set; }
 
     /// <summary>
@@ -228,7 +228,7 @@ public interface INetworkPlayer
     // void UpdatePowers(bool updateServer);
 
     // void UpdateTempPowers(bool updateServer);
-    
+
     /// <summary>
     /// 更新状态效果信息
     /// 同步玩家的状态效果变化到网络和其他客户端
@@ -293,7 +293,7 @@ public interface INetworkPlayer
     /// </summary>
     /// <param name="damage">受到的伤害值</param>
     void Takedamage(int damage);
-    
+
     /// <summary>
     /// 造成伤害
     /// 使玩家对其他目标造成伤害

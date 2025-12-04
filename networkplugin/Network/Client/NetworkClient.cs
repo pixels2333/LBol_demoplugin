@@ -446,7 +446,7 @@ public class NetworkClient : INetworkClient
         Console.WriteLine($"[Client] Auto-reconnect {(enabled ? "enabled" : "disabled")}, retry interval: {retryInterval}ms");
     }
 
-    
+
 
     #endregion
 }

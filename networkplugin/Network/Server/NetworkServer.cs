@@ -1,3 +1,6 @@
+
+
+//TODO:这个地方用了日志系统和依赖注入,如果使用了分离服务器,需要修改日志系统和依赖注入
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,7 +9,6 @@ using BepInEx.Logging;
 using LiteNetLib;
 using LiteNetLib.Utils;
 
-//TODO:这个地方用了日志系统和依赖注入,如果使用了分离服务器,需要修改日志系统和依赖注入
 namespace NetworkPlugin.Network.Server;
 
 /// <summary>
@@ -93,8 +95,6 @@ public class NetworkServer
         // 注册网络事件处理器
         RegisterEvents();
     }
-
-} // 构造函数：初始化网络服务器，配置监听端口、连接数、密钥和日志记录器
 
     #endregion
 
@@ -216,11 +216,17 @@ public class NetworkServer
         };
     }
 
-} // 注册网络事件处理器，包括连接请求、连接建立、断开连接和消息接收事件
+    private void HandleSystemMessage(NetPeer fromPeer, string messageType, NetPacketReader dataReader)
+    {
+        //TODO:未实现
+        throw new NotImplementedException();
+
+    }
+
 
     #endregion
 
-  #region 消息处理
+    #region 消息处理
 
     /// <summary>
     /// 检查消息类型是否为游戏事件消息
@@ -272,41 +278,6 @@ public class NetworkServer
         {
             Console.WriteLine($"[Server] Error handling game event: {ex.Message}");
             _logger?.LogError($"[Server] Error handling game event: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 处理系统消息
-    /// 根据消息类型分发到相应的处理方法
-    /// </summary>
-    /// <param name="fromPeer">发送消息的网络对等体</param>
-    /// <param name="messageType">消息类型</param>
-    /// <param name="dataReader">数据读取器</param>
-    private void HandleSystemMessage(NetPeer fromPeer, string messageType, NetDataReader dataReader)
-    {
-        try
-        {
-            switch (messageType)
-            {
-                case "PlayerJoined":
-                    HandlePlayerJoined(fromPeer, dataReader);
-                    break;
-                case "Heartbeat":
-                    HandleHeartbeat(fromPeer);
-                    break;
-                case "GetSelf_REQUEST":
-                    HandleGetSelfRequest(fromPeer, dataReader);
-                    break;
-                default:
-                    Console.WriteLine($"[Server] Unknown system message: {messageType}");
-                    _logger?.LogWarning($"[Server] Unknown system message: {messageType}");
-                    break;
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[Server] Error handling system message {messageType}: {ex.Message}");
-            _logger?.LogError($"[Server] Error handling system message {messageType}: {ex.Message}");
         }
     }
 
@@ -413,7 +384,7 @@ public class NetworkServer
             {
                 try
                 {
-                NetDataWriter writer = new NetDataWriter();
+                    NetDataWriter writer = new NetDataWriter();
                     writer.Put(eventType);
                     writer.Put(json);
                     kvp.Value.Peer.Send(writer, DeliveryMethod.ReliableOrdered);
@@ -464,7 +435,7 @@ public class NetworkServer
         try
         {
             var json = JsonSerializer.Serialize(data);
-        NetDataWriter writer = new NetDataWriter();
+            NetDataWriter writer = new NetDataWriter();
             writer.Put(messageType);
             writer.Put(json);
             peer.Send(writer, DeliveryMethod.ReliableOrdered);

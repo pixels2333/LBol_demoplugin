@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using NetworkPlugin.Network.Messages;
+using NetworkPlugin.Network.Server;
 
-namespace NetworkPlugin.Network.Server;
+namespace NetworkPlugin.Network.Room;
 
 /// <summary>
 /// 网络房间 - 管理房间内的玩家和消息广播
@@ -268,69 +270,4 @@ public class NetworkRoom(string roomId, RoomConfig config, ILogger logger)
             };
         }
     }
-}
-
- // 网络房间类：管理房间内的玩家连接、消息广播和游戏状态
-
-/// <summary>
-/// 加入房间结果
-/// </summary>
-public class JoinResult
-{
-    public bool Success { get; set; }
-    public string? ErrorMessage { get; set; }
-
-    public static JoinResult Success()
-    {
-        return new JoinResult { Success = true };
-    }
-
-    public static JoinResult Failed(string errorMessage)
-    {
-        return new JoinResult { Success = false, ErrorMessage = errorMessage };
-    }
-}
-
-/// <summary>
-/// 房间配置
-/// </summary>
-public class RoomConfig
-{
-    public int MaxPlayers { get; set; } = 4;
-    public bool IsGameStarted { get; set; } = false;
-    public bool IsPublic { get; set; } = true;
-    public string? Password { get; set; }
-    public string? GameMode { get; set; }
-    public string? Description { get; set; }
-
-    public static RoomConfig Default()
-    {
-        return new RoomConfig { MaxPlayers = 4 };
-    }
-}
-
-/// <summary>
-/// 房间状态信息
-/// </summary>
-public class RoomStatus
-{
-    public string RoomId { get; set; } = string.Empty;
-    public int PlayerCount { get; set; }
-    public int MaxPlayers { get; set; }
-    public string HostPlayerId { get; set; } = string.Empty;
-    public bool IsInGame { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public List<string> PlayerIds { get; set; } = [];
-    public int Ping { get; set; }
-}
-
-/// <summary>
-/// 房间列表过滤器
-/// </summary>
-public class RoomFilter
-{
-    public bool? IsPublic { get; set; }
-    public int? MaxPlayers { get; set; }
-    public bool? IsInGame { get; set; }
-    public string? GameMode { get; set; }
 }

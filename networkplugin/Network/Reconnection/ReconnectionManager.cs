@@ -234,7 +234,7 @@ public class ReconnectionManager
             IsInBattle = false, // TODO: 检查是否在战斗
             ReconnectToken = string.Empty
         };
- 
+
         return snapshot;
     }
 

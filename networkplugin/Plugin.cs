@@ -2,6 +2,7 @@ using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
 using Microsoft.Extensions.DependencyInjection;
+using NetworkPlugin.Configuration;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.NetworkPlayer;
@@ -34,6 +35,12 @@ public class Plugin : BaseUnityPlugin
     private NetWorkPlayer netWorkPlayer;
 
     /// <summary>
+    /// 配置管理器实例，管理插件的所有配置项
+    /// 使用BepInEx原生的配置系统，自动加载和保存配置
+    /// </summary>
+    public static ConfigManager ConfigManager { get; private set; }
+
+    /// <summary>
     /// 服务提供者，负责管理和解析所有注册的服务接口
     /// 使用依赖注入模式，管理网络管理器、客户端等核心服务的生命周期
     /// </summary>
@@ -52,11 +59,19 @@ public class Plugin : BaseUnityPlugin
     /// </summary>
     private void Awake()
     {
+        // 插件启动逻辑开始
+        Logger = base.Logger;
+        Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
+
+        // 初始化配置管理器，使用BepInEx原生的配置系统
+        ConfigManager = new ConfigManager(Config);
+        Logger.LogInfo("配置管理器已初始化");
+
         // 第1步：创建服务容器，用于依赖注入管理
         ServiceCollection services = new ServiceCollection();
 
-        // 注入配置服务，BepInEx框架已内置配置服务，此处跳过
-        // 使用 BepInEx 的原生配置系统进行插件配置管理
+        // 注册配置管理器到DI容器，供其他服务使用
+        services.AddSingleton(ConfigManager);
 
         // 第2步：注册服务接口和对应的实现类
         // Scoped 服务模式：在每次请求的生命周期内创建一次实例
@@ -71,7 +86,7 @@ public class Plugin : BaseUnityPlugin
 
         // 第4步：使用服务提供者获取所需服务实例
         // ServiceProvider 负责解析和根据配置提供相应的服务实例
-        // 可以从容器中获取任何已注册的服务接口实现
+        // 可以从容器中获取任何已注册的服务
         // var service = serviceProvider.GetService<IService>(); // 示例服务获取
 
         // 第5步：调用服务方法执行具体功能
@@ -79,10 +94,6 @@ public class Plugin : BaseUnityPlugin
 
         // 将服务提供者注册到模块服务中，供其他组件使用
         ModService.ServiceProvider = serviceProvider;
-
-        // 插件启动逻辑开始
-        Logger = base.Logger;
-        Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
 
         // 安全检查：确保GameObject不为空
         if (gameObject == null)
@@ -94,12 +105,12 @@ public class Plugin : BaseUnityPlugin
         // 设置GameObject在场景切换时不被销毁，确保插件持久运行
         DontDestroyOnLoad(gameObject);
 
-        // 记录插件加载完成日志
-        Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
-
         // 应用所有Harmony补丁，修改游戏行为以支持联机功能
         harmony.PatchAll();
         Logger.LogInfo("补丁已加载");
+
+        // 输出当前配置信息到日志
+        LogCurrentConfig();
     }
 
     /// <summary>
@@ -138,10 +149,33 @@ public class Plugin : BaseUnityPlugin
         // 释放依赖注入容器的资源
         // 防止内存泄漏和资源未释放问题
         // 如果serviceProvider实现了IDisposable接口，需要在此处进行Dispose操作
-        
+
         serviceProvider?.Dispose();
 
         // 记录插件销毁日志
         Logger?.LogInfo("Plugin has been destroyed and resources cleaned up.");
+    }
+
+    /// <summary>
+    /// 输出当前配置信息到日志，用于调试和验证配置加载
+    /// </summary>
+    private void LogCurrentConfig()
+    {
+        Logger.LogInfo("=== 当前配置信息 ===");
+        Logger.LogInfo($"功能开关:");
+        Logger.LogInfo($"  卡牌同步: {ConfigManager.EnableCardSync.Value}");
+        Logger.LogInfo($"  法力同步: {ConfigManager.EnableManaSync.Value}");
+        Logger.LogInfo($"  战斗同步: {ConfigManager.EnableBattleSync.Value}");
+        Logger.LogInfo($"  地图同步: {ConfigManager.EnableMapSync.Value}");
+        Logger.LogInfo($"性能参数:");
+        Logger.LogInfo($"  最大队列大小: {ConfigManager.MaxQueueSize.Value}");
+        Logger.LogInfo($"  缓存过期时间: {ConfigManager.StateCacheExpiryMinutes.Value} 分钟");
+        Logger.LogInfo($"  网络超时时间: {ConfigManager.NetworkTimeoutSeconds.Value} 秒");
+        Logger.LogInfo($"  最大重连尝试: {ConfigManager.MaxReconnectAttempts.Value}");
+        Logger.LogInfo($"网络参数:");
+        Logger.LogInfo($"  服务器IP: {ConfigManager.ServerIP.Value}");
+        Logger.LogInfo($"  服务器端口: {ConfigManager.ServerPort.Value}");
+        Logger.LogInfo($"  日志详细程度: {ConfigManager.LogVerbosity.Value}");
+        Logger.LogInfo("===================");
     }
 }

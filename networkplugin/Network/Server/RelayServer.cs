@@ -1,17 +1,21 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using LiteNetLib;
 using LiteNetLib.Utils;
 using Microsoft.Extensions.Logging;
+using NetworkPlugin.Configuration;
+using NetworkPlugin.Network.Room;
 
 namespace NetworkPlugin.Network.Server;
 
 /// <summary>
 /// 基于LiteNetLib的中继服务器 - 为NAT穿透和P2P连接提供支持
-/// 参考杀戮尖塔Together in Spire的P2P + Steam Relay架构
-/// 重要性: ⭐⭐⭐⭐⭐ (网络架构基础)
+/// 提供房间管理、玩家会话管理和消息转发功能
+/// 支持房间创建、加入、离开、玩家踢出等操作
+/// 实现心跳检测、超时清理和错误处理机制
 /// TODO: 需要实现完整的房间创建、加入、消息转发逻辑
 /// </summary>
 public class RelayServer
@@ -24,7 +28,7 @@ public class RelayServer
     /// <summary>
     /// 服务器配置
     /// </summary>
-    private readonly RelayServerConfig _config;
+    private readonly ConfigManager _configManager;
 
     /// <summary>
     /// 房间列表 - 房间ID到房间对象的映射
@@ -59,17 +63,17 @@ public class RelayServer
     /// <summary>
     /// 实例化中继服务器
     /// </summary>
-    public RelayServer(RelayServerConfig config, ILogger<RelayServer> logger, IServiceProvider serviceProvider)
+    public RelayServer(ILogger<RelayServer> logger, IServiceProvider serviceProvider, ConfigManager configManager)
     {
-        _config = config;
         _logger = logger;
         _serviceProvider = serviceProvider;
+        _configManager = configManager;
         _rooms = [];
         _playerSessions = [];
         _isRunning = false;
 
         InitializeNetManager();
-    } 
+    }
 
     /// <summary>
     /// 初始化LiteNetLib网络管理器
@@ -79,13 +83,10 @@ public class RelayServer
         _listener = new EventBasedNetListener();
         _netManager = new NetManager(_listener)
         {
-            IPv6Enabled = IPv6Mode.Disabled,
-            UnsyncedDeliveryEvent = true,
             UnsyncedEvents = true,
             AutoRecycle = true,
-            DisconnectTimeout = _config.DisconnectTimeoutSeconds * 1000,
-            // PingInterval = 1000, // 每1秒发送一次ping
-            // ConnectionRequestTime = 5000 // 连接请求超时时间
+            DisconnectTimeout = _configManager.NetworkTimeoutSeconds.Value * 1000,
+            PingInterval = 1000, // 每1秒发送一次ping
         };
 
         RegisterEvents();
@@ -106,7 +107,7 @@ public class RelayServer
                     _logger.LogInformation($"[RelayServer] Connection request from {request.RemoteEndPoint}");
 
                     // 检查最大连接数
-                    if (_netManager.PeersCount >= _config.MaxConnections)
+                    if (_netManager.PeersCount >= _configManager.RelayServerMaxConnections.Value)
                     {
                         _logger.LogWarning($"[RelayServer] Rejecting connection: max connections reached");
                         request.Reject();
@@ -114,11 +115,10 @@ public class RelayServer
                     }
 
                     // 读取连接密钥
-                    var dataReader = request.Data;
-                    string connectionKey = dataReader.GetString();
+                    string connectionKey = request.Data.GetString();
 
                     // 验证密钥
-                    if (connectionKey != _config.ConnectionKey)
+                    if (connectionKey != _configManager.RelayServerConnectionKey.Value)
                     {
                         _logger.LogWarning($"[RelayServer] Rejecting connection: invalid key");
                         request.Reject();
@@ -147,15 +147,17 @@ public class RelayServer
                     _logger.LogInformation($"[RelayServer] Client connected: {peer.EndPoint}");
 
                     // 创建玩家会话
-                    PlayerSession session = new PlayerSession
+                    string playerId = GeneratePlayerId();
+                    PlayerSession session = new()
                     {
                         Peer = peer,
-                        PlayerId = GeneratePlayerId(),
-                        PlayerName = $"Player_{GeneratePlayerId().Substring(0, 6)}",
+                        PlayerId = playerId,
+                        PlayerName = $"Player_{playerId.Substring(0, 6)}",
                         ConnectedAt = DateTime.UtcNow,
                         LastHeartbeat = DateTime.UtcNow,
                         IsConnected = true
                     };
+                    //TODO:stop
 
                     _playerSessions[peer] = session;
 
@@ -310,6 +312,42 @@ public class RelayServer
         }
     } // 处理收到的消息：根据消息类型路由到相应的处理方法，支持房间创建、加入、消息等功能
 
+    //TODO:未实现
+    private void HandleHeartbeat(NetPeer fromPeer, NetworkMessage message)
+    {
+        throw new NotImplementedException();
+    }
+
+    private void HandleKickPlayer(NetPeer fromPeer, NetworkMessage message)
+    {
+        throw new NotImplementedException();
+    }
+
+    private void HandleGetRoomList(NetPeer fromPeer, NetworkMessage message)
+    {
+        throw new NotImplementedException();
+    }
+
+    private void HandleDirectMessage(NetPeer fromPeer, NetworkMessage message, DeliveryMethod deliveryMethod)
+    {
+        throw new NotImplementedException();
+    }
+
+    private void HandleRoomMessage(NetPeer fromPeer, NetworkMessage message, DeliveryMethod deliveryMethod)
+    {
+        throw new NotImplementedException();
+    }
+
+    private void HandleLeaveRoom(NetPeer fromPeer, NetworkMessage message)
+    {
+        throw new NotImplementedException();
+    }
+
+    private void HandleJoinRoom(NetPeer fromPeer, NetworkMessage message)
+    {
+        throw new NotImplementedException();
+    }
+
     /// <summary>
     /// 启动中继服务器
     /// </summary>
@@ -326,8 +364,8 @@ public class RelayServer
             _cancellationTokenSource = new CancellationTokenSource();
 
             // 启动LiteNetLib网络管理器
-            _netManager.Start(_config.Port);
-            _logger.LogInformation($"[RelayServer] Server started on port {_config.Port}");
+            _netManager.Start(_configManager.RelayServerPort.Value);
+            _logger.LogInformation($"[RelayServer] Server started on port {_configManager.RelayServerPort.Value}");
 
             _isRunning = true;
 
@@ -339,7 +377,7 @@ public class RelayServer
             };
             _serverThread.Start();
 
-            _logger.LogInformation($"[RelayServer] Server started successfully with max connections: {_config.MaxConnections}");
+            _logger.LogInformation($"[RelayServer] Server started successfully with max connections: {_configManager.RelayServerMaxConnections.Value}");
         }
         catch (Exception ex)
         {
@@ -558,18 +596,3 @@ public class RelayServer
     // TODO: 实现其他消息处理方法
     // HandleJoinRoom, HandleLeaveRoom, HandleRoomMessage, HandleDirectMessage, HandleHeartbeat, HandleGetRoomList, HandleKickPlayer
 } // 基于LiteNetLib的中继服务器：为NAT穿透和P2P连接提供支持，管理房间创建、玩家连接和消息转发
-
-/// <summary>
-/// 中继服务器配置
-/// </summary>
-public class RelayServerConfig
-{
-    public int Port { get; set; } = 8888; // 服务器监听端口：默认8888端口
-    public int MaxConnections { get; set; } = 1000; // 最大连接数：服务器最多支持的客户端连接数
-    public int MaxRooms { get; set; } = 100; // 最大房间数：服务器最多支持的游戏房间数量
-    public int MaxPlayersPerRoom { get; set; } = 4; // 每间房最大玩家数：单个房间支持的最大玩家数量
-    public int DisconnectTimeoutSeconds { get; set; } = 30; // 断开连接超时：连接断开检测的超时时间
-    public string ServerName { get; set; } = "LBoL Relay Server"; // 服务器名称：显示给客户端的服务器标识
-    public string ConnectionKey { get; set; } = "LBoL_Network_Plugin"; // 连接密钥：客户端连接时需要验证的安全密钥
-    public bool EnableNatPunchthrough { get; set; } = true; // 启用NAT穿透：是否开启NAT穿透功能
-}

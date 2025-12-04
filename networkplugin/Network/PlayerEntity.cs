@@ -56,8 +56,8 @@ public class PlayerEntity
 
     /// <summary>
     /// 构造函数，初始化玩家实体的所有属性
-     /// 设置默认值并创建所有SyncVar同步变量
-     /// </summary>
+    /// 设置默认值并创建所有SyncVar同步变量
+    /// </summary>
     /// <param name="playerId">玩家唯一标识符</param>
     /// <param name="username">玩家显示用户名</param>
     /// <param name="isHost">是否为游戏主机，默认为false</param>

@@ -11,9 +11,9 @@ namespace NetworkPlugin.Network;
 public class SyncVar<T>(string name, T initialValue)
 {
     /// <summary>
-/// 同步变量的名称标识符
-/// </summary>
-public string Name { get; } = name;
+    /// 同步变量的名称标识符
+    /// </summary>
+    public string Name { get; } = name;
 
     private T _value = initialValue;
 
