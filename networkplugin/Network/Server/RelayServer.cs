@@ -7,6 +7,7 @@ using LiteNetLib;
 using LiteNetLib.Utils;
 using Microsoft.Extensions.Logging;
 using NetworkPlugin.Configuration;
+using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.Room;
 
 namespace NetworkPlugin.Network.Server;
@@ -162,12 +163,12 @@ public class RelayServer
                     _playerSessions[peer] = session;
 
                     // 发送欢迎消息
-                    var welcomeMessage = new NetworkMessage
+                    NetworkMessage welcomeMessage = new()
                     {
                         Type = "Welcome",
                         Payload = new
                         {
-                            PlayerId = session.PlayerId,
+                            PlayerId = playerId,
                             ServerTime = DateTime.UtcNow.Ticks
                         },
                         SenderPlayerId = "SERVER"
@@ -432,7 +433,7 @@ public class RelayServer
     /// </summary>
     private void ServerLoop()
     {
-        var token = _cancellationTokenSource!.Token;
+        var token = _cancellationTokenSource.Token;
 
         while (_isRunning && !token.IsCancellationRequested)
         {
@@ -456,6 +457,12 @@ public class RelayServer
         }
     } // 服务器主循环：处理网络事件、清理超时连接和空房间，维持服务器运行状态
 
+    private void CleanupEmptyRooms()
+    {
+        //TODO:未实现
+        throw new NotImplementedException();
+    }
+
     /// <summary>
     /// 处理创建房间请求
     /// </summary>
@@ -463,8 +470,9 @@ public class RelayServer
     {
         try
         {
-            var session = _playerSessions[fromPeer];
-
+            PlayerSession session = _playerSessions[fromPeer];
+            NetworkConnection connection = _rooms[session.CurrentRoomId].GetPlayerConnection(session.PlayerId);
+            NetPeer peer = session.Peer;
             // 如果玩家已在房间中，先离开
             if (!string.IsNullOrEmpty(session.CurrentRoomId))
             {
@@ -472,13 +480,13 @@ public class RelayServer
             }
 
             // 获取房间配置
-            var roomConfig = message.GetPayload<RoomConfig>() ?? RoomConfig.Default();
+            var roomConfig = message.GetRoomConfigPayload() ?? RoomConfig.Default();
 
             // 生成唯一房间ID
             var roomId = GenerateRoomId();
 
             // 创建房间
-            NetworkRoom room = new NetworkRoom(roomId, roomConfig, _logger);
+            NetworkRoom room = new(roomId, roomConfig, _logger);
 
             lock (_lock)
             {
@@ -486,9 +494,9 @@ public class RelayServer
             }
 
             // 让创建者加入房间
-            var joinResult = room.AddPlayer(session.PlayerId, session);
+            var joinResult = room.AddPlayer(session.PlayerId, connection);
 
-            if (joinResult.Success)
+            if (joinResult.IsSuccess)
             {
                 session.CurrentRoomId = roomId;
 
@@ -548,7 +556,7 @@ public class RelayServer
     {
         try
         {
-            NetDataWriter writer = new NetDataWriter();
+            NetDataWriter writer = new();
             writer.Put(message.Type);
             writer.Put(JsonSerializer.Serialize(message.Payload));
             peer.Send(writer, deliveryMethod);
@@ -564,7 +572,7 @@ public class RelayServer
     /// </summary>
     private void SendErrorMessage(NetPeer peer, string errorType, string errorMessage)
     {
-        var errorMessageObj = new NetworkMessage
+        NetworkMessage errorMessageObj = new()
         {
             Type = "Error",
             Payload = new

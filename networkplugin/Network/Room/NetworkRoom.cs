@@ -177,7 +177,7 @@ public class NetworkRoom(string roomId, RoomConfig config, ILogger logger)
     {
         lock (_lock)
         {
-            return _players.Keys.ToList();
+            return [.. _players.Keys];
         }
     }
 
