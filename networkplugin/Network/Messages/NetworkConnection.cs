@@ -12,6 +12,7 @@ public class NetworkConnection(string currentRoomId, string playerId, NetworkCli
 
     public void SendMessage(NetworkMessage message)
     {
+        //TODO:向服务器发送消息
         throw new NotImplementedException();
     }
 }

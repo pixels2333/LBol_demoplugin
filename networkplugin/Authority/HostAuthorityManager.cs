@@ -42,7 +42,7 @@ public class HostAuthorityManager
     /// <summary>
     /// 服务提供者实例，用于获取依赖注入的网络服务
     /// </summary>
-    private static IServiceProvider serviceProvider => ModService.ServiceProvider;
+    private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
     /// <summary>
     /// 当前主机玩家的唯一标识符
@@ -250,7 +250,7 @@ public class HostAuthorityManager
 
         // TODO: 实现实际的网络通信逻辑
         // 这里应该调用网络客户端的发送方法，并等待响应
-        var networkClient = serviceProvider?.GetService<INetworkClient>();
+        var networkClient = ServiceProvider?.GetService<INetworkClient>();
         if (networkClient != null && networkClient.IsConnected)
         {
             // TODO: 发送请求并等待响应
@@ -432,7 +432,7 @@ public class HostAuthorityManager
         // 3. 处理发送失败的情况（客户端断线等）
         // 4. 记录广播成功的日志
 
-        var networkClient = serviceProvider?.GetService<INetworkClient>();
+        var networkClient = ServiceProvider?.GetService<INetworkClient>();
         if (networkClient != null && networkClient.IsConnected)
         {
             // TODO: 实际的广播逻辑

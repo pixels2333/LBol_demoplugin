@@ -209,5 +209,11 @@ public class NetworkManager(INetworkClient networkClient) : INetworkManager
         // 解析玩家信息并更新相应的玩家实例
     }
 
+    public INetworkPlayer GetPlayerByPeerId(int peerId)
+    {
+        //TODO: 实现根据PeerId获取玩家实例的逻辑
+        throw new NotImplementedException();
+    }
+
     #endregion
 }

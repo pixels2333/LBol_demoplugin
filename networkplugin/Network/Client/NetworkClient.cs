@@ -110,10 +110,9 @@ public class NetworkClient : INetworkClient
             }
 
             // 获取当前玩家信息并发送加入事件
-            INetworkPlayer networkPlayer = _networkManager.GetPlayer("username");
+            INetworkPlayer networkPlayer = _networkManager.GetPlayerByPeerId(peer.Id);
             var playerInfo = new
             {
-                PlayerId = networkPlayer.username,
                 PlayerName = networkPlayer.username,
                 ConnectionTime = DateTime.Now.Ticks
             };

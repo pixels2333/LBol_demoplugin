@@ -216,7 +216,7 @@ public partial class NatTraversal
         /// </summary>
         public string ErrorMessage { get; set; }
     }
-
+    #endregion
     #region UPnP端口映射
 
     /// <summary>
@@ -329,7 +329,7 @@ public partial class NatTraversal
     {
         try
         {
-            var server = stunServer ?? DefaultStunServers[0];
+            string server = stunServer ?? DefaultStunServers[0];
             StunResponse result = new StunResponse
             {
                 StunServer = server,
@@ -369,7 +369,7 @@ public partial class NatTraversal
         List<Task<StunResponse>> tasks = [];
 
         // 并发查询多个STUN服务器
-        foreach (var server in DefaultStunServers.Take(3))
+        foreach (string server in DefaultStunServers.Take(3))
         {
             tasks.Add(DetectNatType(server));
         }
@@ -395,18 +395,18 @@ public partial class NatTraversal
     {
         try
         {
-            NatInfo info = new NatInfo
+            NatInfo info = new()
             {
                 LocalEndPoint = new IPEndPoint(GetLocalIpAddress(), listenPort),
                 LastUpdate = DateTime.Now
             };
 
             // 检测端口是否可用
-            using (Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
+            using (Socket socket = new(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
             {
-                socket.Bind(info.LocalEndPoint);
-                var localPort = ((IPEndPoint)socket.LocalEndPoint).Port;
-                info.LocalEndPoint = new IPEndPoint(info.LocalEndPoint.Address, localPort);
+                socket.Bind(info.LocalEndPoint);// 绑定到本地端点
+                int localPort = ((IPEndPoint)socket.LocalEndPoint).Port;
+                info.LocalEndPoint = new(info.LocalEndPoint.Address, localPort);
             }
 
             // 检测UPnP支持
@@ -435,22 +435,22 @@ public partial class NatTraversal
     {
         try
         {
-            using (Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
-            {
-                socket.ReceiveTimeout = timeoutMs;
-                socket.Bind(new IPEndPoint(IPAddress.Any, 0));
+            using Socket socket = new(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            socket.ReceiveTimeout = timeoutMs;
+            socket.Bind(new IPEndPoint(IPAddress.Any, 0));
 
-                // 发送测试数据包
-                var testData = Encoding.UTF8.GetBytes("P2P_TEST_" + DateTime.Now.Ticks);
-                await socket.SendToAsync(new ArraySegment<byte>(testData), SocketFlags.None, remoteEndPoint);
+            // 发送测试数据包
+            byte[] testData = Encoding.UTF8.GetBytes("P2P_TEST_" + DateTime.Now.Ticks);
+            await socket.SendToAsync(new ArraySegment<byte>(testData), SocketFlags.None, remoteEndPoint);
 
-                // 等待响应
-                var buffer = new byte[1024];
-                var result = await socket.ReceiveFromAsync(new ArraySegment<byte>(buffer), SocketFlags.None);
+            // 等待响应
+            byte[] buffer = new byte[1024];
+            IPEndPoint responseEndPoint = new(IPAddress.Any, 0);
+            SocketReceiveFromResult result = await socket.ReceiveFromAsync(
+                new ArraySegment<byte>(buffer), SocketFlags.None, responseEndPoint);
 
-                var response = Encoding.UTF8.GetString(buffer, 0, result.ReceivedBytes);
-                return response.StartsWith("P2P_TEST_ACK");
-            }
+            string response = Encoding.UTF8.GetString(buffer, 0, result.ReceivedBytes);
+            return response.StartsWith("P2P_TEST_ACK");
         }
         catch (Exception ex)
         {
@@ -472,7 +472,7 @@ public partial class NatTraversal
     /// <returns>Base64编码的连接令牌字符串</returns>
     public static string GenerateConnectionToken(string peerId, IPEndPoint endPoint)
     {
-        var data = $"{peerId}:{endPoint.Address}:{endPoint.Port}:{DateTime.Now.Ticks}";
+        string data = $"{peerId}:{endPoint.Address}:{endPoint.Port}:{DateTime.Now.Ticks}";
         return Convert.ToBase64String(Encoding.UTF8.GetBytes(data));
     } // 生成连接令牌：为P2P连接创建包含时间戳的安全令牌
 
@@ -488,26 +488,26 @@ public partial class NatTraversal
     {
         try
         {
-            var data = Encoding.UTF8.GetString(Convert.FromBase64String(token));
-            var parts = data.Split(':');
+            string data = Encoding.UTF8.GetString(Convert.FromBase64String(token)); // 解码Base64令牌获取原始数据
+            string[] parts = data.Split(':'); // 按冒号分割令牌数据
 
-            if (parts.Length >= 4 && parts[3] == DateTime.Now.Ticks.ToString())
+            if (parts.Length >= 4 && parts[3] == DateTime.Now.Ticks.ToString()) // 验证令牌格式和时间戳
             {
-                peerId = parts[0];
-                endPoint = new IPEndPoint(IPAddress.Parse(parts[1]), int.Parse(parts[2]));
-                return true;
+                peerId = parts[0]; // 提取对等方ID
+                endPoint = new IPEndPoint(IPAddress.Parse(parts[1]), int.Parse(parts[2])); // 构造网络端点
+                return true; // 验证成功
             }
 
-            peerId = null;
-            endPoint = null;
-            return false;
+            peerId = null; // 清空输出参数
+            endPoint = null; // 清空输出参数
+            return false; // 验证失败
         }
         catch (Exception ex)
         {
-            _logger?.LogError($"[NATTraversal] Token validation failed: {ex.Message}");
-            peerId = null;
-            endPoint = null;
-            return false;
+            _logger?.LogError($"[NATTraversal] Token validation failed: {ex.Message}"); // 记录验证错误
+            peerId = null; // 清空输出参数
+            endPoint = null; // 清空输出参数
+            return false; // 验证失败
         }
     } // 验证连接令牌：验证P2P连接令牌的有效性和安全性
 
@@ -520,15 +520,15 @@ public partial class NatTraversal
     {
         try
         {
-            var host = Dns.GetHostEntry(Dns.GetHostName());
-            return host.AddressList
-                .FirstOrDefault(ip => ip.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(ip))
-                ?? IPAddress.Loopback;
+            var host = Dns.GetHostEntry(Dns.GetHostName()); // 获取本机主机名对应的DNS主机条目
+            return host.AddressList // 遍历所有IP地址
+            .FirstOrDefault(ip => ip.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(ip)) // 筛选IPv4且非回环地址
+            ?? IPAddress.Loopback; // 如果未找到则返回回环地址
         }
         catch (Exception ex)
         {
-            _logger?.LogError($"[NATTraversal] Failed to get local IP: {ex.Message}");
-            return IPAddress.Loopback;
+            _logger?.LogError($"[NATTraversal] Failed to get local IP: {ex.Message}"); // 记录获取本地IP失败的错误
+            return IPAddress.Loopback; // 异常时返回回环地址作为默认值
         }
     } // 获取本地IP地址：获取本机非回环的IPv4地址，用于网络连接
 
@@ -541,9 +541,9 @@ public partial class NatTraversal
     {
         try
         {
-            using (WebClient client = new System.Net.WebClient())
+            using (WebClient client = new())
             {
-                var response = await client.DownloadStringTaskAsync("https://api.ipify.org");
+                string response = await client.DownloadStringTaskAsync("https://api.ipify.org");
                 if (IPAddress.TryParse(response.Trim(), out var ip))
                 {
                     return ip;
@@ -664,7 +664,8 @@ public partial class NatTraversal
             _logger?.LogError($"[NATTraversal] Failed to generate report: {ex.Message}");
             return "Error generating NAT report";
         }
-    } // 生成NAT穿透报告：生成包含所有对等方NAT类型和连接状态的详细报告
+    }
+}
 
     #endregion
-} // NAT穿透工具类：实现P2P连接辅助功能，支持UPnP端口映射、STUN服务器交互、连接类型检测
+

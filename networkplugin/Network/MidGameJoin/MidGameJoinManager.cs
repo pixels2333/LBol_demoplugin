@@ -7,7 +7,6 @@ namespace NetworkPlugin.Network.MidGameJoin;
 
 /// <summary>
 /// 中途加入管理器 - 允许玩家在开始后加入游戏
-/// 重要性: ⭐⭐ (可选进阶功能)
 /// 依赖: 断线重连系统
 /// </summary>
 public class MidGameJoinManager
@@ -418,97 +417,6 @@ public class MidGameJoinConfig
     public bool EnableAIPassthrough { get; set; } = true;
     public int CatchUpBatchSize { get; set; } = 50;
 }
-
-/// <summary>
-/// 加入请求
-/// </summary>
-public class GameJoinRequest
-{
-    public string RequestId { get; set; } = string.Empty;
-    public string RoomId { get; set; } = string.Empty;
-    public string PlayerName { get; set; } = string.Empty;
-    public long RequestTime { get; set; }
-    public JoinRequestStatus Status { get; set; }
-}
-
-/// <summary>
-/// 批准加入的信息
-/// </summary>
-public class ApprovedJoin
-{
-    public string RequestId { get; set; } = string.Empty;
-    public string RoomId { get; set; } = string.Empty;
-    public string PlayerName { get; set; } = string.Empty;
-    public string JoinToken { get; set; } = string.Empty;
-    public long ApprovedAt { get; set; }
-    public long ExpiresAt { get; set; }
-    public PlayerBootstrappedState BootstrappedState { get; set; } = new();
-}
-
-/// <summary>
-/// 玩家引导状态
-/// </summary>
-public class PlayerBootstrappedState
-{
-    public string PlayerId { get; set; } = string.Empty;
-    public int GameProgress { get; set; }
-    public int Level { get; set; }
-    public int Health { get; set; }
-    public int MaxHealth { get; set; }
-    public int Gold { get; set; }
-    public List<string> Cards { get; set; } = [];
-    public List<string> Exhibits { get; set; } = [];
-    public Dictionary<string, int> Potions { get; set; } = [];
-    public long LastEventIndex { get; set; }
-}
-
-// Result classes
-public class JoinRequestResult
-{
-    public bool Approved { get; set; }
-    public string? RequestId { get; set; }
-    public string? ErrorMessage { get; set; }
-    public PlayerBootstrappedState? BootstrapState { get; set; }
-
-    public static JoinRequestResult Pending(string requestId) => new() { RequestId = requestId, Approved = false };
-    public static JoinRequestResult Denied(string errorMessage) => new() { ErrorMessage = errorMessage, Approved = false };
-    public static JoinRequestResult Approved(PlayerBootstrappedState state) => new() { BootstrapState = state, Approved = true };
-}
-
-public class ApproveJoinResult
-{
-    public bool Success { get; set; }
-    public string? JoinToken { get; set; }
-    public PlayerBootstrappedState? BootstrapState { get; set; }
-    public string? ErrorMessage { get; set; }
-
-    public static ApproveJoinResult Success(string joinToken, PlayerBootstrappedState state) => new() { Success = true, JoinToken = joinToken, BootstrapState = state };
-    public static ApproveJoinResult Failed(string errorMessage) => new() { ErrorMessage = errorMessage, Success = false };
-}
-
-public class JoinExecutionResult
-{
-    public bool Success { get; set; }
-    public string? PlayerId { get; set; }
-    public PlayerBootstrappedState? BootstrapState { get; set; }
-    public string? ErrorMessage { get; set; }
-
-    public static JoinExecutionResult Success(string playerId, PlayerBootstrappedState state) => new() { Success = true, PlayerId = playerId, BootstrapState = state };
-    public static JoinExecutionResult Failed(string errorMessage) => new() { ErrorMessage = errorMessage, Success = false };
-}
-
-public class RoomInfo
-{
-    public string RoomId { get; set; } = string.Empty;
-    public string HostPlayerId { get; set; } = string.Empty;
-    public int PlayerCount { get; set; }
-    public int MaxPlayers { get; set; }
-    public bool IsInGame { get; set; }
-}
-
-public class JoinRoomResult { public bool Success { get; set; } public string? ErrorMessage { get; set; } }
-public class FullStateSyncResult { public bool Success { get; set; } public string? ErrorMessage { get; set; } }
-public class CatchUpResult { public bool Success { get; set; } public int EventsApplied { get; set; } public string? ErrorMessage { get; set; } }
 public class FullStateSyncResult { public bool Success { get; set; } public List<GameEvent> Events { get; set; } = []; }
 
 public enum JoinRequestStatus
@@ -517,34 +425,4 @@ public enum JoinRequestStatus
     Approved,
     Denied,
     Expired
-}
-
-// AI Controller stub
-public class AIPlayerController(ILogger logger)
-{
-    private readonly ILogger _logger = logger;
-    private readonly HashSet<string> _controlledPlayers = [];
-
-    public void StartControlling(string playerId)
-    {
-        _controlledPlayers.Add(playerId);
-        _logger.LogDebug($"[AIController] Started controlling {playerId}");
-    }
-
-    public void StopControlling(string playerId)
-    {
-        _controlledPlayers.Remove(playerId);
-        _logger.LogDebug($"[AIController] Stopped controlling {playerId}");
-    }
-}
-
-// Fast sync service stub
-public class FastSyncService(ILogger logger)
-{
-    private readonly ILogger _logger = logger;
-
-    public void SyncPlayerState(string playerId, PlayerBootstrappedState state)
-    {
-        _logger.LogDebug($"[FastSyncService] Syncing state for {playerId}: progress {state.GameProgress}%");
-    }
 }

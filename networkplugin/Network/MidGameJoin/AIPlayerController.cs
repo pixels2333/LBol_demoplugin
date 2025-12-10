@@ -1,0 +1,23 @@
+using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
+
+namespace NetworkPlugin.Network.MidGameJoin;
+//TODO:ai角色,低优先级
+// AI Controller stub
+public class AIPlayerController(ILogger logger)
+{
+    private readonly ILogger _logger = logger;
+    private readonly HashSet<string> _controlledPlayers = [];
+
+    public void StartControlling(string playerId)
+    {
+        _controlledPlayers.Add(playerId);
+        _logger.LogDebug($"[AIController] Started controlling {playerId}");
+    }
+
+    public void StopControlling(string playerId)
+    {
+        _controlledPlayers.Remove(playerId);
+        _logger.LogDebug($"[AIController] Stopped controlling {playerId}");
+    }
+}

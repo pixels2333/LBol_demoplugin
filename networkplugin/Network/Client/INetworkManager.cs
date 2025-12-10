@@ -38,6 +38,13 @@ public interface INetworkManager
     INetworkPlayer GetPlayer(string id);
 
     /// <summary>
+    /// 根据玩家的PeerId获取对应的网络玩家实例
+    /// </summary>
+    /// <param name="peerId">玩家的唯一标识符</param>
+    /// <returns>对应的INetworkPlayer实例，如果未找到则返回null</returns>
+    INetworkPlayer GetPlayerByPeerId(int peerId);
+
+    /// <summary>
     /// 获取所有已注册的网络玩家集合
     /// </summary>
     /// <returns>包含所有网络玩家的枚举集合</returns>
