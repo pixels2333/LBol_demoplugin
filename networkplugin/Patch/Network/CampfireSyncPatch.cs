@@ -41,7 +41,7 @@ public class CampfireSyncPatch
                 return;
             }
 
-            List<object> gapOptions = [];
+            List<object> gapOptions = new List<object>();
             foreach (var option in __instance.GapOptions)
             {
                 gapOptions.Add(new
@@ -567,30 +567,6 @@ public class CampfireSyncPatch
         }
     }
 
-    var networkClient = serviceProvider.GetService<INetworkClient>();
-                if (networkClient == null || !networkClient.IsConnected)
-                    return;
-
-                var resultData = new
-                {
-                    Timestamp = DateTime.Now.Ticks,
-                    CardId = CardUi,
-                    CardName = cardName,
-                    UpgradeCount = upgradeCount
-                };
-
-    var json = JsonSerializer.Serialize(resultData);
-    networkClient.SendRequest("CampfireUpgradeComplete", Json);
-
-                Plugin.Logger?.LogInfo($"[CampfireSync] Card upgraded: {cardName} ({upgradeCount} upgrades)");
-}
-            catch (Exception ex)
-            {
-                Plugin.Logger?.LogError($"[CampfireSync] Error in SyncUpgradeComplete: {ex.Message}");
-            }
-        }
-    }
-
     /// <summary>
     /// 卡牌移除同步
     /// TODO: Patch LBoL中的卡牌移除逻辑
@@ -741,7 +717,7 @@ public class CampfireConflictResolver
     /// <summary>
     /// 篝火选项的选择状态
     /// </summary>
-    private static Dictionary<string, string> _playerSelections = [];
+    private static Dictionary<string, string> _playerSelections = new Dictionary<string, string>();
 
     /// <summary>
     /// 记录玩家选择
@@ -771,12 +747,21 @@ public class CampfireConflictResolver
     /// </summary>
     public static string ResolveConflict()
     {
-            // TODO: 实现冲突解决
-            // 辅助方法
+        // TODO: 实现冲突解决
+        return string.Empty;
+    }
 
-        /// <summary>
-        /// 获取当前玩家ID
-        /// </summary>
+    /// <summary>
+    /// 清空选择记录（离开火堆后调用）
+    /// </summary>
+    public static void ClearSelections()
+    {
+        _playerSelections.Clear();
+    }
+
+    /// <summary>
+    /// 辅助方法：获取当前玩家ID
+    /// </summary>
     private static string GetCurrentPlayerId()
     {
         try
@@ -801,7 +786,7 @@ public class CampfireConflictResolver
             var networkClient = serviceProvider?.GetService<INetworkClient>();
             if (networkClient is NetworkClient liteNetClient)
             {
-                liteNetClient.SendGameEvent(eventType, eventData);
+                liteNetClient.SendGameEventData(eventType, eventData);
             }
             else
             {
@@ -814,43 +799,3 @@ public class CampfireConflictResolver
             Plugin.Logger?.LogError($"[CampfireSync] Error sending game event {eventType}: {ex.Message}");
         }
     }
-}
-
-return string.Empty;
-        }
-
-        /// <summary>
-        /// 清空选择记录（离开火堆后调用）
-        /// </summary>
-        public static void ClearSelections()
-{
-    _playerSelections.Clear();
-}
-    }
-
-    /// <summary>
-    /// 获取当前玩家ID
-    /// TODO: 实现获取当前玩家ID的方法
-    /// </summary>
-    private static string GetCurrentPlayerId()
-{
-    // TODO: 从GameRun或NetworkClient获取
-    return "current_player";
-}
-
-/// <summary>
-/// 构建完整的篝火状态快照
-/// 用于断线重连时恢复状态
-/// </summary>
-public static object BuildCampfireSnapshot()
-{
-    // TODO: 实现快照构建
-    // 包括：当前位置、可用选项、玩家选择状态等
-
-    return new
-    {
-        Timestamp = DateTime.Now.Ticks,
-        // TODO: 添加实际数据
-    };
-}
-}

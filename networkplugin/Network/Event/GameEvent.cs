@@ -31,7 +31,7 @@ public class GameEvent
     /// <summary>
     /// 触发事件的玩家ID
     /// </summary>
-    public string PlayerId { get; set; } = "unknown";
+    public string UserName { get; set; } = "unknown";
 
     /// <summary>
     /// 影响的目标ID
@@ -41,7 +41,7 @@ public class GameEvent
     /// <summary>
     /// 事件数据
     /// </summary>
-    public Dictionary<string, object> Data { get; set; } = [];
+    public object Data { get; set; } 
 
     /// <summary>
     /// 事件是否已处理
@@ -61,10 +61,10 @@ public class GameEvent
     /// <summary>
     /// 构造函数
     /// </summary>
-    public GameEvent(string eventType, string playerId, Dictionary<string, object> data)
+    public GameEvent(string eventType, string playerId,  object data)
     {
         EventType = eventType;
-        PlayerId = playerId;
+        UserName = playerId;
         Data = data;
         Timestamp = DateTime.Now.Ticks;
     }

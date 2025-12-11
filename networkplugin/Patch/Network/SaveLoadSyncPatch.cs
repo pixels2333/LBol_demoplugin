@@ -475,7 +475,7 @@ public class SaveLoadSyncPatch
             var networkClient = serviceProvider?.GetService<INetworkClient>();
             if (networkClient is NetworkClient liteNetClient)
             {
-                liteNetClient.SendGameEvent(eventType, eventData);
+                liteNetClient.SendGameEventData(eventType, eventData);
             }
             else
             {

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace NetworkPlugin.Network.Snapshot;
@@ -121,4 +122,9 @@ public class PlayerStateSnapshot
     /// 统计信息
     /// </summary>
     public PlayerStatsSnapshot Stats { get; set; } = new();
+
+    /// <summary>
+    /// 快照生成时间
+    /// </summary>
+    public DateTime Timestamp { get; set; } = DateTime.Now;
 }

@@ -244,11 +244,11 @@ public class BattleController_Patch
         networkClient.SendRequest("UpdateAfterTryRemoveStatusEffects", json);
 
         Plugin.Logger?.LogInfo($"[StatusSync] Status effects updated after removal for unit {target?.Id}");
-    }
+        }
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[StatusSync] Error in RemoveStatusEffect_Postfix: {ex.Message}\n{ex.StackTrace}");
-}
+        }
     }
 
     /// <summary>

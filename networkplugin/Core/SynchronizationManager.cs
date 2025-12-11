@@ -17,7 +17,7 @@ namespace NetworkPlugin.Core;
 /// 整合所有Harmony补丁点和网络通信，基于LiteNetLib网络框架实现多人游戏状态同步
 /// </summary>
 
-public class SynchronizationManager
+public class SynchronizationManager : ISynchronizationManager
 {
     // ========================================
     // 单例模式相关字段
@@ -205,7 +205,7 @@ public class SynchronizationManager
             UpdateLocalState(gameEvent);
 
             // 记录事件处理完成的调试信息
-            Plugin.Logger?.LogDebug($"[SyncManager] 事件处理完成: {gameEvent.EventType} 来自 {gameEvent.PlayerId}");
+            Plugin.Logger?.LogDebug($"[SyncManager] 事件处理完成: {gameEvent.EventType} 来自 {gameEvent.UserName}");
         }
         catch (Exception ex)
         {
@@ -360,7 +360,7 @@ public class SynchronizationManager
         ApplyRemoteEvent(gameEvent);
 
         // 记录事件应用的详细信息
-        Plugin.Logger?.LogDebug($"[SyncManager] 单个事件应用成功: {gameEvent.EventType} 来自 {gameEvent.PlayerId} (时间戳: {timestamp})");
+        Plugin.Logger?.LogDebug($"[SyncManager] 单个事件应用成功: {gameEvent.EventType} 来自 {gameEvent.UserName} (时间戳: {timestamp})");
     }
 
     private GameEvent CreateGameEventFromNetworkData(string eventType, object payload, DateTime timestamp)
@@ -771,7 +771,7 @@ public class SynchronizationManager
         try
         {
             // 创建状态缓存键
-            var stateKey = $"{gameEvent.EventType}_{gameEvent.PlayerId}";
+            var stateKey = $"{gameEvent.EventType}_{gameEvent.UserName}";
 
             // 将事件数据存储到缓存中
             _stateCache[stateKey] = gameEvent.Data;
@@ -871,7 +871,7 @@ public class SynchronizationManager
             if (_networkClient is NetworkClient liteNetClient)
             {
                 // 使用游戏事件专用发送方法
-                _networkClient.SendGameEvent(gameEvent.EventType.ToString(), gameEvent.Data);
+                _networkClient.SendGameEventData(gameEvent.EventType.ToString(), gameEvent.Data);
             }
             else
             {

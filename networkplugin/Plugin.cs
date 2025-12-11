@@ -3,6 +3,7 @@ using BepInEx.Logging;
 using HarmonyLib;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Configuration;
+using NetworkPlugin.Core;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.NetworkPlayer;
@@ -127,6 +128,7 @@ public class Plugin : BaseUnityPlugin
         services.AddSingleton(Logger); // 注册BepInEx的日志服务
         services.AddSingleton<INetworkManager, NetworkManager>(); // 注册网络管理器服务
         services.AddSingleton<INetworkClient, NetworkClient>(); // 注册网络客户端服务
+        services.AddSingleton<ISynchronizationManager, SynchronizationManager>(); // 注册同步管理器服务
     }
 
     /// <summary>

@@ -27,7 +27,7 @@ public interface INetworkPlayer
     /// 玩家用户名
     /// 用于标识和显示玩家的名称，在网络游戏中需要保持同步
     /// </summary>
-    string username { get; set; }
+    string userName { get; set; }
 
     /// <summary>
     /// 玩家当前生命值
@@ -69,7 +69,6 @@ public interface INetworkPlayer
     /// 玩家终极能量
     /// 用于释放大招或特殊技能的高级资源
     /// </summary>
-    int UltimatePower { get; set; }
 
     /// <summary>
     /// 玩家当前位置描述

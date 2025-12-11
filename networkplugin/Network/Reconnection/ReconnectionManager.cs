@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Event;
 using NetworkPlugin.Network.Snapshot;
 
 namespace NetworkPlugin.Network.Reconnection;
@@ -193,9 +194,9 @@ public class ReconnectionManager
     {
         try
         {
-            var snapshot = CreatePlayerStateSnapshot(playerId);
-            snapshot.ReconnectToken = GenerateReconnectToken(); // 生成重连令牌
-            snapshot.DisconnectTime = DateTime.Now.Ticks;
+            var snapshot = SavePlayerStateSnapshot(playerId);
+            // snapshot.ReconnectToken = GenerateReconnectToken(); // 生成重连令牌
+            // snapshot.DisconnectTime = DateTime.Now.Ticks;
 
             lock (_playerSnapshots)
             {
@@ -214,25 +215,24 @@ public class ReconnectionManager
     /// 创建玩家状态快照
     /// TODO: 提取玩家的完整状态
     /// </summary>
-    private PlayerStateSnapshot CreatePlayerStateSnapshot(string playerId)
+    private PlayerStateSnapshot SavePlayerStateSnapshot(string playerId)
     {
-        PlayerStateSnapshot snapshot = new PlayerStateSnapshot
+        PlayerStateSnapshot snapshot = new PlayerStateSnapshot()
         {
             PlayerId = playerId,
-            Timestamp = DateTime.Now.Ticks,
+            Timestamp = DateTime.Now,
             Health = 0, // TODO: 从PlayerUnit获取
             MaxHealth = 0, // TODO: 从PlayerUnit获取
             Block = 0, // TODO: 从PlayerUnit获取
             Shield = 0, // TODO: 从PlayerUnit获取
-            ManaGroup = new[] { 0, 0, 0, 0 }, // TODO: 获取当前法力
+            ManaGroup = new int[] { 0, 0, 0, 0 }, // TODO: 获取当前法力
             Gold = 0, // TODO: 从GameRun获取
             Cards = new List<CardStateSnapshot>(), // TODO: 获取手牌、牌库、弃牌堆
             Exhibits = new List<ExhibitStateSnapshot>(), // TODO: 获取宝物
             Potions = new Dictionary<string, int>(), // TODO: 获取药水
             StatusEffects = new List<StatusEffectStateSnapshot>(), // TODO: 获取状态效果
-            GameLocation = new LocationSnapshot(),
+            GameLocation = new LocationSnapshot() { X = 0, Y = 0 }, //TODO:获取位置
             IsInBattle = false, // TODO: 检查是否在战斗
-            ReconnectToken = string.Empty
         };
 
         return snapshot;
@@ -251,19 +251,19 @@ public class ReconnectionManager
         try
         {
             // 检查重连令牌
-            if (!_playerSnapshots.TryGetValue(playerId, out var snapshot))
+            if (!_playerSnapshots.TryGetValue(playerId, out PlayerStateSnapshot snapshot))
             {
                 return ReconnectionResult.Failed("No saved state for player");
             }
 
-            if (snapshot.ReconnectToken != reconnectToken)
-            {
-                return ReconnectionResult.Failed("Invalid reconnect token");
-            }
+            // if (snapshot.ReconnectToken != reconnectToken)
+            // {
+            //     return ReconnectionResult.Failed("Invalid reconnect token");
+            // }
 
             // 检查重连超时
-            var timeSinceDisconnect = DateTime.Now.Ticks - snapshot.DisconnectTime;
-            if (timeSinceDisconnect > TimeSpan.FromMinutes(_config.MaxReconnectionMinutes).Ticks)
+            var timeSinceDisconnect = DateTime.Now - snapshot.Timestamp;
+            if (timeSinceDisconnect > TimeSpan.FromMinutes(_config.MaxReconnectionMinutes))
             {
                 // 清除快照
                 RemovePlayerSnapshot(playerId);
@@ -425,34 +425,6 @@ public enum DisconnectReason
     NetworkError,
     Kicked,
     ServerShutdown
-}
-
-/// <summary>
-/// 重连结果
-/// </summary>
-public class ReconnectionResult
-{
-    public bool Success { get; set; }
-    public string? ErrorMessage { get; set; }
-    public PlayerStateSnapshot? Snapshot { get; set; }
-
-    public static ReconnectionResult Success(PlayerStateSnapshot snapshot)
-    {
-        return new ReconnectionResult
-        {
-            Success = true,
-            Snapshot = snapshot
-        };
-    }
-
-    public static ReconnectionResult Failed(string errorMessage)
-    {
-        return new ReconnectionResult
-        {
-            Success = false,
-            ErrorMessage = errorMessage
-        };
-    }
 }
 
 /// <summary>

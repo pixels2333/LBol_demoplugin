@@ -481,7 +481,7 @@ public class CardLibrarySyncPatch
             var networkClient = serviceProvider?.GetService<INetworkClient>();
             if (networkClient != null)
             {
-                networkClient.SendGameEvent(eventType, eventData);
+                networkClient.SendGameEventData(eventType, eventData);
             }
         }
         catch (Exception ex)

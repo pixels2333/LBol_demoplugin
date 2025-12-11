@@ -50,7 +50,7 @@ public interface INetworkClient
     /// </summary>
     /// <param name="eventType">事件类型</param>
     /// <param name="eventData">事件数据</param>
-    void SendGameEvent(string eventType, object eventData);
+    void SendGameEventData(string eventType, object eventData);
 
     /// <summary>
     /// 发送通用请求到服务器

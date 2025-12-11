@@ -13,9 +13,9 @@ public static class GameEventManager
     /// <summary>
     /// 创建新事件并分配索引
     /// </summary>
-    public static GameEvent CreateEvent(string eventType, string playerId, Dictionary<string, object> data)
+    public static GameEvent CreateEvent(string eventType, string userName, object data)
     {
-        GameEvent gameEvent = new GameEvent(eventType, playerId, data)
+        GameEvent gameEvent = new(eventType, userName, data)
         {
             EventIndex = Interlocked.Increment(ref _nextEventIndex)
         };

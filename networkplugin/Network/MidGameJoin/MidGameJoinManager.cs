@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using NetworkPlugin.Network.Event;
+using NetworkPlugin.Network.Room;
 
 namespace NetworkPlugin.Network.MidGameJoin;
 
@@ -64,7 +66,7 @@ public class MidGameJoinManager
 
     /// <summary>
     /// 请求中途加入游戏
-    /// TODO: 实现加入验证逻辑
+    /// TODO: 实现加入验证逻辑,待重做
     /// </summary>
     public JoinRequestResult RequestJoin(string roomId, string playerName)
     {
@@ -80,27 +82,27 @@ public class MidGameJoinManager
 
                 // 检查房间是否存在
                 // TODO: 从RelayServer获取房间信息
-                var roomInfo = GetRoomInfo(roomId);
-                if (roomInfo == null)
+                RoomStatus? roomStatus = GetRoomInfo(roomId);
+                if (roomStatus == null)
                 {
                     return JoinRequestResult.Denied("Room not found");
                 }
 
                 // 检查房间是否已满
-                if (roomInfo.PlayerCount >= roomInfo.MaxPlayers)
+                if (roomStatus.PlayerCount >= roomStatus.MaxPlayers)
                 {
                     return JoinRequestResult.Denied("Room is full");
                 }
 
                 // 检查房间是否已开始游戏
-                if (!roomInfo.IsInGame)
+                if (!roomStatus.IsInGame)
                 {
                     // 如果游戏未开始，直接加入
-                    return JoinRequestResult.Approved(GetBootstrappedPlayerState(roomId));
+                    return JoinRequestResult.Approved(new PlayerBootstrappedState());
                 }
 
                 // 如果房间已在游戏中，进入请求队列
-                GameJoinRequest request = new GameJoinRequest
+                GameJoinRequest request = new()
                 {
                     RequestId = GenerateRequestId(),
                     RoomId = roomId,
@@ -112,7 +114,7 @@ public class MidGameJoinManager
                 _pendingRequests.Add(request);
 
                 // 通知房间主持玩家有中途加入请求
-                NotifyHostOfJoinRequest(roomInfo.HostPlayerId, request);
+                NotifyHostOfJoinRequest(roomStatus.HostPlayerId, request);
 
                 return JoinRequestResult.Pending(request.RequestId);
             }
@@ -149,7 +151,7 @@ public class MidGameJoinManager
             var joinToken = GenerateJoinToken();
 
             // 创建批准加入信息
-            ApprovedJoin approvedJoin = new ApprovedJoin
+            ApprovedJoin approvedJoin = new()
             {
                 RequestId = requestId,
                 RoomId = request.RoomId,
@@ -157,7 +159,7 @@ public class MidGameJoinManager
                 JoinToken = joinToken,
                 ApprovedAt = DateTime.Now.Ticks,
                 ExpiresAt = DateTime.Now.AddMinutes(_config.JoinRequestTimeoutMinutes).Ticks,
-                BootstrappedState = GetBootstrappedPlayerState(request.RoomId)
+                BootstrappedState = new PlayerBootstrappedState()
             };
 
             _approvedJoins[joinToken] = approvedJoin;
@@ -200,15 +202,15 @@ public class MidGameJoinManager
                 _fastSyncService.SyncPlayerState(playerId, approvedJoin.BootstrappedState);
 
                 // 2. 完全同步（从主机获取最新状态）
-                var fullState = RequestFullStateSync(approvedJoin.RoomId, playerId);
-                if (!fullState.Success)
+                BaseResult fullState = RequestFullStateSync(approvedJoin.RoomId, playerId);
+                if (!fullState.IsSuccess)
                 {
                     return JoinExecutionResult.Failed("Failed to sync full state: " + fullState.ErrorMessage);
                 }
 
                 // 3. 加入房间
                 var joinResult = JoinRoom(approvedJoin.RoomId, playerId);
-                if (!joinResult.Success)
+                if (!joinResult.IsSuccess)
                 {
                     return JoinExecutionResult.Failed("Failed to join room: " + joinResult.ErrorMessage);
                 }
@@ -218,7 +220,7 @@ public class MidGameJoinManager
 
                 // 5. 应用追赶机制（回放断线期间的事件）
                 var catchUpResult = ApplyCatchUpEvents(playerId, approvedJoin.BootstrappedState.LastEventIndex);
-                if (!catchUpResult.Success)
+                if (!catchUpResult.IsSuccess)
                 {
                     _logger.LogWarning($"[MidGameJoinManager] Failed to apply catch-up events for player {playerId}");
                 }
@@ -236,31 +238,6 @@ public class MidGameJoinManager
                 return JoinExecutionResult.Failed($"Error: {ex.Message}");
             }
         }
-    }
-
-    /// <summary>
-    /// 获取引导玩家状态（为新玩家生成初始状态）
-    /// TODO: 根据游戏进度生成合适的初始状态
-    /// </summary>
-    private PlayerBootstrappedState GetBootstrappedPlayerState(string roomId)
-    {
-        var roomState = GetRoomGameState(roomId);
-        var progress = CalculateGameProgress(roomState);
-
-        // 根据游戏进度调整新玩家的初始状态
-        return new PlayerBootstrappedState
-        {
-            PlayerId = string.Empty, // 将在加入时分配
-            GameProgress = progress,
-            Level = CalculateAppropriateLevel(progress),
-            Health = CalculateAppropriateHealth(progress),
-            MaxHealth = CalculateAppropriateHealth(progress),
-            Gold = CalculateAppropriateGold(progress),
-            Cards = GenerateStartingCards(progress),
-            Exhibits = GenerateStartingExhibits(progress),
-            Potions = GenerateStartingPotions(progress),
-            LastEventIndex = roomState.LastEventIndex
-        };
     }
 
     /// <summary>
@@ -391,12 +368,12 @@ public class MidGameJoinManager
     private string GenerateJoinToken() => Guid.NewGuid().ToString("N");
 
     // Stub methods - TODO: Implement
-    private RoomInfo? GetRoomInfo(string roomId) => null;
+    private RoomStatus? GetRoomInfo(string roomId) => null;
     private void NotifyHostOfJoinRequest(string hostPlayerId, GameJoinRequest request) { }
-    private FullStateSyncResult RequestFullStateSync(string roomId, string playerId) => new() { Success = true };
-    private JoinRoomResult JoinRoom(string roomId, string playerId) => new() { Success = true };
+    private BaseResult RequestFullStateSync(string roomId, string playerId) => new() { IsSuccess = true };
+    private BaseResult JoinRoom(string roomId, string playerId) => new() { IsSuccess = true };
     private void NotifyPlayersOfNewPlayer(string roomId, string playerId, string playerName) { }
-    private object GetRoomGameState(string roomId) => new();
+    private RoomStatus GetRoomGameState(string roomId) => new();
     private int CalculateAppropriateLevel(int progress) => 1;
     private int CalculateAppropriateHealth(int progress) => 80;
     private int CalculateAppropriateGold(int progress) => 100;
@@ -417,7 +394,6 @@ public class MidGameJoinConfig
     public bool EnableAIPassthrough { get; set; } = true;
     public int CatchUpBatchSize { get; set; } = 50;
 }
-public class FullStateSyncResult { public bool Success { get; set; } public List<GameEvent> Events { get; set; } = []; }
 
 public enum JoinRequestStatus
 {

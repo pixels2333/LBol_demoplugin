@@ -222,7 +222,7 @@ public class ShopSyncPatch
                 };
 
                 var networkClient = serviceProvider?.GetService<INetworkClient>();
-                networkClient?.SendGameEvent("ShopPurchaseStarted", startData);
+                networkClient?.SendGameEventData("ShopPurchaseStarted", startData);
             }
             catch (Exception ex)
             {
@@ -495,7 +495,7 @@ public class ShopSyncPatch
             var networkClient = serviceProvider?.GetService<INetworkClient>();
             if (networkClient != null)
             {
-                networkClient.SendGameEvent(eventType, eventData);
+                networkClient.SendGameEventData(eventType, eventData);
             }
         }
         catch (Exception ex)

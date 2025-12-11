@@ -113,12 +113,12 @@ public class NetworkClient : INetworkClient
             INetworkPlayer networkPlayer = _networkManager.GetPlayerByPeerId(peer.Id);
             var playerInfo = new
             {
-                PlayerName = networkPlayer.username,
+                PlayerName = networkPlayer.userName,
                 ConnectionTime = DateTime.Now.Ticks
             };
 
             // 向服务器发送玩家加入事件
-            SendGameEvent("PlayerJoined", playerInfo);
+            SendGameEventData("PlayerJoined", playerInfo);
         };
 
         _listener.PeerDisconnectedEvent += (peer, disconnectInfo) =>
@@ -283,7 +283,7 @@ public class NetworkClient : INetworkClient
     /// </summary>
     /// <param name="eventType">事件类型标识符</param>
     /// <param name="eventData">要发送的事件数据对象</param>
-    public void SendGameEvent(string eventType, object eventData)
+    public void SendGameEventData(string eventType, object eventData)
     {
         // 检查是否已连接到服务器
         if (!IsConnected)
