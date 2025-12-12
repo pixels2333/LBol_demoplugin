@@ -40,6 +40,7 @@ public class PlayCardAction_Patch
     /// </summary>
     private static IServiceProvider serviceProvider => ModService.ServiceProvider;
 
+
     // ========================================
     // 构造函数补丁
     // ========================================
@@ -62,7 +63,8 @@ public class PlayCardAction_Patch
             if (networkManager == null)
                 return;
 
-            var player = networkManager.GetSelf();
+            INetworkPlayer player = networkManager.GetSelf();
+            BattleController battle = card.Battle;
 
             // 构建卡牌开始使用的同步数据
             Dictionary<string, object> cardData = new()
@@ -89,13 +91,13 @@ public class PlayCardAction_Patch
 
             var gameEvent = GameEventManager.CreateEvent(
                 NetworkMessageTypes.OnCardPlayStart.ToString(),
-                GetCurrentPlayerId(player),
+                player.userName,
                 cardData
             );
 
             syncManager.SendGameEvent(gameEvent);
 
-            Plugin.Logger?.LogInfo($"[PlayCardSync] 卡牌开始: {card.Name} (玩家: {player.Name})");
+            Plugin.Logger?.LogInfo($"[PlayCardSync] 卡牌开始: {card.Name} (玩家: {player.userName})");
         }
         catch (Exception ex)
         {
@@ -121,8 +123,8 @@ public class PlayCardAction_Patch
             if (networkManager == null)
                 return;
 
-            var player = card.Zone.Owner as PlayerUnit;
-            var battle = player?.Battle;
+            INetworkPlayer player = networkManager.GetSelf();
+            BattleController battle = card.Battle;
 
             if (player == null || battle == null)
                 return;
@@ -137,14 +139,14 @@ public class PlayCardAction_Patch
                 ["TargetType"] = card.Config?.TargetType.ToString() ?? "Unknown",
                 // ["ManaCost"] = GetManaCost(card),
                 ["Selector"] = selector?.ToString() ?? "Nobody",
-                ["PlayerId"] = player.Id,
+                ["UserName"] = player.userName,
                 ["PlayerState"] = new Dictionary<string, object>
                 {
-                    ["Hp"] = player.Hp,
-                    ["MaxHp"] = player.MaxHp,
-                    ["Block"] = player.Block,
-                    ["Shield"] = player.Shield,
-                    ["Mana"] = battle.BattleMana != null ? GetManaGroup(battle.BattleMana) : new[] { 0, 0, 0, 0 },
+                    ["Hp"] = player.HP,
+                    ["MaxHp"] = player.maxHP,
+                    ["Block"] = player.block,
+                    ["Shield"] = player.shield,
+                    ["Mana"] = player.mana,
                     ["CardsInHand"] = battle.HandZone?.Count ?? 0,
                     ["CardsInDraw"] = battle.DrawZone?.Count ?? 0,
                     ["CardsInDiscard"] = battle.DiscardZone?.Count ?? 0,
@@ -153,14 +155,12 @@ public class PlayCardAction_Patch
             };
 
             var gameEvent = GameEventManager.CreateEvent(
-                NetworkMessageTypes.OnCardPlayStart.ToString(),
-                GetCurrentPlayerId(player),
-                cardData
+                NetworkMessageTypes.OnCardPlayStart.ToString(), player.userName, cardData
             );
 
             syncManager.SendGameEvent(gameEvent);
 
-            Plugin.Logger?.LogInfo($"[PlayCardSync] 卡牌开始: {card.Name} (玩家: {player.Name}, 目标: {selector})");
+            Plugin.Logger?.LogInfo($"[PlayCardSync] 卡牌开始: {card.Name} (玩家: {player.userName}, 目标: {selector})");
         }
         catch (Exception ex)
         {
@@ -182,8 +182,12 @@ public class PlayCardAction_Patch
             if (syncManager == null)
                 return;
 
-            var player = card.Zone?.Owner as PlayerUnit;
-            var battle = player?.Battle;
+            var networkManager = GetNetworkManager();
+            if (networkManager == null)
+                return;
+
+            INetworkPlayer player = networkManager.GetSelf();
+            BattleController battle = card.Battle;
 
             if (player == null || battle == null)
                 return;
@@ -196,17 +200,16 @@ public class PlayCardAction_Patch
                 ["CardName"] = card.Name,
                 ["CardType"] = card.CardType.ToString(),
                 ["TargetType"] = card.Config?.TargetType.ToString() ?? "Unknown",
-                ["ManaCost"] = GetManaCost(card),
-                ["ConsumingMana"] = consumingMana != null ? GetManaGroup(consumingMana) : GetManaCost(card),
+                ["ConsumingMana"] = consumingMana.ToString() ?? "None",
                 ["Selector"] = selector?.ToString() ?? "Nobody",
-                ["PlayerId"] = GetCurrentPlayerId(player),
+                ["UserName"] = player.userName,
                 ["PlayerState"] = new Dictionary<string, object>
                 {
-                    ["Hp"] = player.Hp,
-                    ["MaxHp"] = player.MaxHp,
-                    ["Block"] = player.Block,
-                    ["Shield"] = player.Shield,
-                    ["Mana"] = battle.BattleMana != null ? GetManaGroup(battle.BattleMana) : new[] { 0, 0, 0, 0 },
+                    ["Hp"] = player.HP,
+                    ["MaxHp"] = player.maxHP,
+                    ["Block"] = player.block,
+                    ["Shield"] = player.shield,
+                    ["Mana"] = player.mana,
                     ["CardsInHand"] = battle.HandZone?.Count ?? 0,
                     ["CardsInDraw"] = battle.DrawZone?.Count ?? 0,
                     ["CardsInDiscard"] = battle.DiscardZone?.Count ?? 0,
@@ -216,22 +219,25 @@ public class PlayCardAction_Patch
 
             var gameEvent = GameEventManager.CreateEvent(
                 NetworkMessageTypes.OnCardPlayStart.ToString(),
-                GetCurrentPlayerId(player),
+                player.userName,
                 cardData
             );
 
             syncManager.SendGameEvent(gameEvent);
 
-            Plugin.Logger?.LogInfo($"[PlayCardSync] 卡牌开始: {card.Name} (玩家: {player.Name}, 目标: {selector}, 消耗法力: {consumingMana})");
+            Plugin.Logger?.LogInfo($"[PlayCardSync] 卡牌开始: {card.Name} (玩家: {player.userName}, 目标: {selector}, 消耗法力: {consumingMana})");
         }
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[PlayCardSync] Constructor3_Postfix错误: {ex.Message}");
         }
+
     }
 
 
 
+
+    #region 依赖注入管理
 
     /// <summary>
     /// 获取同步管理器
@@ -263,28 +269,6 @@ public class PlayCardAction_Patch
         }
     }
 
+    #endregion
 
-    /// <summary>
-    /// 分析卡牌效果类型
-    /// </summary>
-    private static object GetCardEffectsApplied(CardUsingEventArgs args)
-    {
-        try
-        {
-            return new
-            {
-                HasDamage = false,
-                HasBuff = false,
-                HasHeal = false,
-                HasDraw = false,
-                HasMana = false,
-                HasStatusEffect = false
-            };
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[PlayCardSync] 分析卡牌效果错误: {ex.Message}");
-            return new { Error = ex.Message };
-        }
-    }
 }
