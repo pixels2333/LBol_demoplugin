@@ -43,11 +43,11 @@ public class DamageAction_Patch
     {
         try
         {
-            var syncManager = GetSyncManager();
+            ISynchronizationManager syncManager = GetSyncManager();
             if (syncManager == null)
                 return;
 
-            var networkManager = GetNetworkManager();
+            INetworkManager networkManager = GetNetworkManager();
             if (networkManager == null)
                 return;
 
@@ -58,7 +58,8 @@ public class DamageAction_Patch
                 return;
 
             // 构建伤害同步数据
-            var damageData = new Dictionary<string, object>
+            Dictionary<string, object> damageData = new()
+
             {
                 ["UserName"] = player.userName,
                 ["Timestamp"] = DateTime.Now.Ticks,
@@ -82,8 +83,8 @@ public class DamageAction_Patch
             // 添加目标信息
             if (targets != null)
             {
-                var targetList = new List<Dictionary<string, object>>();
-                foreach (var target in targets)
+                List<Dictionary<string, object>> targetList = new();
+                foreach (Unit target in targets)
                 {
                     targetList.Add(new Dictionary<string, object>
                     {
@@ -96,7 +97,7 @@ public class DamageAction_Patch
                 damageData["Targets"] = targetList;
             }
 
-            var gameEvent = GameEventManager.CreateEvent(
+            GameEvent gameEvent = GameEventManager.CreateEvent(
                 NetworkMessageTypes.OnDamageDealt.ToString(),
                 player.userName,
                 damageData
@@ -122,11 +123,11 @@ public class DamageAction_Patch
     {
         try
         {
-            var syncManager = GetSyncManager();
+            ISynchronizationManager syncManager = GetSyncManager();
             if (syncManager == null)
                 return;
 
-            var networkManager = GetNetworkManager();
+            INetworkManager networkManager = GetNetworkManager();
             if (networkManager == null)
                 return;
 
@@ -137,7 +138,8 @@ public class DamageAction_Patch
                 return;
 
             // 构建伤害同步数据
-            var damageData = new Dictionary<string, object>
+            Dictionary<string, object> damageData = new()
+
             {
                 ["UserName"] = player.userName,
                 ["Timestamp"] = DateTime.Now.Ticks,
@@ -158,7 +160,7 @@ public class DamageAction_Patch
                 ["TargetCount"] = 1,
             };
 
-            var gameEvent = GameEventManager.CreateEvent(
+            GameEvent gameEvent = GameEventManager.CreateEvent(
                 NetworkMessageTypes.OnDamageDealt.ToString(),
                 player.userName,
                 damageData
@@ -183,18 +185,19 @@ public class DamageAction_Patch
     {
         try
         {
-            var syncManager = GetSyncManager();
+            ISynchronizationManager syncManager = GetSyncManager();
             if (syncManager == null)
                 return;
 
-            var networkManager = GetNetworkManager();
+            INetworkManager networkManager = GetNetworkManager();
             if (networkManager == null)
                 return;
 
             INetworkPlayer player = networkManager.GetSelf();
 
             // 构建失去生命同步数据
-            var damageData = new Dictionary<string, object>
+            Dictionary<string, object> damageData = new()
+
             {
                 ["Timestamp"] = DateTime.Now.Ticks,
                 ["ActionType"] = "LoseLife",
@@ -211,7 +214,7 @@ public class DamageAction_Patch
                 ["TargetCurrentHp"] = target.Hp
             };
 
-            var gameEvent = GameEventManager.CreateEvent(
+            GameEvent gameEvent = GameEventManager.CreateEvent(
                 NetworkMessageTypes.OnDamageDealt.ToString(),
                 player.userName,
                 damageData
@@ -236,18 +239,19 @@ public class DamageAction_Patch
     {
         try
         {
-            var syncManager = GetSyncManager();
+            ISynchronizationManager syncManager = GetSyncManager();
             if (syncManager == null)
                 return;
 
-            var networkManager = GetNetworkManager();
+            INetworkManager networkManager = GetNetworkManager();
             if (networkManager == null)
                 return;
 
             INetworkPlayer player = networkManager.GetSelf();
 
             // 构建反应伤害同步数据
-            var damageData = new Dictionary<string, object>
+            Dictionary<string, object> damageData = new()
+
             {
                 ["Timestamp"] = DateTime.Now.Ticks,
                 ["ActionType"] = "Reaction",
@@ -264,7 +268,7 @@ public class DamageAction_Patch
                 ["TargetCurrentHp"] = target.Hp
             };
 
-            var gameEvent = GameEventManager.CreateEvent(
+            GameEvent gameEvent = GameEventManager.CreateEvent(
                 NetworkMessageTypes.OnDamageDealt.ToString(),
                 player.userName,
                 damageData

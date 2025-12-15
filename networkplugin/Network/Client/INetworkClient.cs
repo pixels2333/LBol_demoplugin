@@ -1,4 +1,5 @@
 using System;
+using NetworkPlugin.Network.NetworkPlayer;
 
 namespace NetworkPlugin.Network.Client;
 
@@ -15,6 +16,11 @@ public interface INetworkClient
     /// 初始化网络组件并准备接收连接
     /// </summary>
     void Start();
+
+    /// <summary>
+    /// 获取客户端自身信息
+    /// </summary>
+    INetworkPlayer GetSelf();
 
     /// <summary>
     /// 连接到指定服务器
