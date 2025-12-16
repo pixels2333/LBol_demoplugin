@@ -1,4 +1,4 @@
-namespace NetworkPlugin.Network.MidGameJoin;
+namespace NetworkPlugin.Network.MidGameJoin.Result;
 
 /// <summary>
 /// 加入请求

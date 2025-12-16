@@ -1,4 +1,4 @@
-namespace NetworkPlugin.Network.MidGameJoin;
+namespace NetworkPlugin.Network.MidGameJoin.Result;
 
 // Result classes
 public class JoinRequestResult : BaseResult

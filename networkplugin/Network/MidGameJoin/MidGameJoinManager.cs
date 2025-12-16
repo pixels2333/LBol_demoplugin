@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using NetworkPlugin.Network.Event;
+using NetworkPlugin.Network.MidGameJoin.Result;
+using NetworkPlugin.Network.Room;
 
 namespace NetworkPlugin.Network.MidGameJoin;
 
@@ -80,20 +83,20 @@ public class MidGameJoinManager
 
                 // 检查房间是否存在
                 // TODO: 从RelayServer获取房间信息
-                var roomInfo = GetRoomInfo(roomId);
-                if (roomInfo == null)
+                RoomStatus? roomStatus = GetRoomStatus(roomId);
+                if (roomStatus == null)
                 {
                     return JoinRequestResult.Denied("Room not found");
                 }
 
                 // 检查房间是否已满
-                if (roomInfo.PlayerCount >= roomInfo.MaxPlayers)
+                if (roomStatus.PlayerCount >= roomStatus.MaxPlayers)
                 {
                     return JoinRequestResult.Denied("Room is full");
                 }
 
                 // 检查房间是否已开始游戏
-                if (!roomInfo.IsInGame)
+                if (!roomStatus.IsInGame)
                 {
                     // 如果游戏未开始，直接加入
                     return JoinRequestResult.Approved(GetBootstrappedPlayerState(roomId));
@@ -112,7 +115,7 @@ public class MidGameJoinManager
                 _pendingRequests.Add(request);
 
                 // 通知房间主持玩家有中途加入请求
-                NotifyHostOfJoinRequest(roomInfo.HostPlayerId, request);
+                NotifyHostOfJoinRequest(roomStatus.HostPlayerId, request);
 
                 return JoinRequestResult.Pending(request.RequestId);
             }
@@ -139,7 +142,7 @@ public class MidGameJoinManager
             }
 
             // 检查批准权限（必须是房主）
-            var roomInfo = GetRoomInfo(request.RoomId);
+            var roomInfo = GetRoomStatus(request.RoomId);
             if (roomInfo?.HostPlayerId != approvedByPlayerId)
             {
                 return ApproveJoinResult.Failed("Only host can approve join requests");
@@ -390,8 +393,8 @@ public class MidGameJoinManager
     private string GeneratePlayerId() => Guid.NewGuid().ToString("N");
     private string GenerateJoinToken() => Guid.NewGuid().ToString("N");
 
-    // Stub methods - TODO: Implement
-    private RoomInfo? GetRoomInfo(string roomId) => null;
+    //TODO: Implement-Stub methods
+    private RoomStatus? GetRoomStatus(string roomId) => null;
     private void NotifyHostOfJoinRequest(string hostPlayerId, GameJoinRequest request) { }
     private FullStateSyncResult RequestFullStateSync(string roomId, string playerId) => new() { Success = true };
     private JoinRoomResult JoinRoom(string roomId, string playerId) => new() { Success = true };
@@ -403,21 +406,6 @@ public class MidGameJoinManager
     private List<GameEvent> GetMissedEvents(long lastEventIndex) => [];
     private bool ReplayEvent(string playerId, GameEvent gameEvent) => true;
 }
-
-/// <summary>
-/// 中途加入配置
-/// </summary>
-public class MidGameJoinConfig
-{
-    public bool AllowMidGameJoin { get; set; } = true;
-    public int JoinRequestTimeoutMinutes { get; set; } = 2;
-    public int MaxJoinRequestsPerRoom { get; set; } = 5;
-    public int AIControlTimeoutMinutes { get; set; } = 10;
-    public bool EnableCompensation { get; set; } = true;
-    public bool EnableAIPassthrough { get; set; } = true;
-    public int CatchUpBatchSize { get; set; } = 50;
-}
-public class FullStateSyncResult { public bool Success { get; set; } public List<GameEvent> Events { get; set; } = []; }
 
 public enum JoinRequestStatus
 {
