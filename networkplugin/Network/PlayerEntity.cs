@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json.Serialization;
+using NetworkPlugin.Network.Snapshot;
 
 namespace NetworkPlugin.Network;
 
@@ -126,29 +128,22 @@ public class PlayerEntity
     /// </summary>
     public PlayerStateSnapshot CreateSnapshot()
     {
-        return new PlayerStateSnapshot
+        return new PlayerStateSnapshot()
         {
             PlayerId = PlayerId,
-            Username = Username,
-            HP = HP.Value,
-            MaxHP = MaxHP.Value,
+            Timestamp = DateTime.Now,
+            Health = HP.Value,
+            MaxHealth = MaxHP.Value,
             Block = Block.Value,
             Shield = Shield.Value,
-            Coins = Coins.Value,
-            Power = Power.Value,
-            UltimatePower = UltimatePower.Value,
-            Mana = (int[])Mana.Value.Clone(),
-            LocationX = LocationX.Value,
-            LocationY = LocationY.Value,
-            CurrentLocation = CurrentLocation.Value,
-            CurrentStage = CurrentStage.Value,
-            CharacterId = CharacterId.Value,
+            ManaGroup = Mana.Value,
+            Gold = Coins.Value,
+            Cards = [],
+            Exhibits = [],
+            Potions = [],
+            StatusEffects = [],
+            GameLocation = new LocationSnapshot() { X = LocationX.Value, Y = LocationY.Value },
             IsInBattle = IsInBattle.Value,
-            IsMyTurn = IsMyTurn.Value,
-            EndTurnFlag = EndTurnFlag.Value,
-            StatusEffects = new List<string>(ActiveStatusEffects.Value),
-            Exhibits = new List<string>(Exhibits.Value),
-            Timestamp = LastUpdate
         };
     }
 
@@ -157,24 +152,17 @@ public class PlayerEntity
     /// </summary>
     public void ApplySnapshot(PlayerStateSnapshot snapshot)
     {
-        HP.Value = snapshot.HP;
-        MaxHP.Value = snapshot.MaxHP;
+        HP.Value = snapshot.Health;
+        MaxHP.Value = snapshot.MaxHealth;
         Block.Value = snapshot.Block;
         Shield.Value = snapshot.Shield;
-        Coins.Value = snapshot.Coins;
-        Power.Value = snapshot.Power;
-        UltimatePower.Value = snapshot.UltimatePower;
-        Mana.Value = (int[])snapshot.Mana.Clone();
-        LocationX.Value = snapshot.LocationX;
-        LocationY.Value = snapshot.LocationY;
-        CurrentLocation.Value = snapshot.CurrentLocation;
-        CurrentStage.Value = snapshot.CurrentStage;
-        CharacterId.Value = snapshot.CharacterId;
+        Coins.Value = snapshot.Gold;
+        Mana.Value = (int[])snapshot.ManaGroup.Clone();
+        LocationX.Value = snapshot.GameLocation.X;
+        LocationY.Value = snapshot.GameLocation.Y;
         IsInBattle.Value = snapshot.IsInBattle;
-        IsMyTurn.Value = snapshot.IsMyTurn;
-        EndTurnFlag.Value = snapshot.EndTurnFlag;
-        ActiveStatusEffects.Value = new List<string>(snapshot.StatusEffects);
-        Exhibits.Value = new List<string>(snapshot.Exhibits);
+        ActiveStatusEffects.Value = snapshot.StatusEffects.Select(e => e.ToString()).ToList();
+        Exhibits.Value = snapshot.Exhibits.Select(e => e.ToString()).ToList();
         LastUpdate = snapshot.Timestamp;
     }
-}
+    }

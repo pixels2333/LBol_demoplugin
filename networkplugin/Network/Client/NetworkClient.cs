@@ -21,6 +21,7 @@ public class NetworkClient : INetworkClient
     private string _connectionKey;
 
     private INetworkManager _networkManager;
+    private INetworkPlayer _networkPlayer;
 
     /// <summary>
     /// 网络连接状态变更事件
@@ -59,12 +60,13 @@ public class NetworkClient : INetworkClient
     /// </summary>
     /// <param name="connectionKey">连接密钥，用于服务器身份验证和鉴权</param>
     /// <param name="networkManager">网络管理器实例，用于获取玩家信息等</param>
-    public NetworkClient(string connectionKey, INetworkManager NetworkManager)
+    public NetworkClient(string connectionKey, INetworkManager NetworkManager,INetworkPlayer NetworkPlayer)
     {
         _networkManager = NetworkManager;
         _connectionKey = connectionKey;
         _listener = new EventBasedNetListener();
         _netManager = new NetManager(_listener);
+        _networkPlayer = NetworkPlayer;
         RegisterEvents();
     }
 
@@ -84,6 +86,12 @@ public class NetworkClient : INetworkClient
             throw new Exception("Failed to start NetworkClient");
         }
     }
+
+    public INetworkPlayer GetSelf()
+    {
+        return _networkManager.GetSelf();
+    }
+
     /// <summary>
     /// 注册网络事件处理器，包括连接、断开连接和数据接收事件
     /// 处理服务器响应、游戏事件同步和消息路由
@@ -113,12 +121,12 @@ public class NetworkClient : INetworkClient
             INetworkPlayer networkPlayer = _networkManager.GetPlayerByPeerId(peer.Id);
             var playerInfo = new
             {
-                PlayerName = networkPlayer.username,
+                PlayerName = networkPlayer.userName,
                 ConnectionTime = DateTime.Now.Ticks
             };
 
             // 向服务器发送玩家加入事件
-            SendGameEvent("PlayerJoined", playerInfo);
+            SendGameEventData("PlayerJoined", playerInfo);
         };
 
         _listener.PeerDisconnectedEvent += (peer, disconnectInfo) =>
@@ -283,7 +291,7 @@ public class NetworkClient : INetworkClient
     /// </summary>
     /// <param name="eventType">事件类型标识符</param>
     /// <param name="eventData">要发送的事件数据对象</param>
-    public void SendGameEvent(string eventType, object eventData)
+    public void SendGameEventData(string eventType, object eventData)
     {
         // 检查是否已连接到服务器
         if (!IsConnected)

@@ -1,4 +1,5 @@
 using System;
+using NetworkPlugin.Network.NetworkPlayer;
 
 namespace NetworkPlugin.Network.Client;
 
@@ -15,6 +16,11 @@ public interface INetworkClient
     /// 初始化网络组件并准备接收连接
     /// </summary>
     void Start();
+
+    /// <summary>
+    /// 获取客户端自身信息
+    /// </summary>
+    INetworkPlayer GetSelf();
 
     /// <summary>
     /// 连接到指定服务器
@@ -50,7 +56,7 @@ public interface INetworkClient
     /// </summary>
     /// <param name="eventType">事件类型</param>
     /// <param name="eventData">事件数据</param>
-    void SendGameEvent(string eventType, object eventData);
+    void SendGameEventData(string eventType, object eventData);
 
     /// <summary>
     /// 发送通用请求到服务器

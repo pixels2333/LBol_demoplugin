@@ -3,7 +3,7 @@ namespace NetworkPlugin.Network.Snapshot;
 /// <summary>
 /// 玩家统计快照
 /// </summary>
-public class PlayerStatsSnapshot
+public class PlayerPerformanceSnapshot
 {
     /// <summary>
     /// 总伤害
