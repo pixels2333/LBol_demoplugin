@@ -34,5 +34,11 @@ public partial class ConfigManager
 
         // 绑定网络参数配置
         BindNetworkSettings(configFile);
+
+        // 绑定同步配置
+        BindSyncConfiguration(configFile);
+
+        // 绑定游戏平衡配置
+        BindGameBalanceSettings(configFile);
     }
 }
