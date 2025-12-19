@@ -77,8 +77,7 @@ public class ApplyStatusEffectAction_Patch
                 ["StatusEffectFullName"] = statusEffectType?.FullName ?? "Unknown",
                 ["TargetId"] = target?.Id ?? "",
                 ["TargetName"] = target?.Name ?? "Unknown",
-                ["TargetType"] = target?.GetType().Name ?? "Unknown",
-                ["TargetCurrentHp"] = target?.Hp ?? 0,
+                // ["TargetType"] = target?.GetType().Name ?? "Unknown",
                 ["Level"] = level ?? 0,
                 ["Duration"] = duration ?? 0,
                 ["Count"] = count ?? 0,
@@ -104,8 +103,8 @@ public class ApplyStatusEffectAction_Patch
                         });
                     }
                 }
-                statusData["ExistingStatusEffects"] = existingStatusEffects;
-                statusData["ExistingStatusCount"] = target.StatusEffects.Count;
+                statusData.Add("ExistingStatusEffects", existingStatusEffects);
+                statusData.Add("ExistingStatusCount", target.StatusEffects.Count);
             }
 
             GameEvent gameEvent = GameEventManager.CreateEvent(
@@ -166,10 +165,10 @@ public class ApplyStatusEffectAction_Patch
                 ["TargetId"] = target?.Id ?? "",
                 ["TargetName"] = target?.Name ?? "Unknown",
                 ["TargetType"] = target?.GetType().Name ?? "Unknown",
-                ["TargetCurrentHp"] = target?.Hp ?? 0,
+                // ["TargetCurrentHp"] = target?.Hp ?? 0,
                 ["Level"] = level ?? 0,
                 ["Duration"] = duration ?? 0,
-                ["Count"] = count ?? 0,
+                // ["Count"] = count ?? 0,
                 ["Limit"] = limit ?? 0,
                 ["OccupationTime"] = occupationTime,
                 ["StartAutoDecreasing"] = startAutoDecreasing
@@ -189,7 +188,7 @@ public class ApplyStatusEffectAction_Patch
                             ["Level"] = statusEffect.Level,
                             ["Duration"] = statusEffect.Duration,
                             ["Count"] = statusEffect.Count,
-                            ["IsActive"] = statusEffect.IsActive
+                            // ["IsActive"] = statusEffect.IsActive
                         });
                     }
                 }
