@@ -81,7 +81,7 @@ public class TurnAction_Patch
             }
 
             // 获取回合动作的来源单位和战斗信息
-            
+
             BattleController battle = __instance.Unit?.Battle;
             PlayerUnit source = battle.Player;
             if (battle == null)
@@ -134,11 +134,11 @@ public class TurnAction_Patch
             //TODO:服务器接收需要将数据应用变更至INetworkPlayer
             networkClient.SendRequest(NetworkMessageTypes.OnTurnStart, json);
 
-            
+
             // 记录回合开始的详细日志
             Plugin.Logger?.LogInfo(
-                $"[TurnSync] Player turn started. " 
-                
+                $"[TurnSync] Player turn started. "
+
             );
         }
         catch (Exception ex)
@@ -210,7 +210,7 @@ public class TurnAction_Patch
     [HarmonyPostfix]
     public static void StartBattle_Postfix(StartBattleAction __instance)
     {
-        
+
     }
 
 
@@ -239,7 +239,7 @@ public class TurnAction_Patch
     [HarmonyPostfix]
     public static void EndBattle_Postfix(EndBattleAction __instance)
     {
-     
+
     }
 
 
@@ -262,7 +262,7 @@ public class TurnAction_Patch
 
         return
         [
-            manaGroup.Red,    // 红色法力（火）
+        manaGroup.Red,    // 红色法力（火）
         manaGroup.Blue,   // 蓝色法力（水）
         manaGroup.Green,  // 绿色法力（木）
         manaGroup.White   // 白色法力（光）

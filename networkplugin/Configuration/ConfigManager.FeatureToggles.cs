@@ -35,6 +35,24 @@ public partial class ConfigManager
     /// </summary>
     public ConfigEntry<bool> EnableMapSync { get; private set; }
 
+    /// <summary>
+    /// GapStation功能扩展开关
+    /// 控制在GapStation中添加交易和复活选项
+    /// </summary>
+    public ConfigEntry<bool> EnableGapStationExtensions { get; private set; }
+
+    /// <summary>
+    /// 交易功能开关
+    /// 控制玩家之间的物品交易功能
+    /// </summary>
+    public ConfigEntry<bool> AllowTrading { get; private set; }
+
+    /// <summary>
+    /// 复活功能开关
+    /// 控制玩家之间的复活功能
+    /// </summary>
+    public ConfigEntry<bool> AllowRevival { get; private set; }
+
     #endregion
 
     /// <summary>
@@ -69,6 +87,27 @@ public partial class ConfigManager
             "EnableMapSync",
             true,
             "控制地图探索、节点状态、地图事件的同步"
+        );
+
+        EnableGapStationExtensions = configFile.Bind(
+            "General.Toggles",
+            "EnableGapStationExtensions",
+            true,
+            "控制在GapStation中添加交易和复活选项"
+        );
+
+        AllowTrading = configFile.Bind(
+            "General.Toggles",
+            "AllowTrading",
+            true,
+            "控制玩家之间的物品交易功能"
+        );
+
+        AllowRevival = configFile.Bind(
+            "General.Toggles",
+            "AllowRevival",
+            true,
+            "控制玩家之间的复活功能"
         );
     }
 }
