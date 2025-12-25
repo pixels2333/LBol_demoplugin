@@ -273,8 +273,8 @@ public class CommandResult
     /// </remarks>
     public string GetShortDescription()
     {
-        var prefix = Success ? "[SUCCESS]" : "[FAILURE]";
-        var shortMessage = Message.Length > 50
+        string prefix = Success ? "[SUCCESS]" : "[FAILURE]";
+        string shortMessage = Message.Length > 50
             ? Message.Substring(0, 50) + "..."
             : Message;
 

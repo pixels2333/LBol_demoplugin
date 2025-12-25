@@ -152,7 +152,7 @@ public class ChatMessage
     /// </remarks>
     public string GetShortDescription()
     {
-        var shortContent = Content.Length > 50
+        string shortContent = Content.Length > 50
             ? Content.Substring(0, 50) + "..."
             : Content;
 

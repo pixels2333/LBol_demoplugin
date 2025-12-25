@@ -57,7 +57,7 @@ public class PotionSyncPatch
                     Source = "Unknown" // TODO: 确定获取来源（Shop/Event/Combat）
                 };
 
-                var json = JsonSerializer.Serialize(obtainData);
+                string json = JsonSerializer.Serialize(obtainData);
                 networkClient.SendRequest("PotionObtain", json);
 
                 Plugin.Logger?.LogInfo($"[PotionSync] Player obtained potion: {potionName} x{quantity}");
@@ -94,7 +94,7 @@ public class PotionSyncPatch
                     Potions = potions
                 };
 
-                var json = JsonSerializer.Serialize(initData);
+                string json = JsonSerializer.Serialize(initData);
                 networkClient.SendRequest("PotionInit", json);
 
                 Plugin.Logger?.LogInfo($"[PotionSync] Initial potions synced: {potions.Count} types");
@@ -141,7 +141,7 @@ public class PotionSyncPatch
                     RemainingQuantity = GetRemainingPotionQuantity(potionId) // TODO: 实现获取剩余数量
                 };
 
-                var json = JsonSerializer.Serialize(useData);
+                string json = JsonSerializer.Serialize(useData);
                 networkClient.SendRequest("PotionUse", json);
 
                 Plugin.Logger?.LogInfo($"[PotionSync] Player used potion: {potionName} x{quantityUsed}");
@@ -180,7 +180,7 @@ public class PotionSyncPatch
                     Effects = effectValues
                 };
 
-                var json = JsonSerializer.Serialize(effectData);
+                string json = JsonSerializer.Serialize(effectData);
                 networkClient.SendRequest("PotionEffect", json);
 
                 Plugin.Logger?.LogInfo($"[PotionSync] Potion effect applied: {effectDescription}");
@@ -228,7 +228,7 @@ public class PotionSyncPatch
                     RemainingQuantity = GetRemainingPotionQuantity(potionId)
                 };
 
-                var json = JsonSerializer.Serialize(discardData);
+                string json = JsonSerializer.Serialize(discardData);
                 networkClient.SendRequest("PotionDiscard", json);
 
                 Plugin.Logger?.LogInfo($"[PotionSync] Player discarded potion: {potionName} x{quantityDiscarded} ({discardType})");

@@ -497,7 +497,7 @@ public class HostAuthorityManager
     /// <returns>状态值，如果不存在则返回null</returns>
     public object GetAuthoritativeState(string key)
     {
-        return _authoritativeState.TryGetValue(key, out var value) ? value : null;
+        return _authoritativeState.TryGetValue(key, out object value) ? value : null;
     }
 
     /// <summary>
@@ -521,7 +521,7 @@ public class HostAuthorityManager
         // 4. 处理迁移过程中的异常情况
 
         // 更新主机信息
-        var oldHostId = HostPlayerId;
+        string oldHostId = HostPlayerId;
         HostPlayerId = newHostPlayerId;
         IsLocalHost = (newHostPlayerId == GetLocalPlayerId());
 

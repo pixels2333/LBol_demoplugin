@@ -31,7 +31,7 @@ public class PotionSyncPatch
         [HarmonyTargetMethods]
         static System.Collections.Generic.IEnumerable<System.Reflection.MethodBase> TargetMethods()
         {
-            var methodNames = new[]
+            string[] methodNames = new[]
             {
                 "AddToHand",
                 "AddToDeck",
@@ -108,12 +108,12 @@ public class PotionSyncPatch
                     return;
                 }
 
-                var afterCount = GetCurrentToolCount();
-                var obtainedCount = afterCount - __state.BeforeCount;
+                int afterCount = GetCurrentToolCount();
+                int obtainedCount = afterCount - __state.BeforeCount;
 
                 if (obtainedCount > 0)
                 {
-                    var source = DetermineToolSource(__instance, __args);
+                    string source = DetermineToolSource(__instance, __args);
                     var obtainData = new
                     {
                         Timestamp = DateTime.Now.Ticks,
@@ -253,7 +253,7 @@ public class PotionSyncPatch
         [HarmonyTargetMethods]
         static System.Collections.Generic.IEnumerable<System.Reflection.MethodBase> TargetMethods()
         {
-            var methodNames = new[]
+            string[] methodNames = new[]
             {
                 "RemoveFromHand",
                 "RemoveFromDeck",
@@ -333,12 +333,12 @@ public class PotionSyncPatch
                     return;
                 }
 
-                var afterCount = GetCurrentToolCount();
-                var discardedCount = __state.BeforeCount - afterCount;
+                int afterCount = GetCurrentToolCount();
+                int discardedCount = __state.BeforeCount - afterCount;
 
                 if (discardedCount > 0)
                 {
-                    var discardType = DetermineDiscardType(__instance, __args);
+                    string discardType = DetermineDiscardType(__instance, __args);
                     var discardData = new
                     {
                         Timestamp = DateTime.Now.Ticks,
@@ -532,8 +532,8 @@ public class PotionSyncPatch
     {
         try
         {
-            var hpChange = player.Hp - state.PlayerHpBefore;
-            var blockChange = player.Block - state.PlayerBlockBefore;
+            int hpChange = player.Hp - state.PlayerHpBefore;
+            int blockChange = player.Block - state.PlayerBlockBefore;
 
             return new
             {

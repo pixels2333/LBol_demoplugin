@@ -355,7 +355,7 @@ public class ReconnectionManager
             // 限制历史记录大小
             if (_eventHistory.Count > _config.MaxHistoryEvents)
             {
-                var removeCount = _eventHistory.Count - _config.MaxHistoryEvents;
+                int removeCount = _eventHistory.Count - _config.MaxHistoryEvents;
                 for (int i = 0; i < removeCount; i++)
                 {
                     _eventHistory.RemoveAt(0);

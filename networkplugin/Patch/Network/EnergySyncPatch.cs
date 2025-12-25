@@ -69,7 +69,7 @@ public class EnergySyncPatch
                 Source = "ConsumeManaAction"
             };
 
-            var json = JsonSerializer.Serialize(consumeManaData);
+            string json = JsonSerializer.Serialize(consumeManaData);
             networkClient.SendRequest("ManaConsumeStarted", json);
 
             Plugin.Logger?.LogInfo($"[EnergySync] Mana consume started: R{__instance.Args.Value?.Red}B{__instance.Args.Value?.Blue}G{__instance.Args.Value?.Green}W{__instance.Args.Value?.White}");
@@ -128,7 +128,7 @@ public class EnergySyncPatch
                 Source = "ConsumeManaAction"
             };
 
-            var json = JsonSerializer.Serialize(consumeManaData);
+            string json = JsonSerializer.Serialize(consumeManaData);
             networkClient.SendRequest("ManaConsumeCompleted", json);
 
             Plugin.Logger?.LogInfo($"[EnergySync] Mana consume completed. Current: R{manaAfter.Red}B{manaAfter.Blue}G{manaAfter.Green}W{manaAfter.White}");
@@ -200,7 +200,7 @@ public class EnergySyncPatch
                 }
             };
 
-            var json = JsonSerializer.Serialize(turnManaData);
+            string json = JsonSerializer.Serialize(turnManaData);
             networkClient.SendRequest("TurnManaCalculated", json);
 
             Plugin.Logger?.LogDebug($"[EnergySync] Turn mana calculated: R{__result.Red}B{__result.Blue}G{__result.Green}W{__result.White}");
@@ -272,7 +272,7 @@ public class EnergySyncPatch
                     }
                 };
 
-                var json = JsonSerializer.Serialize(manaData);
+                string json = JsonSerializer.Serialize(manaData);
                 networkClient.SendRequest("ManaChange", json);
 
                 Plugin.Logger?.LogInfo($"[EnergySync] Mana group changed: {changeReason}, " +
@@ -332,7 +332,7 @@ public class EnergySyncPatch
                     RegainType = regainType  // TurnStart/CardEffect/RelicEffect/Event
                 };
 
-                var json = JsonSerializer.Serialize(regainData);
+                string json = JsonSerializer.Serialize(regainData);
                 networkClient.SendRequest("ManaRegain", json);
 
                 Plugin.Logger?.LogInfo($"[EnergySync] Mana regained: +{amount} from {source} ({regainType})");
@@ -387,7 +387,7 @@ public class EnergySyncPatch
                     }
                 };
 
-                var json = JsonSerializer.Serialize(spendData);
+                string json = JsonSerializer.Serialize(spendData);
                 networkClient.SendRequest("ManaSpend", json);
 
                 Plugin.Logger?.LogInfo($"[EnergySync] Mana spent for {cardName}: R{cost?.Red}B{cost?.Blue}G{cost?.Green}W{cost?.White}");
@@ -439,7 +439,7 @@ public class EnergySyncPatch
                     ChangeType = changeType  // Permanent/Temporary
                 };
 
-                var json = JsonSerializer.Serialize(changeData);
+                string json = JsonSerializer.Serialize(changeData);
                 networkClient.SendRequest("MaxManaChange", json);
 
                 Plugin.Logger?.LogInfo($"[EnergySync] Max mana changed: {oldMax} -> {newMax} by {source} ({changeType})");
@@ -490,7 +490,7 @@ public class EnergySyncPatch
                     }
                 };
 
-                var json = JsonSerializer.Serialize(resetData);
+                string json = JsonSerializer.Serialize(resetData);
                 networkClient.SendRequest("TurnStartMana", json);
 
                 Plugin.Logger?.LogInfo($"[EnergySync] Turn start mana reset: R{startingMana?.Red}B{startingMana?.Blue}G{startingMana?.Green}W{startingMana?.White}");

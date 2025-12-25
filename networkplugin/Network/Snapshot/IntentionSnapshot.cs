@@ -103,7 +103,7 @@ public class IntentionSnapshot
         };
 
         // 根据意图类型提取特定属性
-        var intentionType = ((object)intention).GetType().Name;
+        string intentionType = ((object)intention).GetType().Name;
 
         try
         {

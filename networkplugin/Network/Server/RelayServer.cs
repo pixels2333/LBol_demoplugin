@@ -228,10 +228,10 @@ public class RelayServer
             try
             {
                 // 读取消息类型
-                var messageType = dataReader.GetString();
+                string messageType = dataReader.GetString();
 
                 // 读取消息负载（JSON字符串）
-                var jsonPayload = dataReader.GetString();
+                string jsonPayload = dataReader.GetString();
 
                 // 反序列化消息
                 var message = new NetworkMessage
@@ -483,7 +483,7 @@ public class RelayServer
             var roomConfig = message.GetRoomConfigPayload() ?? RoomConfig.Default();
 
             // 生成唯一房间ID
-            var roomId = GenerateRoomId();
+            string roomId = GenerateRoomId();
 
             // 创建房间
             NetworkRoom room = new(roomId, roomConfig, _logger);

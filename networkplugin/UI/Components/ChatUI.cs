@@ -216,7 +216,7 @@ public class ChatUI : MonoBehaviour
 
         if (textComponent != null)
         {
-            var formattedMessage = FormatMessage(message);
+            string formattedMessage = FormatMessage(message);
             textComponent.text = formattedMessage;
             textComponent.color = message.MessageType == ChatMessageType.System ? systemMessageColor : playerMessageColor;
 
@@ -239,7 +239,7 @@ public class ChatUI : MonoBehaviour
     /// </summary>
     private string FormatMessage(ChatMessage message)
     {
-        var timeStr = message.Timestamp.ToString("HH:mm:ss");
+        string timeStr = message.Timestamp.ToString("HH:mm:ss");
         return message.MessageType switch
         {
             ChatMessageType.System => $"[{timeStr}] {message.Content}",
@@ -280,7 +280,7 @@ public class ChatUI : MonoBehaviour
                 var messageAge = now - new DateTime(messageObj.name.GetHashCode());
                 if (messageAge.TotalSeconds > messageFadeTime)
                 {
-                    var alpha = Mathf.Clamp01(1f - (float)(messageAge.TotalSeconds - messageFadeTime) / messageFadeTime);
+                    float alpha = Mathf.Clamp01(1f - (float)(messageAge.TotalSeconds - messageFadeTime) / messageFadeTime);
                     var color = textComponent.color;
                     color.a = alpha;
                     textComponent.color = color;

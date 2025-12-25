@@ -326,7 +326,7 @@ public class SynchronizationManager : ISynchronizationManager
             }
 
             // 移除已处理或丢弃的事件
-            foreach (var timestamp in timestampsToRemove)
+            foreach (long timestamp in timestampsToRemove)
             {
                 _remoteEventBuffer.Remove(timestamp);
             }
@@ -348,7 +348,7 @@ public class SynchronizationManager : ISynchronizationManager
 
         // 提取事件的基本信息
         string eventType = eventDict["EventType"].ToString();
-        var payload = eventDict.ContainsKey("Payload") ? eventDict["Payload"] : string.Empty;
+        object payload = eventDict.ContainsKey("Payload") ? eventDict["Payload"] : string.Empty;
 
         // 从时间戳创建DateTime对象
         DateTime timestamp = new(eventBuffer.Timestamp);
@@ -383,7 +383,7 @@ public class SynchronizationManager : ISynchronizationManager
 
             foreach (var kvp in _remoteEventBuffer)
             {
-                var timestamp = kvp.Key;
+                long timestamp = kvp.Key;
                 var eventBuffer = kvp.Value;
 
                 // 只清理等待处理且超时的事件
@@ -396,7 +396,7 @@ public class SynchronizationManager : ISynchronizationManager
             }
 
             // 移除超时事件
-            foreach (var timestamp in timestampsToRemove)
+            foreach (long timestamp in timestampsToRemove)
             {
                 _remoteEventBuffer.Remove(timestamp);
             }
@@ -487,7 +487,7 @@ public class SynchronizationManager : ISynchronizationManager
         int[] manaCost, string targetSelector, object playerState)
     {
         // 获取当前玩家ID，用于标识事件来源
-        var playerId = GameStateUtils.GetCurrentPlayerId();
+        string playerId = GameStateUtils.GetCurrentPlayerId();
 
         // 创建卡牌使用事件的详细数据
         var eventData = new Dictionary<string, object>
@@ -515,7 +515,7 @@ public class SynchronizationManager : ISynchronizationManager
     public void SendManaConsumeEvent(int[] manaBefore, int[] manaConsumed, string source)
     {
         // 获取当前玩家ID，用于标识事件来源
-        var playerId = GameStateUtils.GetCurrentPlayerId();
+        string playerId = GameStateUtils.GetCurrentPlayerId();
 
         // 创建法力消耗事件的详细数据
         var eventData = new Dictionary<string, object>
@@ -540,7 +540,7 @@ public class SynchronizationManager : ISynchronizationManager
     public void SendGapStationEvent(string eventType, object optionData, object playerState)
     {
         // 获取当前玩家ID，用于标识事件来源
-        var playerId = GameStateUtils.GetCurrentPlayerId();
+        string playerId = GameStateUtils.GetCurrentPlayerId();
 
         // 创建篝火选项事件的详细数据
         var eventData = new Dictionary<string, object>
@@ -575,7 +575,7 @@ public class SynchronizationManager : ISynchronizationManager
                 ["RequestType"] = "FullSync",                       // 请求类型标识
                 ["RequestReason"] = "ManualRequest"                   // 请求原因描述
             };
-            var playerId = GameStateUtils.GetCurrentPlayerId();
+            string playerId = GameStateUtils.GetCurrentPlayerId();
 
             // 发送完整状态同步请求到网络
             GameEvent syncEvent = new(NetworkMessageTypes.FullStateSyncRequest.ToString(), playerId, syncRequestData);
@@ -655,7 +655,7 @@ public class SynchronizationManager : ISynchronizationManager
             Plugin.Logger?.LogWarning("[SyncManager] 网络连接丢失，切换到离线模式");
 
             // 发送连接丢失事件通知其他玩家
-            var playerId = GameStateUtils.GetCurrentPlayerId();
+            string playerId = GameStateUtils.GetCurrentPlayerId();
             var eventData = new Dictionary<string, object>
             {
                 ["QueuedEvents"] = _eventQueue.Count
@@ -678,7 +678,7 @@ public class SynchronizationManager : ISynchronizationManager
     public object GetSyncStatistics()
     {
         // 获取远程事件缓冲区的统计信息
-        var bufferStats = GetEventBufferStatistics();
+        object bufferStats = GetEventBufferStatistics();
 
         // 创建包含所有统计信息的对象
         return new
@@ -771,7 +771,7 @@ public class SynchronizationManager : ISynchronizationManager
         try
         {
             // 创建状态缓存键
-            var stateKey = $"{gameEvent.EventType}_{gameEvent.UserName}";
+            string stateKey = $"{gameEvent.EventType}_{gameEvent.UserName}";
 
             // 将事件数据存储到缓存中
             _stateCache[stateKey] = gameEvent.Data;
@@ -937,7 +937,7 @@ public class SynchronizationManager : ISynchronizationManager
             }
 
             // 删除识别出的过期状态
-            foreach (var key in keysToRemove)
+            foreach (string key in keysToRemove)
             {
                 _stateCache.Remove(key);
             }

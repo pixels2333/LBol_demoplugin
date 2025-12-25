@@ -572,13 +572,13 @@ public class ShopSyncPatch
 
             // 尝试获取玩家的所有卡牌数量
             var player = gameRun.Player;
-            var count = 0;
+            int count = 0;
 
             // 手牌
             var handZoneProperty = player.GetType().GetProperty("HandZone");
             if (handZoneProperty != null)
             {
-                var handZone = handZoneProperty.GetValue(player);
+                object handZone = handZoneProperty.GetValue(player);
                 if (handZone != null)
                 {
                     var countProperty = handZone.GetType().GetProperty("Count");
@@ -593,7 +593,7 @@ public class ShopSyncPatch
             var deckZoneProperty = gameRun.GetType().GetProperty("DeckZone");
             if (deckZoneProperty != null)
             {
-                var deckZone = deckZoneProperty.GetValue(gameRun);
+                object deckZone = deckZoneProperty.GetValue(gameRun);
                 if (deckZone != null)
                 {
                     var countProperty = deckZone.GetType().GetProperty("Count");
@@ -608,7 +608,7 @@ public class ShopSyncPatch
             var drawZoneProperty = gameRun.GetType().GetProperty("DrawZone");
             if (drawZoneProperty != null)
             {
-                var drawZone = drawZoneProperty.GetValue(gameRun);
+                object drawZone = drawZoneProperty.GetValue(gameRun);
                 if (drawZone != null)
                 {
                     var countProperty = drawZone.GetType().GetProperty("Count");
@@ -623,7 +623,7 @@ public class ShopSyncPatch
             var discardZoneProperty = gameRun.GetType().GetProperty("DiscardZone");
             if (discardZoneProperty != null)
             {
-                var discardZone = discardZoneProperty.GetValue(gameRun);
+                object discardZone = discardZoneProperty.GetValue(gameRun);
                 if (discardZone != null)
                 {
                     var countProperty = discardZone.GetType().GetProperty("Count");
@@ -671,7 +671,7 @@ public class ShopSyncPatch
                 return 0;
             }
 
-            var totalSpent = 0;
+            int totalSpent = 0;
 
             // 统计已购买卡牌的花费
             if (shop.ShopCards != null)

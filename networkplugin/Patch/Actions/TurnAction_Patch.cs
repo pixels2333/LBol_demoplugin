@@ -130,7 +130,7 @@ public class TurnAction_Patch
 
 
             // 发送回合开始事件到网络服务器
-            var json = JsonSerializer.Serialize(turnData);
+            string json = JsonSerializer.Serialize(turnData);
             //TODO:服务器接收需要将数据应用变更至INetworkPlayer
             networkClient.SendRequest(NetworkMessageTypes.OnTurnStart, json);
 

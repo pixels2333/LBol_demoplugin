@@ -267,7 +267,7 @@ public class ApplyStatusEffectAction_Patch
             return "Unknown";
 
         // 尝试获取状态的显示名称属性或自定义属性
-        var displayAttribute = statusEffectType.GetCustomAttributes(false)
+        object displayAttribute = statusEffectType.GetCustomAttributes(false)
             .FirstOrDefault(attr => attr.GetType().Name.Contains("Display") || attr.GetType().Name.Contains("Name"));
 
         if (displayAttribute != null)

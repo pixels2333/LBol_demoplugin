@@ -70,7 +70,7 @@ public class MapPanel_UpdateMapNodesStatus_Patch
                 Stage = gameMap.CurrentStage?.Id ?? "Unknown"
             };
 
-            var json = JsonSerializer.Serialize(locationData);
+            string json = JsonSerializer.Serialize(locationData);
             networkClient.SendRequest("UpdatePlayerLocation", json);
 
             Plugin.Logger?.LogInfo($"[MapSyncPatch] Player location updated: ({locationData.LocationX}, {locationData.LocationY}) - {locationData.LocationName}");

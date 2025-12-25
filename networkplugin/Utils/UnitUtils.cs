@@ -24,8 +24,8 @@ namespace NetworkPlugin.Utils
 
             try
             {
-                var isPlayer = unit is PlayerUnit;
-                var isEnemy = unit is EnemyUnit;
+                bool isPlayer = unit is PlayerUnit;
+                bool isEnemy = unit is EnemyUnit;
 
                 return new
                 {
@@ -148,7 +148,7 @@ namespace NetworkPlugin.Utils
                     IEnumerable effects = statusEffectsProperty.GetValue(unit) as System.Collections.IEnumerable;
                     if (effects != null)
                     {
-                        foreach (var effect in effects)
+                        foreach (object effect in effects)
                         {
                             if (effect != null)
                             {
@@ -169,8 +169,8 @@ namespace NetworkPlugin.Utils
                 }
 
                 // 备用方案：检查其他可能的状态效果属性
-                var alternativeProperties = new[] { "Buffs", "Debuffs", "Effects", "ActiveEffects" };
-                foreach (var propName in alternativeProperties)
+                string[] alternativeProperties = new[] { "Buffs", "Debuffs", "Effects", "ActiveEffects" };
+                foreach (string propName in alternativeProperties)
                 {
                     var prop = unit.GetType().GetProperty(propName);
                     if (prop != null)
@@ -178,7 +178,7 @@ namespace NetworkPlugin.Utils
                         IEnumerable effects = prop.GetValue(unit) as System.Collections.IEnumerable;
                         if (effects != null)
                         {
-                            foreach (var effect in effects)
+                            foreach (object effect in effects)
                             {
                                 if (effect != null && !statusEffects.Exists(e => ((dynamic)e).Id == GetStatusEffectId(effect)))
                                 {
@@ -241,8 +241,8 @@ namespace NetworkPlugin.Utils
                 }
 
                 // 尝试获取最大能量属性
-                var maxPowerProperties = new[] { "MaxPower", "MaxEnergy", "PowerLimit", "EnergyLimit" };
-                foreach (var propName in maxPowerProperties)
+                string[] maxPowerProperties = new[] { "MaxPower", "MaxEnergy", "PowerLimit", "EnergyLimit" };
+                foreach (string propName in maxPowerProperties)
                 {
                     var prop = player.GetType().GetProperty(propName);
                     if (prop != null && prop.PropertyType == typeof(int))
@@ -281,7 +281,7 @@ namespace NetworkPlugin.Utils
             try
             {
                 // 使用GameStateUtils中的实现
-                var manaGroup = GameStateUtils.GetCurrentMana(player);
+                object manaGroup = GameStateUtils.GetCurrentMana(player);
 
                 // 转换为数组格式
                 if (manaGroup != null)
@@ -330,7 +330,7 @@ namespace NetworkPlugin.Utils
                 var intentionProperty = enemy.GetType().GetProperty("Intention");
                 if (intentionProperty != null)
                 {
-                    var intention = intentionProperty.GetValue(enemy);
+                    object intention = intentionProperty.GetValue(enemy);
                     if (intention != null)
                     {
                         return new
@@ -389,7 +389,7 @@ namespace NetworkPlugin.Utils
                 var configProperty = statusEffect.GetType().GetProperty("Config");
                 if (configProperty != null)
                 {
-                    var config = configProperty.GetValue(statusEffect);
+                    object config = configProperty.GetValue(statusEffect);
                     if (config != null)
                     {
                         var nameConfigProperty = config.GetType().GetProperty("Name");
@@ -415,13 +415,13 @@ namespace NetworkPlugin.Utils
         {
             try
             {
-                var levelProperties = new[] { "Level", "Amount", "Stack", "Power" };
-                foreach (var propName in levelProperties)
+                string[] levelProperties = new[] { "Level", "Amount", "Stack", "Power" };
+                foreach (string propName in levelProperties)
                 {
                     var prop = statusEffect.GetType().GetProperty(propName);
                     if (prop != null && (prop.PropertyType == typeof(int) || prop.PropertyType == typeof(float)))
                     {
-                        var value = prop.GetValue(statusEffect);
+                        object value = prop.GetValue(statusEffect);
                         if (value != null)
                         {
                             return Convert.ToInt32(value);
@@ -445,13 +445,13 @@ namespace NetworkPlugin.Utils
         {
             try
             {
-                var durationProperties = new[] { "Duration", "TurnsLeft", "RemainingTurns", "TimeLeft" };
-                foreach (var propName in durationProperties)
+                string[] durationProperties = new[] { "Duration", "TurnsLeft", "RemainingTurns", "TimeLeft" };
+                foreach (string propName in durationProperties)
                 {
                     var prop = statusEffect.GetType().GetProperty(propName);
                     if (prop != null && (prop.PropertyType == typeof(int) || prop.PropertyType == typeof(float)))
                     {
-                        var value = prop.GetValue(statusEffect);
+                        object value = prop.GetValue(statusEffect);
                         if (value != null)
                         {
                             return Convert.ToInt32(value);
@@ -475,13 +475,13 @@ namespace NetworkPlugin.Utils
         {
             try
             {
-                var activeProperties = new[] { "IsActive", "Active", "Enabled" };
-                foreach (var propName in activeProperties)
+                string[] activeProperties = new[] { "IsActive", "Active", "Enabled" };
+                foreach (string propName in activeProperties)
                 {
                     var prop = statusEffect.GetType().GetProperty(propName);
                     if (prop != null && prop.PropertyType == typeof(bool))
                     {
-                        var value = prop.GetValue(statusEffect);
+                        object value = prop.GetValue(statusEffect);
                         if (value != null)
                         {
                             return (bool)value;
@@ -505,7 +505,7 @@ namespace NetworkPlugin.Utils
         {
             try
             {
-                var typeName = intention.GetType().Name.ToLower();
+                string typeName = intention.GetType().Name.ToLower();
                 return typeName.Contains("attack") || typeName.Contains("damage") || typeName.Contains("offense");
             }
             catch
@@ -523,7 +523,7 @@ namespace NetworkPlugin.Utils
         {
             try
             {
-                var typeName = intention.GetType().Name.ToLower();
+                string typeName = intention.GetType().Name.ToLower();
                 return typeName.Contains("defend") || typeName.Contains("block") || typeName.Contains("guard");
             }
             catch
@@ -547,7 +547,7 @@ namespace NetworkPlugin.Utils
                     return targetProperty.GetValue(intention)?.ToString() ?? "Unknown";
                 }
 
-                var typeName = intention.GetType().Name.ToLower();
+                string typeName = intention.GetType().Name.ToLower();
                 if (typeName.Contains("self"))
                 {
                     return "Self";
@@ -580,13 +580,13 @@ namespace NetworkPlugin.Utils
         {
             try
             {
-                var valueProperties = new[] { "Damage", "Block", "Amount", "Value", "Power" };
-                foreach (var propName in valueProperties)
+                string[] valueProperties = new[] { "Damage", "Block", "Amount", "Value", "Power" };
+                foreach (string propName in valueProperties)
                 {
                     var prop = intention.GetType().GetProperty(propName);
                     if (prop != null && (prop.PropertyType == typeof(int) || prop.PropertyType == typeof(float)))
                     {
-                        var value = prop.GetValue(intention);
+                        object value = prop.GetValue(intention);
                         if (value != null)
                         {
                             return Convert.ToInt32(value);

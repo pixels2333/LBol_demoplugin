@@ -95,7 +95,7 @@ public class CardLibrarySyncPatch
         static System.Collections.Generic.IEnumerable<System.Reflection.MethodBase> TargetMethods()
         {
             // 常见的弃牌方法名模式
-            var methodNames = new[]
+            string[] methodNames = new[]
             {
                 "Discard",
                 "DiscardHand",
@@ -141,7 +141,7 @@ public class CardLibrarySyncPatch
             try
             {
                 // 从参数中提取要弃置的卡牌
-                foreach (var arg in __args)
+                foreach (object arg in __args)
                 {
                     if (arg is Card card)
                     {
@@ -213,7 +213,7 @@ public class CardLibrarySyncPatch
         [HarmonyTargetMethods]
         static System.Collections.Generic.IEnumerable<System.Reflection.MethodBase> TargetMethods()
         {
-            var methodNames = new[]
+            string[] methodNames = new[]
             {
                 "Shuffle",
                 "TopDeck",
@@ -266,7 +266,7 @@ public class CardLibrarySyncPatch
                     return;
                 }
 
-                var operationType = DetermineOperationType(__originalMethod);
+                string operationType = DetermineOperationType(__originalMethod);
                 var operationData = new
                 {
                     Timestamp = DateTime.Now.Ticks,
@@ -299,7 +299,7 @@ public class CardLibrarySyncPatch
         [HarmonyTargetMethods]
         static System.Collections.Generic.IEnumerable<System.Reflection.MethodBase> TargetMethods()
         {
-            var methodNames = new[]
+            string[] methodNames = new[]
             {
                 "Upgrade",
                 "Transform",
@@ -364,7 +364,7 @@ public class CardLibrarySyncPatch
                     return;
                 }
 
-                var changeType = DetermineChangeType(__instance, __state);
+                string changeType = DetermineChangeType(__instance, __state);
                 var stateChangeData = new
                 {
                     Timestamp = DateTime.Now.Ticks,
@@ -440,7 +440,7 @@ public class CardLibrarySyncPatch
     {
         try
         {
-            var deckState = BuildFullDeckState();
+            object deckState = BuildFullDeckState();
             if (deckState == null || serviceProvider == null)
             {
                 return;

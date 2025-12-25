@@ -31,7 +31,7 @@ public class SaveLoadSyncPatch
         [HarmonyTargetMethods]
         static System.Collections.Generic.IEnumerable<System.Reflection.MethodBase> TargetMethods()
         {
-            var methodNames = new[]
+            string[] methodNames = new[]
             {
                 "SaveGame",
                 "SaveToFile",
@@ -111,7 +111,7 @@ public class SaveLoadSyncPatch
                 }
 
                 var saveTime = DateTime.Now - __state.SaveStartTime;
-                var gameStateAfter = CaptureGameState();
+                object gameStateAfter = CaptureGameState();
 
                 var syncData = new
                 {
@@ -160,7 +160,7 @@ public class SaveLoadSyncPatch
         [HarmonyTargetMethods]
         static System.Collections.Generic.IEnumerable<System.Reflection.MethodBase> TargetMethods()
         {
-            var methodNames = new[]
+            string[] methodNames = new[]
             {
                 "LoadGame",
                 "LoadFromFile",
@@ -234,7 +234,7 @@ public class SaveLoadSyncPatch
                 }
 
                 var loadTime = DateTime.Now - __state.LoadStartTime;
-                var gameStateAfter = CaptureGameState();
+                object gameStateAfter = CaptureGameState();
 
                 // 请求主机发送最新的存档同步
                 if (!IsHostPlayer())
@@ -278,7 +278,7 @@ public class SaveLoadSyncPatch
         [HarmonyTargetMethods]
         static System.Collections.Generic.IEnumerable<System.Reflection.MethodBase> TargetMethods()
         {
-            var methodNames = new[]
+            string[] methodNames = new[]
             {
                 "QuickSave",
                 "AutoSave",
@@ -338,7 +338,7 @@ public class SaveLoadSyncPatch
                     return; // 只有主机执行快速保存同步
                 }
 
-                var gameState = CaptureGameState();
+                object gameState = CaptureGameState();
                 var syncData = new
                 {
                     Timestamp = DateTime.Now.Ticks,
@@ -426,7 +426,7 @@ public class SaveLoadSyncPatch
                     return;
                 }
 
-                var gameState = CaptureGameState();
+                object gameState = CaptureGameState();
                 var responseData = new
                 {
                     Timestamp = DateTime.Now.Ticks,
@@ -605,7 +605,7 @@ public class SaveLoadSyncPatch
     {
         try
         {
-            var slotArg = args.FirstOrDefault(arg => arg?.ToString().Contains("Slot") == true);
+            object slotArg = args.FirstOrDefault(arg => arg?.ToString().Contains("Slot") == true);
             return slotArg?.ToString() ?? "DefaultSlot";
         }
         catch (Exception ex)

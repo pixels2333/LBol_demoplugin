@@ -261,7 +261,7 @@ public class NetworkServer
             }
 
             string jsonPayload = dataReader.GetString();
-            var eventData = JsonSerializer.Deserialize<object>(jsonPayload);
+            object eventData = JsonSerializer.Deserialize<object>(jsonPayload);
 
             Console.WriteLine($"[Server] Received game event: {eventType} from {session.PlayerId}");
 
@@ -297,7 +297,7 @@ public class NetworkServer
             if (_playerSessions.TryGetValue(fromPeer.Id, out var session))
             {
                 // 提取玩家名称
-                if (playerInfo.TryGetValue("PlayerName", out var nameObj) && nameObj != null)
+                if (playerInfo.TryGetValue("PlayerName", out object nameObj) && nameObj != null)
                 {
                     session.PlayerName = nameObj.ToString();
                 }
@@ -375,7 +375,7 @@ public class NetworkServer
     /// <param name="excludePeerId">要排除的Peer ID</param>
     private void BroadcastGameEvent(string eventType, object eventData, int excludePeerId)
     {
-        var json = JsonSerializer.Serialize(eventData);
+        string json = JsonSerializer.Serialize(eventData);
 
         foreach (var kvp in _playerSessions)
         {
@@ -406,7 +406,7 @@ public class NetworkServer
     /// <param name="excludePeerId">可选的要排除的Peer ID</param>
     private void BroadcastMessage(string messageType, object data, int? excludePeerId = null)
     {
-        var json = JsonSerializer.Serialize(data);
+        string json = JsonSerializer.Serialize(data);
 
         foreach (var kvp in _playerSessions)
         {
@@ -434,7 +434,7 @@ public class NetworkServer
     {
         try
         {
-            var json = JsonSerializer.Serialize(data);
+            string json = JsonSerializer.Serialize(data);
             NetDataWriter writer = new NetDataWriter();
             writer.Put(messageType);
             writer.Put(json);

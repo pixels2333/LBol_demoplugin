@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Reflection;
+using DG.Tweening;
 using HarmonyLib;
 using LBoL.Base;
 using LBoL.Core;
 using LBoL.Core.GapOptions;
 using LBoL.Core.Stations;
+using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.UI.Widgets;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +15,7 @@ using NetworkPlugin.Configuration;
 using NetworkPlugin.Core;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.UI.Panels;
 using UnityEngine;
 
 namespace NetworkPlugin.Patch.UI;
@@ -32,21 +35,6 @@ public class GapOptionsPanel_Patch
     /// 配置管理器实例
     /// </summary>
     private static ConfigManager ConfigManager => serviceProvider?.GetService<ConfigManager>();
-
-    /// <summary>
-    /// 获取同步管理器
-    /// </summary>
-    private static ISynchronizationManager GetSyncManager()
-    {
-        try
-        {
-            return serviceProvider?.GetService<ISynchronizationManager>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
 
     /// <summary>
     /// 获取网络管理器
@@ -107,37 +95,52 @@ public class GapOptionsPanel_Patch
         try
         {
             // 创建交易选项
-            var tradeOption = CreateCustomGapOption("Trade", "交易", "与其他玩家交易卡牌、道具、金币等物品");
+            // 创建自定义交易选项对象，包含ID、中文名称和描述
+            object tradeOption = CreateCustomGapOption("Trade", "交易", "与其他玩家交易卡牌、道具、金币等物品");
 
-            // 获取optionsLayout和template字段
-            var optionsLayoutField = AccessTools.Field(typeof(GapOptionsPanel), "optionsLayout");
-            var templateField = AccessTools.Field(typeof(GapOptionsPanel), "template");
-            var spriteTableField = AccessTools.Field(typeof(GapOptionsPanel), "spriteTable");
-            var _optionsField = AccessTools.Field(typeof(GapOptionsPanel), "_options");
+            // 使用Traverse工具获取GapOptionsPanel的私有字段
+            Traverse traverse = Traverse.Create(panel);
+            Transform optionsLayout = traverse.Field("optionsLayout").GetValue<Transform>(); // UI布局容器，用于放置选项widget
+            GapOptionWidget template = traverse.Field("template").GetValue<GapOptionWidget>(); // 选项widget模板，用于实例化新的选项
+            AssociationList<GapOptionType, Sprite> spriteTable = traverse.Field("spriteTable").GetValue<AssociationList<GapOptionType, Sprite>>(); // 选项类型与图标的映射表
+            List<GapOptionWidget> _options = traverse.Field("_options").GetValue<List<GapOptionWidget>>(); // 当前显示的选项widget列表
 
-            if (optionsLayoutField?.GetValue(panel) is Transform optionsLayout &&
-                templateField?.GetValue(panel) is GapOptionWidget template &&
-                spriteTableField?.GetValue(panel) is AssociationList<GapOptionType, Sprite> spriteTable &&
-                _optionsField?.GetValue(panel) is System.Collections.Generic.List<GapOptionWidget> _options)
+            // 验证字段获取成功并提取值
+            if (optionsLayout != null &&
+                template != null &&
+                spriteTable != null &&
+                _options != null)
             {
-                // 创建交易选项widget
-                var tradeWidget = GameObject.Instantiate(template, optionsLayout);
-                tradeWidget.Parent = panel;
+                // 基于模板创建交易选项widget实例，并将其添加到布局中
+                GapOptionWidget tradeWidget = UnityEngine.Object.Instantiate(template, optionsLayout);
+                tradeWidget.Parent = panel; // 设置父面板引用
 
-                // 设置选项信息
-                SetCustomOptionInfo(tradeWidget, tradeOption, GetTradeSprite());
+                // 设置widget的显示信息和图标
+                try
+                {
+                    Traverse.Create(tradeWidget).Method("SetOption").GetValue(tradeOption, GetTradeSprite());
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Logger?.LogError($"[GapOptionsPanel_Patch] SetOption错误: {ex.Message}");
+                }
 
-                // 添加到选项列表
+                // 将新创建的widget添加到选项列表中
                 _options.Add(tradeWidget);
 
-                // 调整位置
-                int optionIndex = gapStation.GapOptions.Count;
-                Vector3 optionPos = GetDefaultOptionPos(panel) + GetOptionPadding(panel) * optionIndex;
+                // 计算widget的目标位置
+                int optionIndex = gapStation.GapOptions.Count; // 获取当前选项数量作为索引
+                Vector3 optionPos = GetDefaultOptionPos(panel) + GetOptionPadding(panel) * optionIndex; // 基础位置 + 间距偏移
+
+                // 创建入场动画：从左侧4000像素处滑入，持续1秒，使用OutCubic缓动曲线
                 tradeWidget.transform.DOLocalMove(optionPos, 1f, false)
                     .From(optionPos - new Vector3(4000f, 0f, 0f), true, false)
                     .SetEase(DG.Tweening.Ease.OutCubic);
+
+                // 将widget设置为同级节点中的第一个，确保正确的渲染顺序
                 tradeWidget.transform.SetAsFirstSibling();
 
+                // 记录添加成功的日志
                 Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 已添加交易选项");
             }
         }
@@ -155,25 +158,33 @@ public class GapOptionsPanel_Patch
         try
         {
             // 创建复活选项
-            var resurrectOption = CreateCustomGapOption("Resurrect", "复活", "复活已死亡的队友");
+            object resurrectOption = CreateCustomGapOption("Resurrect", "复活", "复活已死亡的队友");
 
-            // 获取必要字段
-            var optionsLayoutField = AccessTools.Field(typeof(GapOptionsPanel), "optionsLayout");
-            var templateField = AccessTools.Field(typeof(GapOptionsPanel), "template");
-            var spriteTableField = AccessTools.Field(typeof(GapOptionsPanel), "spriteTable");
-            var _optionsField = AccessTools.Field(typeof(GapOptionsPanel), "_options");
+            // 使用Traverse工具获取必要字段
+            var traverse = Traverse.Create(panel);
+            Transform optionsLayout = traverse.Field("optionsLayout").GetValue<Transform>();
+            GapOptionWidget template = traverse.Field("template").GetValue<GapOptionWidget>();
+            AssociationList<GapOptionType, Sprite> spriteTable = traverse.Field("spriteTable").GetValue<AssociationList<GapOptionType, Sprite>>();
+            List<GapOptionWidget> _options = traverse.Field("_options").GetValue<List<GapOptionWidget>>();
 
-            if (optionsLayoutField?.GetValue(panel) is Transform optionsLayout &&
-                templateField?.GetValue(panel) is GapOptionWidget template &&
-                spriteTableField?.GetValue(panel) is AssociationList<GapOptionType, Sprite> spriteTable &&
-                _optionsField?.GetValue(panel) is System.Collections.Generic.List<GapOptionWidget> _options)
+            if (optionsLayout != null &&
+                template != null &&
+                spriteTable != null &&
+                _options != null)
             {
                 // 创建复活选项widget
-                var resurrectWidget = GameObject.Instantiate(template, optionsLayout);
+                GapOptionWidget resurrectWidget = UnityEngine.Object.Instantiate(template, optionsLayout);
                 resurrectWidget.Parent = panel;
 
                 // 设置选项信息
-                SetCustomOptionInfo(resurrectWidget, resurrectOption, GetResurrectSprite());
+                try
+                {
+                    Traverse.Create(resurrectWidget).Method("SetOption").GetValue(resurrectOption, GetResurrectSprite());
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Logger?.LogError($"[GapOptionsPanel_Patch] SetOption错误: {ex.Message}");
+                }
 
                 // 添加到选项列表
                 _options.Add(resurrectWidget);
@@ -205,16 +216,43 @@ public class GapOptionsPanel_Patch
     {
         try
         {
-            // 检查是否为自定义选项
+            // 检查是否为自定义交易选项
             if (IsCustomTradeOption(option))
             {
-                HandleTradeOption(__instance, option);
+                try
+                {
+                    Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 处理交易选项");
+                    TradePanel tradePanel = GetOrCreateTradePanel();
+                    if (tradePanel != null)
+                    {
+                        Traverse.Create(__instance).Method("StartCoroutine").GetValue(tradePanel.ShowTradeUI());
+                    }
+                    Traverse.Create(__instance).Method("SelectedAndHide").GetValue();
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Logger?.LogError($"[GapOptionsPanel_Patch] 处理交易选项错误: {ex.Message}");
+                }
                 return false; // 阻止原始方法执行
             }
 
+            // 检查是否为自定义复活选项
             if (IsCustomResurrectOption(option))
             {
-                HandleResurrectOption(__instance, option);
+                try
+                {
+                    Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 处理复活选项");
+                    ResurrectPanel resurrectPanel = GetOrCreateResurrectPanel();
+                    if (resurrectPanel != null)
+                    {
+                        Traverse.Create(__instance).Method("StartCoroutine").GetValue(resurrectPanel.ShowResurrectUI());
+                    }
+                    Traverse.Create(__instance).Method("SelectedAndHide").GetValue();
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Logger?.LogError($"[GapOptionsPanel_Patch] 处理复活选项错误: {ex.Message}");
+                }
                 return false; // 阻止原始方法执行
             }
 
@@ -234,8 +272,6 @@ public class GapOptionsPanel_Patch
     /// </summary>
     private static object CreateCustomGapOption(string id, string name, string description)
     {
-        // 由于不能直接继承GapOption，我们创建一个动态对象来模拟
-        var optionType = typeof(GapOption);
         var customOption = new
         {
             Id = id,
@@ -244,37 +280,6 @@ public class GapOptionsPanel_Patch
             IsCustom = true
         };
         return customOption;
-    }
-
-    /// <summary>
-    /// 设置自定义选项信息
-    /// </summary>
-    private static void SetCustomOptionInfo(GapOptionWidget widget, object customOption, Sprite sprite)
-    {
-        try
-        {
-            // 使用反射设置widget的选项信息
-            var optionType = customOption.GetType();
-            var nameProperty = optionType.GetProperty("Name");
-            var descProperty = optionType.GetProperty("Description");
-
-            if (nameProperty != null && descProperty != null)
-            {
-                string name = nameProperty.GetValue(customOption)?.ToString() ?? "Custom Option";
-                string description = descProperty.GetValue(customOption)?.ToString() ?? "Custom option description";
-
-                // 使用反射设置widget的显示信息
-                var setNameMethod = widget.GetType().GetMethod("SetOption");
-                if (setNameMethod != null)
-                {
-                    setNameMethod.Invoke(widget, new object[] { customOption, sprite });
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[GapOptionsPanel_Patch] SetCustomOptionInfo错误: {ex.Message}");
-        }
     }
 
     /// <summary>
@@ -318,8 +323,7 @@ public class GapOptionsPanel_Patch
     {
         try
         {
-            var field = AccessTools.Field(typeof(GapOptionsPanel), "defaultOptionPos");
-            return field?.GetValue(panel) as Vector3? ?? Vector3.zero;
+            return Traverse.Create(panel).Field("defaultOptionPos").GetValue<Vector3>();
         }
         catch
         {
@@ -334,8 +338,7 @@ public class GapOptionsPanel_Patch
     {
         try
         {
-            var field = AccessTools.Field(typeof(GapOptionsPanel), "optionPadding");
-            return field?.GetValue(panel) as Vector3? ?? new Vector3(200f, 0f, 0f);
+            return Traverse.Create(panel).Field("optionPadding").GetValue<Vector3>();
         }
         catch
         {
@@ -360,116 +363,20 @@ public class GapOptionsPanel_Patch
     }
 
     /// <summary>
-    /// 处理交易选项
-    /// </summary>
-    private static void HandleTradeOption(GapOptionsPanel panel, GapOption option)
-    {
-        try
-        {
-            Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 处理交易选项");
-
-            // 打开交易UI面板
-            OpenTradeUI(panel);
-
-            // 选择后隐藏面板
-            var selectedAndHideMethod = panel.GetType().GetMethod("SelectedAndHide");
-            selectedAndHideMethod?.Invoke(panel, null);
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[GapOptionsPanel_Patch] HandleTradeOption错误: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 处理复活选项
-    /// </summary>
-    private static void HandleResurrectOption(GapOptionsPanel panel, GapOption option)
-    {
-        try
-        {
-            Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 处理复活选项");
-
-            // 打开复活UI面板
-            OpenResurrectUI(panel);
-
-            // 选择后隐藏面板
-            var selectedAndHideMethod = panel.GetType().GetMethod("SelectedAndHide");
-            selectedAndHideMethod?.Invoke(panel, null);
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[GapOptionsPanel_Patch] HandleResurrectOption错误: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 打开交易UI
-    /// </summary>
-    private static void OpenTradeUI(GapOptionsPanel panel)
-    {
-        try
-        {
-            // 创建或获取交易面板
-            var tradePanel = GetOrCreateTradePanel();
-            if (tradePanel != null)
-            {
-                // 启动交易UI协程
-                var startCoroutineMethod = panel.GetType().GetMethod("StartCoroutine");
-                startCoroutineMethod?.Invoke(panel, new object[] { tradePanel.ShowTradeUI() });
-            }
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[GapOptionsPanel_Patch] OpenTradeUI错误: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 打开复活UI
-    /// </summary>
-    private static void OpenResurrectUI(GapOptionsPanel panel)
-    {
-        try
-        {
-            // 创建或获取复活面板
-            var resurrectPanel = GetOrCreateResurrectPanel();
-            if (resurrectPanel != null)
-            {
-                // 启动复活UI协程
-                var startCoroutineMethod = panel.GetType().GetMethod("StartCoroutine");
-                startCoroutineMethod?.Invoke(panel, new object[] { resurrectPanel.ShowResurrectUI() });
-            }
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[GapOptionsPanel_Patch] OpenResurrectUI错误: {ex.Message}");
-        }
-    }
-
-    /// <summary>
     /// 获取或创建交易面板
     /// </summary>
-    private static NetworkPlugin.UI.Panels.TradePanel GetOrCreateTradePanel()
+    private static TradePanel GetOrCreateTradePanel()
     {
         try
         {
             // 尝试从UI管理器获取现有面板
-            var uiManagerType = Type.GetType("LBoL.Presentation.UiManager, LBoL.Presentation");
-            if (uiManagerType != null)
-            {
-                var getPanelMethod = uiManagerType.GetMethod("GetPanel");
-                if (getPanelMethod != null)
-                {
-                    var panel = getPanelMethod.Invoke(null, new object[] { typeof(NetworkPlugin.UI.Panels.TradePanel) });
-                    if (panel is NetworkPlugin.UI.Panels.TradePanel tradePanel)
-                        return tradePanel;
-                }
-            }
+            var panel = Traverse.CreateWithType(typeof(UiManager).FullName).Method("GetPanel").GetValue<TradePanel>();
+            if (panel != null)
+                return panel;
 
             // 如果没有找到，创建新的面板
             var tradePanelGO = new GameObject("TradePanel");
-            return tradePanelGO.AddComponent<NetworkPlugin.UI.Panels.TradePanel>();
+            return tradePanelGO.AddComponent<TradePanel>();
         }
         catch (Exception ex)
         {
@@ -481,26 +388,18 @@ public class GapOptionsPanel_Patch
     /// <summary>
     /// 获取或创建复活面板
     /// </summary>
-    private static NetworkPlugin.UI.Panels.ResurrectPanel GetOrCreateResurrectPanel()
+    private static ResurrectPanel GetOrCreateResurrectPanel()
     {
         try
         {
             // 尝试从UI管理器获取现有面板
-            var uiManagerType = Type.GetType("LBoL.Presentation.UiManager, LBoL.Presentation");
-            if (uiManagerType != null)
-            {
-                var getPanelMethod = uiManagerType.GetMethod("GetPanel");
-                if (getPanelMethod != null)
-                {
-                    var panel = getPanelMethod.Invoke(null, new object[] { typeof(NetworkPlugin.UI.Panels.ResurrectPanel) });
-                    if (panel is NetworkPlugin.UI.Panels.ResurrectPanel resurrectPanel)
-                        return resurrectPanel;
-                }
-            }
+            var panel = Traverse.CreateWithType(typeof(UiManager).FullName).Method("GetPanel").GetValue<ResurrectPanel>();
+            if (panel != null)
+                return panel;
 
             // 如果没有找到，创建新的面板
             var resurrectPanelGO = new GameObject("ResurrectPanel");
-            return resurrectPanelGO.AddComponent<NetworkPlugin.UI.Panels.ResurrectPanel>();
+            return resurrectPanelGO.AddComponent<ResurrectPanel>();
         }
         catch (Exception ex)
         {

@@ -151,7 +151,7 @@ public class MidGameJoinManager
             }
 
             // 生成加入令牌
-            var joinToken = GenerateJoinToken();
+            string joinToken = GenerateJoinToken();
 
             // 创建批准加入信息
             ApprovedJoin approvedJoin = new()
@@ -197,7 +197,7 @@ public class MidGameJoinManager
             }
 
             // 生成新玩家ID
-            var playerId = GeneratePlayerId();
+            string playerId = GeneratePlayerId();
 
             try
             {

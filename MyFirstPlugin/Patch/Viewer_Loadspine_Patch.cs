@@ -48,7 +48,7 @@ public class Viewer_Loadspine_Patch
             }
 
             // 使用Harmony的Traverse工具获取私有字段_modelName
-            var modelName = Traverse.Create(__instance).Field("_modelName").GetValue<string>();
+            string modelName = Traverse.Create(__instance).Field("_modelName").GetValue<string>();
 
             // 检查是否为目标单位类型（Koishi）
             if (modelName != "Koishi")

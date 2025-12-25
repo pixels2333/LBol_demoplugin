@@ -138,7 +138,7 @@ public class ExhibitSyncPatch
         static System.Collections.Generic.IEnumerable<System.Reflection.MethodBase> TargetMethods()
         {
             // 搜索可能修改Active属性的方法
-            var methodNames = new[]
+            string[] methodNames = new[]
             {
                 "Activate",
                 "Deactivate",
@@ -235,7 +235,7 @@ public class ExhibitSyncPatch
         static System.Collections.Generic.IEnumerable<System.Reflection.MethodBase> TargetMethods()
         {
             // 搜索可能修改Counter的方法
-            var methodNames = new[]
+            string[] methodNames = new[]
             {
                 "SetCounter",
                 "IncreaseCounter",
@@ -422,7 +422,7 @@ public class ExhibitSyncPatch
                 TotalExhibitsCleared = __instance.Exhibits?.Count ?? 0
             };
 
-            var json = JsonSerializer.Serialize(message);
+            string json = JsonSerializer.Serialize(message);
             networkClient.SendRequest("ExhibitUpdate", json);
 
             Plugin.Logger?.LogInfo($"[ExhibitSync] All exhibits cleared (Total: {__instance.Exhibits?.Count ?? 0})");
@@ -485,7 +485,7 @@ public class ExhibitSyncPatch
                         PlayerGoldAfter = __instance.Money
                     };
 
-                    var json = JsonSerializer.Serialize(purchaseData);
+                    string json = JsonSerializer.Serialize(purchaseData);
                     networkClient.SendRequest("ShopPurchase", json);
 
                     Plugin.Logger?.LogInfo($"[ExhibitSync] Bought exhibit: {exhibitItem.Content.Name}");

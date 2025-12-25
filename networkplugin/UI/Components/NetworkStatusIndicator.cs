@@ -197,7 +197,7 @@ public class NetworkStatusIndicator : MonoBehaviour
             return;
         }
 
-        var ping = GetPingValue();
+        int ping = GetPingValue();
         pingText.text = $"延迟: {ping}ms";
 
         var pingColor = ping switch
@@ -238,7 +238,7 @@ public class NetworkStatusIndicator : MonoBehaviour
             return;
         }
 
-        var playerCount = GetConnectedPlayerCount();
+        int playerCount = GetConnectedPlayerCount();
         playerCountText.text = $"玩家: {playerCount}";
     } // 更新玩家数量显示，获取连接玩家数量并更新UI文本
 
@@ -311,7 +311,7 @@ public class NetworkStatusIndicator : MonoBehaviour
     {
         try
         {
-            var details = GenerateConnectionDetails();
+            string details = GenerateConnectionDetails();
             Plugin.Logger?.LogInfo($"[NetworkStatus] Connection Details:\n{details}");
         }
         catch (Exception ex)

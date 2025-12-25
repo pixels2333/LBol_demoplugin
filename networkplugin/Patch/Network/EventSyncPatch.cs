@@ -55,7 +55,7 @@ public class EventSyncPatch
                     PlayerId = GetCurrentPlayerId()
                 };
 
-                var json = JsonSerializer.Serialize(eventData);
+                string json = JsonSerializer.Serialize(eventData);
                 networkClient.SendRequest("EventStart", json);
 
                 Plugin.Logger?.LogInfo($"[EventSync] Event started: {eventName} (ID: {eventId})");
@@ -106,7 +106,7 @@ public class EventSyncPatch
                     PlayerId = GetCurrentPlayerId()
                 };
 
-                var json = JsonSerializer.Serialize(selectionData);
+                string json = JsonSerializer.Serialize(selectionData);
                 networkClient.SendRequest("EventSelection", json);
 
                 Plugin.Logger?.LogInfo($"[EventSync] Event option selected: {optionText} -> {optionResult}");
@@ -143,7 +143,7 @@ public class EventSyncPatch
                     Effects = effects
                 };
 
-                var json = JsonSerializer.Serialize(resultData);
+                string json = JsonSerializer.Serialize(resultData);
                 networkClient.SendRequest("EventResult", json);
 
                 Plugin.Logger?.LogInfo($"[EventSync] Event result applied: {eventId}");
@@ -194,7 +194,7 @@ public class EventSyncPatch
                     DialogIndex = dialogIndex
                 };
 
-                var json = JsonSerializer.Serialize(dialogData);
+                string json = JsonSerializer.Serialize(dialogData);
                 networkClient.SendRequest("DialogText", json);
 
                 Plugin.Logger?.LogDebug($"[EventSync] Dialog [{dialogIndex}] {speaker}: {text}");
@@ -230,7 +230,7 @@ public class EventSyncPatch
                     Options = options
                 };
 
-                var json = JsonSerializer.Serialize(optionsData);
+                string json = JsonSerializer.Serialize(optionsData);
                 networkClient.SendRequest("DialogOptions", json);
 
                 Plugin.Logger?.LogInfo($"[EventSync] Dialog options synced: {options.Count} options");
@@ -286,7 +286,7 @@ public class EventSyncPatch
                     PlayerId = GetCurrentPlayerId()
                 };
 
-                var json = JsonSerializer.Serialize(rewardData);
+                string json = JsonSerializer.Serialize(rewardData);
                 networkClient.SendRequest("BossRewardSelection", json);
 
                 Plugin.Logger?.LogInfo($"[EventSync] Boss reward selected: {rewardType} - {rewardId}");
@@ -322,7 +322,7 @@ public class EventSyncPatch
                     EventType = eventType
                 };
 
-                var json = JsonSerializer.Serialize(shopData);
+                string json = JsonSerializer.Serialize(shopData);
                 networkClient.SendRequest("ShopEvent", json);
             }
             catch (Exception ex)
@@ -356,7 +356,7 @@ public class EventSyncPatch
                     Rewards = rewards
                 };
 
-                var json = JsonSerializer.Serialize(treasureData);
+                string json = JsonSerializer.Serialize(treasureData);
                 networkClient.SendRequest("TreasureEvent", json);
             }
             catch (Exception ex)
@@ -432,10 +432,10 @@ public class EventSyncPatch
             Dictionary<int, int> optionCounts = [];
 
             // 统计投票
-            foreach (var vote in votes)
+            foreach (string vote in votes)
             {
-                var parts = vote.Split(':');
-                if (parts.Length == 2 && int.TryParse(parts[1], out var optionIndex))
+                string[] parts = vote.Split(':');
+                if (parts.Length == 2 && int.TryParse(parts[1], out int optionIndex))
                 {
                     optionCounts.TryAdd(optionIndex, 0);
                     optionCounts[optionIndex]++;
@@ -487,7 +487,7 @@ public class EventSyncPatch
                     TotalVotes = totalVotes
                 };
 
-                var json = JsonSerializer.Serialize(resultData);
+                string json = JsonSerializer.Serialize(resultData);
                 networkClient.SendRequest("EventVotingResult", json);
 
                 Plugin.Logger?.LogInfo($"[EventVoting] Voting resolved: Event {eventId}, Winning option: {winningOption}, Total votes: {totalVotes}");

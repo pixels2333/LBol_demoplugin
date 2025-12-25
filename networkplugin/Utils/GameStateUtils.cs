@@ -23,7 +23,7 @@ namespace NetworkPlugin.Utils
                 // 通过反射获取GameRunController实例和玩家
                 var gameRunControllerType = typeof(LBoL.Core.GameRunController);
                 var instanceProperty = gameRunControllerType.GetProperty("Instance", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-                var gameRun = instanceProperty?.GetValue(null);
+                object gameRun = instanceProperty?.GetValue(null);
 
                 if (gameRun != null)
                 {
@@ -83,7 +83,7 @@ namespace NetworkPlugin.Utils
                 if (gameRun != null)
                 {
                     var battleProperty = gameRun.GetType().GetProperty("Battle");
-                    var battle = battleProperty?.GetValue(gameRun);
+                    object battle = battleProperty?.GetValue(gameRun);
                     return battle != null;
                 }
                 return false;
@@ -138,13 +138,13 @@ namespace NetworkPlugin.Utils
                 if (gameRun != null)
                 {
                     var battleProperty = gameRun.GetType().GetProperty("Battle");
-                    var battle = battleProperty?.GetValue(gameRun);
+                    object battle = battleProperty?.GetValue(gameRun);
 
                     if (battle != null)
                     {
                         // 尝试获取敌人组
                         var enemyGroupProperty = battle.GetType().GetProperty("EnemyGroup");
-                        var enemyGroup = enemyGroupProperty?.GetValue(battle);
+                        object enemyGroup = enemyGroupProperty?.GetValue(battle);
 
                         if (enemyGroup != null)
                         {
@@ -154,13 +154,13 @@ namespace NetworkPlugin.Utils
 
                             if (units != null)
                             {
-                                foreach (var unit in units)
+                                foreach (object unit in units)
                                 {
                                     if (unit is EnemyUnit enemyUnit)
                                     {
                                         // 检查敌人是否存活
                                         var isAliveProperty = enemyUnit.GetType().GetProperty("IsAlive");
-                                        var isAlive = (bool?)(isAliveProperty?.GetValue(enemyUnit)) ?? true;
+                                        bool isAlive = (bool?)(isAliveProperty?.GetValue(enemyUnit)) ?? true;
 
                                         if (isAlive)
                                         {
@@ -233,7 +233,7 @@ namespace NetworkPlugin.Utils
                     var gameModeProperty = gameRun.GetType().GetProperty("GameMode");
                     if (gameModeProperty != null)
                     {
-                        var gameMode = gameModeProperty.GetValue(gameRun);
+                        object gameMode = gameModeProperty.GetValue(gameRun);
                         return gameMode?.ToString() ?? "Unknown";
                     }
                 }
@@ -261,17 +261,17 @@ namespace NetworkPlugin.Utils
                 {
                     // 获取地图信息
                     var gameMapProperty = gameRun.GetType().GetProperty("GameMap");
-                    var gameMap = gameMapProperty?.GetValue(gameRun);
+                    object gameMap = gameMapProperty?.GetValue(gameRun);
 
                     if (gameMap != null)
                     {
                         // 获取当前节点
                         var currentNodeProperty = gameMap.GetType().GetProperty("CurrentNode");
-                        var currentNode = currentNodeProperty?.GetValue(gameMap);
+                        object currentNode = currentNodeProperty?.GetValue(gameMap);
 
                         // 获取关卡信息
                         var stageProperty = gameRun.GetType().GetProperty("CurrentStage");
-                        var stage = stageProperty?.GetValue(gameRun);
+                        object stage = stageProperty?.GetValue(gameRun);
 
                         return new
                         {
@@ -370,8 +370,8 @@ namespace NetworkPlugin.Utils
                 }
 
                 // 备用方案：检查其他可能的能量相关属性
-                var powerProperties = new[] { "Power", "Energy", "AttackPower", "TotalPower" };
-                foreach (var propName in powerProperties)
+                string[] powerProperties = new[] { "Power", "Energy", "AttackPower", "TotalPower" };
+                foreach (string propName in powerProperties)
                 {
                     var prop = player.GetType().GetProperty(propName);
                     if (prop != null && prop.PropertyType == typeof(int))
@@ -405,12 +405,12 @@ namespace NetworkPlugin.Utils
 
                 // 尝试从战斗中获取法力
                 var battleProperty = player.GetType().GetProperty("Battle");
-                var battle = battleProperty?.GetValue(player);
+                object battle = battleProperty?.GetValue(player);
 
                 if (battle != null)
                 {
                     var battleManaProperty = battle.GetType().GetProperty("BattleMana");
-                    var battleMana = battleManaProperty?.GetValue(battle);
+                    object battleMana = battleManaProperty?.GetValue(battle);
 
                     if (battleMana != null)
                     {
@@ -419,8 +419,8 @@ namespace NetworkPlugin.Utils
                 }
 
                 // 备用方案：检查玩家的法力相关属性
-                var manaProperties = new[] { "Mana", "CurrentMana", "BattleMana", "ManaGroup" };
-                foreach (var propName in manaProperties)
+                string[] manaProperties = new[] { "Mana", "CurrentMana", "BattleMana", "ManaGroup" };
+                foreach (string propName in manaProperties)
                 {
                     var prop = player.GetType().GetProperty(propName);
                     if (prop != null)

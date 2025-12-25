@@ -55,14 +55,14 @@ public class EnemySyncPatch
                 return;
             }
 
-            var enemyData = BuildEnemyUpdateData(__instance, "HpChanged", new
+            object enemyData = BuildEnemyUpdateData(__instance, "HpChanged", new
             {
                 OldHp = oldHp,
                 NewHp = hp,
                 HpDifference = hp - oldHp
             });
 
-            var json = JsonSerializer.Serialize(enemyData);
+            string json = JsonSerializer.Serialize(enemyData);
             networkClient.SendRequest("EnemyStateUpdate", json);
 
             Plugin.Logger?.LogInfo($"[EnemySync] Enemy {__instance.Name} HP: {oldHp} -> {hp}");
@@ -114,14 +114,14 @@ public class EnemySyncPatch
                 return;
             }
 
-            var enemyData = BuildEnemyUpdateData(__instance, "BlockChanged", new
+            object enemyData = BuildEnemyUpdateData(__instance, "BlockChanged", new
             {
                 OldBlock = oldBlock,
                 NewBlock = block,
                 BlockDifference = block - oldBlock
             });
 
-            var json = JsonSerializer.Serialize(enemyData);
+            string json = JsonSerializer.Serialize(enemyData);
             networkClient.SendRequest("EnemyStateUpdate", json);
 
             Plugin.Logger?.LogDebug($"[EnemySync] Enemy {__instance.Name} Block: {oldBlock} -> {block}");
@@ -170,14 +170,14 @@ public class EnemySyncPatch
                 return;
             }
 
-            var enemyData = BuildEnemyUpdateData(__instance, "ShieldChanged", new
+            object enemyData = BuildEnemyUpdateData(__instance, "ShieldChanged", new
             {
                 OldShield = oldShield,
                 NewShield = shield,
                 ShieldDifference = shield - oldShield
             });
 
-            var json = JsonSerializer.Serialize(enemyData);
+            string json = JsonSerializer.Serialize(enemyData);
             networkClient.SendRequest("EnemyStateUpdate", json);
 
             Plugin.Logger?.LogDebug($"[EnemySync] Enemy {__instance.Name} Shield: {oldShield} -> {shield}");
@@ -222,13 +222,13 @@ public class EnemySyncPatch
 
             var statusEffects = GetEnemyStatusEffects(enemy);
 
-            var enemyData = BuildEnemyUpdateData(enemy, "StatusAdded", new
+            object enemyData = BuildEnemyUpdateData(enemy, "StatusAdded", new
             {
                 statusEffects,
                 StatusEffectCount = statusEffects.Count
             });
 
-            var json = JsonSerializer.Serialize(enemyData);
+            string json = JsonSerializer.Serialize(enemyData);
             networkClient.SendRequest("EnemyStateUpdate", json);
 
             Plugin.Logger?.LogInfo($"[EnemySync] Enemy {enemy.Name} status effects updated, count: {statusEffects.Count}");
@@ -266,13 +266,13 @@ public class EnemySyncPatch
 
             var statusEffects = GetEnemyStatusEffects(enemy);
 
-            var enemyData = BuildEnemyUpdateData(enemy, "StatusRemoved", new
+            object enemyData = BuildEnemyUpdateData(enemy, "StatusRemoved", new
             {
                 StatusEffects = statusEffects,
                 StatusEffectCount = statusEffects.Count
             });
 
-            var json = JsonSerializer.Serialize(enemyData);
+            string json = JsonSerializer.Serialize(enemyData);
             networkClient.SendRequest("EnemyStateUpdate", json);
 
             Plugin.Logger?.LogInfo($"[EnemySync] Enemy {enemy.Name} status effects removed, remaining: {statusEffects.Count}");
@@ -310,12 +310,12 @@ public class EnemySyncPatch
 
             var intentionData = GetEnemyIntention(enemy);
 
-            var enemyData = BuildEnemyUpdateData(enemy, "IntentionChanged", new
+            object enemyData = BuildEnemyUpdateData(enemy, "IntentionChanged", new
             {
                 Intention = intentionData
             });
 
-            var json = JsonSerializer.Serialize(enemyData);
+            string json = JsonSerializer.Serialize(enemyData);
             networkClient.SendRequest("EnemyStateUpdate", json);
 
             Plugin.Logger?.LogDebug($"[EnemySync] Enemy {enemy.Name} intention updated: {intentionData.Type}");
@@ -351,7 +351,7 @@ public class EnemySyncPatch
                 return;
             }
 
-            var enemyData = BuildEnemyUpdateData(enemy, "Died", new
+            object enemyData = BuildEnemyUpdateData(enemy, "Died", new
             {
                 DeathTime = DateTime.Now.Ticks,
                 enemy.Hp,
@@ -359,7 +359,7 @@ public class EnemySyncPatch
                 enemy.IsAlive
             });
 
-            var json = JsonSerializer.Serialize(enemyData);
+            string json = JsonSerializer.Serialize(enemyData);
             networkClient.SendRequest("EnemyStateUpdate", json);
 
             Plugin.Logger?.LogInfo($"[EnemySync] Enemy {enemy.Name} died");

@@ -61,7 +61,7 @@ public class CampfireSyncPatch
                 PlayerId = GetCurrentPlayerId()
             };
 
-            var json = JsonSerializer.Serialize(stationData);
+            string json = JsonSerializer.Serialize(stationData);
             networkClient.SendRequest("GapStationEntered", json);
 
             Plugin.Logger?.LogInfo($"[CampfireSync] GapStation entered with {__instance.GapOptions.Count} options");
@@ -111,7 +111,7 @@ public class CampfireSyncPatch
                 PlayerId = GetCurrentPlayerId()
             };
 
-            var json = JsonSerializer.Serialize(teaData);
+            string json = JsonSerializer.Serialize(teaData);
             networkClient.SendRequest("DrinkTeaStarted", json);
 
             Plugin.Logger?.LogInfo($"[CampfireSync] DrinkTea started: Heal +{teaData.HealValue}, Power +{teaData.AdditionalPower}");
@@ -158,7 +158,7 @@ public class CampfireSyncPatch
                 PlayerId = GetCurrentPlayerId()
             };
 
-            var json = JsonSerializer.Serialize(teaData);
+            string json = JsonSerializer.Serialize(teaData);
             networkClient.SendRequest("DrinkTeaCompleted", json);
 
             Plugin.Logger?.LogInfo($"[CampfireSync] DrinkTea completed");
@@ -211,7 +211,7 @@ public class CampfireSyncPatch
                     PlayerId = GetCurrentPlayerId()
                 };
 
-                var json = JsonSerializer.Serialize(restData);
+                string json = JsonSerializer.Serialize(restData);
                 networkClient.SendRequest("CampfireRestSelected", json);
 
                 Plugin.Logger?.LogInfo($"[CampfireSync] Player selected rest option: {restOptionName}");
@@ -252,7 +252,7 @@ public class CampfireSyncPatch
                     MaxHpGained = maxHpGained
                 };
 
-                var json = JsonSerializer.Serialize(resultData);
+                string json = JsonSerializer.Serialize(resultData);
                 networkClient.SendRequest("CampfireRestResult", json);
 
                 Plugin.Logger?.LogInfo($"[CampfireSync] Rest result: HP +{hpGained}, MaxHP +{maxHpGained}");
@@ -605,7 +605,7 @@ public class CampfireSyncPatch
                 PlayerId = GetCurrentPlayerId()
             };
 
-            var json = JsonSerializer.Serialize(removeData);
+                string json = JsonSerializer.Serialize(removeData);
             networkClient.SendRequest("CampfireRemoveCard", json);
 
             Plugin.Logger?.LogInfo($"[CampfireSync] Player removed card: {cardName}");
@@ -650,7 +650,7 @@ public class DigOptionSync
                 TreasureName = treasureName
             };
 
-            var json = JsonSerializer.Serialize(digData);
+                string json = JsonSerializer.Serialize(digData);
             networkClient.SendRequest("CampfireDigResult", json);
 
             Plugin.Logger?.LogInfo($"[CampfireSync] Dig result: {treasureName} ({treasureType})");
@@ -695,7 +695,7 @@ public class SpecialOptionSync
                 Effects = effects
             };
 
-            var json = JsonSerializer.Serialize(optionData);
+                string json = JsonSerializer.Serialize(optionData);
             networkClient.SendRequest("CampfireSpecialOption", json);
 
             Plugin.Logger?.LogInfo($"[CampfireSync] Special option selected: {optionName}");

@@ -122,7 +122,7 @@ public class BattleController_Patch
             };
 
             // 序列化伤害数据并发送到服务器
-            var json = JsonSerializer.Serialize(damageData);
+            string json = JsonSerializer.Serialize(damageData);
             networkClient.SendRequest("OnPlayerDamage", json);
 
             // 记录详细的伤害同步日志 - 便于调试和问题追踪
@@ -179,7 +179,7 @@ public class BattleController_Patch
             }
 
             // 构建状态效果同步数据
-            var json = JsonSerializer.Serialize(new
+            string json = JsonSerializer.Serialize(new
             {
                 statusEffects = _statusEffectList,
                 TargetId = target?.Id, // 添加目标ID用于服务器端识别
@@ -233,7 +233,7 @@ public class BattleController_Patch
         }
 
         // 构建状态效果同步数据
-        var json = JsonSerializer.Serialize(new
+        string json = JsonSerializer.Serialize(new
         {
             statusEffects = _statusEffectList,
             TargetId = target?.Id, // 添加目标ID用于服务器端识别
@@ -285,7 +285,7 @@ public static void Heal_Postfix(BattleController __instance, Unit target)
         }
 
         // 构建治疗后的状态同步数据
-        var json = JsonSerializer.Serialize(new
+        string json = JsonSerializer.Serialize(new
         {
             Hp = target.Hp.ToString(),           // 当前HP
             Block = target.Block.ToString(),     // 当前格挡值

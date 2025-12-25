@@ -115,7 +115,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
         try
         {
             // 将消息对象序列化为JSON字符串
-            var json = JsonSerializer.Serialize(message);
+            string json = JsonSerializer.Serialize(message);
 
             // 通过网络客户端发送消息
             _networkClient.SendRequest("ChatMessage", json);
@@ -318,7 +318,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
     public void ClearHistory()
     {
         // 记录清空操作前的历史记录数量
-        var count = _chatHistory.Count;
+        int count = _chatHistory.Count;
 
         // 清空历史记录列表
         _chatHistory.Clear();

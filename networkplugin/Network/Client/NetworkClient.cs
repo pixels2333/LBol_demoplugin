@@ -218,7 +218,7 @@ public class NetworkClient : INetworkClient
         {
             // 读取并解析 JSON 格式的事件数据
             string jsonPayload = dataReader.GetString();
-            var eventData = JsonSerializer.Deserialize<object>(jsonPayload);
+            object eventData = JsonSerializer.Deserialize<object>(jsonPayload);
 
             Console.WriteLine($"[Client] Received game event: {eventType}");
 
@@ -303,7 +303,7 @@ public class NetworkClient : INetworkClient
         try
         {
             // 序列化事件数据为 JSON 格式
-            var json = JsonSerializer.Serialize(eventData);
+            string json = JsonSerializer.Serialize(eventData);
             NetDataWriter writer = new();
             // 写入事件类型标识
             writer.Put(eventType);
@@ -354,7 +354,7 @@ public class NetworkClient : INetworkClient
             else
             {
                 // 复杂对象使用 JSON 序列化
-                var json = JsonSerializer.Serialize(requestData);
+                string json = JsonSerializer.Serialize(requestData);
                 writer.Put(json);
             }
 

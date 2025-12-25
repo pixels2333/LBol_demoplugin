@@ -104,7 +104,7 @@ public class CommandAttribute(string name, string description) : Attribute
     /// </remarks>
     public string GetHelpText()
     {
-        var helpText = $"{Name}: {Description}";
+        string helpText = $"{Name}: {Description}";
 
         // 如果有参数格式说明，添加到帮助信息中
         if (!string.IsNullOrEmpty(Usage))

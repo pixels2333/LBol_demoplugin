@@ -237,7 +237,7 @@ namespace NetworkPlugin.Utils
                     var drawZoneProperty = gameRun.GetType().GetProperty("DrawZone");
                     if (drawZoneProperty != null)
                     {
-                        var drawZone = drawZoneProperty.GetValue(gameRun);
+                        object drawZone = drawZoneProperty.GetValue(gameRun);
                         if (drawZone != null)
                         {
                             // 获取Count属性值
@@ -254,7 +254,7 @@ namespace NetworkPlugin.Utils
                 var drawProperty = player.GetType().GetProperty("DrawZone");
                 if (drawProperty != null)
                 {
-                    var drawZone = drawProperty.GetValue(player);
+                    object drawZone = drawProperty.GetValue(player);
                     if (drawZone != null)
                     {
                         var countProperty = drawZone.GetType().GetProperty("Count");
@@ -308,8 +308,8 @@ namespace NetworkPlugin.Utils
                 if (battle != null && battle.BattleMana != null)
                 {
                     // 获取可用法力和所需法力
-                    var availableMana = ManaUtils.ManaGroupToArray(battle.BattleMana);
-                    var requiredMana = ManaUtils.ManaGroupToArray(card.ManaGroup);
+                    int[] availableMana = ManaUtils.ManaGroupToArray(battle.BattleMana);
+                    int[] requiredMana = ManaUtils.ManaGroupToArray(card.ManaGroup);
 
                     // 逐个检查四种颜色的法力是否足够
                     for (int i = 0; i < 4; i++)
@@ -427,7 +427,7 @@ namespace NetworkPlugin.Utils
                     var deckZoneProperty = gameRun.GetType().GetProperty("DeckZone");
                     if (deckZoneProperty != null)
                     {
-                        var deckZone = deckZoneProperty.GetValue(gameRun);
+                        object deckZone = deckZoneProperty.GetValue(gameRun);
                         if (deckZone != null)
                         {
                             var countProperty = deckZone.GetType().GetProperty("Count");
@@ -463,7 +463,7 @@ namespace NetworkPlugin.Utils
                     var purgedZoneProperty = gameRun.GetType().GetProperty("PurgedZone");
                     if (purgedZoneProperty != null)
                     {
-                        var purgedZone = purgedZoneProperty.GetValue(gameRun);
+                        object purgedZone = purgedZoneProperty.GetValue(gameRun);
                         if (purgedZone != null)
                         {
                             var countProperty = purgedZone.GetType().GetProperty("Count");
@@ -492,7 +492,7 @@ namespace NetworkPlugin.Utils
         {
             try
             {
-                var count = 0;
+                int count = 0;
 
                 // 检查手牌中的升级卡牌
                 if (player.HandZone != null)
@@ -537,7 +537,7 @@ namespace NetworkPlugin.Utils
         {
             try
             {
-                var count = 0;
+                int count = 0;
 
                 // 检查手牌中的临时卡牌
                 if (player.HandZone != null)

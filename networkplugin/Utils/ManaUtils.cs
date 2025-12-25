@@ -80,7 +80,7 @@ namespace NetworkPlugin.Utils
                     return new ManaGroup(0, 0, 0, 0);
                 }
 
-                var parts = manaString.Split(['R', 'B', 'G', 'W'], StringSplitOptions.RemoveEmptyEntries);
+                string[] parts = manaString.Split(['R', 'B', 'G', 'W'], StringSplitOptions.RemoveEmptyEntries);
 
                 int red = 0, blue = 0, green = 0, white = 0;
 
