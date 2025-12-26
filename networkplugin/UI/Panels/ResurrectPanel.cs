@@ -1,305 +1,579 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using LBoL.Base;
 using LBoL.Core;
-using LBoL.Core.Units;
-using LBoL.Presentation.UI.Panels;
-using UnityEngine;
-using TMPro;
 using LBoL.Presentation.UI;
+using LBoL.Presentation.UI.Widgets;
+using Microsoft.Extensions.DependencyInjection;
+using NetworkPlugin.Core;
+using NetworkPlugin.Network;
+using NetworkPlugin.UI.Widgets;
+using TMPro;
+using UnityEngine;
 
 namespace NetworkPlugin.UI.Panels;
 
 /// <summary>
 /// 复活面板类
-/// 处理玩家之间的复活功能
+/// 处理玩家之间的复活功能，使用游戏内部的UI元素
 /// </summary>
-public class ResurrectPanel : UiPanel
+public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 {
-    public override PanelLayer Layer => PanelLayer.Popup;
+	#region 常量定义
+	/// <summary>
+	/// 复活完成后等待时间（秒）
+	/// </summary>
+	private const float ResurrectCompleteWaitTime = 2f;
+	#endregion
 
-    // UI组件
-    [SerializeField] private Transform deadPlayersList;
-    [SerializeField] private GameObject playerEntryPrefab;
-    [SerializeField] private UnityEngine.UI.Button resurrectButton;
-    [SerializeField] private UnityEngine.UI.Button cancelButton;
-    [SerializeField] private TextMeshProUGUI statusText;
-    [SerializeField] private TextMeshProUGUI costText;
-    [SerializeField] private TextMeshProUGUI goldAmount;
+	#region UI组件引用
+	/// <summary>
+	/// 死亡玩家列表容器
+	/// </summary>
+	[SerializeField]
+	private Transform deadPlayersContainer;
 
-    // 复活数据
-    private List<DeadPlayerEntry> deadPlayers = new List<DeadPlayerEntry>();
-    private DeadPlayerEntry selectedPlayer = null;
-    private int resurrectionCost = 100;
+	/// <summary>
+	/// 死亡玩家条目预制体模板
+	/// </summary>
+	[SerializeField]
+	private DeadPlayerEntryWidget deadPlayerEntryTemplate;
 
-    public void Awake()
-    {
-        resurrectButton?.onClick.AddListener(OnResurrectPlayer);
+	/// <summary>
+	/// 复活按钮
+	/// </summary>
+	[SerializeField]
+	private CommonButtonWidget resurrectButton;
 
-        cancelButton?.onClick.AddListener(OnCancelResurrect);
+	/// <summary>
+	/// 取消按钮
+	/// </summary>
+	[SerializeField]
+	private CommonButtonWidget cancelButton;
 
-        statusText?.text = "选择要复活的玩家";
-    }
+	/// <summary>
+	/// 状态文本显示
+	/// </summary>
+	[SerializeField]
+	private TextMeshProUGUI statusText;
 
-    public IEnumerator ShowResurrectUI()
-    {
-        // 初始化死亡玩家列表
-        InitializeDeadPlayers();
+	/// <summary>
+	/// 复活费用文本显示
+	/// </summary>
+	[SerializeField]
+	private TextMeshProUGUI costText;
 
-        if (deadPlayers.Count == 0)
-        {
-            statusText.text = "没有需要复活的玩家";
-            yield return new WaitForSeconds(2f);
-            Hide();
-            yield break;
-        }
+	/// <summary>
+	/// 当前金币数量显示
+	/// </summary>
+	[SerializeField]
+	private TextMeshProUGUI goldAmount;
+	#endregion
 
-        // 创建UI条目
-        CreatePlayerEntries();
+	#region 复活数据
+	/// <summary>
+	/// 死亡玩家列表
+	/// </summary>
+	private readonly List<DeadPlayerEntry> _deadPlayers = [];
 
-        // 更新金币显示
-        UpdateGoldDisplay();
+	/// <summary>
+	/// 玩家UI组件列表
+	/// </summary>
+	private readonly List<DeadPlayerEntryWidget> _playerWidgets = [];
 
-        // 显示面板
-        Show();
+	/// <summary>
+	/// 当前选中的死亡玩家
+	/// </summary>
+	private DeadPlayerEntry _selectedPlayer = null;
 
-        // 等待选择
-        yield return new WaitUntil(() => selectedPlayer != null || this.IsHidden);
+	/// <summary>
+	/// 复活费用
+	/// </summary>
+	private int _resurrectionCost = 0;
 
-        if (selectedPlayer != null)
-        {
-            // 确认复活
-            yield return ConfirmResurrection();
-        }
+	/// <summary>
+	/// 面板负载数据
+	/// </summary>
+	private ResurrectPayload _payload;
 
-        Hide();
-    }
+	/// <summary>
+	/// 画布组组件（用于控制透明度和交互）
+	/// </summary>
+	private CanvasGroup _canvasGroup;
 
-    private void InitializeDeadPlayers()
-    {
-        deadPlayers.Clear();
+	/// <summary>
+	/// 是否允许取消操作
+	/// </summary>
+	private bool _canCancel = true;
+	#endregion
 
-        // 这里需要根据实际的游戏状态获取死亡玩家列表
-        // 示例数据，实际实现需要从网络状态或游戏状态获取
-        deadPlayers.Add(new DeadPlayerEntry
-        {
-            PlayerName = "Player2",
-            Level = 5,
-            DeadCause = "战斗失败",
-            ResurrectionCost = CalculateResurrectionCost(5),
-            CanResurrect = true
-        });
+	#region 属性
+	/// <summary>
+	/// 面板层级（置顶显示）
+	/// </summary>
+	public override PanelLayer Layer => PanelLayer.Top;
+	#endregion
 
-        deadPlayers.Add(new DeadPlayerEntry
-        {
-            PlayerName = "Player3",
-            Level = 3,
-            DeadCause = "陷阱伤害",
-            ResurrectionCost = CalculateResurrectionCost(3),
-            CanResurrect = false // 示例：某些情况不能复活
-        });
-    }
+	#region Unity生命周期
+	/// <summary>
+	/// Unity初始化方法
+	/// 获取或添加CanvasGroup组件，并注册按钮事件监听器
+	/// </summary>
+	public void Awake()
+	{
+		// 获取CanvasGroup组件
+		_canvasGroup = GetComponent<CanvasGroup>();
+		if (_canvasGroup == null)
+		{
+			// 如果不存在则添加
+			_canvasGroup = gameObject.AddComponent<CanvasGroup>();
+		}
 
-    private int CalculateResurrectionCost(int playerLevel)
-    {
-        // 复活成本计算：基础成本 + 等级 * 20
-        return 50 + playerLevel * 20;
-    }
+		// 注册复活按钮点击事件
+		if (resurrectButton?.button != null)
+		{
+			resurrectButton.button.onClick.AddListener(OnResurrectPlayer);
+		}
 
-    private void CreatePlayerEntries()
-    {
-        // 清除现有条目
-        if (deadPlayersList != null)
-        {
-            foreach (Transform child in deadPlayersList)
-            {
-                Destroy(child.gameObject);
-            }
-        }
+		// 注册取消按钮点击事件
+		if (cancelButton?.button != null)
+		{
+			cancelButton.button.onClick.AddListener(OnCancelResurrect);
+		}
+	}
+	#endregion
 
-        // 创建新条目
-        for (int i = 0; i < deadPlayers.Count; i++)
-        {
-            var player = deadPlayers[i];
-            var entry = CreatePlayerEntry(player, i);
-            entry.transform.SetParent(deadPlayersList, false);
-        }
-    }
+	#region 本地化处理
+	/// <summary>
+	/// 本地化更改时的回调
+	/// 更新界面文本以适应新的语言设置
+	/// </summary>
+	public override void OnLocaleChanged()
+	{
+		if (_payload != null)
+		{
+			// 更新UI字符串
+			UpdateUIStrings();
+		}
+	}
+	#endregion
 
-    private GameObject CreatePlayerEntry(DeadPlayerEntry player, int index)
-    {
-        if (playerEntryPrefab == null)
-        {
-            // 如果没有预制体，创建一个简单的UI对象
-            var entry = new GameObject($"PlayerEntry_{index}");
-            entry.AddComponent<RectTransform>();
+	#region 面板显示/隐藏
+	/// <summary>
+	/// 面板显示前回调
+	/// 初始化面板数据，加载死亡玩家列表并创建UI
+	/// </summary>
+	/// <param name="payload">面板负载数据，包含死亡玩家信息</param>
+	protected override void OnShowing(ResurrectPayload payload)
+	{
+		// 保存负载数据
+		_payload = payload;
+		// 获取是否允许取消
+		_canCancel = payload?.CanCancel ?? true;
 
-            // 添加背景
-            var bg = entry.AddComponent<UnityEngine.UI.Image>();
-            bg.color = index % 2 == 0 ? new Color(0.2f, 0.2f, 0.2f, 0.8f) : new Color(0.3f, 0.3f, 0.3f, 0.8f);
+		// 重置复活数据
+		ResetResurrectData();
 
-            // 添加按钮组件
-            var button = entry.AddComponent<UnityEngine.UI.Button>();
-            button.onClick.AddListener(() => OnPlayerSelected(player));
+		// 从payload加载死亡玩家列表
+		if (payload?.DeadPlayers != null)
+		{
+			_deadPlayers.AddRange(payload.DeadPlayers);
+		}
 
-            // 添加文本
-            var textObj = new GameObject("Text");
-            textObj.transform.SetParent(entry.transform);
-            var text = textObj.AddComponent<TextMeshProUGUI>();
-            text.text = $"{player.PlayerName} (Lv.{player.Level}) - {player.ResurrectionCost} Gold\n死因: {player.DeadCause}";
-            text.color = player.CanResurrect ? Color.white : Color.gray;
-            text.fontSize = 14;
-            text.alignment = TextAlignmentOptions.Left;
+		// 如果没有死亡玩家，显示提示并自动隐藏
+		if (_deadPlayers.Count == 0)
+		{
+			UpdateUIStatus("Resurrect.NoDead".Localize());
+			_canvasGroup.alpha = 0f;
+			StartCoroutine(HideAfterDelay(2f));
+			return;
+		}
 
-            var rectTransform = textObj.GetComponent<RectTransform>();
-            rectTransform.anchorMin = Vector2.zero;
-            rectTransform.anchorMax = Vector2.one;
-            rectTransform.offsetMin = new Vector2(10, 2);
-            rectTransform.offsetMax = new Vector2(-10, -2);
+		// 设置取消按钮可见性
+		cancelButton?.gameObject.SetActive(_canCancel);
 
-            return entry;
-        }
-        else
-        {
-            // 使用预制体创建
-            var entry = Instantiate(playerEntryPrefab);
-            SetupPlayerEntry(entry, player);
-            return entry;
-        }
-    }
+		// 启用交互
+		_canvasGroup.interactable = true;
 
-    private void SetupPlayerEntry(GameObject entry, DeadPlayerEntry player)
-    {
-        // 设置预制体组件
-        var button = entry.GetComponent<UnityEngine.UI.Button>();
-        button?.onClick.AddListener(() => OnPlayerSelected(player));
+		// 创建UI条目
+		CreatePlayerEntries();
 
-        var text = entry.GetComponentInChildren<TextMeshProUGUI>();
-        if (text != null)
-        {
-            text.text = $"{player.PlayerName} (Lv.{player.Level}) - {player.ResurrectionCost} Gold\n死因: {player.DeadCause}";
-            text.color = player.CanResurrect ? Color.white : Color.gray;
-        }
-    }
+		// 更新金币显示
+		UpdateGoldDisplay();
 
-    private void OnPlayerSelected(DeadPlayerEntry player)
-    {
-        if (!player.CanResurrect)
-        {
-            statusText?.text = "该玩家无法复活";
-            return;
-        }
+		// 更新UI字符串
+		UpdateUIStrings();
+		// 注册输入处理器
+		UiManager.PushActionHandler(this);
+	}
 
-        selectedPlayer = player;
-        resurrectionCost = player.ResurrectionCost;
+	/// <summary>
+	/// 面板显示完成回调
+	/// 面板完全显示后的处理
+	/// </summary>
+	protected override void OnShown()
+	{
+		// 面板显示完成后的处理
+	}
 
-        // 更新UI显示
-        statusText?.text = $"已选择: {player.PlayerName} - 复活成本: {resurrectionCost} Gold";
+	/// <summary>
+	/// 面板隐藏前回调
+	/// 禁用交互并移除输入处理器
+	/// </summary>
+	protected override void OnHiding()
+	{
+		// 禁用交互
+		_canvasGroup.interactable = false;
+		// 移除输入处理器
+		UiManager.PopActionHandler(this);
+	}
 
-        costText?.text = $"复活成本: {resurrectionCost} Gold";
+	/// <summary>
+	/// 面板隐藏完成回调
+	/// 清理面板数据
+	/// </summary>
+	protected override void OnHided()
+	{
+		// 重置复活数据
+		ResetResurrectData();
+		// 清空负载数据
+		_payload = null;
+	}
+	#endregion
 
-        // 检查是否有足够金币
-        bool canAfford = base.GameRun.Money >= resurrectionCost;
-        resurrectButton?.interactable = canAfford;
+	#region UI更新方法
+	/// <summary>
+	/// 更新UI字符串
+	/// 根据当前选择状态更新界面文本
+	/// </summary>
+	private void UpdateUIStrings()
+	{
+		if (_selectedPlayer == null)
+		{
+			// 未选择玩家时显示提示
+			UpdateUIStatus("Resurrect.SelectPlayer".Localize());
+		}
+	}
 
-        if (!canAfford && statusText != null)
-            statusText.text += "\n金币不足！";
-    }
+	/// <summary>
+	/// 重置复活数据
+	/// 清空所有死亡玩家数据和UI组件
+	/// </summary>
+	private void ResetResurrectData()
+	{
+		// 清空死亡玩家列表
+		_deadPlayers.Clear();
+		// 清空选中玩家
+		_selectedPlayer = null;
+		// 重置复活费用
+		_resurrectionCost = 0;
 
-    private void UpdateGoldDisplay()
-    {
-        goldAmount?.text = $"当前金币: {base.GameRun.Money}";
-    }
+		// 清空复活槽位
+		if (deadPlayersContainer != null)
+		{
+			foreach (Transform child in deadPlayersContainer)
+			{
+				// 销毁所有子对象
+				Destroy(child.gameObject);
+			}
+		}
 
-    private void OnResurrectPlayer()
-    {
-        if (selectedPlayer == null || !selectedPlayer.CanResurrect)
-            return;
+		// 清空UI组件列表
+		_playerWidgets.Clear();
 
-        if (base.GameRun.Money < resurrectionCost)
-        {
-            statusText?.text = "金币不足，无法复活！";
-            return;
-        }
+		// 禁用确认按钮
+		if (resurrectButton?.button != null)
+		{
+			resurrectButton.button.interactable = false;
+		}
+	}
 
-        // 扣除金币
-        base.GameRun.ConsumeMoney(resurrectionCost);
+	/// <summary>
+	/// 更新UI状态文本
+	/// </summary>
+	/// <param name="message">要显示的消息</param>
+	private void UpdateUIStatus(string message)
+	{
+		statusText?.text = message;
+	}
 
-        // 执行复活逻辑
-        StartCoroutine(ExecuteResurrection());
-    }
+	/// <summary>
+	/// 创建玩家条目
+	/// 为所有死亡玩家创建UI条目
+	/// </summary>
+	private void CreatePlayerEntries()
+	{
+		// 清除现有条目
+		if (deadPlayersContainer != null)
+		{
+			foreach (Transform child in deadPlayersContainer)
+			{
+				Destroy(child.gameObject);
+			}
+		}
 
-    private IEnumerator ExecuteResurrection()
-    {
-        statusText?.text = $"正在复活 {selectedPlayer.PlayerName}...";
+		// 清空UI组件列表
+		_playerWidgets.Clear();
 
-        // 扣除金币动画
-        yield return new WaitForSeconds(1f);
+		// 创建新条目
+		for (int i = 0; i < _deadPlayers.Count; i++)
+		{
+			var player = _deadPlayers[i];
+			var entry = CreatePlayerEntry(player, i);
+			_playerWidgets.Add(entry);
+		}
+	}
 
-        // 这里执行实际的复活逻辑
-        // 需要与网络同步，通知其他玩家复活事件
-        yield return ResurrectPlayer(selectedPlayer);
+	/// <summary>
+	/// 创建单个玩家条目
+	/// </summary>
+	/// <param name="player">死亡玩家数据</param>
+	/// <param name="index">条目索引</param>
+	/// <returns>创建的玩家条目组件</returns>
+	private DeadPlayerEntryWidget CreatePlayerEntry(DeadPlayerEntry player, int index)
+	{
+		// 检查模板是否存在
+		if (deadPlayerEntryTemplate == null)
+		{
+			Debug.LogError("[ResurrectPanel] deadPlayerEntryTemplate is not assigned!");
+			return null;
+		}
 
-        statusText?.text = $"{selectedPlayer.PlayerName} 已复活！";
+		// 实例化预制体
+		var entry = Instantiate(deadPlayerEntryTemplate, deadPlayersContainer, false);
+		entry.name = $"PlayerEntry_{index}";
 
-        // 发送网络事件
-        SendResurrectionEvent(selectedPlayer);
+		// 设置玩家数据
+		entry.SetPlayer(player);
 
-        yield return new WaitForSeconds(2f);
-    }
+		// 注册点击事件
+		entry.button?.onClick.AddListener(() => OnPlayerSelected(player, entry));
 
-    private IEnumerator ResurrectPlayer(DeadPlayerEntry player)
-    {
-        // 实际的复活逻辑
-        // 这里需要根据游戏的具体实现来处理
-        // 示例：恢复玩家的生命值，重新加入游戏等
+		return entry;
+	}
+	#endregion
 
-        // 如果是本地玩家，直接恢复
-        if (player.PlayerName == base.GameRun.Player.Name)
-        {
-            base.GameRun.Heal(base.GameRun.Player.MaxHp, false, null);
-            base.GameRun.Player.Status = UnitStatus.Alive;
-        }
-        else
-        {
-            // 其他玩家需要通过网络同步
-            // 发送复活请求到服务器或其他玩家
-        }
+	#region 玩家选择处理
+	/// <summary>
+	/// 玩家选择事件处理
+	/// 当玩家点击某个死亡玩家条目时触发
+	/// </summary>
+	/// <param name="player">被选中的死亡玩家</param>
+	/// <param name="widget">对应的UI组件</param>
+	private void OnPlayerSelected(DeadPlayerEntry player, DeadPlayerEntryWidget widget)
+	{
+		// 检查是否可以复活
+		if (!player.CanResurrect)
+		{
+			UpdateUIStatus("Resurrect.CannotResurrect".Localize());
+			return;
+		}
 
-        yield return null;
-    }
+		// 取消之前选择的玩家
+		foreach (var w in _playerWidgets)
+		{
+			w?.SetSelected(false);
+		}
 
-    private void SendResurrectionEvent(DeadPlayerEntry player)
-    {
-        try
-        {
-            // 发送复活事件到网络
-            var syncManager = Core.ModService.ServiceProvider.GetService<NetworkPlugin.Core.ISynchronizationManager>();
-            if (syncManager != null)
-            {
-                var resurrectionData = new Dictionary<string, object>
-                {
-                    ["EventType"] = "PlayerResurrected",
-                    ["PlayerName"] = player.PlayerName,
-                    ["Cost"] = resurrectionCost,
-                    ["Timestamp"] = DateTime.Now.Ticks
-                };
+		// 设置当前选中的玩家
+		_selectedPlayer = player;
+		// 获取复活费用
+		_resurrectionCost = player.ResurrectionCost;
 
-                // 这里需要根据实际的网络管理器实现发送逻辑
-                // syncManager.SendGameEvent(resurrectionData);
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError($"[ResurrectPanel] 发送复活事件失败: {ex.Message}");
-        }
-    }
+		// 更新选中状态
+		widget?.SetSelected(true);
 
-    private void OnCancelResurrect()
-    {
-        selectedPlayer = null;
-        Hide();
-    }
+		// 更新UI显示
+		UpdateUIStatus($"{player.PlayerName} - {_resurrectionCost} Gold");
+
+		// 更新费用文本
+		costText?.text = "Resurrect.Cost".Localize() + $": {_resurrectionCost}";
+
+		// 检查是否有足够金币
+		bool canAfford = GameRun.Money >= _resurrectionCost;
+		if (resurrectButton?.button != null)
+		{
+			// 根据金币是否足够启用/禁用复活按钮
+			resurrectButton.button.interactable = canAfford;
+		}
+
+		// 金币不足时显示提示
+		if (!canAfford && statusText != null)
+		{
+			statusText.text += "\n" + "Resurrect.InsufficientGold".Localize();
+		}
+	}
+
+	/// <summary>
+	/// 更新金币显示
+	/// 显示当前游戏中的金币数量
+	/// </summary>
+	private void UpdateGoldDisplay()
+	{
+		goldAmount?.text = "Resurrect.CurrentGold".Localize() + $": {GameRun.Money}";
+	}
+	#endregion
+
+	#region 按钮事件处理
+	/// <summary>
+	/// 复活按钮点击事件
+	/// 扣除金币并执行复活操作
+	/// </summary>
+	private void OnResurrectPlayer()
+	{
+		// 验证选中玩家是否有效
+		if (_selectedPlayer == null || !_selectedPlayer.CanResurrect)
+			return;
+
+		// 检查金币是否足够
+		if (GameRun.Money < _resurrectionCost)
+		{
+			UpdateUIStatus("Resurrect.InsufficientGold".Localize());
+			return;
+		}
+
+		// 扣除金币
+		GameRun.ConsumeMoney(_resurrectionCost);
+
+		// 执行复活逻辑
+		StartCoroutine(ExecuteResurrection());
+	}
+
+	/// <summary>
+	/// 取消复活按钮点击事件
+	/// 清除选择并隐藏面板
+	/// </summary>
+	private void OnCancelResurrect()
+	{
+		// 清空选中玩家
+		_selectedPlayer = null;
+		// 隐藏面板
+		Hide();
+	}
+
+	/// <summary>
+	/// 输入取消事件处理（IInputActionHandler接口实现）
+	/// 当允许取消时执行取消操作
+	/// </summary>
+	public void OnCancel()
+	{
+		if (_canCancel)
+		{
+			OnCancelResurrect();
+		}
+	}
+	#endregion
+
+	#region 复活执行
+	/// <summary>
+	/// 执行复活协程
+	/// 处理复活流程，包括UI更新、实际复活和网络同步
+	/// </summary>
+	private IEnumerator ExecuteResurrection()
+	{
+		// 禁用按钮以防止重复复活
+		if (resurrectButton?.button != null)
+		{
+			resurrectButton.button.interactable = false;
+		}
+
+		if (cancelButton?.button != null)
+		{
+			cancelButton.button.interactable = false;
+		}
+
+		// 更新状态文本
+		UpdateUIStatus("Resurrect.Resurrecting".Localize() + ": " + _selectedPlayer.PlayerName);
+
+		// 等待1秒
+		yield return new WaitForSeconds(1f);
+
+		// 执行实际的复活逻辑
+		yield return ResurrectPlayer(_selectedPlayer);
+
+		// 更新状态为复活完成
+		UpdateUIStatus("Resurrect.Resurrected".Localize() + ": " + _selectedPlayer.PlayerName);
+
+		// 发送网络事件
+		SendResurrectionEvent(_selectedPlayer);
+
+		// 等待复活完成时间
+		yield return new WaitForSeconds(ResurrectCompleteWaitTime);
+
+		// 隐藏面板
+		Hide();
+	}
+
+	/// <summary>
+	/// 复活玩家协程
+	/// 执行实际的玩家复活逻辑
+	/// </summary>
+	/// <param name="player">要复活的死亡玩家</param>
+	private IEnumerator ResurrectPlayer(DeadPlayerEntry player)
+	{
+		// 实际的复活逻辑
+		// 这里需要根据游戏的具体实现来处理
+		// 示例：恢复玩家的生命值，重新加入游戏等
+
+		// 如果是本地玩家，直接恢复
+		if (player.PlayerName == GameRun.Player.Name)
+		{
+			// 恢复满生命值
+			GameRun.Heal(GameRun.Player.MaxHp, false, null);
+			// 通过Heal方法自动恢复玩家状态为Alive
+		}
+		else
+		{
+			// 其他玩家需要通过网络同步
+			// 发送复活请求到服务器或其他玩家
+		}
+
+		yield return null;
+	}
+
+	/// <summary>
+	/// 发送复活事件到网络
+	/// 将复活操作同步到其他玩家
+	/// </summary>
+	/// <param name="player">被复活的玩家</param>
+	private void SendResurrectionEvent(DeadPlayerEntry player)
+	{
+		try
+		{
+			// 获取同步管理器
+			ISynchronizationManager syncManager = ModService.ServiceProvider.GetService<ISynchronizationManager>();
+			if (syncManager != null)
+			{
+				// 构建复活数据字典
+				Dictionary<string, object> resurrectionData = new Dictionary<string, object>
+				{
+					["EventType"] = "PlayerResurrected",
+					["PlayerName"] = player.PlayerName,
+					["Cost"] = _resurrectionCost,
+					["Timestamp"] = DateTime.Now.Ticks
+				};
+
+				// TODO: 根据实际的网络管理器实现发送逻辑
+				// syncManager.SendGameEvent(resurrectionData);
+			}
+		}
+		catch (Exception ex)
+		{
+			Debug.LogError($"[ResurrectPanel] 发送复活事件失败: {ex.Message}");
+		}
+	}
+	#endregion
+
+	#region 辅助方法
+	/// <summary>
+	/// 延迟隐藏面板协程
+	/// 等待指定时间后自动隐藏面板
+	/// </summary>
+	/// <param name="delay">延迟时间（秒）</param>
+	private IEnumerator HideAfterDelay(float delay)
+	{
+		yield return new WaitForSeconds(delay);
+		Hide();
+	}
+	#endregion
 }
