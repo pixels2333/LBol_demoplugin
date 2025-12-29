@@ -617,6 +617,8 @@ public class CampfireSyncPatch
     }
 }
 
+}
+
 /// <summary>
 /// 挖掘同步（获取随机宝物）
 /// TODO: Patch LBoL中的挖掘逻辑（如果存在）
@@ -799,3 +801,5 @@ public class CampfireConflictResolver
             Plugin.Logger?.LogError($"[CampfireSync] Error sending game event {eventType}: {ex.Message}");
         }
     }
+
+}

@@ -211,6 +211,8 @@ public class BattleController_Patch
     [HarmonyPostfix]
     public static void RemoveStatusEffect_Postfix(BattleController __instance, Unit target)
     {
+        try
+        {
         // 向服务器上传player的状态信息，确保移除操作在网络中同步
 
         // 验证服务提供者是否已初始化
