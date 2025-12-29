@@ -13,7 +13,7 @@ namespace NetworkPlugin.Patch.Map;
 /// 地图节点同步补丁 - 同步玩家位置变化
 /// </summary>
 [HarmonyPatch]
-public class MapPanel_UpdateMapNodesStatus_Patch
+public class MapPanelUpdateMapNodesStatusPatch
 {
     private static IServiceProvider serviceProvider = ModService.ServiceProvider;
 
@@ -65,9 +65,9 @@ public class MapPanel_UpdateMapNodesStatus_Patch
             {
                 LocationX = visitingNode.X,
                 LocationY = visitingNode.Y,
-                LocationName = visitingNode.Name ?? "",
+                LocationName = visitingNode.StationType.ToString(),
                 LocationType = visitingNode.GetType().Name,
-                Stage = gameMap.CurrentStage?.Id ?? "Unknown"
+                Stage = visitingNode.Act
             };
 
             string json = JsonSerializer.Serialize(locationData);

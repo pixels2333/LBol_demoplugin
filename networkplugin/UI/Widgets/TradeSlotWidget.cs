@@ -4,7 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace NetworkPlugin.UI.Panels;
+namespace NetworkPlugin.UI.Widgets;
 
 /// <summary>
 /// 交易槽位控件类
