@@ -129,7 +129,7 @@ public class EndTurnTimerPatch
         rectTransform.offsetMin = Vector2.zero; // 占满父节点
         rectTransform.offsetMax = Vector2.zero;
 
-        var image = go.AddComponent<Image>();
+        Image image = go.AddComponent<Image>();
         image.sprite = GetWhiteSprite(); // 1x1 白贴图作为填充底图
         image.type = Image.Type.Filled; // 开启填充模式
         image.fillMethod = Image.FillMethod.Horizontal; // 水平填充
@@ -149,10 +149,7 @@ public class EndTurnTimerPatch
     private static void HideOverlay(Button endTurnButton)
     {
         Transform overlayTransform = endTurnButton.transform.Find(OverlayObjectName); // 找到就直接隐藏
-        if (overlayTransform != null)
-        {
-            overlayTransform.gameObject.SetActive(false);
-        }
+        overlayTransform?.gameObject.SetActive(false);
     }
 
     /// <summary>
