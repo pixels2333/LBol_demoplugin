@@ -225,7 +225,7 @@ public class GapOptionsPanel_Patch
                     TradePanel tradePanel = GetOrCreateTradePanel();
                     if (tradePanel != null)
                     {
-                        Traverse.Create(__instance).Method("StartCoroutine").GetValue(tradePanel.ShowTradeUI());
+                        Traverse.Create(__instance).Method("StartCoroutine").GetValue(tradePanel.ShowTradeAsync(new TradePayload()));
                     }
                     Traverse.Create(__instance).Method("SelectedAndHide").GetValue();
                 }
@@ -245,7 +245,7 @@ public class GapOptionsPanel_Patch
                     ResurrectPanel resurrectPanel = GetOrCreateResurrectPanel();
                     if (resurrectPanel != null)
                     {
-                        Traverse.Create(__instance).Method("StartCoroutine").GetValue(resurrectPanel.ShowResurrectUI());
+                        Traverse.Create(__instance).Method("StartCoroutine").GetValue(resurrectPanel.ShowResurrectAsync(new ResurrectPayload()));
                     }
                     Traverse.Create(__instance).Method("SelectedAndHide").GetValue();
                 }

@@ -575,5 +575,14 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		yield return new WaitForSeconds(delay);
 		Hide();
 	}
+
+	/// <summary>
+	/// 显示复活 UI 的协程方法
+	/// </summary>
+	public IEnumerator ShowResurrectAsync(ResurrectPayload payload)
+	{
+		Show(payload);
+		yield return new WaitWhile(() => IsVisible);
+	}
 	#endregion
 }
