@@ -9,6 +9,7 @@ using LBoL.Presentation.UI.Widgets;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Core;
 using NetworkPlugin.Network;
+using NetworkPlugin.UI.Widgets;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -17,329 +18,540 @@ using UnityEngine.UI;
 namespace NetworkPlugin.UI.Panels;
 
 /// <summary>
-/// 交易面板类
-/// 处理玩家之间的物品交易功能
+/// 交易面板类，处理玩家之间的物品（卡牌）交易界面与逻辑。
 /// </summary>
 public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 {
-	// 常量
-	private const int DefaultMaxTradeSlots = 5;
-	private const float TradeCompleteWaitTime = 2f;
+    #region 常量
 
-	// UI组件
-	[SerializeField]
-	private RectTransform player1TradeArea;
+    /// <summary>
+    /// 默认最大交易卡牌槽位数量。
+    /// </summary>
+    private const int DefaultMaxTradeSlots = 5;
 
-	[SerializeField]
-	private RectTransform player2TradeArea;
+    /// <summary>
+    /// 交易完成后等待多少秒再关闭界面。
+    /// </summary>
+    private const float TradeCompleteWaitTime = 2f;
 
-	[SerializeField]
-	private TradeSlotWidget[] player1Slots;
+    #endregion
 
-	[SerializeField]
-	private TradeSlotWidget[] player2Slots;
+    #region 序列化字段（UI 组件）
 
-	[SerializeField]
-	private CommonButtonWidget confirmButton;
+    /// <summary>
+    /// 玩家 1 的交易区域根节点。
+    /// </summary>
+    [SerializeField]
+    private RectTransform player1TradeArea;
 
-	[SerializeField]
-	private CommonButtonWidget cancelButton;
+    /// <summary>
+    /// 玩家 2 的交易区域根节点。
+    /// </summary>
+    [SerializeField]
+    private RectTransform player2TradeArea;
 
-	[SerializeField]
-	private TextMeshProUGUI statusText;
+    /// <summary>
+    /// 玩家 1 的交易卡槽数组。
+    /// </summary>
+    [SerializeField]
+    private TradeSlotWidget[] player1Slots;
 
-	[SerializeField]
-	private TextMeshProUGUI player1NameText;
+    /// <summary>
+    /// 玩家 2 的交易卡槽数组。
+    /// </summary>
+    [SerializeField]
+    private TradeSlotWidget[] player2Slots;
 
-	[SerializeField]
-	private TextMeshProUGUI player2NameText;
+    /// <summary>
+    /// 确认交易按钮。
+    /// </summary>
+    [SerializeField]
+    private CommonButtonWidget confirmButton;
 
-	// 交易数据
-	private readonly List<Card> _player1OfferedCards = new List<Card>();
-	private readonly List<Card> _player2OfferedCards = new List<Card>();
-	private bool _isPlayer1Turn = true;
-	private bool _tradeConfirmed;
-	private TradePayload _payload;
-	private int _maxTradeSlots = DefaultMaxTradeSlots;
-	private CanvasGroup _canvasGroup;
-	private bool _canCancel = true;
+    /// <summary>
+    /// 取消交易按钮。
+    /// </summary>
+    [SerializeField]
+    private CommonButtonWidget cancelButton;
 
-	// PanelLayer 属性 - 使用 Top 而不是不存在的 Popup
-	public override PanelLayer Layer => PanelLayer.Top;
+    /// <summary>
+    /// 状态提示文本（等待放入卡牌、可确认、交易完成等）。
+    /// </summary>
+    [SerializeField]
+    private TextMeshProUGUI statusText;
 
-	public void Awake()
-	{
-		_canvasGroup = GetComponent<CanvasGroup>();
-		if (_canvasGroup == null)
-		{
-			_canvasGroup = gameObject.AddComponent<CanvasGroup>();
-		}
+    /// <summary>
+    /// 玩家 1 名称文本。
+    /// </summary>
+    [SerializeField]
+    private TextMeshProUGUI player1NameText;
 
-		// 注册按钮事件
-		confirmButton?.button?.onClick.AddListener(OnConfirmTrade);
-		cancelButton?.button?.onClick.AddListener(OnCancelTrade);
-	}
+    /// <summary>
+    /// 玩家 2 名称文本。
+    /// </summary>
+    [SerializeField]
+    private TextMeshProUGUI player2NameText;
 
-	public override void OnLocaleChanged()
-	{
-		if (_payload != null)
+    #endregion
+
+    #region 内部状态字段
+
+    /// <summary>
+    /// 玩家 1 已放入交易的卡牌列表。
+    /// </summary>
+    private readonly List<Card> _player1OfferedCards = new List<Card>();
+
+    /// <summary>
+    /// 玩家 2 已放入交易的卡牌列表。
+    /// </summary>
+    private readonly List<Card> _player2OfferedCards = new List<Card>();
+
+    /// <summary>
+    /// 当前是否轮到玩家 1（如需回合制控制时可扩展）。
+    /// </summary>
+    private bool _isPlayer1Turn = true;
+
+    /// <summary>
+    /// 是否已经点击了确认交易。
+    /// </summary>
+    private bool _tradeConfirmed;
+
+    /// <summary>
+    /// 当前交易的参数载荷。
+    /// </summary>
+    private TradePayload _payload;
+
+    /// <summary>
+    /// 本次交易允许的最大卡牌数量。
+    /// </summary>
+    private int _maxTradeSlots = DefaultMaxTradeSlots;
+
+    /// <summary>
+    /// 用于整体控制交互和可见性的 CanvasGroup。
+    /// </summary>
+    private CanvasGroup _canvasGroup;
+
+    /// <summary>
+    /// 当前交易是否允许取消。
+    /// </summary>
+    private bool _canCancel = true;
+
+    #endregion
+
+    #region UiPanel 属性
+
+    /// <summary>
+    /// 面板层级，交易面板使用顶层。
+    /// </summary>
+    public override PanelLayer Layer => PanelLayer.Top;
+
+    #endregion
+
+    #region Unity 生命周期
+
+    /// <summary>
+    /// Unity Awake 生命周期回调，用于初始化组件引用及事件绑定。
+    /// </summary>
+    public void Awake()
+    {
+        // 获取或添加 CanvasGroup，用于控制面板交互
+        _canvasGroup = GetComponent<CanvasGroup>();
+        if (_canvasGroup == null)
+        {
+            _canvasGroup = gameObject.AddComponent<CanvasGroup>();
+        }
+
+        // 注册按钮点击事件
+        confirmButton?.button?.onClick.AddListener(OnConfirmTrade);
+        cancelButton?.button?.onClick.AddListener(OnCancelTrade);
+    }
+
+    #endregion
+
+    #region 多语言
+
+    /// <summary>
+    /// 语言切换时回调，刷新界面文本。
+    /// </summary>
+    public override void OnLocaleChanged()
+    {
+        // 语言切换时刷新界面文本（如果当前有有效的 payload）
+        if (_payload != null)
         {
             UpdateUIStrings();
         }
     }
 
-	protected override void OnShowing(TradePayload payload)
-	{
-		_payload = payload;
-		_maxTradeSlots = payload?.MaxTradeSlots ?? DefaultMaxTradeSlots;
-		_canCancel = payload?.CanCancel ?? true;
+    #endregion
 
-		// 重置交易数据
-		ResetTradeData();
+    #region 面板生命周期
 
-		// 设置UI状态
-		player1NameText?.text = payload?.Player1Name ?? "Player 1";
+    /// <summary>
+    /// 面板开始显示时（动画前）调用。
+    /// </summary>
+    /// <param name="payload">交易参数载荷。</param>
+    protected override void OnShowing(TradePayload payload)
+    {
+        // 缓存本次交易的参数
+        _payload = payload;
+        // 根据 payload 设置允许的最大交易卡位
+        _maxTradeSlots = payload?.MaxTradeSlots ?? DefaultMaxTradeSlots;
+        // 是否允许玩家取消本次交易
+        _canCancel = payload?.CanCancel ?? true;
 
+        // 重置交易数据和显示
+        ResetTradeData();
+
+        // 设置玩家名称显示（使用默认值兜底）
+        player1NameText?.text = payload?.Player1Name ?? "Player 1";
         player2NameText?.text = payload?.Player2Name ?? "Player 2";
 
-        // 设置取消按钮可见性
+        // 根据配置显示/隐藏取消按钮
         cancelButton?.gameObject.SetActive(_canCancel);
 
+        // 允许面板交互
         _canvasGroup?.interactable = true;
 
+        // 刷新本地化文案
         UpdateUIStrings();
-		UiManager.PushActionHandler(this);
-	}
 
-	protected override void OnShown()
-	{
-		// 面板显示完成后的处理
-	}
-
-	protected override void OnHiding()
-	{
-		_canvasGroup?.interactable = false;
-
-        UiManager.PopActionHandler(this);
-	}
-
-	protected override void OnHided()
-	{
-		ResetTradeData();
-		_payload = null;
-	}
-
-	private void UpdateUIStrings()
-	{
-		UpdateUIStatus("Trade.WaitingForItems".Localize());
-	}
-
-	private void ResetTradeData()
-	{
-		_player1OfferedCards.Clear();
-		_player2OfferedCards.Clear();
-		_tradeConfirmed = false;
-		_isPlayer1Turn = true;
-
-		// 清空交易槽位
-		if (player1Slots != null)
-		{
-			foreach (TradeSlotWidget slot in player1Slots)
-			{
-				slot?.ClearSlot();
-			}
-		}
-
-		if (player2Slots != null)
-		{
-			foreach (TradeSlotWidget slot in player2Slots)
-			{
-				slot?.ClearSlot();
-			}
-		}
-
-		// 禁用确认按钮
-		confirmButton?.button?.interactable = false;
-	}
-
-	private void UpdateUIStatus(string message)
-	{
-		statusText?.text = message;
+        // 将本面板注册为输入处理器（接收取消等操作）
+        UiManager.PushActionHandler(this);
     }
 
-	/// <summary>
-	/// 添加卡牌到交易
-	/// </summary>
-	public void AddCardToTrade(Card card, bool isPlayer1)
-	{
-		if (card == null)
+    /// <summary>
+    /// 面板展示完成后调用（动画后）。
+    /// </summary>
+    protected override void OnShown()
+    {
+        // 面板显示完成后的处理（当前未使用，预留扩展点）
+    }
+
+    /// <summary>
+    /// 面板开始隐藏时调用。
+    /// </summary>
+    protected override void OnHiding()
+    {
+        // 隐藏动画开始时禁用交互
+        _canvasGroup?.interactable = false;
+
+        // 取消注册输入处理器
+        UiManager.PopActionHandler(this);
+    }
+
+    /// <summary>
+    /// 面板完全隐藏后调用。
+    /// </summary>
+    protected override void OnHided()
+    {
+        // 完全隐藏后重置数据并清空 payload
+        ResetTradeData();
+        _payload = null;
+    }
+
+    #endregion
+
+    #region UI 文本与状态
+
+    /// <summary>
+    /// 根据当前语言和状态刷新 UI 文本。
+    /// </summary>
+    private void UpdateUIStrings()
+    {
+        // 设置初始状态提示为“等待放入卡牌”
+        UpdateUIStatus("Trade.WaitingForItems".Localize());
+    }
+
+    /// <summary>
+    /// 将交易数据重置并清空所有槽位显示。
+    /// </summary>
+    private void ResetTradeData()
+    {
+        // 清空两侧玩家已放入的卡牌列表
+        _player1OfferedCards.Clear();
+        _player2OfferedCards.Clear();
+        _tradeConfirmed = false;
+        _isPlayer1Turn = true;
+
+        // 清空玩家1所有交易槽的显示
+        if (player1Slots != null)
+        {
+            foreach (TradeSlotWidget slot in player1Slots)
+            {
+                slot?.ClearSlot();
+            }
+        }
+
+        // 清空玩家2所有交易槽的显示
+        if (player2Slots != null)
+        {
+            foreach (TradeSlotWidget slot in player2Slots)
+            {
+                slot?.ClearSlot();
+            }
+        }
+
+        // 默认禁止点击确认按钮，直到双方都放入了卡牌
+        confirmButton?.button?.interactable = false;
+    }
+
+    /// <summary>
+    /// 更新状态提示文本。
+    /// </summary>
+    /// <param name="message">要显示的消息内容。</param>
+    private void UpdateUIStatus(string message)
+    {
+        statusText?.text = message;
+    }
+
+    #endregion
+
+    #region 交易卡牌操作
+
+    /// <summary>
+    /// 将一张卡牌加入交易。
+    /// </summary>
+    /// <param name="card">要加入交易的卡牌实例。</param>
+    /// <param name="isPlayer1">true 表示玩家 1，false 表示玩家 2。</param>
+    public void AddCardToTrade(Card card, bool isPlayer1)
+    {
+        // 防守式判空
+        if (card == null)
         {
             return;
         }
 
+        // 根据玩家选择对应的卡牌列表
         List<Card> offeredCards = isPlayer1 ? _player1OfferedCards : _player2OfferedCards;
 
-		if (offeredCards.Count < _maxTradeSlots)
-		{
-			offeredCards.Add(card);
-			UpdateTradeSlot(card, isPlayer1 ? player1Slots : player2Slots, offeredCards.Count - 1);
-			CheckTradeReady();
-		}
-	}
+        // 仅在未超过最大交易卡位时添加
+        if (offeredCards.Count < _maxTradeSlots)
+        {
+            // 记录到列表
+            offeredCards.Add(card);
+            // 更新对应槽位的 UI 显示
+            UpdateTradeSlot(card, isPlayer1 ? player1Slots : player2Slots, offeredCards.Count - 1);
+            // 尝试检测是否可确认交易
+            CheckTradeReady();
+        }
+    }
 
-	/// <summary>
-	/// 从交易中移除卡牌
-	/// </summary>
-	public void RemoveCardFromTrade(Card card, bool isPlayer1)
-	{
-		if (card == null)
+    /// <summary>
+    /// 从交易中移除一张已加入的卡牌。
+    /// </summary>
+    /// <param name="card">要移除的卡牌实例。</param>
+    /// <param name="isPlayer1">true 表示玩家 1，false 表示玩家 2。</param>
+    public void RemoveCardFromTrade(Card card, bool isPlayer1)
+    {
+        // 防守式判空
+        if (card == null)
         {
             return;
         }
 
+        // 根据玩家选择对应的卡牌列表和槽位数组
         List<Card> offeredCards = isPlayer1 ? _player1OfferedCards : _player2OfferedCards;
         TradeSlotWidget[] slots = isPlayer1 ? player1Slots : player2Slots;
 
-		int index = offeredCards.IndexOf(card);
-		if (index >= 0)
-		{
-			offeredCards.RemoveAt(index);
+        // 找到该卡牌在列表中的下标
+        int index = offeredCards.IndexOf(card);
+        if (index >= 0)
+        {
+            // 从列表中移除该卡牌
+            offeredCards.RemoveAt(index);
 
-			// 重新排列剩余卡牌
-			for (int i = index; i < offeredCards.Count; i++)
-			{
-				UpdateTradeSlot(offeredCards[i], slots, i);
-			}
+            // 从被移除的位置起，将后面的卡牌依次往前移动并刷新 UI
+            for (int i = index; i < offeredCards.Count; i++)
+            {
+                UpdateTradeSlot(offeredCards[i], slots, i);
+            }
 
-			// 清空最后一个槽位
-			if (slots != null && offeredCards.Count < slots.Length)
-			{
-				slots[offeredCards.Count]?.ClearSlot();
-			}
+            // 清空末尾的 UI 槽位（避免旧卡牌残留显示）
+            if (slots != null && offeredCards.Count < slots.Length)
+            {
+                slots[offeredCards.Count]?.ClearSlot();
+            }
 
-			CheckTradeReady();
-		}
-	}
+            // 移除后重新检查是否仍满足双方都有卡牌
+            CheckTradeReady();
+        }
+    }
 
-	private void UpdateTradeSlot(Card card, TradeSlotWidget[] slots, int index)
-	{
-		if (slots != null && index >= 0 && index < slots.Length && slots[index] != null)
-		{
-			bool isPlayer1 = slots == player1Slots;
-			slots[index].SetCard(card, (c) => RemoveCardFromTrade(c, isPlayer1));
-		}
-	}
+    /// <summary>
+    /// 刷新指定索引处交易槽的显示。
+    /// </summary>
+    /// <param name="card">要显示的卡牌。</param>
+    /// <param name="slots">所属玩家的槽位数组。</param>
+    /// <param name="index">槽位索引。</param>
+    private void UpdateTradeSlot(Card card, TradeSlotWidget[] slots, int index)
+    {
+        // 检查下标和槽位合法性
+        if (slots != null && index >= 0 && index < slots.Length && slots[index] != null)
+        {
+            // 通过引用比较判断属于哪一侧玩家
+            bool isPlayer1 = slots == player1Slots;
 
-	private void CheckTradeReady()
-	{
-		bool bothPlayersReady = _player1OfferedCards.Count > 0 && _player2OfferedCards.Count > 0;
+            // 设置槽位显示的卡牌，并注册点击回调用于移除
+            slots[index].SetCard(card, (c) => RemoveCardFromTrade(c, isPlayer1));
+        }
+    }
 
-		confirmButton?.button?.interactable = bothPlayersReady;
+    /// <summary>
+    /// 检查双方是否已放入至少一张卡牌，从而决定是否允许确认交易。
+    /// </summary>
+    private void CheckTradeReady()
+    {
+        // 双方都至少放入一张卡牌才允许确认交易
+        bool bothPlayersReady = _player1OfferedCards.Count > 0 && _player2OfferedCards.Count > 0;
 
-		if (bothPlayersReady)
-		{
-			UpdateUIStatus("Trade.ReadyToConfirm".Localize());
-		}
-		else
-		{
-			UpdateUIStatus("Trade.WaitingForItems".Localize());
-		}
-	}
+        // 根据当前是否满足条件更新确认按钮状态
+        confirmButton?.button?.interactable = bothPlayersReady;
 
-	private void OnConfirmTrade()
-	{
-		if (_player1OfferedCards.Count > 0 && _player2OfferedCards.Count > 0)
-		{
-			_tradeConfirmed = true;
-			UpdateUIStatus("Trade.Confirmed".Localize());
-			StartCoroutine(ExecuteTrade());
-		}
-	}
+        // 更新提示文本
+        if (bothPlayersReady)
+        {
+            UpdateUIStatus("Trade.ReadyToConfirm".Localize());
+        }
+        else
+        {
+            UpdateUIStatus("Trade.WaitingForItems".Localize());
+        }
+    }
 
-	private void OnCancelTrade()
-	{
-		_tradeConfirmed = false;
-		Hide();
-	}
+    #endregion
 
-	public void OnCancel()
-	{
-		if (_canCancel)
-		{
-			OnCancelTrade();
-		}
-	}
+    #region 按钮与输入处理
 
-	private IEnumerator ExecuteTrade()
-	{
-		// 禁用按钮以防止重复交易
-		confirmButton?.button?.interactable = false;
-		cancelButton?.button?.interactable = false;
+    /// <summary>
+    /// 点击“确认交易”按钮时回调。
+    /// </summary>
+    private void OnConfirmTrade()
+    {
+        // 再次检查双方是否都放入了卡牌
+        if (_player1OfferedCards.Count > 0 && _player2OfferedCards.Count > 0)
+        {
+            _tradeConfirmed = true;
+            // 更新提示为“交易已确认”
+            UpdateUIStatus("Trade.Confirmed".Localize());
+            // 开始执行交易逻辑的协程
+            StartCoroutine(ExecuteTrade());
+        }
+    }
 
-        // 交换卡牌
+    /// <summary>
+    /// 点击“取消交易”按钮时回调。
+    /// </summary>
+    private void OnCancelTrade()
+    {
+        // 标记为未确认，并直接关闭面板
+        _tradeConfirmed = false;
+        Hide();
+    }
+
+    /// <summary>
+    /// 输入系统触发的取消事件回调（例如按下退出/返回键）。
+    /// </summary>
+    public void OnCancel()
+    {
+        // 输入事件层面的取消处理，需判断当前是否允许取消
+        if (_canCancel)
+        {
+            OnCancelTrade();
+        }
+    }
+
+    #endregion
+
+    #region 协程与网络同步
+
+    /// <summary>
+    /// 执行实际交易逻辑的协程。
+    /// </summary>
+    private IEnumerator ExecuteTrade()
+    {
+        // 禁用按钮以防止重复点击触发多次交易
+        confirmButton?.button?.interactable = false;
+        cancelButton?.button?.interactable = false;
+
+        // 将玩家1提供的卡牌从其卡组移除并加入到玩家2（当前实现视为本地玩家）
         foreach (Card card in _player1OfferedCards)
-		{
-			// 从玩家1移除卡牌
-			GameRun.RemoveDeckCard(card, false);
-			// 添加到玩家2
-			GameRun.AddDeckCard(card, true, new VisualSourceData
-			{
-				SourceType = VisualSourceType.CardSelect
-			});
-		}
+        {
+            // 从玩家1移除卡牌（false 可根据实际游戏逻辑表示来源）
+            GameRun.RemoveDeckCard(card, false);
+            // 将卡牌加入到另一方（当前为本地卡组，网络同步需另行处理）
+            GameRun.AddDeckCard(card, true, new VisualSourceData
+            {
+                SourceType = VisualSourceType.CardSelect
+            });
+        }
 
-		foreach (Card card in _player2OfferedCards)
-		{
-			// 从玩家2移除卡牌（需要在实际实现中处理）
-			// TODO: 需要根据网络架构处理多玩家卡组操作
-			GameRun.AddDeckCard(card, true, new VisualSourceData
-			{
-				SourceType = VisualSourceType.CardSelect
-			});
-		}
+        // 将玩家2提供的卡牌加入到玩家1侧（目前仅做本地添加）
+        foreach (Card card in _player2OfferedCards)
+        {
+            // 从玩家2移除卡牌（网络模式下需要真正从对方卡组移除）
+            // TODO: 需要根据网络架构处理多玩家卡组操作
+            GameRun.AddDeckCard(card, true, new VisualSourceData
+            {
+                SourceType = VisualSourceType.CardSelect
+            });
+        }
 
-		UpdateUIStatus("Trade.Completed".Localize());
+        // 更新状态为“交易完成”
+        UpdateUIStatus("Trade.Completed".Localize());
 
-		// 发送网络事件通知其他玩家
-		SendTradeEvent();
+        // 发送网络事件通知其他玩家本次交易已经完成
+        SendTradeEvent();
 
-		yield return new WaitForSeconds(TradeCompleteWaitTime);
+        // 等待一小段时间，让玩家看清结果
+        yield return new WaitForSeconds(TradeCompleteWaitTime);
 
-		Hide();
-	}
+        // 关闭交易面板
+        Hide();
+    }
 
-	private void SendTradeEvent()
-	{
-		try
-		{
-            // 发送交易完成事件到网络
+    /// <summary>
+    /// 发送交易完成事件到同步管理器（网络广播）。
+    /// </summary>
+    private void SendTradeEvent()
+    {
+        try
+        {
+            // 从 IoC 容器中获取同步管理器（若存在）
             ISynchronizationManager syncManager = ModService.ServiceProvider.GetService<ISynchronizationManager>();
-			if (syncManager != null)
-			{
+            if (syncManager != null)
+            {
+                // 构造简单的交易完成事件数据
                 Dictionary<string, object> tradeData = new Dictionary<string, object>
-				{
-					["EventType"] = "TradeCompleted",
-					["Player1Cards"] = _player1OfferedCards.Count,
-					["Player2Cards"] = _player2OfferedCards.Count,
-					["Timestamp"] = DateTime.Now.Ticks
-				};
+                {
+                    ["EventType"] = "TradeCompleted",
+                    ["Player1Cards"] = _player1OfferedCards.Count,
+                    ["Player2Cards"] = _player2OfferedCards.Count,
+                    ["Timestamp"] = DateTime.Now.Ticks
+                };
 
-				// TODO: 根据实际的网络管理器实现发送逻辑
-				// syncManager.SendGameEvent(tradeData);
-			}
-		}
-		catch (Exception ex)
-		{
-			Debug.LogError($"[TradePanel] Failed to send trade event: {ex.Message}");
-		}
-	}
+                // TODO: 根据实际的网络管理器实现发送逻辑
+                // syncManager.SendGameEvent(tradeData);
+            }
+        }
+        catch (Exception ex)
+        {
+            // 打印网络事件发送失败的错误日志
+            Debug.LogError($"[TradePanel] Failed to send trade event: {ex.Message}");
+        }
+    }
 
-	/// <summary>
-	/// 显示交易UI的协程方法
-	/// </summary>
-	public IEnumerator ShowTradeAsync(TradePayload payload)
-	{
-		Show(payload);
-		yield return new WaitWhile(() => IsVisible);
-	}
+    /// <summary>
+    /// 显示交易 UI 的协程方法，调用方可等待该协程直到面板被关闭。
+    /// </summary>
+    /// <param name="payload">交易配置参数。</param>
+    /// <returns>用于等待面板关闭的协程。</returns>
+    public IEnumerator ShowTradeAsync(TradePayload payload)
+    {
+        // 显示交易面板
+        Show(payload);
+        // 在面板可见期间一直等待
+        yield return new WaitWhile(() => IsVisible);
+    }
+
+    #endregion
 }
