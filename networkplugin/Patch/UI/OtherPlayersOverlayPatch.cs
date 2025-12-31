@@ -74,49 +74,51 @@ public static class OtherPlayersOverlayPatch
     {
         try
         {
-            // 获取网络客户端实例
+            // 从依赖注入容器获取当前网络客户端实例
             INetworkClient client = TryGetNetworkClient();
             if (client == null)
             {
+                // 没有网络客户端时隐藏 UI 并直接返回
                 HideUi();
                 return;
             }
 
-            // 确保已订阅网络事件
+            // 确保已经为当前客户端完成事件订阅（连接状态/游戏事件）
             EnsureSubscribed(client);
 
-            // 每帧轮询网络事件，让"玩家列表更新/加入事件"能及时驱动 UI
+            // 每帧轮询一次网络事件，让玩家列表相关事件尽快被处理
             try
             {
                 client.PollEvents();
             }
             catch
             {
-                // 忽略：有些实现可能要求 Start/Connect 后才能 PollEvents
+                // 忽略轮询失败：某些实现要求在 Start/Connect 之后才能 PollEvents
             }
 
-            // 如果未连接，隐藏UI
+            // 如果当前网络未连接，则不显示 Overlay
             if (!client.IsConnected)
             {
                 HideUi();
                 return;
             }
 
-            // 检查游戏UI状态，避免在加载或阻塞输入时显示overlay
-            // UiManager 的很多状态/层级是私有成员，这里尽量用公开静态属性 + 反射兜底
+            // 在加载界面或输入被阻塞时不显示 Overlay，避免挡住游戏 UI
+            // UiManager 的大部分状态是私有字段，这里优先使用公开属性
             if (UiManager.Instance == null || UiManager.IsShowingLoading || UiManager.IsBlockingInput)
             {
                 HideUi();
                 return;
             }
 
-            // 创建或显示UI
+            // 确保 Overlay UI 已创建并处于激活状态
             EnsureUi();
-            // 刷新UI内容
+            // 根据当前玩家列表和页码刷新 UI 内容
             RefreshUi();
         }
         catch (Exception ex)
         {
+            // 捕获补丁逻辑中的所有异常，防止影响游戏主循环
             Plugin.Logger?.LogError($"[OtherPlayersOverlayPatch] GameDirector_Update_Postfix 异常: {ex}");
         }
     }
@@ -294,7 +296,7 @@ public static class OtherPlayersOverlayPatch
         {
             // 完全替换现有玩家列表
             _players.Clear();
-            foreach (var kv in incoming)
+            foreach (KeyValuePair<string, PlayerSummary> kv in incoming)
             {
                 _players[kv.Key] = kv.Value;
             }
@@ -351,7 +353,7 @@ public static class OtherPlayersOverlayPatch
         lock (_syncLock)
         {
             // 遍历所有玩家，更新房主标记
-            foreach (var kv in _players)
+            foreach (KeyValuePair<string, PlayerSummary> kv in _players)
             {
                 kv.Value.IsHost = kv.Key == newHostId;
             }
@@ -381,11 +383,11 @@ public static class OtherPlayersOverlayPatch
         _defaultFont ??= FindDefaultFont(parent);
 
         // 创建根容器
-        var root = new GameObject("NetworkPlugin_OtherPlayersOverlay");
+        GameObject root = new("NetworkPlugin_OtherPlayersOverlay");
         root.transform.SetParent(parent, false);
 
         // 设置根容器的RectTransform（位置在右下角，距离屏幕边缘24像素）
-        var rootRect = root.AddComponent<RectTransform>();
+        RectTransform rootRect = root.AddComponent<RectTransform>();
         rootRect.anchorMin = new Vector2(1f, 1f);  // 锚点：右上角
         rootRect.anchorMax = new Vector2(1f, 1f);  // 锚点：右上角
         rootRect.pivot = new Vector2(1f, 1f);      // 中心点：右上角
@@ -393,15 +395,15 @@ public static class OtherPlayersOverlayPatch
         rootRect.sizeDelta = new Vector2(360f, 520f);  // 宽360，高520
 
         // 设置背景图像（半透明黑色）
-        var bg = root.AddComponent<Image>();
+        Image bg = root.AddComponent<Image>();
         bg.sprite = GetWhiteSprite();
         bg.color = new Color(0f, 0f, 0f, 0.35f);  // 黑色，35%不透明度
         bg.raycastTarget = false;  // 不阻挡射线检测
 
         // 创建标题文本（"联机玩家（其他玩家信息框）"）
-        var title = CreateTmpText(root.transform, "Title", "联机玩家（其他玩家信息框）", 20);
+        TextMeshProUGUI title = CreateTmpText(root.transform, "Title", "联机玩家（其他玩家信息框）", 20);
         title.alignment = TextAlignmentOptions.TopLeft;
-        var titleRect = title.GetComponent<RectTransform>();
+        RectTransform titleRect = title.GetComponent<RectTransform>();
         titleRect.anchorMin = new Vector2(0f, 1f);  // 左上角
         titleRect.anchorMax = new Vector2(1f, 1f);  // 右上角
         titleRect.pivot = new Vector2(0.5f, 1f);   // 中上
@@ -409,8 +411,8 @@ public static class OtherPlayersOverlayPatch
         titleRect.sizeDelta = new Vector2(-20f, 30f);  // 留出左右各10像素的空白
 
         // 创建上一页按钮（"<"）
-        var leftButton = CreatePageButton(root.transform, "PrevPage", "<");
-        var leftRect = leftButton.GetComponent<RectTransform>();
+        Button leftButton = CreatePageButton(root.transform, "PrevPage", "<");
+        RectTransform leftRect = leftButton.GetComponent<RectTransform>();
         leftRect.anchorMin = new Vector2(1f, 1f);
         leftRect.anchorMax = new Vector2(1f, 1f);
         leftRect.pivot = new Vector2(1f, 1f);
@@ -426,8 +428,8 @@ public static class OtherPlayersOverlayPatch
         });
 
         // 创建下一页按钮（">"）
-        var rightButton = CreatePageButton(root.transform, "NextPage", ">");
-        var rightRect = rightButton.GetComponent<RectTransform>();
+        Button rightButton = CreatePageButton(root.transform, "NextPage", ">");
+        RectTransform rightRect = rightButton.GetComponent<RectTransform>();
         rightRect.anchorMin = new Vector2(1f, 1f);
         rightRect.anchorMax = new Vector2(1f, 1f);
         rightRect.pivot = new Vector2(1f, 1f);
@@ -580,7 +582,7 @@ public static class OtherPlayersOverlayPatch
         go.transform.SetParent(parent, false);
 
         // 配置条目的RectTransform（纵向排列，每个条目高42像素，间隔6像素）
-        var rect = go.AddComponent<RectTransform>();
+        RectTransform rect = go.AddComponent<RectTransform>();
         rect.anchorMin = new Vector2(0f, 1f);      // 左上角
         rect.anchorMax = new Vector2(1f, 1f);      // 右上角
         rect.pivot = new Vector2(0.5f, 1f);        // 中上
@@ -589,24 +591,24 @@ public static class OtherPlayersOverlayPatch
         rect.sizeDelta = new Vector2(-24f, entryHeight);  // 宽度留出左右各12像素，高度42
 
         // 设置条目背景
-        var bg = go.AddComponent<Image>();
+        Image bg = go.AddComponent<Image>();
         bg.sprite = GetWhiteSprite();
         bg.color = new Color(0f, 0f, 0f, 0.25f);  // 浅灰色背景
         bg.raycastTarget = false;  // 不阻挡射线检测
 
         // 创建玩家名称文本（显示在左侧）
-        var name = CreateTmpText(go.transform, "Name", "Player", 18);
+        TextMeshProUGUI name = CreateTmpText(go.transform, "Name", "Player", 18);
         name.alignment = TextAlignmentOptions.Left;
-        var nameRect = name.GetComponent<RectTransform>();
+        RectTransform nameRect = name.GetComponent<RectTransform>();
         nameRect.anchorMin = new Vector2(0f, 0f);
         nameRect.anchorMax = new Vector2(1f, 1f);
         nameRect.offsetMin = new Vector2(leftPadding, 4f);       // 左侧12像素，上下各4像素
         nameRect.offsetMax = new Vector2(-110f, -4f);            // 右侧留110像素给状态文本
 
         // 创建在线状态文本（显示在右侧）
-        var status = CreateTmpText(go.transform, "Status", "在线", 16);
+        TextMeshProUGUI status = CreateTmpText(go.transform, "Status", "在线", 16);
         status.alignment = TextAlignmentOptions.Right;
-        var statusRect = status.GetComponent<RectTransform>();
+        RectTransform statusRect = status.GetComponent<RectTransform>();
         statusRect.anchorMin = new Vector2(0f, 0f);
         statusRect.anchorMax = new Vector2(1f, 1f);
         statusRect.offsetMin = new Vector2(160f, 4f);            // 左侧160像素起
@@ -634,22 +636,22 @@ public static class OtherPlayersOverlayPatch
         var go = new GameObject(name);
         go.transform.SetParent(parent, false);
         // 设置按钮尺寸（24x24像素）
-        var rect = go.AddComponent<RectTransform>();
+        RectTransform rect = go.AddComponent<RectTransform>();
         rect.sizeDelta = new Vector2(24f, 24f);
 
         // 设置按钮背景图像（半透明白色）
-        var img = go.AddComponent<Image>();
+        Image img = go.AddComponent<Image>();
         img.sprite = GetWhiteSprite();
         img.color = new Color(1f, 1f, 1f, 0.15f);  // 白色，15%不透明度
 
         // 配置按钮组件
-        var btn = go.AddComponent<Button>();
+        Button btn = go.AddComponent<Button>();
         btn.targetGraphic = img;  // 点击时改变此图像的颜色
 
         // 创建按钮标签文本（"<" 或 ">"）
-        var label = CreateTmpText(go.transform, "Label", text, 18);
+        TextMeshProUGUI label = CreateTmpText(go.transform, "Label", text, 18);
         label.alignment = TextAlignmentOptions.Center;
-        var labelRect = label.GetComponent<RectTransform>();
+        RectTransform labelRect = label.GetComponent<RectTransform>();
         // 标签铺满整个按钮
         labelRect.anchorMin = Vector2.zero;
         labelRect.anchorMax = Vector2.one;
@@ -674,7 +676,7 @@ public static class OtherPlayersOverlayPatch
         go.transform.SetParent(parent, false);
 
         // 创建并配置TextMeshProUGUI组件
-        var tmp = go.AddComponent<TextMeshProUGUI>();
+        TextMeshProUGUI tmp = go.AddComponent<TextMeshProUGUI>();
         tmp.text = text;
         tmp.fontSize = fontSize;
         tmp.color = Color.white;
@@ -702,7 +704,7 @@ public static class OtherPlayersOverlayPatch
         try
         {
             // 查找第一个TextMeshProUGUI组件并获取其字体
-            var tmp = root.GetComponentInChildren<TextMeshProUGUI>(true);
+            TextMeshProUGUI tmp = root.GetComponentInChildren<TextMeshProUGUI>(true);
             return tmp != null ? tmp.font : null;
         }
         catch
@@ -721,7 +723,7 @@ public static class OtherPlayersOverlayPatch
         try
         {
             // 使用Harmony的Traverse来访问私有字段
-            var rect = Traverse.Create(UiManager.Instance).Field(fieldName).GetValue<RectTransform>();
+            RectTransform rect = Traverse.Create(UiManager.Instance).Field(fieldName).GetValue<RectTransform>();
             return rect != null ? rect.transform : null;
         }
         catch
