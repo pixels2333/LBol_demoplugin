@@ -4,6 +4,7 @@ using LiteNetLib;
 using LiteNetLib.Utils;
 using NetworkPlugin.Core;
 using NetworkPlugin.Network.NetworkPlayer;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Network.Client;
 
@@ -118,10 +119,40 @@ public class NetworkClient : INetworkClient
             }
 
             // 获取当前玩家信息并发送加入事件
-            INetworkPlayer networkPlayer = _networkManager.GetPlayerByPeerId(peer.Id);
+            string playerName = null;
+            try
+            {
+                playerName = _networkPlayer?.userName;
+                if (string.IsNullOrWhiteSpace(playerName))
+                {
+                    playerName = _networkManager?.GetPlayerByPeerId(peer.Id)?.userName;
+                }
+            }
+            catch
+            {
+                // 忽略：NetworkManager 可能尚未完成或未初始化
+            }
+
+            if (string.IsNullOrWhiteSpace(playerName))
+            {
+                playerName = "Player";
+            }
+
+            string characterId = null;
+            try
+            {
+                // 这里使用 ModelName（优先），可直接用于加载头像/模型资源
+                characterId = GameStateUtils.GetCurrentPlayer()?.ModelName;
+            }
+            catch
+            {
+                // 忽略：可能尚未进入游戏流程
+            }
+
             var playerInfo = new
             {
-                PlayerName = networkPlayer.userName,
+                PlayerName = playerName,
+                CharacterId = characterId,
                 ConnectionTime = DateTime.Now.Ticks
             };
 
@@ -203,7 +234,13 @@ public class NetworkClient : INetworkClient
                messageType.StartsWith("Mana") ||
                messageType.StartsWith("Gap") ||
                messageType.StartsWith("Battle") ||
-               messageType == "StateSyncResponse";
+               messageType == "StateSyncResponse" ||
+               // 系统消息（用于 UI/远程玩家渲染等）：同样走 GameEvent 通道，便于统一订阅
+               messageType == "Welcome" ||
+               messageType == "PlayerJoined" ||
+               messageType == "PlayerLeft" ||
+               messageType == "PlayerListUpdate" ||
+               messageType == "HostChanged";
     }
 
     /// <summary>

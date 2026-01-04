@@ -219,7 +219,33 @@ public class NetworkServer
     private void HandleSystemMessage(NetPeer fromPeer, string messageType, NetPacketReader dataReader)
     {
         //TODO:未实现
-        throw new NotImplementedException();
+        try
+        {
+            switch (messageType)
+            {
+                case "PlayerJoined":
+                    HandlePlayerJoined(fromPeer, dataReader);
+                    return;
+                case "Heartbeat":
+                    HandleHeartbeat(fromPeer);
+                    return;
+                case "GetSelf_REQUEST":
+                    HandleGetSelfRequest(fromPeer, dataReader);
+                    return;
+                case "UpdatePlayerLocation":
+                    HandleUpdatePlayerLocation(fromPeer, dataReader);
+                    return;
+                default:
+                    Console.WriteLine($"[Server] Unknown system message type: {messageType} from {fromPeer.EndPoint}");
+                    _logger?.LogWarning($"[Server] Unknown system message type: {messageType} from {fromPeer.EndPoint}");
+                    return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Server] Error handling system message {messageType} from {fromPeer.EndPoint}: {ex.Message}");
+            _logger?.LogError($"[Server] Error handling system message {messageType} from {fromPeer.EndPoint}: {ex.Message}");
+        }
 
     }
 
@@ -302,6 +328,11 @@ public class NetworkServer
                     session.PlayerName = nameObj.ToString();
                 }
 
+                if (playerInfo.TryGetValue("CharacterId", out object charObj) && charObj != null)
+                {
+                    session.Metadata["CharacterId"] = charObj.ToString();
+                }
+
                 Console.WriteLine($"[Server] Player {session.PlayerName} ({session.PlayerId}) joined the game");
 
                 // 广播玩家加入消息给其他玩家
@@ -309,8 +340,12 @@ public class NetworkServer
                 {
                     PlayerId = session.PlayerId,
                     PlayerName = session.PlayerName,
-                    IsHost = session.IsHost
+                    IsHost = session.IsHost,
+                    CharacterId = session.Metadata.TryGetValue("CharacterId", out var cid) ? cid?.ToString() : null
                 }, excludePeerId: fromPeer.Id);
+
+                // 同步全量玩家列表，确保扩展字段（角色/位置）被广播到所有客户端
+                BroadcastPlayerList();
             }
         }
         catch (Exception ex)
@@ -360,6 +395,64 @@ public class NetworkServer
             };
 
             SendMessage(fromPeer, "GetSelf_RESPONSE", responseData);
+        }
+    }
+
+    /// <summary>
+    /// 处理客户端上报的玩家位置更新
+    /// </summary>
+    /// <param name="fromPeer">发送请求的客户端</param>
+    /// <param name="dataReader">消息数据（JSON 字符串）</param>
+    private void HandleUpdatePlayerLocation(NetPeer fromPeer, NetDataReader dataReader)
+    {
+        try
+        {
+            if (!_playerSessions.TryGetValue(fromPeer.Id, out var session))
+            {
+                return;
+            }
+
+            string jsonPayload = dataReader.GetString();
+            JsonElement root;
+            try
+            {
+                root = JsonSerializer.Deserialize<JsonElement>(jsonPayload);
+            }
+            catch
+            {
+                Console.WriteLine($"[Server] Invalid UpdatePlayerLocation payload from {session.PlayerId}");
+                return;
+            }
+
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                return;
+            }
+
+            if (root.TryGetProperty("LocationX", out JsonElement xElem) && xElem.TryGetInt32(out int x))
+            {
+                session.Metadata["LocationX"] = x;
+            }
+            if (root.TryGetProperty("LocationY", out JsonElement yElem) && yElem.TryGetInt32(out int y))
+            {
+                session.Metadata["LocationY"] = y;
+            }
+            if (root.TryGetProperty("Stage", out JsonElement stageElem) && stageElem.TryGetInt32(out int stage))
+            {
+                session.Metadata["Stage"] = stage;
+            }
+            if (root.TryGetProperty("LocationName", out JsonElement nameElem) && nameElem.ValueKind == JsonValueKind.String)
+            {
+                session.Metadata["LocationName"] = nameElem.GetString();
+            }
+
+            // 广播玩家列表更新（携带位置/外观等扩展字段）
+            BroadcastPlayerList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Server] Error handling UpdatePlayerLocation: {ex.Message}");
+            _logger?.LogError($"[Server] Error handling UpdatePlayerLocation: {ex.Message}");
         }
     }
 
@@ -453,6 +546,41 @@ public class NetworkServer
     /// </summary>
     /// <param name="peer">新连接的网络对等体</param>
     /// <param name="session">玩家会话</param>
+    private static int? TryGetMetadataInt(Dictionary<string, object> metadata, string key)
+    {
+        if (metadata == null || !metadata.TryGetValue(key, out object value) || value == null)
+        {
+            return null;
+        }
+
+        return value switch
+        {
+            int i => i,
+            long l => (int)l,
+            float f => (int)f,
+            double d => (int)d,
+            string s when int.TryParse(s, out int i) => i,
+            JsonElement je when je.ValueKind == JsonValueKind.Number && je.TryGetInt32(out int i) => i,
+            JsonElement je when je.ValueKind == JsonValueKind.String && int.TryParse(je.GetString(), out int i) => i,
+            _ => null
+        };
+    }
+
+    private static string TryGetMetadataString(Dictionary<string, object> metadata, string key)
+    {
+        if (metadata == null || !metadata.TryGetValue(key, out object value) || value == null)
+        {
+            return null;
+        }
+
+        return value switch
+        {
+            string s => s,
+            JsonElement je when je.ValueKind == JsonValueKind.String => je.GetString(),
+            _ => value.ToString()
+        };
+    }
+
     private void SendWelcomeMessage(NetPeer peer, PlayerSession session)
     {
         var welcomeData = new
@@ -464,7 +592,13 @@ public class NetworkServer
             {
                 PlayerId = s.PlayerId,
                 PlayerName = s.PlayerName,
-                IsHost = s.IsHost
+                IsHost = s.IsHost,
+                IsConnected = s.IsConnected,
+                CharacterId = TryGetMetadataString(s.Metadata, "CharacterId"),
+                LocationX = TryGetMetadataInt(s.Metadata, "LocationX") ?? -1,
+                LocationY = TryGetMetadataInt(s.Metadata, "LocationY") ?? -1,
+                Stage = TryGetMetadataInt(s.Metadata, "Stage") ?? -1,
+                LocationName = TryGetMetadataString(s.Metadata, "LocationName")
             }).ToList()
         };
 
@@ -482,7 +616,12 @@ public class NetworkServer
             PlayerId = s.PlayerId,
             PlayerName = s.PlayerName,
             IsHost = s.IsHost,
-            IsConnected = s.IsConnected
+            IsConnected = s.IsConnected,
+            CharacterId = TryGetMetadataString(s.Metadata, "CharacterId"),
+            LocationX = TryGetMetadataInt(s.Metadata, "LocationX") ?? -1,
+            LocationY = TryGetMetadataInt(s.Metadata, "LocationY") ?? -1,
+            Stage = TryGetMetadataInt(s.Metadata, "Stage") ?? -1,
+            LocationName = TryGetMetadataString(s.Metadata, "LocationName")
         }).ToList();
 
         BroadcastMessage("PlayerListUpdate", new { Players = playerList });
