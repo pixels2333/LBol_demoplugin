@@ -2,8 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using Cysharp.Threading.Tasks;
 using HarmonyLib;
+using LBoL.Base;
+using LBoL.Core;
+using LBoL.Core.Units;
+using LBoL.Presentation;
 using LBoL.Presentation.UI;
+using LBoL.Presentation.UI.Panels;
+using LBoL.Presentation.UI.Widgets;
 using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
@@ -54,6 +61,24 @@ public static class OtherPlayersOverlayPatch
     /// <summary>是否已订阅网络事件</summary>
     private static bool _subscribed;
 
+    /// <summary>本地客户端在服务器侧的 PlayerId（用于过滤自身渲染）</summary>
+    private static string _selfPlayerId;
+
+    /// <summary>战斗场景中远程玩家角色根节点</summary>
+    private static Transform _remoteCharactersRoot;
+
+    /// <summary>战斗场景中远程玩家角色视图缓存（PlayerId -> View）</summary>
+    private static readonly Dictionary<string, RemoteCharacterView> _remoteCharacters = new();
+
+    /// <summary>地图面板中远程玩家图标根节点</summary>
+    private static RectTransform _mapIconsRoot;
+
+    /// <summary>地图面板中远程玩家图标缓存（PlayerId -> Icon）</summary>
+    private static readonly Dictionary<string, MapIconUi> _mapIcons = new();
+
+    /// <summary>角色头像缓存（CharacterId -> Sprite）</summary>
+    private static readonly Dictionary<string, Sprite> _avatarCache = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>游戏事件接收委托（用于事件订阅）</summary>
     private static readonly Action<string, object> _onGameEventReceived = OnGameEventReceived;
 
@@ -80,6 +105,7 @@ public static class OtherPlayersOverlayPatch
             {
                 // 没有网络客户端时隐藏 UI 并直接返回
                 HideUi();
+                HideRemoteCharacters();
                 return;
             }
 
@@ -100,6 +126,7 @@ public static class OtherPlayersOverlayPatch
             if (!client.IsConnected)
             {
                 HideUi();
+                HideRemoteCharacters();
                 return;
             }
 
@@ -108,6 +135,7 @@ public static class OtherPlayersOverlayPatch
             if (UiManager.Instance == null || UiManager.IsShowingLoading || UiManager.IsBlockingInput)
             {
                 HideUi();
+                HideRemoteCharacters();
                 return;
             }
 
@@ -115,11 +143,52 @@ public static class OtherPlayersOverlayPatch
             EnsureUi();
             // 根据当前玩家列表和页码刷新 UI 内容
             RefreshUi();
+
+            // 渲染远程玩家“角色实体”（战斗场景）
+            EnsureRemoteCharacters();
+            UpdateRemoteCharactersLayout();
         }
         catch (Exception ex)
         {
             // 捕获补丁逻辑中的所有异常，防止影响游戏主循环
             Plugin.Logger?.LogError($"[OtherPlayersOverlayPatch] GameDirector_Update_Postfix 异常: {ex}");
+        }
+    }
+
+
+    /// <summary>
+    /// GameDirector.MasterTick() 的后处理补丁
+    /// 用于驱动远程玩家 UnitView 的 Tick（否则不会被 GameDirector 维护的列表更新）
+    /// </summary>
+    [HarmonyPatch(typeof(GameDirector), "MasterTick")]
+    [HarmonyPostfix]
+    private static void GameDirector_MasterTick_Postfix()
+    {
+        try
+        {
+            TickRemoteCharacters();
+        }
+        catch
+        {
+            // 忽略：避免影响主循环
+        }
+    }
+
+    /// <summary>
+    /// MapPanel.UpdateMapNodesStatus() 的后处理补丁
+    /// 在地图面板刷新节点状态时，附带刷新远程玩家在地图上的头像标记
+    /// </summary>
+    [HarmonyPatch(typeof(MapPanel), "UpdateMapNodesStatus")]
+    [HarmonyPostfix]
+    public static void MapPanel_UpdateMapNodesStatus_Postfix(MapPanel __instance)
+    {
+        try
+        {
+            UpdateMapIcons(__instance);
+        }
+        catch
+        {
+            // 忽略：避免影响 UI
         }
     }
 
@@ -216,6 +285,10 @@ public static class OtherPlayersOverlayPatch
             // 重置页码
             _page = 0;
         }
+
+        _selfPlayerId = null;
+        ClearRemoteCharacters();
+        ClearMapIcons();
     }
 
     /// <summary>
@@ -237,6 +310,10 @@ public static class OtherPlayersOverlayPatch
             // 根据事件类型分发处理
             switch (eventType)
             {
+                case "Welcome":
+                    // 服务器欢迎消息：包含自身 PlayerId 与初始玩家列表
+                    HandleWelcome(root);
+                    break;
                 case "PlayerListUpdate":
                     // 玩家列表更新事件：完整覆盖现有玩家列表
                     HandlePlayerListUpdate(root);
@@ -244,6 +321,10 @@ public static class OtherPlayersOverlayPatch
                 case "PlayerJoined":
                     // 新玩家加入事件：添加新玩家
                     HandlePlayerJoined(root);
+                    break;
+                case "PlayerLeft":
+                    // 玩家离开事件：移除玩家
+                    HandlePlayerLeft(root);
                     break;
                 case "HostChanged":
                     // 房主变更事件：更新房主标记
@@ -264,46 +345,12 @@ public static class OtherPlayersOverlayPatch
     /// <param name="root">JSON数据根元素，应包含 "Players" 数组</param>
     private static void HandlePlayerListUpdate(JsonElement root)
     {
-        // 验证JSON数据包含Players属性且为数组
         if (!root.TryGetProperty("Players", out JsonElement playersElem) || playersElem.ValueKind != JsonValueKind.Array)
         {
             return;
         }
 
-        // 临时字典用于存储新的玩家数据
-        var incoming = new Dictionary<string, PlayerSummary>();
-        foreach (JsonElement p in playersElem.EnumerateArray())
-        {
-            // 获取PlayerId，如果为空则跳过此条目
-            string playerId = GetString(p, "PlayerId");
-            if (string.IsNullOrWhiteSpace(playerId))
-            {
-                continue;
-            }
-
-            // 创建并添加玩家摘要信息
-            incoming[playerId] = new PlayerSummary
-            {
-                PlayerId = playerId,
-                PlayerName = GetString(p, "PlayerName") ?? playerId,
-                IsHost = GetBool(p, "IsHost"),
-                IsConnected = GetBool(p, "IsConnected"),
-                LastUpdateTime = Time.unscaledTime,
-            };
-        }
-
-        lock (_syncLock)
-        {
-            // 完全替换现有玩家列表
-            _players.Clear();
-            foreach (KeyValuePair<string, PlayerSummary> kv in incoming)
-            {
-                _players[kv.Key] = kv.Value;
-            }
-
-            // 调整页码以确保不超过范围
-            ClampPage_NoLock();
-        }
+        ReplacePlayersFromArray(playersElem);
     }
 
     /// <summary>
@@ -312,26 +359,30 @@ public static class OtherPlayersOverlayPatch
     /// <param name="root">JSON数据根元素，应包含 "PlayerId"、"PlayerName"、"IsHost"</param>
     private static void HandlePlayerJoined(JsonElement root)
     {
-        // 提取玩家ID，如果为空则忽略此事件
         string playerId = GetString(root, "PlayerId");
         if (string.IsNullOrWhiteSpace(playerId))
         {
             return;
         }
 
+        bool hasConnectedField = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("IsConnected", out _);
+
         lock (_syncLock)
         {
-            // 向玩家列表添加新玩家
             _players[playerId] = new PlayerSummary
             {
                 PlayerId = playerId,
                 PlayerName = GetString(root, "PlayerName") ?? playerId,
                 IsHost = GetBool(root, "IsHost"),
-                IsConnected = true,  // 新加入的玩家默认为在线
+                IsConnected = hasConnectedField ? GetBool(root, "IsConnected") : true,
+                CharacterId = GetString(root, "CharacterId"),
+                LocationX = GetInt(root, "LocationX", -1),
+                LocationY = GetInt(root, "LocationY", -1),
+                Stage = GetInt(root, "Stage", -1),
+                LocationName = GetString(root, "LocationName"),
                 LastUpdateTime = Time.unscaledTime,
             };
 
-            // 调整页码以确保不超过范围
             ClampPage_NoLock();
         }
     }
@@ -357,6 +408,88 @@ public static class OtherPlayersOverlayPatch
             {
                 kv.Value.IsHost = kv.Key == newHostId;
             }
+        }
+    }
+
+    /// <summary>
+    /// 处理 Welcome 消息：记录自身 PlayerId，并应用初始玩家列表
+    /// </summary>
+    /// <param name="root">JSON 数据根元素，应包含 "PlayerId" 与 "PlayerList"</param>
+    private static void HandleWelcome(JsonElement root)
+    {
+        string selfId = GetString(root, "PlayerId");
+        if (!string.IsNullOrWhiteSpace(selfId))
+        {
+            _selfPlayerId = selfId;
+        }
+
+        if (root.TryGetProperty("PlayerList", out JsonElement playersElem) && playersElem.ValueKind == JsonValueKind.Array)
+        {
+            ReplacePlayersFromArray(playersElem);
+        }
+    }
+
+    /// <summary>
+    /// 处理玩家离开事件：移除玩家并清理对应渲染缓存
+    /// </summary>
+    /// <param name="root">JSON 数据根元素，应包含 "PlayerId"</param>
+    private static void HandlePlayerLeft(JsonElement root)
+    {
+        string playerId = GetString(root, "PlayerId");
+        if (string.IsNullOrWhiteSpace(playerId))
+        {
+            return;
+        }
+
+        lock (_syncLock)
+        {
+            _players.Remove(playerId);
+            ClampPage_NoLock();
+        }
+
+        RemoveRemoteCharacter(playerId);
+        HideMapIcon(playerId);
+    }
+
+    /// <summary>
+    /// 从 JSON 数组解析玩家列表并整体替换本地缓存
+    /// </summary>
+    private static void ReplacePlayersFromArray(JsonElement playersElem)
+    {
+        var incoming = new Dictionary<string, PlayerSummary>();
+        foreach (JsonElement p in playersElem.EnumerateArray())
+        {
+            string playerId = GetString(p, "PlayerId");
+            if (string.IsNullOrWhiteSpace(playerId))
+            {
+                continue;
+            }
+
+            bool hasConnectedField = p.ValueKind == JsonValueKind.Object && p.TryGetProperty("IsConnected", out _);
+            incoming[playerId] = new PlayerSummary
+            {
+                PlayerId = playerId,
+                PlayerName = GetString(p, "PlayerName") ?? playerId,
+                IsHost = GetBool(p, "IsHost"),
+                IsConnected = hasConnectedField ? GetBool(p, "IsConnected") : true,
+                CharacterId = GetString(p, "CharacterId"),
+                LocationX = GetInt(p, "LocationX", -1),
+                LocationY = GetInt(p, "LocationY", -1),
+                Stage = GetInt(p, "Stage", -1),
+                LocationName = GetString(p, "LocationName"),
+                LastUpdateTime = Time.unscaledTime,
+            };
+        }
+
+        lock (_syncLock)
+        {
+            _players.Clear();
+            foreach (var kv in incoming)
+            {
+                _players[kv.Key] = kv.Value;
+            }
+
+            ClampPage_NoLock();
         }
     }
 
@@ -570,6 +703,625 @@ public static class OtherPlayersOverlayPatch
     /// <param name="parent">父容器</param>
     /// <param name="index">条目索引（0-9），用于计算垂直位置</param>
     /// <returns>创建的条目UI对象</returns>
+    #region 远程玩家“角色实体”渲染（战斗 + 地图）
+
+    private static void EnsureRemoteCharacters()
+    {
+        // 仅在战斗场景渲染：需要 PlayerUnitView、UnitStatusHud 等运行时对象
+        if (Singleton<GameDirector>.Instance == null || Singleton<GameDirector>.Instance.PlayerUnitView == null)
+        {
+            HideRemoteCharacters();
+            return;
+        }
+
+        Transform unitRoot = TryGetGameDirectorTransform("unitRoot");
+        Transform playerRoot = TryGetGameDirectorTransform("playerRoot");
+        GameObject unitPrefab = TryGetGameDirectorUnitPrefab();
+        if (unitRoot == null || playerRoot == null || unitPrefab == null)
+        {
+            return;
+        }
+
+        if (_remoteCharactersRoot == null)
+        {
+            GameObject rootGo = new("NetworkPlugin_RemoteCharacters");
+            rootGo.transform.SetParent(unitRoot, false);
+            _remoteCharactersRoot = rootGo.transform;
+        }
+
+        List<PlayerSummary> remotePlayers;
+        lock (_syncLock)
+        {
+            remotePlayers = _players.Values
+                .Where(p => p != null && !string.IsNullOrWhiteSpace(p.PlayerId))
+                .Where(p => p.IsConnected)
+                .Where(p => string.IsNullOrWhiteSpace(_selfPlayerId) || p.PlayerId != _selfPlayerId)
+                .OrderByDescending(p => p.IsHost)
+                .ThenBy(p => p.PlayerName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        if (remotePlayers.Count == 0)
+        {
+            HideRemoteCharacters();
+            return;
+        }
+
+        _remoteCharactersRoot.gameObject.SetActive(true);
+
+        var alive = new HashSet<string>(remotePlayers.Select(p => p.PlayerId));
+        foreach (string existingId in _remoteCharacters.Keys.ToList())
+        {
+            if (!alive.Contains(existingId))
+            {
+                RemoveRemoteCharacter(existingId);
+            }
+        }
+
+        foreach (PlayerSummary p in remotePlayers)
+        {
+            EnsureRemoteCharacterView(unitPrefab, p);
+        }
+    }
+
+    private static void UpdateRemoteCharactersLayout()
+    {
+        if (_remoteCharactersRoot == null || !_remoteCharactersRoot.gameObject.activeInHierarchy)
+        {
+            return;
+        }
+
+        Transform playerRoot = TryGetGameDirectorTransform("playerRoot");
+        if (playerRoot == null)
+        {
+            return;
+        }
+
+        List<PlayerSummary> remotePlayers;
+        lock (_syncLock)
+        {
+            remotePlayers = _players.Values
+                .Where(p => p != null && !string.IsNullOrWhiteSpace(p.PlayerId))
+                .Where(p => p.IsConnected)
+                .Where(p => string.IsNullOrWhiteSpace(_selfPlayerId) || p.PlayerId != _selfPlayerId)
+                .OrderByDescending(p => p.IsHost)
+                .ThenBy(p => p.PlayerName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        Vector3 basePos = playerRoot.localPosition;
+        const float xStep = 1.4f;
+        const float yStep = 0.5f;
+        const float scale = 0.85f;
+
+        for (int index = 0; index < remotePlayers.Count; index++)
+        {
+            PlayerSummary p = remotePlayers[index];
+            if (!_remoteCharacters.TryGetValue(p.PlayerId, out RemoteCharacterView view) || view?.Root == null)
+            {
+                continue;
+            }
+
+            int row = index / 2;
+            int col = index % 2;
+            float x = (row + 1) * xStep;
+            float y = col == 0 ? yStep : -yStep;
+
+            view.Root.transform.localPosition = basePos + new Vector3(x, y, 0f);
+            view.Root.transform.localScale = new Vector3(scale, scale, scale);
+        }
+    }
+
+    private static void TickRemoteCharacters()
+    {
+        if (_remoteCharacters.Count == 0)
+        {
+            return;
+        }
+
+        foreach (RemoteCharacterView rc in _remoteCharacters.Values)
+        {
+            if (rc?.View == null || rc.Root == null || !rc.Root.activeInHierarchy)
+            {
+                continue;
+            }
+
+            rc.View.Tick();
+        }
+    }
+
+    private static void EnsureRemoteCharacterView(GameObject unitPrefab, PlayerSummary player)
+    {
+        if (player == null || string.IsNullOrWhiteSpace(player.PlayerId))
+        {
+            return;
+        }
+
+        string desiredCharacter = player.CharacterId;
+        if (string.IsNullOrWhiteSpace(desiredCharacter))
+        {
+            desiredCharacter = GetFallbackCharacterId();
+        }
+
+        if (_remoteCharacters.TryGetValue(player.PlayerId, out RemoteCharacterView existing))
+        {
+            if (existing != null && existing.Root != null && string.Equals(existing.CharacterId, desiredCharacter, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            RemoveRemoteCharacter(player.PlayerId);
+        }
+
+        UnitStatusHud hud = UiManager.GetPanel<UnitStatusHud>();
+        if (hud == null)
+        {
+            return;
+        }
+
+        PlayerUnit unit = TryCreatePlayerUnit(desiredCharacter);
+        if (unit == null)
+        {
+            return;
+        }
+
+        try
+        {
+            unit.Initialize();
+        }
+        catch
+        {
+            // 忽略初始化失败：仅用于渲染外观
+        }
+
+        GameObject container = new($"RemotePlayer_{player.PlayerId}");
+        container.transform.SetParent(_remoteCharactersRoot, false);
+
+        GameObject go = UnityEngine.Object.Instantiate(unitPrefab, container.transform);
+        UnitView view = go.GetComponent<UnitView>();
+        if (view == null)
+        {
+            UnityEngine.Object.Destroy(container);
+            return;
+        }
+
+        view.Unit = unit;
+        view.SetStatusWidget(hud.CreateStatusWidget(unit), 0f);
+        view.SetInfoWidget(hud.CreateInfoWidget(unit), 0f);
+
+        unit.SetView(view);
+        view.IsHidden = false;
+        DisableRemoteCharacterInteractions(view);
+
+        _remoteCharacters[player.PlayerId] = new RemoteCharacterView
+        {
+            PlayerId = player.PlayerId,
+            CharacterId = desiredCharacter,
+            Root = container,
+            View = view,
+        };
+
+        try
+        {
+            Singleton<GameDirector>.Instance.StartCoroutine(view.LoadUnitModelAsync(unit.ModelName, true, default(float?)).ToCoroutine());
+        }
+        catch
+        {
+            // 忽略：避免加载失败影响主循环
+        }
+    }
+
+    private static void DisableRemoteCharacterInteractions(UnitView view)
+    {
+        if (view == null)
+        {
+            return;
+        }
+
+        // 远程玩家“仅渲染”：禁用碰撞/选择框，避免影响本地鼠标选择与受击判定。
+        try
+        {
+            if (view.BoxCollider != null)
+            {
+                view.BoxCollider.enabled = false;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        try
+        {
+            Collider2D circle = Traverse.Create(view).Field("_circleCollider").GetValue<Collider2D>();
+            if (circle != null)
+            {
+                circle.enabled = false;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        try
+        {
+            Collider selector = view.SelectorCollider;
+            if (selector != null)
+            {
+                selector.enabled = false;
+                selector.gameObject.SetActive(false);
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static void HideRemoteCharacters()
+    {
+        if (_remoteCharactersRoot != null)
+        {
+            _remoteCharactersRoot.gameObject.SetActive(false);
+        }
+    }
+
+    private static void ClearRemoteCharacters()
+    {
+        foreach (string playerId in _remoteCharacters.Keys.ToList())
+        {
+            RemoveRemoteCharacter(playerId);
+        }
+
+        if (_remoteCharactersRoot != null)
+        {
+            UnityEngine.Object.Destroy(_remoteCharactersRoot.gameObject);
+            _remoteCharactersRoot = null;
+        }
+    }
+
+    private static void RemoveRemoteCharacter(string playerId)
+    {
+        if (string.IsNullOrWhiteSpace(playerId))
+        {
+            return;
+        }
+
+        if (_remoteCharacters.TryGetValue(playerId, out RemoteCharacterView rc))
+        {
+            if (rc?.Root != null)
+            {
+                UnityEngine.Object.Destroy(rc.Root);
+            }
+            _remoteCharacters.Remove(playerId);
+        }
+    }
+
+    private static Transform TryGetGameDirectorTransform(string fieldName)
+    {
+        try
+        {
+            return Traverse.Create(Singleton<GameDirector>.Instance).Field(fieldName).GetValue<Transform>();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static GameObject TryGetGameDirectorUnitPrefab()
+    {
+        try
+        {
+            return Traverse.Create(Singleton<GameDirector>.Instance).Field("unitPrefab").GetValue<GameObject>();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string GetFallbackCharacterId()
+    {
+        try
+        {
+            PlayerUnit local = Singleton<GameDirector>.Instance.PlayerUnitView?.Unit as PlayerUnit;
+            return local?.ModelName ?? local?.Id ?? "Koishi";
+        }
+        catch
+        {
+            return "Koishi";
+        }
+    }
+
+    private static PlayerUnit TryCreatePlayerUnit(string characterId)
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(characterId))
+            {
+                PlayerUnit unit = Library.TryCreatePlayerUnit(characterId);
+                if (unit != null)
+                {
+                    return unit;
+                }
+            }
+        }
+        catch
+        {
+            // 忽略：继续 fallback
+        }
+
+        try
+        {
+            return Library.TryCreatePlayerUnit("Koishi") ?? Library.CreatePlayerUnit("Koishi");
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void UpdateMapIcons(MapPanel mapPanel)
+    {
+        if (mapPanel == null)
+        {
+            return;
+        }
+
+        INetworkClient client = TryGetNetworkClient();
+        if (client == null || !client.IsConnected)
+        {
+            HideAllMapIcons();
+            return;
+        }
+
+        MapNodeWidget[,] widgets;
+        RectTransform nodeHolder;
+        try
+        {
+            widgets = Traverse.Create(mapPanel).Field("_mapNodeWidgets").GetValue<MapNodeWidget[,]>();
+            nodeHolder = Traverse.Create(mapPanel).Field("nodeHolder").GetValue<RectTransform>();
+        }
+        catch
+        {
+            return;
+        }
+
+        if (widgets == null || nodeHolder == null)
+        {
+            return;
+        }
+
+        EnsureMapIconsRoot(nodeHolder);
+        _defaultFont ??= FindDefaultFont(nodeHolder);
+
+        List<PlayerSummary> players;
+        lock (_syncLock)
+        {
+            players = _players.Values
+                .Where(p => p != null && !string.IsNullOrWhiteSpace(p.PlayerId))
+                .Where(p => p.IsConnected)
+                .Where(p => string.IsNullOrWhiteSpace(_selfPlayerId) || p.PlayerId != _selfPlayerId)
+                .Where(p => p.LocationX >= 0 && p.LocationY >= 0)
+                .ToList();
+        }
+
+        if (players.Count == 0)
+        {
+            HideAllMapIcons();
+            return;
+        }
+
+        _mapIconsRoot.gameObject.SetActive(true);
+
+        var alive = new HashSet<string>();
+        foreach (var group in players.GroupBy(p => (X: p.LocationX, Y: p.LocationY)))
+        {
+            int x = group.Key.X;
+            int y = group.Key.Y;
+
+            if (x < widgets.GetLowerBound(0) || x > widgets.GetUpperBound(0) || y < widgets.GetLowerBound(1) || y > widgets.GetUpperBound(1))
+            {
+                continue;
+            }
+
+            MapNodeWidget widget = widgets[x, y];
+            if (widget == null)
+            {
+                continue;
+            }
+
+            int i = 0;
+            foreach (PlayerSummary p in group.OrderByDescending(p => p.IsHost).ThenBy(p => p.PlayerName, StringComparer.OrdinalIgnoreCase))
+            {
+                alive.Add(p.PlayerId);
+
+                MapIconUi icon = EnsureMapIcon(p);
+                icon.Root.SetActive(true);
+
+                icon.RootRect.localPosition = widget.transform.localPosition + new Vector3(0f, 70f + i * 18f, 0f);
+                icon.Label.text = p.PlayerName;
+                icon.Image.color = p.IsHost ? new Color(1f, 0.95f, 0.4f, 1f) : Color.white;
+
+                i++;
+            }
+        }
+
+        foreach (var kv in _mapIcons)
+        {
+            if (!alive.Contains(kv.Key))
+            {
+                kv.Value.Root.SetActive(false);
+            }
+        }
+    }
+
+    private static void EnsureMapIconsRoot(RectTransform nodeHolder)
+    {
+        if (_mapIconsRoot != null && _mapIconsRoot.transform.parent == nodeHolder)
+        {
+            return;
+        }
+
+        ClearMapIcons();
+
+        GameObject root = new("NetworkPlugin_RemotePlayerIcons");
+        root.transform.SetParent(nodeHolder, false);
+
+        _mapIconsRoot = root.AddComponent<RectTransform>();
+        _mapIconsRoot.anchorMin = Vector2.zero;
+        _mapIconsRoot.anchorMax = Vector2.one;
+        _mapIconsRoot.offsetMin = Vector2.zero;
+        _mapIconsRoot.offsetMax = Vector2.zero;
+    }
+
+    private static MapIconUi EnsureMapIcon(PlayerSummary player)
+    {
+        if (_mapIcons.TryGetValue(player.PlayerId, out MapIconUi ui) && ui?.Root != null)
+        {
+            if (!string.Equals(ui.CharacterId, player.CharacterId, StringComparison.OrdinalIgnoreCase))
+            {
+                SetMapIconSprite(ui, player.CharacterId);
+            }
+            return ui;
+        }
+
+        GameObject root = new($"RemoteIcon_{player.PlayerId}");
+        root.transform.SetParent(_mapIconsRoot, false);
+
+        RectTransform rootRect = root.AddComponent<RectTransform>();
+        rootRect.sizeDelta = new Vector2(48f, 64f);
+
+        GameObject avatarGo = new("Avatar");
+        avatarGo.transform.SetParent(root.transform, false);
+
+        RectTransform avatarRect = avatarGo.AddComponent<RectTransform>();
+        avatarRect.anchorMin = new Vector2(0f, 1f);
+        avatarRect.anchorMax = new Vector2(1f, 1f);
+        avatarRect.pivot = new Vector2(0.5f, 1f);
+        avatarRect.anchoredPosition = Vector2.zero;
+        avatarRect.sizeDelta = new Vector2(0f, 48f);
+
+        Image avatar = avatarGo.AddComponent<Image>();
+        avatar.raycastTarget = false;
+        avatar.preserveAspect = true;
+
+        TextMeshProUGUI label = CreateTmpText(root.transform, "Name", player.PlayerName ?? player.PlayerId, 14f);
+        label.alignment = TextAlignmentOptions.Center;
+        RectTransform labelRect = label.GetComponent<RectTransform>();
+        labelRect.anchorMin = new Vector2(0f, 0f);
+        labelRect.anchorMax = new Vector2(1f, 0f);
+        labelRect.pivot = new Vector2(0.5f, 0f);
+        labelRect.anchoredPosition = Vector2.zero;
+        labelRect.sizeDelta = new Vector2(0f, 16f);
+
+        var icon = new MapIconUi
+        {
+            Root = root,
+            RootRect = rootRect,
+            Image = avatar,
+            Label = label,
+            CharacterId = null,
+        };
+
+        _mapIcons[player.PlayerId] = icon;
+        SetMapIconSprite(icon, player.CharacterId);
+        return icon;
+    }
+
+    private static void SetMapIconSprite(MapIconUi icon, string characterId)
+    {
+        icon.CharacterId = characterId;
+        icon.Image.sprite = TryGetAvatarSprite(characterId) ?? GetWhiteSprite();
+    }
+
+    private static Sprite TryGetAvatarSprite(string characterId)
+    {
+        if (string.IsNullOrWhiteSpace(characterId))
+        {
+            return null;
+        }
+
+        if (_avatarCache.TryGetValue(characterId, out Sprite cached) && cached != null)
+        {
+            return cached;
+        }
+
+        try
+        {
+            Sprite sprite = ResourcesHelper.LoadCharacterAvatarSprite(characterId);
+            if (sprite != null)
+            {
+                _avatarCache[characterId] = sprite;
+            }
+            return sprite;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void HideMapIcon(string playerId)
+    {
+        if (string.IsNullOrWhiteSpace(playerId))
+        {
+            return;
+        }
+
+        if (_mapIcons.TryGetValue(playerId, out MapIconUi icon) && icon?.Root != null)
+        {
+            icon.Root.SetActive(false);
+        }
+    }
+
+    private static void HideAllMapIcons()
+    {
+        if (_mapIconsRoot != null)
+        {
+            _mapIconsRoot.gameObject.SetActive(false);
+        }
+    }
+
+    private static void ClearMapIcons()
+    {
+        foreach (MapIconUi icon in _mapIcons.Values)
+        {
+            if (icon?.Root != null)
+            {
+                UnityEngine.Object.Destroy(icon.Root);
+            }
+        }
+        _mapIcons.Clear();
+
+        if (_mapIconsRoot != null)
+        {
+            UnityEngine.Object.Destroy(_mapIconsRoot.gameObject);
+            _mapIconsRoot = null;
+        }
+    }
+
+    private sealed class RemoteCharacterView
+    {
+        public string PlayerId { get; set; }
+        public string CharacterId { get; set; }
+        public GameObject Root { get; set; }
+        public UnitView View { get; set; }
+    }
+
+    private sealed class MapIconUi
+    {
+        public GameObject Root { get; set; }
+        public RectTransform RootRect { get; set; }
+        public Image Image { get; set; }
+        public TextMeshProUGUI Label { get; set; }
+        public string CharacterId { get; set; }
+    }
+
+    #endregion
+
     private static EntryUi CreateEntry(Transform parent, int index)
     {
         const float entryHeight = 42f;
@@ -798,6 +1550,31 @@ public static class OtherPlayersOverlayPatch
         };
     }
 
+
+    /// <summary>
+    /// 从 JsonElement 中提取整数值，支持多种 JSON 类型的转换
+    /// </summary>
+    /// <param name="elem">JSON 元素</param>
+    /// <param name="property">属性名称</param>
+    /// <param name="defaultValue">缺省值</param>
+    /// <returns>转换后的整数值</returns>
+    private static int GetInt(JsonElement elem, string property, int defaultValue = 0)
+    {
+        if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
+        {
+            return defaultValue;
+        }
+
+        return p.ValueKind switch
+        {
+            JsonValueKind.Number => p.TryGetInt32(out int v) ? v : defaultValue,
+            JsonValueKind.String => int.TryParse(p.GetString(), out int v) ? v : defaultValue,
+            JsonValueKind.True => 1,
+            JsonValueKind.False => 0,
+            _ => defaultValue,
+        };
+    }
+
     #endregion
 
     #region 资源缓存
@@ -852,6 +1629,21 @@ public static class OtherPlayersOverlayPatch
 
         /// <summary>是否在线连接</summary>
         public bool IsConnected { get; set; }
+
+        /// <summary>角色/模型标识（用于头像/模型加载）</summary>
+        public string CharacterId { get; set; }
+
+        /// <summary>地图节点 X（未知为 -1）</summary>
+        public int LocationX { get; set; }
+
+        /// <summary>地图节点 Y（未知为 -1）</summary>
+        public int LocationY { get; set; }
+
+        /// <summary>当前章节（未知为 -1）</summary>
+        public int Stage { get; set; }
+
+        /// <summary>位置名称（如节点类型字符串）</summary>
+        public string LocationName { get; set; }
 
         /// <summary>最后更新时间（用于检测玩家心跳）</summary>
         public float LastUpdateTime { get; set; }
