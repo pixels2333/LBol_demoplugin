@@ -1,4 +1,19 @@
 # ========================================
+#
+# NOTE: Git does not support inline comments in patterns.
+# Any pattern like `bin/   # comment` will NOT match `bin/`.
+#
+# Fixed patterns:
+.claude/
+.serena/
+.vscode/
+.idea/
+
+[Bb]in/
+[Oo]bj/
+
+!**/bin/**/.gitkeep
+!**/obj/**/.gitkeep
 # LBoL联机MOD项目Git忽略文件
 # ========================================
 # 此文件定义了哪些文件和目录应该被Git版本控制系统忽略
