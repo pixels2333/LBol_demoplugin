@@ -127,3 +127,23 @@ BepInEx/                       # BepInEx运行时生成的文件
 plugins/                       # 插件目录（运行时生成）
 *.dll                          # 可能包含敏感信息的DLL文件
 *.pdb                          # 调试符号文件
+
+# Serena MCP相关
+.serena/                       # Serena MCP的工作目录和配置文件
+
+# 临时文件和特殊字符文件
+c*tempcs_files.txt             # 包含特殊字符的临时文件
+c-tempcs_files.txt            # 可能的临时文件变体
+
+# 开发调试文件
+remove_tokens.py              # 令牌移除脚本（可能包含敏感信息）
+
+# 编译输出目录（项目特定）
+**/bin/                       # 所有bin目录
+**/obj/                       # 所有obj目录
+!**/bin/**/.gitkeep           # 保留必要的bin目录结构文件
+!**/obj/**/.gitkeep           # 保留必要的obj目录结构文件
+
+# 脚本和工具输出
+createproject.ps1            # 项目创建脚本（包含敏感信息）
+simplesolution.sln           # Visual Studio解决方案文件（可能包含用户特定路径）
