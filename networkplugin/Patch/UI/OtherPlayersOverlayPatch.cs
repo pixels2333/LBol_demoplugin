@@ -959,6 +959,82 @@ public static class OtherPlayersOverlayPatch
         }
     }
 
+    internal static IReadOnlyList<UnitView> SnapshotRemoteCharacterUnitViews()
+    {
+        try
+        {
+            if (_remoteCharacters.Count == 0)
+            {
+                return Array.Empty<UnitView>();
+            }
+
+            var list = new List<UnitView>(_remoteCharacters.Count);
+            foreach (RemoteCharacterView rc in _remoteCharacters.Values)
+            {
+                if (rc?.View == null || rc.Root == null || !rc.Root.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                list.Add(rc.View);
+            }
+            return list;
+        }
+        catch
+        {
+            return Array.Empty<UnitView>();
+        }
+    }
+
+    internal static void SetRemoteCharacterTargetingEnabled(bool enabled)
+    {
+        try
+        {
+            if (_remoteCharacters.Count == 0)
+            {
+                return;
+            }
+
+            foreach (RemoteCharacterView rc in _remoteCharacters.Values)
+            {
+                if (rc?.View == null)
+                {
+                    continue;
+                }
+
+                SetSelectorColliderEnabled(rc.View, enabled);
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static void SetSelectorColliderEnabled(UnitView view, bool enabled)
+    {
+        if (view == null)
+        {
+            return;
+        }
+
+        try
+        {
+            Collider selector = view.SelectorCollider;
+            if (selector == null)
+            {
+                return;
+            }
+
+            selector.enabled = enabled;
+            selector.gameObject.SetActive(enabled);
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
     private static void HideRemoteCharacters()
     {
         if (_remoteCharactersRoot != null)
