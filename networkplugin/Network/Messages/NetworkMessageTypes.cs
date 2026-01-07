@@ -173,6 +173,10 @@ namespace NetworkPlugin.Network.Messages
         /// </summary>
         public const string OnTurnEnd = "OnTurnEnd";
 
+        public const string EndTurnRequest = "EndTurnRequest";
+        public const string EndTurnStatus = "EndTurnStatus";
+        public const string EndTurnConfirm = "EndTurnConfirm";
+
         /// <summary>
         /// 战斗开始
         /// </summary>
@@ -470,6 +474,9 @@ namespace NetworkPlugin.Network.Messages
             NetworkMessageTypes.ManaConsumeCompleted,
             NetworkMessageTypes.OnTurnStart,
             NetworkMessageTypes.OnTurnEnd,
+            NetworkMessageTypes.EndTurnRequest,
+            NetworkMessageTypes.EndTurnStatus,
+            NetworkMessageTypes.EndTurnConfirm,
             NetworkMessageTypes.OnBattleStart,
             NetworkMessageTypes.OnBattleEnd
         ];
