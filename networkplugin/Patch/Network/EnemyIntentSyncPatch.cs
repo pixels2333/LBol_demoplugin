@@ -92,6 +92,7 @@ public static class EnemyIntentSyncPatch
                 {
                     __instance.RootIndex,
                     __instance.Id,
+                    SpawnId = SpawnedEnemySyncPatch.TryGetSpawnId(__instance, out string spawnId) ? spawnId : null,
                     __instance.Name,
                     __instance.ModelName,
                 },
@@ -191,4 +192,3 @@ public static class EnemyIntentSyncPatch
         };
     }
 }
-

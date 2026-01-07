@@ -375,6 +375,7 @@ public class EnemySyncPatch
     /// </summary>
     private static object BuildEnemyUpdateData(EnemyUnit enemy, string updateType, object additionalData)
     {
+        SpawnedEnemySyncPatch.TryGetSpawnId(enemy, out string spawnId);
         return new
         {
             UpdateType = updateType,
@@ -382,9 +383,12 @@ public class EnemySyncPatch
             BattleId = enemy.Battle?.GetHashCode().ToString() ?? "unknown",
             Enemy = new
             {
+                SpawnId = spawnId,
                 enemy.Id,
                 enemy.Name,
                 Type = enemy.GetType().Name,
+                enemy.RootIndex,
+                Index = Traverse.Create(enemy).Property("Index")?.GetValue<int>() ?? 0,
                 enemy.MaxHp,
                 CurrentHp = enemy.Hp,
                 enemy.Block,
