@@ -234,6 +234,7 @@ public class NetworkClient : INetworkClient
                messageType.StartsWith("Mana") ||
                messageType.StartsWith("Gap") ||
                messageType.StartsWith("Battle") ||
+               messageType == "EnemySpawned" ||
                messageType == "StateSyncResponse" ||
                // 系统消息（用于 UI/远程玩家渲染等）：同样走 GameEvent 通道，便于统一订阅
                messageType == "Welcome" ||

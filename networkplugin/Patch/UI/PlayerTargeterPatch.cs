@@ -3,12 +3,15 @@ using System.Collections.Generic;
 using HarmonyLib;
 using LBoL.Base;
 using LBoL.Core.Units;
+using LBoL.Presentation;
 using LBoL.Presentation.UI.ExtraWidgets;
 using LBoL.Presentation.UI.Widgets;
 using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace NetworkPlugin.Patch.UI;
 
@@ -21,6 +24,26 @@ namespace NetworkPlugin.Patch.UI;
 public static class PlayerTargeterPatch
 {
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
+
+    private static readonly Dictionary<string, RemotePlayerProxyEnemy> _proxyTargets = new(StringComparer.Ordinal);
+
+    private static RemotePlayerProxyEnemy GetOrCreateProxyTarget(string playerId, string playerName)
+    {
+        if (string.IsNullOrWhiteSpace(playerId))
+        {
+            return null;
+        }
+
+        if (_proxyTargets.TryGetValue(playerId, out RemotePlayerProxyEnemy existing) && existing != null)
+        {
+            existing.UpdateDisplayName(playerName);
+            return existing;
+        }
+
+        var created = new RemotePlayerProxyEnemy(playerId, playerName);
+        _proxyTargets[playerId] = created;
+        return created;
+    }
 
     private static bool IsConnected()
     {
@@ -50,9 +73,58 @@ public static class PlayerTargeterPatch
         }
     }
 
-    [HarmonyPatch(typeof(TargetSelector), "SetPotentialTargets")]
+    private static void SetPendingTarget(TargetSelector selector, EnemyUnit target)
+    {
+        if (selector == null)
+        {
+            return;
+        }
+
+        try
+        {
+            HandCard hand = Traverse.Create(selector).Field("_activeHand").GetValue<HandCard>();
+            if (hand?.Card != null)
+            {
+                hand.Card.PendingTarget = target;
+                return;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        try
+        {
+            UltimateSkill us = Traverse.Create(selector).Field("_activeUs").GetValue<UltimateSkill>();
+            if (us != null)
+            {
+                us.PendingTarget = target;
+                return;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        try
+        {
+            Doll doll = Traverse.Create(selector).Field("_activeDoll").GetValue<Doll>();
+            if (doll != null)
+            {
+                doll.PendingTarget = target;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    [HarmonyPatch(typeof(TargetSelector), "UpdateSingleEnemy")]
     [HarmonyPostfix]
-    private static void TargetSelector_SetPotentialTargets_Postfix(TargetSelector __instance)
+    private static void TargetSelector_UpdateSingleEnemy_Postfix(TargetSelector __instance)
     {
         try
         {
@@ -67,28 +139,90 @@ public static class PlayerTargeterPatch
                 return;
             }
 
-            var potentialTargets = Traverse.Create(__instance).Field("_potentialTargets").GetValue<List<UnitView>>();
-            if (potentialTargets == null)
+            Mouse mouse = Mouse.current;
+            if (mouse == null)
             {
                 return;
             }
 
+            Vector2 screenPosition = mouse.position.ReadValue();
+            if (screenPosition == Vector2.zero)
+            {
+                return;
+            }
+
+            Ray ray = CameraController.MainCamera.ScreenPointToRay(screenPosition);
+            bool selected = false;
             foreach (UnitView remote in OtherPlayersOverlayPatch.SnapshotRemoteCharacterUnitViews())
             {
-                if (remote?.Unit == null || !remote.Unit.IsAlive)
+                if (remote == null)
                 {
                     continue;
                 }
 
-                if (!potentialTargets.Contains(remote))
+                bool hit = false;
+                try
                 {
-                    potentialTargets.Add(remote);
+                    if (!selected && remote.SelectorCollider != null)
+                    {
+                        hit = remote.SelectorCollider.Raycast(ray, out _, float.PositiveInfinity);
+                    }
+                }
+                catch
+                {
+                    hit = false;
+                }
+
+                remote.SelectingVisible = hit;
+                if (hit)
+                {
+                    selected = true;
+                }
+            }
+
+            if (selected && OtherPlayersOverlayPatch.TryGetPointedRemotePlayer(screenPosition, out string playerId, out string playerName))
+            {
+                RemotePlayerProxyEnemy proxy = GetOrCreateProxyTarget(playerId, playerName);
+                if (proxy != null)
+                {
+                    SetPendingTarget(__instance, proxy);
                 }
             }
         }
         catch
         {
             // ignored
+        }
+    }
+
+    [HarmonyPatch(typeof(TargetSelector), "GetPointedEnemy")]
+    [HarmonyPrefix]
+    private static bool TargetSelector_GetPointedEnemy_Prefix(Vector2 screenPosition, ref EnemyUnit __result)
+    {
+        try
+        {
+            if (!IsConnected())
+            {
+                return true;
+            }
+
+            if (!OtherPlayersOverlayPatch.TryGetPointedRemotePlayer(screenPosition, out string playerId, out string playerName))
+            {
+                return true;
+            }
+
+            RemotePlayerProxyEnemy proxy = GetOrCreateProxyTarget(playerId, playerName);
+            if (proxy == null)
+            {
+                return true;
+            }
+
+            __result = proxy;
+            return false;
+        }
+        catch
+        {
+            return true;
         }
     }
 
@@ -170,6 +304,13 @@ public static class PlayerTargeterPatch
             }
 
             OtherPlayersOverlayPatch.SetRemoteCharacterTargetingEnabled(false);
+            foreach (UnitView remote in OtherPlayersOverlayPatch.SnapshotRemoteCharacterUnitViews())
+            {
+                if (remote != null)
+                {
+                    remote.SelectingVisible = false;
+                }
+            }
         }
         catch
         {

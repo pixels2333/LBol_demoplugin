@@ -17,6 +17,7 @@ using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Event;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.NetworkPlayer;
+using NetworkPlugin.Patch.Network;
 
 namespace NetworkPlugin.Patch.Actions;
 
@@ -55,6 +56,9 @@ public class ApplyStatusEffectAction_Patch
         {
             // 检查状态效果同步是否启用
             if (ConfigManager?.EnableStatusEffectSync?.Value != true)
+                return;
+
+            if (RemoteCardUsePatch.IsInRemoteCardPipeline)
                 return;
 
             ISynchronizationManager syncManager = GetSyncManager();
@@ -139,6 +143,9 @@ public class ApplyStatusEffectAction_Patch
         {
             // 检查状态效果同步是否启用
             if (ConfigManager?.EnableStatusEffectSync?.Value != true)
+                return;
+
+            if (RemoteCardUsePatch.IsInRemoteCardPipeline)
                 return;
 
             ISynchronizationManager syncManager = GetSyncManager();

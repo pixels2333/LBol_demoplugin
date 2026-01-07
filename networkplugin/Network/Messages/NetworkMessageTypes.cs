@@ -90,6 +90,9 @@ namespace NetworkPlugin.Network.Messages
         /// </summary>
         public const string OnCardRemove = "OnCardRemove";
 
+        public const string OnRemoteCardUse = "OnRemoteCardUse";
+        public const string OnRemoteCardResolved = "OnRemoteCardResolved";
+
         // === 法力/能量同步消息 ===
 
         /// <summary>
@@ -154,6 +157,10 @@ namespace NetworkPlugin.Network.Messages
         /// </summary>
         public const string OnStatusEffectRemoved = "OnStatusEffectRemoved";
 
+        public const string OnMoodEffectLoopStarted = "OnMoodEffectLoopStarted";
+        public const string OnMoodEffectLoopEnded = "OnMoodEffectLoopEnded";
+        public const string OnMoodEffectStateSync = "OnMoodEffectStateSync";
+
         // === 回合同步消息 ===
 
         /// <summary>
@@ -175,6 +182,8 @@ namespace NetworkPlugin.Network.Messages
         /// 战斗结束
         /// </summary>
         public const string OnBattleEnd = "OnBattleEnd";
+
+        public const string EnemySpawned = "EnemySpawned";
 
         // === 地图/节点同步消息 ===
 

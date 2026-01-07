@@ -1011,6 +1011,139 @@ public static class OtherPlayersOverlayPatch
         }
     }
 
+    internal static bool TryGetPointedRemotePlayer(Vector2 screenPosition, out string playerId, out string playerName)
+    {
+        playerId = null;
+        playerName = null;
+
+        try
+        {
+            if (_remoteCharacters.Count == 0)
+            {
+                return false;
+            }
+
+            Ray ray = CameraController.MainCamera.ScreenPointToRay(screenPosition);
+            foreach (RemoteCharacterView rc in _remoteCharacters.Values)
+            {
+                if (rc?.View == null || rc.Root == null || !rc.Root.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                Collider selector = rc.View.SelectorCollider;
+                if (selector == null)
+                {
+                    continue;
+                }
+
+                if (!selector.Raycast(ray, out _, float.PositiveInfinity))
+                {
+                    continue;
+                }
+
+                playerId = rc.PlayerId;
+                lock (_syncLock)
+                {
+                    if (!string.IsNullOrWhiteSpace(playerId) && _players.TryGetValue(playerId, out PlayerSummary summary))
+                    {
+                        playerName = summary?.PlayerName;
+                    }
+                }
+
+                return !string.IsNullOrWhiteSpace(playerId);
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        playerId = null;
+        playerName = null;
+        return false;
+    }
+
+    internal static bool TryGetRemoteCharacterUnitView(string playerId, out UnitView view)
+    {
+        view = null;
+        if (string.IsNullOrWhiteSpace(playerId))
+        {
+            return false;
+        }
+
+        try
+        {
+            if (_remoteCharacters.TryGetValue(playerId, out RemoteCharacterView rc) && rc?.View != null && rc.Root != null && rc.Root.activeInHierarchy)
+            {
+                view = rc.View;
+                return true;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        view = null;
+        return false;
+    }
+
+    internal static bool TryResolvePlayerIdByName(string playerName, out string playerId)
+    {
+        playerId = null;
+        if (string.IsNullOrWhiteSpace(playerName))
+        {
+            return false;
+        }
+
+        try
+        {
+            foreach (PlayerSummary p in _players.Values)
+            {
+                if (p != null && string.Equals(p.PlayerName, playerName, StringComparison.OrdinalIgnoreCase))
+                {
+                    playerId = p.PlayerId;
+                    return !string.IsNullOrWhiteSpace(playerId);
+                }
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        playerId = null;
+        return false;
+    }
+
+    internal static bool TryGetSelfPlayer(out string playerId, out string playerName)
+    {
+        playerId = null;
+        playerName = null;
+
+        if (string.IsNullOrWhiteSpace(_selfPlayerId))
+        {
+            return false;
+        }
+
+        playerId = _selfPlayerId;
+
+        try
+        {
+            if (_players.TryGetValue(_selfPlayerId, out PlayerSummary p) && p != null)
+            {
+                playerName = p.PlayerName;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        return !string.IsNullOrWhiteSpace(playerId);
+    }
+
     private static void SetSelectorColliderEnabled(UnitView view, bool enabled)
     {
         if (view == null)

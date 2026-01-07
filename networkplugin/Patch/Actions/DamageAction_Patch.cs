@@ -15,6 +15,7 @@ using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Event;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.NetworkPlayer;
+using NetworkPlugin.Patch.Network;
 
 namespace NetworkPlugin.Patch.Actions;
 
@@ -43,6 +44,9 @@ public class DamageAction_Patch
     {
         try
         {
+            if (RemoteCardUsePatch.IsInRemoteCardPipeline)
+                return;
+
             ISynchronizationManager syncManager = GetSyncManager();
             if (syncManager == null)
                 return;
@@ -123,6 +127,9 @@ public class DamageAction_Patch
     {
         try
         {
+            if (RemoteCardUsePatch.IsInRemoteCardPipeline)
+                return;
+
             ISynchronizationManager syncManager = GetSyncManager();
             if (syncManager == null)
                 return;
@@ -185,6 +192,9 @@ public class DamageAction_Patch
     {
         try
         {
+            if (RemoteCardUsePatch.IsInRemoteCardPipeline)
+                return;
+
             ISynchronizationManager syncManager = GetSyncManager();
             if (syncManager == null)
                 return;
@@ -239,6 +249,9 @@ public class DamageAction_Patch
     {
         try
         {
+            if (RemoteCardUsePatch.IsInRemoteCardPipeline)
+                return;
+
             ISynchronizationManager syncManager = GetSyncManager();
             if (syncManager == null)
                 return;
