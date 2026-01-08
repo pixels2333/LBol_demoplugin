@@ -16,7 +16,7 @@ namespace NetworkPlugin.UI.Components;
 public class ChatUI : MonoBehaviour
 {
     [Header("UI组件")]
-    public TMP_InputMessage inputField;
+    public TMP_InputField inputField;        
     public TextMeshProUGUI chatDisplay;
     public ScrollRect scrollRect;
     public Button sendButton;

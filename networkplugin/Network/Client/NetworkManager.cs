@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using NetworkPlugin.Network.NetworkPlayer;
+using NetworkPlugin.Network.Messages;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Network.Client;
 
@@ -14,14 +17,16 @@ namespace NetworkPlugin.Network.Client;
 /// 这个类目前是一个基础实现框架，所有方法都抛出NotImplementedException
 /// 在后续开发中需要实现完整的玩家管理逻辑
 /// </remarks>
-public class NetworkManager(INetworkClient networkClient) : INetworkManager
+public class NetworkManager : INetworkManager     
 {
     #region 私有字段
 
     /// <summary>
     /// 网络客户端实例，用于与服务器通信
     /// </summary>
-    private readonly INetworkClient _networkClient = networkClient;
+    private readonly INetworkClient _networkClient;
+
+    private readonly object _playersLock = new();
 
     /// <summary>
     /// 玩家列表，存储所有已连接的玩家信息
@@ -34,9 +39,34 @@ public class NetworkManager(INetworkClient networkClient) : INetworkManager
     /// </summary>
     private INetworkPlayer _selfPlayer;
 
+    private string _selfKey = "self";
+
+    // 高频读取优化：玩家列表快照缓存（仅当玩家列表结构变化时重建，避免每次 GetAllPlayers 分配 List）。
+    private INetworkPlayer[] _playersSnapshot = Array.Empty<INetworkPlayer>();
+    private int _playersSnapshotRevision = -1;
+    private int _playersRevision;
+
+    public NetworkManager(INetworkClient networkClient, LocalNetworkPlayer selfPlayer)
+    {
+        _networkClient = networkClient;
+        _selfPlayer = selfPlayer ?? new LocalNetworkPlayer(networkClient);
+        lock (_playersLock)
+        {
+            _players[_selfKey] = _selfPlayer;
+            MarkPlayersDirty_NoLock();
+        }
+
+        TrySubscribeToClientEvents();
+    }
+
     #endregion
 
     #region INetworkManager 实现
+
+    /// <summary>
+    /// 覆盖接口默认实现：联机状态以客户端连接为准（而不是玩家数量）。
+    /// </summary>
+    public bool IsConnected => _networkClient?.IsConnected == true;
 
     /// <summary>
     /// 获取所有已连接的网络玩家
@@ -45,11 +75,8 @@ public class NetworkManager(INetworkClient networkClient) : INetworkManager
     /// <returns>所有网络玩家的枚举集合</returns>
     public IEnumerable<INetworkPlayer> GetAllPlayers()
     {
-        // TODO: 实现获取所有玩家的逻辑
-        // 1. 维护一个内部玩家字典或集合
-        // 2. 返回所有已注册玩家的枚举
-        // 3. 确保线程安全和数据一致性
-        throw new NotImplementedException("GetAllPlayers method is not implemented yet.");
+        SyncPlayersFromIdentityTracker();
+        return GetPlayersSnapshot();
     }
 
     /// <summary>
@@ -66,13 +93,22 @@ public class NetworkManager(INetworkClient networkClient) : INetworkManager
     /// </remarks>
     public INetworkPlayer GetPlayer(string id)
     {
-        _players.TryGetValue(id, out var player);
-        return player;
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return null;
+        }
+
+        SyncPlayersFromIdentityTracker();
+        lock (_playersLock)
+        {
+            _players.TryGetValue(id, out var player);
+            return player;
+        }
         // TODO: 实现根据ID获取玩家的逻辑
         // 1. 验证输入的ID参数
         // 2. 在内部玩家集合中查找匹配的玩家
         // 3. 返回找到的玩家实例或null
-        throw new NotImplementedException("GetPlayer method is not implemented yet.");
+        // unreachable (return player above); kept as comment placeholder
     }
 
     /// <summary>
@@ -88,11 +124,32 @@ public class NetworkManager(INetworkClient networkClient) : INetworkManager
     /// </remarks>
     public int GetPlayerCount()
     {
-        // TODO: 实现获取玩家数量的逻辑
-        // 1. 返回内部玩家集合的Count属性
-        // 2. 确保操作的原子性
-        // 3. 考虑性能优化，避免频繁计算
-        throw new NotImplementedException("GetPlayerCount method is not implemented yet.");
+        // 单机/未连接：保持至少为 1，避免将“单机”判定为 0 人导致某些逻辑异常。
+        if (_networkClient?.IsConnected != true)
+        {
+            return 1;
+        }
+
+        // 联机：优先使用服务器侧分配的 PlayerId 列表（Welcome / PlayerListUpdate）统计。
+        // 该列表由 NetworkIdentityTracker 从 GameEvent 中提取。
+        try
+        {
+            HashSet<string> ids = NetworkIdentityTracker.GetPlayerIdsSnapshot();
+            if (ids.Count > 0)
+            {
+                return ids.Count;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        SyncPlayersFromIdentityTracker();
+        lock (_playersLock)
+        {
+            return Math.Max(1, _players.Count);
+        }
     }
 
     /// <summary>
@@ -120,7 +177,7 @@ public class NetworkManager(INetworkClient networkClient) : INetworkManager
         // 示例实现思路（已注释）：
         // networkClient.SendRequest("GetSelf", ClientData.username);
 
-        throw new NotImplementedException("GetSelf method is not implemented yet.");
+        return _selfPlayer;
     }
 
     /// <summary>
@@ -145,7 +202,32 @@ public class NetworkManager(INetworkClient networkClient) : INetworkManager
         // 3. 将玩家添加到内部管理集合中
         // 4. 更新联机状态
         // 5. 通知其他系统玩家已加入
-        throw new NotImplementedException("RegisterPlayer method is not implemented yet.");
+        if (player == null)
+        {
+            throw new ArgumentNullException(nameof(player));
+        }
+
+        string id = player.userName;
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            id = Guid.NewGuid().ToString("N");
+        }
+
+        lock (_playersLock)
+        {
+            bool changed = !_players.TryGetValue(id, out INetworkPlayer existing) || !ReferenceEquals(existing, player);
+            _players[id] = player;
+            if (ReferenceEquals(player, _selfPlayer))
+            {
+                _selfPlayer = player;
+                _selfKey = id;
+            }
+
+            if (changed)
+            {
+                MarkPlayersDirty_NoLock();
+            }
+        }
     }
 
     /// <summary>
@@ -171,7 +253,23 @@ public class NetworkManager(INetworkClient networkClient) : INetworkManager
         // 3. 移除玩家并清理相关资源
         // 4. 更新联机状态
         // 5. 通知其他系统玩家已离开
-        throw new NotImplementedException("RemovePlayer method is not implemented yet.");
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return;
+        }
+
+        lock (_playersLock)
+        {
+            if (string.Equals(id, _selfKey, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            if (_players.Remove(id))
+            {
+                MarkPlayersDirty_NoLock();
+            }
+        }
     }
 
     #endregion
@@ -194,8 +292,13 @@ public class NetworkManager(INetworkClient networkClient) : INetworkManager
     /// </summary>
     internal void ClearAllPlayers()
     {
-        _players.Clear();
-        _selfPlayer = null;
+        lock (_playersLock)
+        {
+            _players.Clear();
+            _selfKey = "self";
+            _players[_selfKey] = _selfPlayer;
+            MarkPlayersDirty_NoLock();
+        }
     }
 
     /// <summary>
@@ -211,8 +314,396 @@ public class NetworkManager(INetworkClient networkClient) : INetworkManager
 
     public INetworkPlayer GetPlayerByPeerId(int peerId)
     {
-        //TODO: 实现根据PeerId获取玩家实例的逻辑
-        throw new NotImplementedException();
+        // LiteNetLib 的 PeerId 并不会在当前协议中与 PlayerId 做映射下发，暂无法可靠实现。
+        return null;
+    }
+
+    #endregion
+
+    #region 事件订阅与同步
+
+    private void TrySubscribeToClientEvents()
+    {
+        try
+        {
+            NetworkIdentityTracker.EnsureSubscribed(_networkClient);
+
+            _networkClient.OnGameEventReceived += OnGameEventReceived;
+            _networkClient.OnConnectionStateChanged += OnConnectionStateChanged;
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private void OnConnectionStateChanged(bool connected)
+    {
+        if (connected)
+        {
+            return;
+        }
+
+        ClearAllPlayers();
+    }
+
+    private void OnGameEventReceived(string eventType, object payload)
+    {
+        // 仅在与“身份/玩家列表”相关的事件到来时刷新，避免对其他大量同步事件造成额外开销。
+        if (eventType != NetworkMessageTypes.Welcome &&
+            eventType != NetworkMessageTypes.PlayerListUpdate &&
+            eventType != NetworkMessageTypes.PlayerJoined &&
+            eventType != NetworkMessageTypes.PlayerLeft &&
+            eventType != NetworkMessageTypes.HostChanged)
+        {
+            return;
+        }
+
+        SyncPlayersFromIdentityTracker();
+        TryUpdatePlayersFromPayload(eventType, payload);
+    }
+
+    private void SyncPlayersFromIdentityTracker()
+    {
+        if (_networkClient?.IsConnected != true)
+        {
+            return;
+        }
+
+        try
+        {
+            NetworkIdentityTracker.EnsureSubscribed(_networkClient);
+            HashSet<string> ids = NetworkIdentityTracker.GetPlayerIdsSnapshot();
+            if (ids.Count == 0)
+            {
+                return;
+            }
+
+            string selfId = NetworkIdentityTracker.GetSelfPlayerId();
+
+            lock (_playersLock)
+            {
+                bool changed = false;
+
+                // Self key switch: "self" -> server-assigned PlayerId
+                if (!string.IsNullOrWhiteSpace(selfId) && !string.Equals(_selfKey, selfId, StringComparison.Ordinal))
+                {
+                    if (_players.Remove(_selfKey))
+                    {
+                        changed = true;
+                    }
+
+                    _selfKey = selfId;
+                    if (!_players.TryGetValue(_selfKey, out INetworkPlayer existing) || !ReferenceEquals(existing, _selfPlayer))
+                    {
+                        _players[_selfKey] = _selfPlayer;
+                        changed = true;
+                    }
+                }
+
+                // Ensure all known ids exist.
+                foreach (string id in ids)
+                {
+                    if (string.IsNullOrWhiteSpace(id))
+                    {
+                        continue;
+                    }
+
+                    if (string.Equals(id, _selfKey, StringComparison.Ordinal))
+                    {
+                        if (!_players.TryGetValue(id, out INetworkPlayer existing) || !ReferenceEquals(existing, _selfPlayer))
+                        {
+                            _players[id] = _selfPlayer;
+                            changed = true;
+                        }
+                        continue;
+                    }
+
+                    if (!_players.ContainsKey(id))
+                    {
+                        _players[id] = new RemoteNetworkPlayer(id);
+                        changed = true;
+                    }
+                }
+
+                // Remove players no longer present (keep self).
+                List<string> toRemove = null;
+                foreach (string key in _players.Keys)
+                {
+                    if (string.Equals(key, _selfKey, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    if (!ids.Contains(key))
+                    {
+                        (toRemove ??= new List<string>()).Add(key);
+                    }
+                }
+
+                if (toRemove != null)
+                {
+                    foreach (string key in toRemove)
+                    {
+                        if (_players.Remove(key))
+                        {
+                            changed = true;
+                        }
+                    }
+                }
+
+                if (changed)
+                {
+                    MarkPlayersDirty_NoLock();
+                }
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private void TryUpdatePlayersFromPayload(string eventType, object payload)
+    {
+        if (!TryGetJsonElement(payload, out JsonElement root))
+        {
+            return;
+        }
+
+        try
+        {
+            switch (eventType)
+            {
+                case NetworkMessageTypes.Welcome:
+                    if (TryGetPlayersArrayFromWelcome(root, out JsonElement list))
+                    {
+                        UpdatePlayersFromArray(list);
+                    }
+
+                    return;
+                case NetworkMessageTypes.PlayerListUpdate:
+                    if (root.TryGetProperty("Players", out JsonElement players) && players.ValueKind == JsonValueKind.Array)
+                    {
+                        UpdatePlayersFromArray(players);
+                    }
+
+                    return;
+                case NetworkMessageTypes.PlayerJoined:
+                    UpdateSinglePlayer(root);
+                    return;
+                case NetworkMessageTypes.PlayerLeft:
+                    string leftId = GetString(root, "PlayerId");
+                    if (!string.IsNullOrWhiteSpace(leftId))
+                    {
+                        RemovePlayer(leftId);
+                    }
+
+                    return;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private void UpdatePlayersFromArray(JsonElement playersArray)
+    {
+        if (playersArray.ValueKind != JsonValueKind.Array)
+        {
+            return;
+        }
+
+        foreach (JsonElement p in playersArray.EnumerateArray())
+        {
+            UpdateSinglePlayer(p);
+        }
+    }
+
+    private void UpdateSinglePlayer(JsonElement playerObj)
+    {
+        string playerId = GetString(playerObj, "PlayerId");
+        if (string.IsNullOrWhiteSpace(playerId))
+        {
+            return;
+        }
+
+        string playerName = GetString(playerObj, "PlayerName");
+        string characterId = GetString(playerObj, "CharacterId");
+        int locX = GetInt(playerObj, "LocationX", -1);
+        int locY = GetInt(playerObj, "LocationY", -1);
+        string locName = GetString(playerObj, "LocationName");
+
+        lock (_playersLock)
+        {
+            bool changed = false;
+            if (string.Equals(playerId, _selfKey, StringComparison.Ordinal))
+            {
+                if (string.IsNullOrWhiteSpace(_selfPlayer?.userName) && !string.IsNullOrWhiteSpace(playerName))
+                {
+                    _selfPlayer.userName = playerName;
+                }
+
+                return;
+            }
+
+            if (!_players.TryGetValue(playerId, out INetworkPlayer existing) || existing == null)
+            {
+                existing = new RemoteNetworkPlayer(playerId);
+                _players[playerId] = existing;
+                changed = true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(playerName))
+            {
+                existing.userName = playerName;
+            }
+
+            if (!string.IsNullOrWhiteSpace(characterId))
+            {
+                existing.chara = characterId;
+            }
+
+            if (!string.IsNullOrWhiteSpace(locName))
+            {
+                existing.location = locName;
+            }
+
+            if (locX >= 0)
+            {
+                existing.location_X = locX;
+            }
+
+            if (locY >= 0)
+            {
+                existing.location_Y = locY;
+            }
+
+            if (changed)
+            {
+                MarkPlayersDirty_NoLock();
+            }
+        }
+    }
+
+    private static bool TryGetPlayersArrayFromWelcome(JsonElement root, out JsonElement list)
+    {
+        if (root.TryGetProperty("Players", out list) && list.ValueKind == JsonValueKind.Array)
+        {
+            return true;
+        }
+
+        if (root.TryGetProperty("PlayerList", out list) && list.ValueKind == JsonValueKind.Array)
+        {
+            return true;
+        }
+
+        list = default;
+        return false;
+    }
+
+    private static bool TryGetJsonElement(object payload, out JsonElement root)
+    {
+        try
+        {
+            if (payload is JsonElement je)
+            {
+                root = je;
+                return true;
+            }
+
+            if (payload is string s)
+            {
+                root = JsonDocument.Parse(s).RootElement;
+                return true;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        root = default;
+        return false;
+    }
+
+    private static string GetString(JsonElement elem, string property)
+    {
+        try
+        {
+            if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
+            {
+                return null;
+            }
+
+            return p.ValueKind == JsonValueKind.String ? p.GetString() : p.GetRawText();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static int GetInt(JsonElement elem, string property, int defaultValue)
+    {
+        try
+        {
+            if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
+            {
+                return defaultValue;
+            }
+
+            return p.ValueKind switch
+            {
+                JsonValueKind.Number => p.TryGetInt32(out int i) ? i : defaultValue,
+                JsonValueKind.String => int.TryParse(p.GetString(), out int i) ? i : defaultValue,
+                _ => defaultValue,
+            };
+        }
+        catch
+        {
+            return defaultValue;
+        }
+    }
+
+    private IEnumerable<INetworkPlayer> GetPlayersSnapshot()
+    {
+        lock (_playersLock)
+        {
+            if (_playersSnapshotRevision == _playersRevision)
+            {
+                return _playersSnapshot;
+            }
+
+            int count = _players.Count;
+            if (count <= 0)
+            {
+                _playersSnapshot = Array.Empty<INetworkPlayer>();
+            }
+            else
+            {
+                var arr = new INetworkPlayer[count];
+                int i = 0;
+                foreach (INetworkPlayer p in _players.Values)
+                {
+                    arr[i++] = p;
+                }
+
+                _playersSnapshot = arr;
+            }
+
+            _playersSnapshotRevision = _playersRevision;
+            return _playersSnapshot;
+        }
+    }
+
+    private void MarkPlayersDirty_NoLock()
+    {
+        unchecked
+        {
+            _playersRevision++;
+        }
     }
 
     #endregion

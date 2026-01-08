@@ -1,4 +1,5 @@
 using System;
+using System.Net;
 using NetworkPlugin.Network.NetworkPlayer;
 
 namespace NetworkPlugin.Network.Client;
@@ -45,6 +46,26 @@ public interface INetworkClient
     /// 获取客户端是否已连接到服务器
     /// </summary>
     bool IsConnected { get; }
+
+    /// <summary>
+    /// 客户端是否处于“正在连接”状态。
+    /// </summary>
+    bool IsConnecting { get; }
+
+    /// <summary>
+    /// 当前连接延迟（毫秒）。
+    /// </summary>
+    int Ping { get; }
+
+    /// <summary>
+    /// 本地端点（可能为 null）。
+    /// </summary>
+    IPEndPoint LocalEndPoint { get; }
+
+    /// <summary>
+    /// 远程端点（可能为 null）。
+    /// </summary>
+    IPEndPoint RemoteEndPoint { get; }
 
     #endregion
 

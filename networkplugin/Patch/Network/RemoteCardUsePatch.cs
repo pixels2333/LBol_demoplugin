@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using HarmonyLib;
@@ -180,11 +181,12 @@ public static class RemoteCardUsePatch
         }
 
         // 仅当卡牌已移动到PlayArea时退还法力（UseCardAction路径）
+        BattleAction refundAction = null;
         try
         {
             if (battle != null && card != null && card.Zone == CardZone.PlayArea && consumingMana.Total > 0)
             {
-                yield return new GainManaAction(consumingMana); // 退还法力
+                refundAction = new GainManaAction(consumingMana); // 退还法力
             }
         }
         catch
@@ -192,7 +194,13 @@ public static class RemoteCardUsePatch
             // ignored
         }
 
+        if (refundAction != null)
+        {
+            yield return refundAction;
+        }
+
         // 尽力返回卡牌，避免玩家因网络故障丢失卡牌
+        BattleAction moveAction = null;
         try
         {
             if (battle != null && card != null)
@@ -207,12 +215,17 @@ public static class RemoteCardUsePatch
                     canReturnToHand = false; // 异常时设置为false
                 }
 
-                yield return new MoveCardAction(card, canReturnToHand ? CardZone.Hand : CardZone.Discard); // 移动卡牌到手牌或弃牌堆
+                moveAction = new MoveCardAction(card, canReturnToHand ? CardZone.Hand : CardZone.Discard); // 移动卡牌到手牌或弃牌堆
             }
         }
         catch
         {
             // ignored
+        }
+
+        if (moveAction != null)
+        {
+            yield return moveAction;
         }
     }
 
@@ -491,6 +504,7 @@ public static class RemoteCardUsePatch
         }
 
         // 简化：仅按卡牌类型播放基础动画（不尝试复刻 Config.Perform）
+        BattleAction playAnimation = null;
         try
         {
             if (card.Battle?.Player != null)
@@ -505,12 +519,17 @@ public static class RemoteCardUsePatch
                     _ => "spell" // 默认动画
                 };
 
-                yield return PerformAction.Animation(card.Battle.Player, anim, 0.2f, null, 0f, -1); // 播放动画动作
+                playAnimation = PerformAction.Animation(card.Battle.Player, anim, 0.2f, null, 0f, -1); // 播放动画动作
             }
         }
         catch
         {
             // ignored
+        }
+
+        if (playAnimation != null)
+        {
+            yield return playAnimation;
         }
 
         // 3) 发送者不会收到服务器转发的 OnRemoteCardUse，所以在本地补一次对“被选中目标”的动画预播放
@@ -1106,13 +1125,59 @@ public static class RemoteCardUsePatch
                     return;
                 }
 
-                battle.React(new Reactor(actions), actionSourceCard, ActionCause.Card);
+                InvokeBattleReact(battle, actions, actionSourceCard);
                 TryBroadcastResolvedState(root, battle);
             }
         }
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[RemoteCardUse] Execute failed: {ex.Message}");
+        }
+    }
+
+    private static void InvokeBattleReact(BattleController battle, List<BattleAction> actions, Card actionSourceCard)
+    {
+        if (battle == null || actions == null || actions.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            Reactor reactor = new Reactor(actions);
+            GameEntity source = actionSourceCard;
+
+            MethodInfo react = battle.GetType().GetMethod(
+                "React",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: new[] { typeof(Reactor), typeof(GameEntity), typeof(ActionCause) },
+                modifiers: null);
+
+            if (react != null)
+            {
+                react.Invoke(battle, new object[] { reactor, source, ActionCause.Card });
+                return;
+            }
+
+            react = battle.GetType().GetMethod(
+                "React",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: new[] { typeof(Reactor) },
+                modifiers: null);
+
+            if (react != null)
+            {
+                react.Invoke(battle, new object[] { reactor });
+                return;
+            }
+
+            Plugin.Logger?.LogWarning("[RemoteCardUse] BattleController.React not found; remote actions skipped.");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[RemoteCardUse] BattleController.React invoke failed: {ex.Message}");
         }
     }
 

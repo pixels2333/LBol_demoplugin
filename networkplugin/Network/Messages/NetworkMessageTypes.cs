@@ -202,6 +202,11 @@ namespace NetworkPlugin.Network.Messages
         public const string OnMapNodeComplete = "OnMapNodeComplete";
 
         /// <summary>
+        /// 地图节点右键标记切换（多人共享标记）
+        /// </summary>
+        public const string OnMapNodeMarkChanged = "OnMapNodeMarkChanged";
+
+        /// <summary>
         /// 进入休息点（GapStation）
         /// </summary>
         public const string GapStationEntered = "GapStationEntered";

@@ -5,17 +5,13 @@ using System.Reflection;
 using System.Text.Json;
 using HarmonyLib;
 using Microsoft.Extensions.DependencyInjection;
+using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// 保存/加载游戏同步补丁 - 同步多人游戏存档状态
-/// 确保所有玩家的游戏进度保持一致
-/// 重要性: ⭐⭐⭐⭐ (游戏体验连续性)
-/// 依赖: 主机权威系统
-/// </summary>
+
 public class SaveLoadSyncPatch
 {
     private static IServiceProvider serviceProvider => ModService.ServiceProvider;
@@ -204,12 +200,12 @@ public class SaveLoadSyncPatch
             {
                 // 记录加载前的状态
                 __state.LoadStartTime = DateTime.Now;
-                __state.SaveType = DetermineLoadType(__args);
+                __state.LoadType = DetermineLoadType(__args);
                 __state.PlayerId = GetCurrentPlayerId();
                 __state.GameStateBefore = CaptureGameState();
                 __state.SaveSlot = DetermineSaveSlot(__args);
 
-                Plugin.Logger?.LogInfo($"[SaveLoadSync] Starting game load: {__state.SaveType}");
+                Plugin.Logger?.LogInfo($"[SaveLoadSync] Starting game load: {__state.LoadType}");
             }
             catch (Exception ex)
             {
@@ -239,7 +235,7 @@ public class SaveLoadSyncPatch
                 // 请求主机发送最新的存档同步
                 if (!IsHostPlayer())
                 {
-                    RequestHostSaveSync(__state.SaveSlot);
+                    SaveSyncManager.RequestHostSaveSync(__state.SaveSlot);
                 }
 
                 var syncData = new
@@ -247,17 +243,17 @@ public class SaveLoadSyncPatch
                     Timestamp = DateTime.Now.Ticks,
                     EventType = NetworkMessageTypes.OnGameLoad,
                     PlayerId = __state.PlayerId,
-                    LoadType = __state.SaveType,
+                    LoadType = __state.LoadType,
                     LoadDurationMs = loadTime.TotalMilliseconds,
                     GameStateSnapshot = gameStateAfter,
                     SaveSlot = __state.SaveSlot,
-                    IsAutoLoad = __state.SaveType.Contains("Auto"),
+                    IsAutoLoad = __state.LoadType.Contains("Auto"),
                     RequestingHostSync = !IsHostPlayer()
                 };
 
                 SendGameEvent(NetworkMessageTypes.OnGameLoad, syncData);
 
-                Plugin.Logger?.LogInfo($"[SaveLoadSync] Game load synced: {__state.SaveType} (took {loadTime.TotalMilliseconds:F1}ms)");
+                Plugin.Logger?.LogInfo($"[SaveLoadSync] Game load synced: {__state.LoadType} (took {loadTime.TotalMilliseconds:F1}ms)");
             }
             catch (Exception ex)
             {

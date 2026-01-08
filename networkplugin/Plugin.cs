@@ -126,6 +126,9 @@ public class Plugin : BaseUnityPlugin
 
         // 注册系统服务和框架服务
         services.AddSingleton(Logger); // 注册BepInEx的日志服务
+        // Self 玩家：作为单例暴露给 DI；远端玩家由 NetworkManager 在运行时根据 Welcome/PlayerListUpdate 创建。
+        services.AddSingleton<LocalNetworkPlayer>();
+        services.AddSingleton<INetworkPlayer>(sp => sp.GetRequiredService<LocalNetworkPlayer>());
         services.AddSingleton<INetworkManager, NetworkManager>(); // 注册网络管理器服务
         services.AddSingleton<INetworkClient, NetworkClient>(); // 注册网络客户端服务
         services.AddSingleton<ISynchronizationManager, SynchronizationManager>(); // 注册同步管理器服务

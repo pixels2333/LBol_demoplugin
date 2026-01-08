@@ -1,7 +1,9 @@
 using System;
+using System.Net;
 using System.Text.Json;
 using LiteNetLib;
 using LiteNetLib.Utils;
+using NetworkPlugin.Configuration;        
 using NetworkPlugin.Core;
 using NetworkPlugin.Network.NetworkPlayer;
 using NetworkPlugin.Utils;
@@ -23,6 +25,7 @@ public class NetworkClient : INetworkClient
 
     private INetworkManager _networkManager;
     private INetworkPlayer _networkPlayer;
+    private INetworkPlayer _fallbackSelf;
 
     /// <summary>
     /// 网络连接状态变更事件
@@ -55,6 +58,11 @@ public class NetworkClient : INetworkClient
     private bool _autoReconnectEnabled = false;
     private int _retryInterval = 5000;
     private int _connectionTimeout = 5000;
+
+    public NetworkClient(ConfigManager configManager)
+        : this(configManager?.RelayServerConnectionKey?.Value ?? "LBoL_Network_Plugin", null, null)
+    {
+    }
 
     /// <summary>
     /// 初始化网络客户端实例，设置连接密钥并注册所有网络事件监听器
@@ -90,7 +98,25 @@ public class NetworkClient : INetworkClient
 
     public INetworkPlayer GetSelf()
     {
-        return _networkManager.GetSelf();
+        try
+        {
+            INetworkPlayer p = _networkManager?.GetSelf();
+            if (p != null)
+            {
+                return p;
+            }
+
+            if (_networkPlayer != null)
+            {
+                return _networkPlayer;
+            }
+
+            return _fallbackSelf ??= new LocalNetworkPlayer(this);
+        }
+        catch
+        {
+            return _fallbackSelf ??= new LocalNetworkPlayer(this);
+        }
     }
 
     /// <summary>
@@ -122,10 +148,10 @@ public class NetworkClient : INetworkClient
             string playerName = null;
             try
             {
-                playerName = _networkPlayer?.userName;
+                playerName = _networkManager?.GetSelf()?.userName;
                 if (string.IsNullOrWhiteSpace(playerName))
                 {
-                    playerName = _networkManager?.GetPlayerByPeerId(peer.Id)?.userName;
+                    playerName = _networkPlayer?.userName;
                 }
             }
             catch
@@ -311,6 +337,7 @@ public class NetworkClient : INetworkClient
     {
         // 停止网络管理器，断开所有连接
         _netManager.Stop();
+        _serverPeer = null;
         Console.WriteLine("[Client] Client services stopped.");
     }
 
@@ -320,6 +347,33 @@ public class NetworkClient : INetworkClient
     /// </summary>
     /// <returns>已连接返回 true，否则返回 false</returns>
     public bool IsConnected => _serverPeer != null && _serverPeer.ConnectionState == ConnectionState.Connected;
+
+    public bool IsConnecting
+        => !IsConnected && _netManager?.FirstPeer?.ConnectionState == ConnectionState.Outgoing;
+
+    public int Ping => _serverPeer?.Ping ?? 0;
+
+    public IPEndPoint LocalEndPoint
+    {
+        get
+        {
+            try
+            {
+                if (_netManager == null || _netManager.LocalPort <= 0)
+                {
+                    return null;
+                }
+
+                return new IPEndPoint(IPAddress.Any, _netManager.LocalPort);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+    }
+
+    public IPEndPoint RemoteEndPoint => _serverPeer?.EndPoint as IPEndPoint;
 
 
 

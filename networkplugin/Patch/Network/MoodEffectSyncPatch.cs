@@ -523,10 +523,6 @@ public static class MoodEffectSyncPatch
 
         // 避免重复广播相同状态；TryPlayEffectLoop在接收端是幂等的，
         // 但我们保持低流量
-        if (string.Equals(_lastBroadcastedEffectName, effectName, StringComparison.OrdinalIgnoreCase) && _nextStateBroadcastAt > 0f)
-        {
-            return;
-        }
 
         if (!OtherPlayersOverlayPatch.TryGetSelfPlayer(out string selfId, out string selfName))
         {
