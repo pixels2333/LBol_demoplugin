@@ -15,25 +15,21 @@ public partial class ConfigManager
     /// 卡牌同步开关
     /// 控制卡牌使用、抽取、洗牌等行为的网络同步
     /// </summary>
-    public ConfigEntry<bool> EnableCardSync { get; private set; }
 
     /// <summary>
     /// 法力同步开关
     /// 控制法力消耗、恢复、增益等行为的网络同步
     /// </summary>
-    public ConfigEntry<bool> EnableManaSync { get; private set; }
 
     /// <summary>
     /// 战斗同步开关
     /// 控制伤害计算、状态效果、战斗结果的同步
     /// </summary>
-    public ConfigEntry<bool> EnableBattleSync { get; private set; }
 
     /// <summary>
     /// 地图同步开关
     /// 控制地图探索、节点状态、地图事件的同步
     /// </summary>
-    public ConfigEntry<bool> EnableMapSync { get; private set; }
 
     /// <summary>
     /// 状态效果同步开关
@@ -46,14 +42,12 @@ public partial class ConfigManager
     /// 网络不可用时事件队列的最大条目数量
     /// 超过此容量的新事件会被丢弃
     /// </summary>
-    public ConfigEntry<int> MaxQueueSize { get; private set; }
 
     /// <summary>
     /// 状态缓存存活时间（分钟）
     /// 本地状态缓存的存活时间，超过此时间的缓存会被清理
     /// 默认为5分钟，可以根据需要调整
     /// </summary>
-    public ConfigEntry<float> StateCacheExpiryMinutes { get; private set; }
 
     #endregion
 

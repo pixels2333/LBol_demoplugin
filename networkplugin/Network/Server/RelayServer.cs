@@ -1,557 +1,597 @@
+// 中继服务器：提供房间/中继转发能力，并基于 ServerCore 统一底层网络收发、鉴权与队列调度。
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-using System.Threading;
 using LiteNetLib;
 using LiteNetLib.Utils;
 using Microsoft.Extensions.Logging;
 using NetworkPlugin.Configuration;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.Room;
+using NetworkPlugin.Network.Server.Core;
 
 namespace NetworkPlugin.Network.Server;
 
-/// <summary>
-/// 基于LiteNetLib的中继服务器 - 为NAT穿透和P2P连接提供支持
-/// 提供房间管理、玩家会话管理和消息转发功能
-/// 支持房间创建、加入、离开、玩家踢出等操作
-/// 实现心跳检测、超时清理和错误处理机制
-/// TODO: 需要实现完整的房间创建、加入、消息转发逻辑
-/// </summary>
 public class RelayServer
 {
     private readonly ILogger<RelayServer> _logger;
     private readonly IServiceProvider _serviceProvider;
-    private EventBasedNetListener _listener;
-    private NetManager _netManager;
-
-    /// <summary>
-    /// 服务器配置
-    /// </summary>
     private readonly ConfigManager _configManager;
 
-    /// <summary>
-    /// 房间列表 - 房间ID到房间对象的映射
-    /// </summary>
-    private readonly Dictionary<string, NetworkRoom> _rooms;
-
-    /// <summary>
-    /// 玩家会话 - NetPeer到玩家会话的映射
-    /// </summary>
-    private readonly Dictionary<NetPeer, PlayerSession> _playerSessions;
-
-    /// <summary>
-    /// 服务器运行状态
-    /// </summary>
-    private bool _isRunning;
-
-    /// <summary>
-    /// 服务器线程
-    /// </summary>
-    private Thread? _serverThread;
-
-    /// <summary>
-    /// 取消令牌源
-    /// </summary>
-    private CancellationTokenSource? _cancellationTokenSource;
-
-    /// <summary>
-    /// 用于线程安全的锁对象
-    /// </summary>
     private readonly object _lock = new();
+    private readonly Dictionary<string, NetworkRoom> _rooms = [];
+    private readonly Dictionary<NetPeer, PlayerSession> _sessionsByPeer = [];
+    private readonly Dictionary<string, PlayerSession> _sessionsByPlayerId = [];
+    private readonly Dictionary<string, NetworkConnection> _connectionsByPlayerId = [];
 
-    /// <summary>
-    /// 实例化中继服务器
-    /// </summary>
+    private readonly ServerCore _core;
+
     public RelayServer(ILogger<RelayServer> logger, IServiceProvider serviceProvider, ConfigManager configManager)
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
         _configManager = configManager;
-        _rooms = [];
-        _playerSessions = [];
-        _isRunning = false;
 
-        InitializeNetManager();
+        _core = new ServerCore(
+            new ServerOptions
+            {
+                Port = _configManager.RelayServerPort.Value,
+                MaxConnections = _configManager.RelayServerMaxConnections.Value,
+                ConnectionKey = _configManager.RelayServerConnectionKey.Value,
+                DisconnectTimeoutMs = _configManager.NetworkTimeoutSeconds.Value * 1000,
+                PingIntervalMs = 1000,
+                MaxQueueSize = 2000,
+                UseBackgroundThread = true,
+                BackgroundThreadSleepMs = 15,
+            },
+            new MicrosoftServerLogger(_logger));
+
+        RegisterCoreEvents();
     }
 
-    /// <summary>
-    /// 初始化LiteNetLib网络管理器
-    /// </summary>
-    private void InitializeNetManager()
-    {
-        _listener = new EventBasedNetListener();
-        _netManager = new NetManager(_listener)
-        {
-            UnsyncedEvents = true,
-            AutoRecycle = true,
-            DisconnectTimeout = _configManager.NetworkTimeoutSeconds.Value * 1000,
-            PingInterval = 1000, // 每1秒发送一次ping
-        };
-
-        RegisterEvents();
-    } // 初始化LiteNetLib网络管理器：配置网络参数、设置连接超时并注册事件处理器
-
-    /// <summary>
-    /// 注册LiteNetLib事件监听器
-    /// </summary>
-    private void RegisterEvents()
-    {
-        // 连接请求事件
-        _listener.ConnectionRequestEvent += request =>
-        {
-            lock (_lock)
-            {
-                try
-                {
-                    _logger.LogInformation($"[RelayServer] Connection request from {request.RemoteEndPoint}");
-
-                    // 检查最大连接数
-                    if (_netManager.PeersCount >= _configManager.RelayServerMaxConnections.Value)
-                    {
-                        _logger.LogWarning($"[RelayServer] Rejecting connection: max connections reached");
-                        request.Reject();
-                        return;
-                    }
-
-                    // 读取连接密钥
-                    string connectionKey = request.Data.GetString();
-
-                    // 验证密钥
-                    if (connectionKey != _configManager.RelayServerConnectionKey.Value)
-                    {
-                        _logger.LogWarning($"[RelayServer] Rejecting connection: invalid key");
-                        request.Reject();
-                        return;
-                    }
-
-                    // 接受连接
-                    var peer = request.Accept();
-                    _logger.LogInformation($"[RelayServer] Accepted connection from {request.RemoteEndPoint}");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError($"[RelayServer] Error handling connection request: {ex.Message}");
-                    request.Reject();
-                }
-            }
-        };
-
-        // 对等节点连接事件
-        _listener.PeerConnectedEvent += peer =>
-        {
-            lock (_lock)
-            {
-                try
-                {
-                    _logger.LogInformation($"[RelayServer] Client connected: {peer.EndPoint}");
-
-                    // 创建玩家会话
-                    string playerId = GeneratePlayerId();
-                    PlayerSession session = new()
-                    {
-                        Peer = peer,
-                        PlayerId = playerId,
-                        PlayerName = $"Player_{playerId.Substring(0, 6)}",
-                        ConnectedAt = DateTime.UtcNow,
-                        LastHeartbeat = DateTime.UtcNow,
-                        IsConnected = true
-                    };
-                    //TODO:stop
-
-                    _playerSessions[peer] = session;
-
-                    // 发送欢迎消息
-                    NetworkMessage welcomeMessage = new()
-                    {
-                        Type = "Welcome",
-                        Payload = new
-                        {
-                            PlayerId = playerId,
-                            ServerTime = DateTime.UtcNow.Ticks
-                        },
-                        SenderPlayerId = "SERVER"
-                    };
-
-                    SendMessageToPeer(peer, welcomeMessage, DeliveryMethod.ReliableOrdered);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError($"[RelayServer] Error handling peer connected event: {ex.Message}");
-                }
-            }
-        };
-
-        // 对等节点断开事件
-        _listener.PeerDisconnectedEvent += (peer, disconnectInfo) =>
-        {
-            lock (_lock)
-            {
-                try
-                {
-                    _logger.LogInformation($"[RelayServer] Client disconnected: {peer.EndPoint}, Reason: {disconnectInfo.Reason}");
-
-                    if (_playerSessions.TryGetValue(peer, out var session))
-                    {
-                        session.IsConnected = false;
-
-                        // 如果玩家在房间中，从房间移除
-                        if (!string.IsNullOrEmpty(session.CurrentRoomId))
-                        {
-                            if (_rooms.TryGetValue(session.CurrentRoomId, out var room))
-                            {
-                                room.RemovePlayer(session.PlayerId);
-
-                                // 如果房间为空，销毁房间
-                                if (room.PlayerCount == 0)
-                                {
-                                    _rooms.Remove(session.CurrentRoomId);
-                                    _logger.LogInformation($"[RelayServer] Room {session.CurrentRoomId} destroyed (empty)");
-                                }
-                            }
-                        }
-
-                        _playerSessions.Remove(peer);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError($"[RelayServer] Error handling peer disconnected event: {ex.Message}");
-                }
-            }
-        };
-
-        // 网络接收事件
-        _listener.NetworkReceiveEvent += (fromPeer, dataReader, deliveryMethod) =>
-        {
-            try
-            {
-                // 读取消息类型
-                string messageType = dataReader.GetString();
-
-                // 读取消息负载（JSON字符串）
-                string jsonPayload = dataReader.GetString();
-
-                // 反序列化消息
-                var message = new NetworkMessage
-                {
-                    Type = messageType,
-                    Payload = jsonPayload,
-                    SenderPlayerId = GetPlayerId(fromPeer)
-                };
-
-                // 处理消息
-                ProcessMessage(fromPeer, message, deliveryMethod);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"[RelayServer] Error processing message from {fromPeer?.EndPoint}: {ex.Message}");
-            }
-            finally
-            {
-                dataReader.Recycle();
-            }
-        };
-
-        // 网络错误事件
-        _listener.NetworkErrorEvent += (endPoint, socketError) =>
-        {
-            _logger.LogError($"[RelayServer] Network error from {endPoint}: {socketError}");
-        };
-
-        // 网络延迟更新事件（用于ping统计）
-        _listener.NetworkLatencyUpdateEvent += (peer, latency) =>
-        {
-            if (_playerSessions.TryGetValue(peer, out var session))
-            {
-                session.Ping = latency;
-                _logger.LogDebug($"[RelayServer] Player {session.PlayerId} ping updated: {latency}ms");
-            }
-        };
-    } // 注册LiteNetLib事件监听器：监听连接、断开、消息接收等网络事件并处理
-
-    /// <summary>
-    /// 处理收到的消息
-    /// </summary>
-    private void ProcessMessage(NetPeer fromPeer, NetworkMessage message, DeliveryMethod deliveryMethod)
-    {
-        lock (_lock)
-        {
-            _logger.LogDebug($"[RelayServer] Processing message from {fromPeer.EndPoint}: {message.Type}");
-
-            switch (message.Type)
-            {
-                case "CreateRoom":
-                    HandleCreateRoom(fromPeer, message);
-                    break;
-                case "JoinRoom":
-                    HandleJoinRoom(fromPeer, message);
-                    break;
-                case "LeaveRoom":
-                    HandleLeaveRoom(fromPeer, message);
-                    break;
-                case "RoomMessage":
-                    HandleRoomMessage(fromPeer, message, deliveryMethod);
-                    break;
-                case "DirectMessage":
-                    HandleDirectMessage(fromPeer, message, deliveryMethod);
-                    break;
-                case "Heartbeat":
-                    HandleHeartbeat(fromPeer, message);
-                    break;
-                case "GetRoomList":
-                    HandleGetRoomList(fromPeer, message);
-                    break;
-                case "KickPlayer":
-                    HandleKickPlayer(fromPeer, message);
-                    break;
-                default:
-                    _logger.LogWarning($"[RelayServer] Unknown message type: {message.Type}");
-                    break;
-            }
-        }
-    } // 处理收到的消息：根据消息类型路由到相应的处理方法，支持房间创建、加入、消息等功能
-
-    //TODO:未实现
-    private void HandleHeartbeat(NetPeer fromPeer, NetworkMessage message)
-    {
-        throw new NotImplementedException();
-    }
-
-    private void HandleKickPlayer(NetPeer fromPeer, NetworkMessage message)
-    {
-        throw new NotImplementedException();
-    }
-
-    private void HandleGetRoomList(NetPeer fromPeer, NetworkMessage message)
-    {
-        throw new NotImplementedException();
-    }
-
-    private void HandleDirectMessage(NetPeer fromPeer, NetworkMessage message, DeliveryMethod deliveryMethod)
-    {
-        throw new NotImplementedException();
-    }
-
-    private void HandleRoomMessage(NetPeer fromPeer, NetworkMessage message, DeliveryMethod deliveryMethod)
-    {
-        throw new NotImplementedException();
-    }
-
-    private void HandleLeaveRoom(NetPeer fromPeer, NetworkMessage message)
-    {
-        throw new NotImplementedException();
-    }
-
-    private void HandleJoinRoom(NetPeer fromPeer, NetworkMessage message)
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <summary>
-    /// 启动中继服务器
-    /// </summary>
     public void Start()
     {
-        if (_isRunning)
-        {
-            _logger.LogWarning("[RelayServer] Server is already running");
-            return;
-        }
+        _core.Start();
+        _logger.LogInformation($"[RelayServer] Server started on port {_configManager.RelayServerPort.Value}");
+    }
 
-        try
-        {
-            _cancellationTokenSource = new CancellationTokenSource();
-
-            // 启动LiteNetLib网络管理器
-            _netManager.Start(_configManager.RelayServerPort.Value);
-            _logger.LogInformation($"[RelayServer] Server started on port {_configManager.RelayServerPort.Value}");
-
-            _isRunning = true;
-
-            // 启动服务器主循环
-            _serverThread = new Thread(ServerLoop)
-            {
-                IsBackground = true,
-                Name = "RelayServer Main Loop"
-            };
-            _serverThread.Start();
-
-            _logger.LogInformation($"[RelayServer] Server started successfully with max connections: {_configManager.RelayServerMaxConnections.Value}");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"[RelayServer] Failed to start server: {ex.Message}");
-            Stop();
-            throw;
-        }
-    } // 启动中继服务器：启动网络管理器，开始监听连接并启动服务器主循环
-
-    /// <summary>
-    /// 停止中继服务器
-    /// </summary>
     public void Stop()
     {
-        if (!_isRunning)
-        {
-            return;
-        }
-
         _logger.LogInformation("[RelayServer] Stopping server...");
+        _core.Stop();
 
-        _isRunning = false;
-        _cancellationTokenSource?.Cancel();
-
-        // 通知所有连接断开
         lock (_lock)
         {
-            foreach (var session in _playerSessions.Values)
-            {
-                if (session.IsConnected)
-                {
-                    session.Peer.Disconnect();
-                }
-            }
-        }
-
-        // 停止LiteNetLib网络管理器
-        _netManager.Stop();
-
-        // 清理状态
-        lock (_lock)
-        {
-            _playerSessions.Clear();
+            _connectionsByPlayerId.Clear();
+            _sessionsByPlayerId.Clear();
+            _sessionsByPeer.Clear();
             _rooms.Clear();
         }
 
         _logger.LogInformation("[RelayServer] Server stopped");
-    } // 停止中继服务器：断开所有连接，停止网络管理器并清理资源
-
-    /// <summary>
-    /// 服务器主循环
-    /// </summary>
-    private void ServerLoop()
-    {
-        var token = _cancellationTokenSource.Token;
-
-        while (_isRunning && !token.IsCancellationRequested)
-        {
-            try
-            {
-                // 处理LiteNetLib事件
-                _netManager.PollEvents();
-
-                // 定期清理超时连接
-                CleanupTimeoutConnections();
-
-                // 定期清理空房间
-                CleanupEmptyRooms();
-
-                Thread.Sleep(15); // 避免CPU占用过高
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"[RelayServer] Error in server loop: {ex.Message}");
-            }
-        }
-    } // 服务器主循环：处理网络事件、清理超时连接和空房间，维持服务器运行状态
-
-    private void CleanupEmptyRooms()
-    {
-        //TODO:未实现
-        throw new NotImplementedException();
     }
 
-    /// <summary>
-    /// 处理创建房间请求
-    /// </summary>
-    private void HandleCreateRoom(NetPeer fromPeer, NetworkMessage message)
+    private void RegisterCoreEvents()
     {
-        try
+        _core.PeerConnected += peer =>
         {
-            PlayerSession session = _playerSessions[fromPeer];
-            NetworkConnection connection = _rooms[session.CurrentRoomId].GetPlayerConnection(session.PlayerId);
-            NetPeer peer = session.Peer;
-            // 如果玩家已在房间中，先离开
-            if (!string.IsNullOrEmpty(session.CurrentRoomId))
-            {
-                HandleLeaveRoom(fromPeer, message);
-            }
-
-            // 获取房间配置
-            var roomConfig = message.GetRoomConfigPayload() ?? RoomConfig.Default();
-
-            // 生成唯一房间ID
-            string roomId = GenerateRoomId();
-
-            // 创建房间
-            NetworkRoom room = new(roomId, roomConfig, _logger);
-
             lock (_lock)
             {
-                _rooms[roomId] = room;
-            }
-
-            // 让创建者加入房间
-            var joinResult = room.AddPlayer(session.PlayerId, connection);
-
-            if (joinResult.IsSuccess)
-            {
-                session.CurrentRoomId = roomId;
-
-                // 发送房间创建成功消息
-                SendMessageToPeer(fromPeer, new NetworkMessage
+                string playerId = GeneratePlayerId();
+                PlayerSession session = new()
                 {
-                    Type = "RoomCreated",
+                    Peer = peer,
+                    PlayerId = playerId,
+                    PlayerName = $"Player_{playerId[..6]}",
+                    ConnectedAt = DateTime.UtcNow,
+                    LastHeartbeat = DateTime.UtcNow,
+                    LastMessageAt = DateTime.UtcNow,
+                    IsConnected = true,
+                    IsHost = false,
+                    CurrentRoomId = string.Empty
+                };
+
+                _sessionsByPeer[peer] = session;
+                _sessionsByPlayerId[playerId] = session;
+                _connectionsByPlayerId[playerId] = new NetworkConnection(peer, playerId);
+
+                SendMessageToPeer(peer, new NetworkMessage
+                {
+                    Type = "Welcome",
                     Payload = new
                     {
-                        RoomId = roomId,
-                        RoomConfig = room.Config,
-                        PlayerId = session.PlayerId
+                        PlayerId = playerId,
+                        ServerTime = DateTime.UtcNow.Ticks
                     },
                     SenderPlayerId = "SERVER"
                 }, DeliveryMethod.ReliableOrdered);
 
-                _logger.LogInformation($"[RelayServer] Room created: {roomId} by player {session.PlayerId}");
+                _logger.LogInformation($"[RelayServer] Client connected: {peer.EndPoint}, PlayerId={playerId}");
             }
-            else
+        };
+
+        _core.PeerDisconnected += (peer, disconnectInfo) =>
+        {
+            lock (_lock)
             {
-                SendErrorMessage(fromPeer, "CreateRoomFailed", joinResult.ErrorMessage ?? "Unknown error");
+                if (!_sessionsByPeer.TryGetValue(peer, out var session))
+                {
+                    return;
+                }
+
+                _logger.LogInformation($"[RelayServer] Client disconnected: {peer.EndPoint}, Reason: {disconnectInfo.Reason}, PlayerId={session.PlayerId}");
+
+                session.IsConnected = false;
+
+                if (!string.IsNullOrEmpty(session.CurrentRoomId) && _rooms.TryGetValue(session.CurrentRoomId, out var room))
+                {
+                    room.RemovePlayer(session.PlayerId);
+                    BroadcastPlayerList(room);
+
+                    if (room.PlayerCount == 0)
+                    {
+                        _rooms.Remove(room.RoomId);
+                        _logger.LogInformation($"[RelayServer] Room {room.RoomId} destroyed (empty)");
+                    }
+                }
+
+                _connectionsByPlayerId.Remove(session.PlayerId);
+                _sessionsByPlayerId.Remove(session.PlayerId);
+                _sessionsByPeer.Remove(peer);
+            }
+        };
+
+        _core.PeerLatencyUpdated += (peer, latency) =>
+        {
+            lock (_lock)
+            {
+                if (_sessionsByPeer.TryGetValue(peer, out var session))
+                {
+                    session.Ping = latency;
+                }
+            }
+        };
+
+        _core.MessageReceived += inbound =>
+        {
+            try
+            {
+                NetworkMessage message = new()
+                {
+                    Type = inbound.Type,
+                    Payload = inbound.JsonPayload,
+                    SenderPlayerId = GetPlayerId(inbound.FromPeer)
+                };
+
+                ProcessMessage(inbound.FromPeer, message, inbound.DeliveryMethod);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"[RelayServer] Error processing message from {inbound.FromPeer?.EndPoint}");
+            }
+        };
+    }
+
+    private void ProcessMessage(NetPeer fromPeer, NetworkMessage message, DeliveryMethod deliveryMethod)
+    {
+        lock (_lock)
+        {
+            if (!_sessionsByPeer.TryGetValue(fromPeer, out var session))
+            {
+                return;
+            }
+
+            session.UpdateMessageTime();
+
+            switch (message.Type)
+            {
+                case "CreateRoom":
+                    HandleCreateRoom(session, message);
+                    return;
+                case "JoinRoom":
+                    HandleJoinRoom(session, message);
+                    return;
+                case "LeaveRoom":
+                    HandleLeaveRoom(session);
+                    return;
+                case "RoomMessage":
+                    HandleRoomMessage(session, message, deliveryMethod);
+                    return;
+                case "DirectMessage":
+                    HandleDirectMessage(session, message, deliveryMethod);
+                    return;
+                case "Heartbeat":
+                    HandleHeartbeat(session, fromPeer);
+                    return;
+                case "GetRoomList":
+                    HandleGetRoomList(fromPeer);
+                    return;
+                case "KickPlayer":
+                    HandleKickPlayer(session, message);
+                    return;
+
+                // 兼容 Host 模式依赖的系统消息（按房间作用域生效）
+                case "PlayerJoined":
+                    HandlePlayerJoined(session, message);
+                    return;
+                case "GetSelf_REQUEST":
+                    HandleGetSelfRequest(session, fromPeer);
+                    return;
+                case "UpdatePlayerLocation":
+                    HandleUpdatePlayerLocation(session, message);
+                    return;
+            }
+
+            if (IsGameEvent(message.Type))
+            {
+                ForwardGameEventToRoom(session, message.Type, message.Payload, deliveryMethod);
+                return;
+            }
+
+            _logger.LogWarning($"[RelayServer] Unknown message type: {message.Type}");
+        }
+    }
+
+    private void HandleHeartbeat(PlayerSession session, NetPeer peer)
+    {
+        session.UpdateHeartbeat();
+        SendMessageToPeer(peer, new NetworkMessage
+        {
+            Type = "HeartbeatResponse",
+            Payload = new
+            {
+                Timestamp = DateTime.UtcNow.Ticks,
+                Ping = session.Ping
+            },
+            SenderPlayerId = "SERVER"
+        }, DeliveryMethod.ReliableOrdered);
+    }
+
+    private void HandleGetRoomList(NetPeer peer)
+    {
+        var rooms = _rooms.Values.Select(r => r.GetStatus()).ToList();
+        SendMessageToPeer(peer, new NetworkMessage
+        {
+            Type = "RoomList",
+            Payload = new { Rooms = rooms },
+            SenderPlayerId = "SERVER"
+        }, DeliveryMethod.ReliableOrdered);
+    }
+
+    private void HandleCreateRoom(PlayerSession session, NetworkMessage message)
+    {
+        if (!string.IsNullOrEmpty(session.CurrentRoomId))
+        {
+            HandleLeaveRoom(session);
+        }
+
+        RoomConfig roomConfig = message.GetRoomConfigPayload();
+        string roomId = GenerateRoomId();
+
+        NetworkRoom room = new(roomId, roomConfig, _logger);
+        _rooms[roomId] = room;
+
+        if (!_connectionsByPlayerId.TryGetValue(session.PlayerId, out var connection))
+        {
+            connection = new NetworkConnection(session.Peer, session.PlayerId);
+            _connectionsByPlayerId[session.PlayerId] = connection;
+        }
+
+        var joinResult = room.AddPlayer(session.PlayerId, connection);
+        if (!joinResult.IsSuccess)
+        {
+            SendErrorMessage(session.Peer, "CreateRoomFailed", joinResult.ErrorMessage ?? "Unknown error");
+            return;
+        }
+
+        session.CurrentRoomId = roomId;
+        connection.CurrentRoomId = roomId;
+
+        SendMessageToPeer(session.Peer, new NetworkMessage
+        {
+            Type = "RoomCreated",
+            Payload = new
+            {
+                RoomId = roomId,
+                RoomConfig = roomConfig,
+                PlayerId = session.PlayerId
+            },
+            SenderPlayerId = "SERVER"
+        }, DeliveryMethod.ReliableOrdered);
+
+        BroadcastPlayerList(room);
+        _logger.LogInformation($"[RelayServer] Room created: {roomId} by player {session.PlayerId}");
+    }
+
+    private void HandleJoinRoom(PlayerSession session, NetworkMessage message)
+    {
+        string roomId = TryGetStringProperty(message.Payload, "RoomId") ?? session.CurrentRoomId;
+        if (string.IsNullOrEmpty(roomId))
+        {
+            SendErrorMessage(session.Peer, "JoinRoomFailed", "Missing RoomId");
+            return;
+        }
+
+        if (!_rooms.TryGetValue(roomId, out var room))
+        {
+            SendErrorMessage(session.Peer, "JoinRoomFailed", $"Room not found: {roomId}");
+            return;
+        }
+
+        if (room.IsFull)
+        {
+            SendErrorMessage(session.Peer, "JoinRoomFailed", "Room is full");
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(session.CurrentRoomId))
+        {
+            HandleLeaveRoom(session);
+        }
+
+        if (!_connectionsByPlayerId.TryGetValue(session.PlayerId, out var connection))
+        {
+            connection = new NetworkConnection(session.Peer, session.PlayerId);
+            _connectionsByPlayerId[session.PlayerId] = connection;
+        }
+
+        var joinResult = room.AddPlayer(session.PlayerId, connection);
+        if (!joinResult.IsSuccess)
+        {
+            SendErrorMessage(session.Peer, "JoinRoomFailed", joinResult.ErrorMessage ?? "Unknown error");
+            return;
+        }
+
+        session.CurrentRoomId = roomId;
+        connection.CurrentRoomId = roomId;
+
+        SendMessageToPeer(session.Peer, new NetworkMessage
+        {
+            Type = "RoomJoined",
+            Payload = new { RoomId = roomId, PlayerId = session.PlayerId },
+            SenderPlayerId = "SERVER"
+        }, DeliveryMethod.ReliableOrdered);
+
+        BroadcastPlayerList(room);
+    }
+
+    private void HandleLeaveRoom(PlayerSession session)
+    {
+        if (string.IsNullOrEmpty(session.CurrentRoomId))
+        {
+            return;
+        }
+
+        if (_rooms.TryGetValue(session.CurrentRoomId, out var room))
+        {
+            room.RemovePlayer(session.PlayerId);
+            BroadcastPlayerList(room);
+
+            if (room.PlayerCount == 0)
+            {
+                _rooms.Remove(room.RoomId);
+                _logger.LogInformation($"[RelayServer] Room {room.RoomId} destroyed (empty)");
+            }
+        }
+
+        if (_connectionsByPlayerId.TryGetValue(session.PlayerId, out var connection))
+        {
+            connection.CurrentRoomId = string.Empty;
+        }
+
+        session.CurrentRoomId = string.Empty;
+    }
+
+    private void HandleRoomMessage(PlayerSession session, NetworkMessage message, DeliveryMethod deliveryMethod)
+    {
+        string roomId = TryGetStringProperty(message.Payload, "RoomId") ?? session.CurrentRoomId;
+        if (string.IsNullOrEmpty(roomId) || !_rooms.TryGetValue(roomId, out var room))
+        {
+            SendErrorMessage(session.Peer, "RoomMessageFailed", "Not in room");
+            return;
+        }
+
+        string innerType = TryGetStringProperty(message.Payload, "Type") ?? "RoomMessage";
+        object innerPayload = TryGetObjectProperty(message.Payload, "Payload") ?? message.Payload;
+
+        room.BroadcastMessage(new NetworkMessage
+        {
+            Type = innerType,
+            Payload = innerPayload,
+            SenderPlayerId = session.PlayerId
+        }, excludePlayerId: session.PlayerId);
+    }
+
+    private void HandleDirectMessage(PlayerSession session, NetworkMessage message, DeliveryMethod deliveryMethod)
+    {
+        string targetPlayerId = TryGetStringProperty(message.Payload, "TargetPlayerId");
+        if (string.IsNullOrEmpty(targetPlayerId) || !_connectionsByPlayerId.TryGetValue(targetPlayerId, out var connection))
+        {
+            SendErrorMessage(session.Peer, "DirectMessageFailed", "Target not found");
+            return;
+        }
+
+        string innerType = TryGetStringProperty(message.Payload, "Type") ?? "DirectMessage";
+        object innerPayload = TryGetObjectProperty(message.Payload, "Payload") ?? message.Payload;
+
+        connection.SendMessage(new NetworkMessage
+        {
+            Type = innerType,
+            Payload = innerPayload,
+            SenderPlayerId = session.PlayerId
+        }, deliveryMethod);
+    }
+
+    private void HandleKickPlayer(PlayerSession session, NetworkMessage message)
+    {
+        if (string.IsNullOrEmpty(session.CurrentRoomId) || !_rooms.TryGetValue(session.CurrentRoomId, out var room))
+        {
+            SendErrorMessage(session.Peer, "KickPlayerFailed", "Not in room");
+            return;
+        }
+
+        if (!string.Equals(room.HostPlayerId, session.PlayerId, StringComparison.Ordinal))
+        {
+            SendErrorMessage(session.Peer, "KickPlayerFailed", "Only host can kick");
+            return;
+        }
+
+        string targetPlayerId = TryGetStringProperty(message.Payload, "TargetPlayerId");
+        if (string.IsNullOrEmpty(targetPlayerId) || !room.ContainsPlayer(targetPlayerId))
+        {
+            SendErrorMessage(session.Peer, "KickPlayerFailed", "Target not in room");
+            return;
+        }
+
+        room.RemovePlayer(targetPlayerId);
+        BroadcastPlayerList(room);
+    }
+
+    private void HandlePlayerJoined(PlayerSession session, NetworkMessage message)
+    {
+        try
+        {
+            JsonElement root = GetJsonElement(message.Payload);
+            if (root.ValueKind == JsonValueKind.Object)
+            {
+                if (root.TryGetProperty("PlayerName", out var nameElem) && nameElem.ValueKind == JsonValueKind.String)
+                {
+                    session.PlayerName = nameElem.GetString();
+                }
+                if (root.TryGetProperty("CharacterId", out var charElem) && charElem.ValueKind == JsonValueKind.String)
+                {
+                    session.Metadata["CharacterId"] = charElem.GetString();
+                }
+            }
+
+            if (!string.IsNullOrEmpty(session.CurrentRoomId) && _rooms.TryGetValue(session.CurrentRoomId, out var room))
+            {
+                room.BroadcastMessage(new NetworkMessage
+                {
+                    Type = "PlayerJoined",
+                    Payload = new
+                    {
+                        PlayerId = session.PlayerId,
+                        PlayerName = session.PlayerName,
+                        IsHost = string.Equals(room.HostPlayerId, session.PlayerId, StringComparison.Ordinal),
+                        CharacterId = session.Metadata.TryGetValue("CharacterId", out var cid) ? cid?.ToString() : null
+                    },
+                    SenderPlayerId = "SERVER"
+                }, excludePlayerId: session.PlayerId);
+
+                BroadcastPlayerList(room);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError($"[RelayServer] Error handling CreateRoom: {ex.Message}");
-            SendErrorMessage(fromPeer, "CreateRoomError", ex.Message);
+            _logger.LogError(ex, "[RelayServer] Error handling PlayerJoined");
         }
-    } // 处理创建房间请求：为新玩家创建游戏房间，分配唯一ID并设置房主权限
+    }
 
-    // TODO: 继续实现其他消息处理方法
-
-    /// <summary>
-    /// 生成玩家ID
-    /// </summary>
-    private string GeneratePlayerId()
+    private void HandleGetSelfRequest(PlayerSession session, NetPeer peer)
     {
-        return Guid.NewGuid().ToString("N");
-    } // 生成玩家ID：为每个连接的玩家生成唯一标识符
+        SendMessageToPeer(peer, new NetworkMessage
+        {
+            Type = "GetSelf_RESPONSE",
+            Payload = new
+            {
+                PlayerId = session.PlayerId,
+                PlayerName = session.PlayerName,
+                IsHost = IsRoomHost(session),
+                ConnectedAt = session.ConnectedAt.Ticks
+            },
+            SenderPlayerId = "SERVER"
+        }, DeliveryMethod.ReliableOrdered);
+    }
 
-    /// <summary>
-    /// 生成房间ID
-    /// </summary>
-    private string GenerateRoomId()
+    private void HandleUpdatePlayerLocation(PlayerSession session, NetworkMessage message)
     {
-        // 简单的6位随机ID
-        Random random = new Random();
-        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        return new string(Enumerable.Repeat(chars, 6)
-            .Select(s => s[random.Next(s.Length)]).ToArray());
-    } // 生成房间ID：为游戏房间生成6位随机字母数字组合的标识符
+        try
+        {
+            JsonElement root = GetJsonElement(message.Payload);
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                return;
+            }
 
-    /// <summary>
-    /// 向对等节点发送消息
-    /// </summary>
+            if (root.TryGetProperty("LocationX", out var xElem) && xElem.TryGetInt32(out int x))
+            {
+                session.Metadata["LocationX"] = x;
+            }
+            if (root.TryGetProperty("LocationY", out var yElem) && yElem.TryGetInt32(out int y))
+            {
+                session.Metadata["LocationY"] = y;
+            }
+            if (root.TryGetProperty("Stage", out var stageElem) && stageElem.TryGetInt32(out int stage))
+            {
+                session.Metadata["Stage"] = stage;
+            }
+            if (root.TryGetProperty("LocationName", out var nameElem) && nameElem.ValueKind == JsonValueKind.String)
+            {
+                session.Metadata["LocationName"] = nameElem.GetString();
+            }
+
+            if (!string.IsNullOrEmpty(session.CurrentRoomId) && _rooms.TryGetValue(session.CurrentRoomId, out var room))
+            {
+                BroadcastPlayerList(room);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[RelayServer] Error handling UpdatePlayerLocation");
+        }
+    }
+
+    private void ForwardGameEventToRoom(PlayerSession session, string eventType, object payload, DeliveryMethod deliveryMethod)
+    {
+        if (string.IsNullOrEmpty(session.CurrentRoomId) || !_rooms.TryGetValue(session.CurrentRoomId, out var room))
+        {
+            return;
+        }
+
+        room.BroadcastMessage(new NetworkMessage
+        {
+            Type = eventType,
+            Payload = payload,
+            SenderPlayerId = session.PlayerId
+        }, excludePlayerId: session.PlayerId);
+    }
+
+    private void BroadcastPlayerList(NetworkRoom room)
+    {
+        var players = room.GetAllPlayerIds()
+            .Select(pid => _sessionsByPlayerId.TryGetValue(pid, out var s) ? s : null)
+            .Where(s => s != null)
+            .Select(s => new
+            {
+                PlayerId = s.PlayerId,
+                PlayerName = s.PlayerName,
+                IsHost = string.Equals(room.HostPlayerId, s.PlayerId, StringComparison.Ordinal),
+                IsConnected = s.IsConnected,
+                CharacterId = s.Metadata.TryGetValue("CharacterId", out var cid) ? cid?.ToString() : null,
+                LocationX = TryGetMetadataInt(s.Metadata, "LocationX") ?? -1,
+                LocationY = TryGetMetadataInt(s.Metadata, "LocationY") ?? -1,
+                Stage = TryGetMetadataInt(s.Metadata, "Stage") ?? -1,
+                LocationName = TryGetMetadataString(s.Metadata, "LocationName"),
+            })
+            .ToList();
+
+        room.BroadcastMessage(new NetworkMessage
+        {
+            Type = "PlayerListUpdate",
+            Payload = new { Players = players },
+            SenderPlayerId = "SERVER"
+        });
+    }
+
+    private bool IsRoomHost(PlayerSession session)
+    {
+        return !string.IsNullOrEmpty(session.CurrentRoomId)
+               && _rooms.TryGetValue(session.CurrentRoomId, out var room)
+               && string.Equals(room.HostPlayerId, session.PlayerId, StringComparison.Ordinal);
+    }
+
     private void SendMessageToPeer(NetPeer peer, NetworkMessage message, DeliveryMethod deliveryMethod)
     {
         try
@@ -563,44 +603,129 @@ public class RelayServer
         }
         catch (Exception ex)
         {
-            _logger.LogError($"[RelayServer] Failed to send message to peer: {ex.Message}");
+            _logger.LogError(ex, "[RelayServer] Failed to send message to peer");
         }
-    } // 向对等节点发送消息：序列化消息并通过LiteNetLib发送给指定客户端
+    }
 
-    /// <summary>
-    /// 发送错误消息
-    /// </summary>
     private void SendErrorMessage(NetPeer peer, string errorType, string errorMessage)
     {
-        NetworkMessage errorMessageObj = new()
+        SendMessageToPeer(peer, new NetworkMessage
         {
             Type = "Error",
-            Payload = new
-            {
-                ErrorType = errorType,
-                Message = errorMessage
-            },
+            Payload = new { ErrorType = errorType, Message = errorMessage },
             SenderPlayerId = "SERVER"
-        };
-        SendMessageToPeer(peer, errorMessageObj, DeliveryMethod.ReliableOrdered);
-    } // 发送错误消息：向客户端发送错误类型和错误信息的网络消息
+        }, DeliveryMethod.ReliableOrdered);
+    }
 
-    /// <summary>
-    /// 清理超时连接
-    /// </summary>
-    private void CleanupTimeoutConnections()
-    {
-        // TODO: 实现连接超时检测逻辑
-    } // 清理超时连接：检测并断开超过指定时间没有心跳的客户端连接
-
-    /// <summary>
-    /// 获取玩家ID
-    /// </summary>
     private string GetPlayerId(NetPeer peer)
     {
-        return _playerSessions.TryGetValue(peer, out var session) ? session.PlayerId : "unknown";
-    } // 获取玩家ID：根据网络对等节点获取对应的玩家会话ID
+        return _sessionsByPeer.TryGetValue(peer, out var session) ? session.PlayerId : "unknown";
+    }
 
-    // TODO: 实现其他消息处理方法
-    // HandleJoinRoom, HandleLeaveRoom, HandleRoomMessage, HandleDirectMessage, HandleHeartbeat, HandleGetRoomList, HandleKickPlayer
-} // 基于LiteNetLib的中继服务器：为NAT穿透和P2P连接提供支持，管理房间创建、玩家连接和消息转发
+    private static bool IsGameEvent(string messageType)
+    {
+        return messageType.StartsWith("On", StringComparison.Ordinal) ||
+               messageType.StartsWith("Mana", StringComparison.Ordinal) ||
+               messageType.StartsWith("Gap", StringComparison.Ordinal) ||
+               messageType.StartsWith("Battle", StringComparison.Ordinal) ||
+               messageType == "StateSyncRequest";
+    }
+
+    private static int? TryGetMetadataInt(Dictionary<string, object> metadata, string key)
+    {
+        if (metadata == null || !metadata.TryGetValue(key, out object value) || value == null)
+        {
+            return null;
+        }
+
+        return value switch
+        {
+            int i => i,
+            long l => (int)l,
+            float f => (int)f,
+            double d => (int)d,
+            string s when int.TryParse(s, out int i) => i,
+            JsonElement je when je.ValueKind == JsonValueKind.Number && je.TryGetInt32(out int i) => i,
+            JsonElement je when je.ValueKind == JsonValueKind.String && int.TryParse(je.GetString(), out int i) => i,
+            _ => null
+        };
+    }
+
+    private static string TryGetMetadataString(Dictionary<string, object> metadata, string key)
+    {
+        if (metadata == null || !metadata.TryGetValue(key, out object value) || value == null)
+        {
+            return null;
+        }
+
+        return value switch
+        {
+            string s => s,
+            JsonElement je when je.ValueKind == JsonValueKind.String => je.GetString(),
+            _ => value.ToString()
+        };
+    }
+
+    private static string TryGetStringProperty(object payload, string propertyName)
+    {
+        JsonElement root = GetJsonElement(payload);
+        if (root.ValueKind == JsonValueKind.Object &&
+            root.TryGetProperty(propertyName, out var value) &&
+            value.ValueKind == JsonValueKind.String)
+        {
+            return value.GetString();
+        }
+
+        return null;
+    }
+
+    private static object TryGetObjectProperty(object payload, string propertyName)
+    {
+        JsonElement root = GetJsonElement(payload);
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty(propertyName, out var value))
+        {
+            return null;
+        }
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.Object => value,
+            JsonValueKind.Array => value,
+            JsonValueKind.String => value.GetString(),
+            JsonValueKind.Number => value.TryGetInt64(out long l) ? l : null,
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            _ => null
+        };
+    }
+
+    private static JsonElement GetJsonElement(object payload)
+    {
+        try
+        {
+            return payload switch
+            {
+                JsonElement je => je,
+                string json => JsonSerializer.Deserialize<JsonElement>(json),
+                _ => JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(payload))
+            };
+        }
+        catch
+        {
+            return default;
+        }
+    }
+
+    private static string GeneratePlayerId()
+    {
+        return Guid.NewGuid().ToString("N");
+    }
+
+    private static string GenerateRoomId()
+    {
+        Random random = new();
+        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        return new string(Enumerable.Repeat(chars, 6).Select(s => s[random.Next(s.Length)]).ToArray());
+    }
+}
+

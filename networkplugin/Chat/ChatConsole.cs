@@ -198,7 +198,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
             // DisplayMessageInUI(message);
 
             // 记录消息接收日志
-            _logger.LogInfo($"[Chat] 接收到消息 - 发送者: {message.Username}, 内容: {message.Content}, 类型: {message.Type}");
+            _logger.LogInfo($"[Chat] 接收到消息 - 发送者: {message.Username}, 内容: {message.Content}, 类型: {message.MessageType}");
         }
         catch (JsonException ex)
         {
