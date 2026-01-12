@@ -1,11 +1,11 @@
-using Microsoft.Extensions.Logging;
+using BepInEx.Logging;
 
 namespace NetworkPlugin.Network.MidGameJoin;
 
 // Fast sync service stub
-public class FastSyncService(ILogger logger)
+public class FastSyncService(ManualLogSource logger)
 {
-    private readonly ILogger _logger = logger;
+    private readonly ManualLogSource _logger = logger;
 
     public void SyncPlayerState(string playerId, PlayerBootstrappedState state)
     {

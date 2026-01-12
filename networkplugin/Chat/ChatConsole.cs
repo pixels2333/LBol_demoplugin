@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using BepInEx.Logging;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Chat;
 
@@ -36,7 +39,7 @@ namespace NetworkPlugin.Chat;
 /// <param name="networkClient">网络客户端接口，用于发送消息到其他玩家</param>
 /// <param name="logger">日志记录器，用于记录聊天相关的操作和错误</param>
 /// <exception cref="ArgumentNullException">当任一参数为null时抛出异常</exception>
-public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
+public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)  
 {
     /// <summary>
     /// 网络客户端接口，用于发送聊天消息到网络中的其他玩家
@@ -58,6 +61,11 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
     /// 超过此数量时会自动删除最旧的消息，防止内存占用过大
     /// </summary>
     private const int MaxHistorySize = 100;
+
+    /// <summary>
+    /// 单条消息最大长度（字符）
+    /// </summary>
+    private const int MaxMessageLength = 500;
 
     /// <summary>
     /// 当接收到新聊天消息时触发的事件
@@ -89,8 +97,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
     /// </para>
     ///
     /// <para>
-    /// TODO: 待完善的功能：
-    /// - 集成真实的玩家信息获取机制，替换当前的占位符
+    /// 可改进项：
     /// - 添加消息发送失败的回调处理
     /// - 支持消息格式验证和长度限制
     /// </para>
@@ -104,13 +111,17 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
             return;
         }
 
-        // TODO: 获取当前玩家真实信息
-        // 需要与游戏系统的玩家管理模块集成
-        // string playerId = GetLocalPlayerId();
-        // string username = GetLocalPlayerName();
+        if (content.Length > MaxMessageLength)
+        {
+            _logger.LogWarning($"[Chat] 消息过长，将被截断: len={content.Length}");
+            content = content.Substring(0, MaxMessageLength);
+        }
 
-        // 临时使用占位符信息创建消息对象
-        ChatMessage message = new ChatMessage("local_player_id", "玩家", content, type);
+        // 获取当前玩家信息（优先使用网络侧自我标识，失败则回退到游戏侧信息/占位）
+        string playerId = GetLocalPlayerId();
+        string username = GetLocalPlayerName();
+
+        ChatMessage message = new ChatMessage(playerId, username, content, type);
 
         try
         {
@@ -136,6 +147,94 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
         }
     } // 发送聊天消息到网络，序列化后通过网络客户端传输并添加到历史记录
 
+    private static string GetLocalPlayerId()
+    {
+        try
+        {
+            string id = NetworkIdentityTracker.GetSelfPlayerId();
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                return id;
+            }
+        }
+        catch
+        {
+            // ignore
+        }
+
+        try
+        {
+            string id = GameStateUtils.GetCurrentPlayerId();
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                return id;
+            }
+        }
+        catch
+        {
+            // ignore
+        }
+
+        return "local_player_id";
+    }
+
+    private static string GetLocalPlayerName()
+    {
+        try
+        {
+            object player = GameStateUtils.GetCurrentPlayer();
+            if (player != null)
+            {
+                Type t = player.GetType();
+                PropertyInfo prop =
+                    t.GetProperty("userName", BindingFlags.Public | BindingFlags.Instance) ??
+                    t.GetProperty("UserName", BindingFlags.Public | BindingFlags.Instance) ??
+                    t.GetProperty("Name", BindingFlags.Public | BindingFlags.Instance);
+
+                if (prop != null && prop.PropertyType == typeof(string))
+                {
+                    string name = prop.GetValue(player) as string;
+                    if (!string.IsNullOrWhiteSpace(name))
+                    {
+                        return name;
+                    }
+                }
+
+                // 兜底：ModelName/Id 等也可用于诊断
+                PropertyInfo fallback =
+                    t.GetProperty("ModelName", BindingFlags.Public | BindingFlags.Instance) ??
+                    t.GetProperty("Id", BindingFlags.Public | BindingFlags.Instance);
+                if (fallback != null)
+                {
+                    object v = fallback.GetValue(player);
+                    if (v != null)
+                    {
+                        return v.ToString();
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // ignore
+        }
+
+        try
+        {
+            string id = NetworkIdentityTracker.GetSelfPlayerId();
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                return id;
+            }
+        }
+        catch
+        {
+            // ignore
+        }
+
+        return "玩家";
+    }
+
     /// <summary>
     /// 接收并处理来自网络的聊天消息
     /// 当网络层接收到其他玩家的聊天消息时调用此方法
@@ -153,7 +252,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
     /// </para>
     ///
     /// <para>
-    /// TODO: 待完善的功能：
+    /// 可改进项：
     /// - 集成游戏UI显示功能，在游戏界面中显示消息
     /// - 添加消息验证逻辑，防止恶意或格式错误的消息
     /// - 支持消息过滤和屏蔽功能
@@ -181,11 +280,26 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
                 return;
             }
 
+            if (string.IsNullOrWhiteSpace(message.MessageId))
+            {
+                message.MessageId = Guid.NewGuid().ToString();
+            }
+
+            if (message.Timestamp == default)
+            {
+                message.Timestamp = DateTime.UtcNow;
+            }
+
             // 验证消息内容的完整性
             if (string.IsNullOrWhiteSpace(message.Content))
             {
                 _logger.LogWarning("[Chat] 接收到空内容的消息，已忽略");
                 return;
+            }
+
+            if (message.Content.Length > MaxMessageLength)
+            {
+                message.Content = message.Content.Substring(0, MaxMessageLength);
             }
 
             // 添加消息到本地历史记录
@@ -194,7 +308,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
             // 触发消息接收事件，通知UI更新
             OnMessageReceived?.Invoke(message);
 
-            // TODO: 在游戏UI中显示消息
+            // 备注：在游戏 UI 中显示消息需与 UI 系统集成
             // DisplayMessageInUI(message);
 
             // 记录消息接收日志
@@ -350,6 +464,14 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
     /// </remarks>
     private void AddToHistory(ChatMessage message)
     {
+        // 简单去重：避免重复消息刷屏（历史上限较小，线性检查足够）
+        if (!string.IsNullOrWhiteSpace(message?.MessageId) &&
+            _chatHistory.Any(m => string.Equals(m?.MessageId, message.MessageId, StringComparison.Ordinal)))
+        {
+            _logger.LogDebug($"[Chat] Duplicate message ignored: {message.MessageId}");
+            return;
+        }
+
         // 添加新消息到历史记录末尾
         _chatHistory.Add(message);
 
@@ -364,68 +486,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
         }
     }
 
-    // ========================================
-    // TODO: 待实现的功能方法
-    // ========================================
-
-    #region TODO 功能实现
-    // 以下方法待实现，用于完善聊天系统的完整功能
-
-    /// <summary>
-    /// 获取本地玩家的唯一标识符
-    /// 从游戏系统获取当前玩家的唯一ID
-    /// </summary>
-    /// <returns>玩家ID字符串，如"player_001"</returns>
-    /// <remarks>
-    /// TODO: 需要与游戏系统的玩家管理模块集成
-    /// 可能的实现方式：
-    /// - 从GameStateUtils获取玩家ID
-    /// - 从网络客户端获取本地玩家标识
-    /// - 从游戏会话管理器获取玩家信息
-    /// </remarks>
-    // private string GetLocalPlayerId()
-    // {
-    //     // 实现逻辑：从游戏系统获取玩家ID
-    //     return "local_player_id"; // 临时返回值
-    // }
-
-    /// <summary>
-    /// 获取本地玩家的显示名称
-    /// 从游戏系统获取当前玩家的显示名称
-    /// </summary>
-    /// <returns>玩家名称字符串，如"玩家小明"</returns>
-    /// <remarks>
-    /// TODO: 需要与游戏系统的玩家配置模块集成
-    /// 可能的实现方式：
-    /// - 从玩家配置文件读取显示名称
-    /// - 从游戏角色系统获取角色名称
-    /// - 使用用户自定义的昵称
-    /// </remarks>
-    // private string GetLocalPlayerName()
-    // {
-    //     // 实现逻辑：从游戏系统获取玩家名称
-    //     return "玩家"; // 临时返回值
-    // }
-
-    /// <summary>
-    /// 在游戏UI中显示聊天消息
-    /// 将接收到的消息显示在游戏界面的聊天窗口中
-    /// </summary>
-    /// <param name="message">要显示的聊天消息对象</param>
-    /// <remarks>
-    /// TODO: 需要与游戏UI系统集成
-    /// 功能要求：
-    /// - 支持不同类型消息的样式显示
-    /// - 支持消息的自动滚动和分页
-    /// - 支持消息的时间戳显示
-    /// - 支持消息的颜色和字体样式
-    /// - 支持消息的过滤和搜索
-    /// </remarks>
-    // private void DisplayMessageInUI(ChatMessage message)
-    // {
-    //     // 实现逻辑：将消息添加到游戏UI的聊天窗口
-    //     // 需要调用游戏UI系统的相关API
-    // }
-
-    #endregion
+    // 兼容说明：
+    // - 本地玩家 ID/名称获取已在 GetCurrentPlayerId()/GetCurrentPlayerName() 内实现。
+    // - 聊天 UI 的展示由 UI 层负责（例如 ChatUI）。
 }

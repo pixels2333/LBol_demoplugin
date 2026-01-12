@@ -38,8 +38,8 @@ public partial class NatTraversal
     /// </summary>
     static NatTraversal()
     {
-        // TODO: 初始化日志系统
-        // _logger = BepInEx.Logging.Logger.CreateLogSource("NATTraversal");
+        // 初始化日志系统：优先复用插件日志，避免额外创建 LogSource；若插件尚未初始化则创建专用 LogSource。
+        _logger = Plugin.Logger ?? BepInEx.Logging.Logger.CreateLogSource("NATTraversal");
     }
 
     #region NAT类型定义

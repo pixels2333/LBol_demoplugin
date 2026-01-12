@@ -365,8 +365,46 @@ public class SynchronizationManager : ISynchronizationManager
 
     private GameEvent CreateGameEventFromNetworkData(string eventType, object payload, DateTime timestamp)
     {
-        //TODO:根据不同的type创建不同的GameEvent
-        throw new NotImplementedException();
+        // 最小可用实现：将网络载荷包装为 GameEvent，供后续缓存/排序/追赶逻辑使用。
+        // 注意：这里不直接“应用到游戏”，避免与上层 OnGameEventReceived 重复触发。
+        if (string.IsNullOrWhiteSpace(eventType))
+        {
+            eventType = "Unknown";
+        }
+
+        string userName = "remote";
+        try
+        {
+            if (payload is Dictionary<string, object> dict)
+            {
+                if (dict.TryGetValue("UserName", out object un) && un is string s1 && !string.IsNullOrWhiteSpace(s1))
+                {
+                    userName = s1;
+                }
+                else if (dict.TryGetValue("PlayerName", out object pn) && pn is string s2 && !string.IsNullOrWhiteSpace(s2))
+                {
+                    userName = s2;
+                }
+                else if (dict.TryGetValue("PlayerId", out object pid) && pid is string s3 && !string.IsNullOrWhiteSpace(s3))
+                {
+                    userName = s3;
+                }
+            }
+        }
+        catch
+        {
+            // 忽略：仅用于日志/缓存 key 的辅助字段
+        }
+
+        return new GameEvent
+        {
+            EventType = eventType,
+            Data = payload ?? string.Empty,
+            Timestamp = timestamp.Ticks,
+            UserName = userName,
+            Source = "Network",
+            IsProcessed = false,
+        };
     }
 
     /// <summary>
@@ -749,15 +787,94 @@ public class SynchronizationManager : ISynchronizationManager
     /// <returns>如果事件需要同步返回true，否则返回false</returns>
     private bool ShouldSyncEvent(GameEvent gameEvent)
     {
-        // TODO: 实现详细的事件过滤逻辑
-        // 1. 根据事件类型判断同步必要性
-        // 2. 检查玩家权限设置
-        // 3. 考虑当前游戏阶段
-        // 4. 评估网络同步的性能影响
-        // 5. 应用配置的过滤规则
+        // 最小可用实现：根据配置开关对“明显类别”的事件做过滤，其余事件默认允许同步。
+        if (gameEvent == null || string.IsNullOrWhiteSpace(gameEvent.EventType))
+        {
+            return false;
+        }
 
-        // 临时返回true，表示所有事件都需要同步
-        return true;
+        try
+        {
+            if (Plugin.ConfigManager == null)
+            {
+                return true;
+            }
+
+            string t = gameEvent.EventType;
+
+            bool isCard =
+                string.Equals(t, NetworkMessageTypes.OnCardPlayStart, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnCardPlayComplete, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnCardDraw, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnCardDiscard, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnCardExile, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnCardUpgrade, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnCardRemove, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnRemoteCardUse, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnRemoteCardResolved, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.HandSyncRequest, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.HandSyncResponse, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.DeckSyncRequest, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.DeckSyncResponse, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.DiscardSyncRequest, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.DiscardSyncResponse, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.DeckOperation, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.CardStateChanged, StringComparison.Ordinal);
+
+            bool isMana =
+                string.Equals(t, NetworkMessageTypes.ManaConsumeStarted, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.ManaConsumeCompleted, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.ManaRegain, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.TurnManaCalculated, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.MaxManaChange, StringComparison.Ordinal);
+
+            bool isBattle =
+                string.Equals(t, NetworkMessageTypes.OnBattleStart, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnBattleEnd, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnTurnStart, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnTurnEnd, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnDamageDealt, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnDamageReceived, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnBlockGained, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnShieldGained, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnHealingReceived, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnStatusEffectApplied, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnStatusEffectRemoved, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnMoodEffectLoopStarted, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnMoodEffectLoopEnded, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnMoodEffectStateSync, StringComparison.Ordinal);
+
+            bool isMap =
+                string.Equals(t, NetworkMessageTypes.OnShopEnter, StringComparison.Ordinal) ||
+                string.Equals(t, NetworkMessageTypes.OnShopExit, StringComparison.Ordinal);
+
+            if (isCard && Plugin.ConfigManager.EnableCardSync != null)
+            {
+                return Plugin.ConfigManager.EnableCardSync.Value;
+            }
+
+            if (isMana && Plugin.ConfigManager.EnableManaSync != null)
+            {
+                return Plugin.ConfigManager.EnableManaSync.Value;
+            }
+
+            if (isBattle && Plugin.ConfigManager.EnableBattleSync != null)
+            {
+                return Plugin.ConfigManager.EnableBattleSync.Value;
+            }
+
+            if (isMap && Plugin.ConfigManager.EnableMapSync != null)
+            {
+                return Plugin.ConfigManager.EnableMapSync.Value;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogWarning($"[SyncManager] Event filter failed, allow by default: {ex.Message}");
+            return true;
+        }
     }
 
 
@@ -844,9 +961,36 @@ public class SynchronizationManager : ISynchronizationManager
     /// <param name="gameEvent">需要应用的远程游戏事件</param>
     private void ApplyRemoteEvent(GameEvent gameEvent)
     {
-        // TODO:具体逻辑未完成
+        // 最小可用实现：更新本地状态缓存，标记为已处理，供诊断与后续追赶/对账使用。
+        if (gameEvent == null)
+        {
+            return;
+        }
 
+        try
+        {
+            if (!ValidateEventTimestamp(new DateTime(gameEvent.Timestamp)))
+            {
+                Plugin.Logger?.LogWarning($"[SyncManager] Remote event timestamp invalid: {gameEvent.EventType} ({gameEvent.Timestamp})");
+                return;
+            }
 
+            // 避免将控制类消息写入状态缓存（缓存仅用于“业务状态”粗粒度对账）。
+            if (string.Equals(gameEvent.EventType, NetworkMessageTypes.FullStateSyncRequest, StringComparison.Ordinal) ||
+                string.Equals(gameEvent.EventType, NetworkMessageTypes.FullStateSyncResponse, StringComparison.Ordinal) ||
+                string.Equals(gameEvent.EventType, "DirectMessage", StringComparison.Ordinal))
+            {
+                gameEvent.IsProcessed = true;
+                return;
+            }
+
+            UpdateLocalState(gameEvent);
+            gameEvent.IsProcessed = true;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[SyncManager] Failed to apply remote event: {gameEvent.EventType}, err={ex.Message}");
+        }
     }
 
     /// <summary>
@@ -855,7 +999,6 @@ public class SynchronizationManager : ISynchronizationManager
     /// </summary>
     /// <param name="eventType">事件类型字符串</param>
     /// <param name="eventData">事件数据对象</param>
-    /// TODO:STOP
     public void SendGameEvent(GameEvent gameEvent)
     {
         try

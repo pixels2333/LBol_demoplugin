@@ -223,6 +223,8 @@ public static class NetworkIdentityTracker
         lock (SyncLock)
         {
             _playerIds.Clear();
+            bool foundSelf = false;
+            bool selfIsHost = false;
             foreach (JsonElement p in playersElem.EnumerateArray())
             {
                 string id = GetString(p, "PlayerId");
@@ -230,6 +232,18 @@ public static class NetworkIdentityTracker
                 {
                     _playerIds.Add(id);
                 }
+
+                if (!foundSelf && !string.IsNullOrWhiteSpace(_selfPlayerId) &&
+                    string.Equals(id, _selfPlayerId, StringComparison.Ordinal))
+                {
+                    foundSelf = true;
+                    selfIsHost = GetBool(p, "IsHost");
+                }
+            }
+
+            if (foundSelf)
+            {
+                _selfIsHost = selfIsHost;
             }
         }
     }
@@ -327,4 +341,3 @@ public static class NetworkIdentityTracker
         }
     }
 }
-

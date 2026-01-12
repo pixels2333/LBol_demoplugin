@@ -1,10 +1,12 @@
 using System;
 using System.Net;
 using System.Text.Json;
+using System.Threading;
 using LiteNetLib;
 using LiteNetLib.Utils;
 using NetworkPlugin.Configuration;        
 using NetworkPlugin.Core;
+using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.NetworkPlayer;
 using NetworkPlugin.Utils;
 
@@ -58,6 +60,10 @@ public class NetworkClient : INetworkClient
     private bool _autoReconnectEnabled = false;
     private int _retryInterval = 5000;
     private int _connectionTimeout = 5000;
+    private string _lastConnectHost;
+    private int _lastConnectPort;
+    private readonly object _reconnectLock = new();
+    private Timer _reconnectTimer;
 
     public NetworkClient(ConfigManager configManager)
         : this(configManager?.RelayServerConnectionKey?.Value ?? "LBoL_Network_Plugin", null, null)
@@ -129,6 +135,7 @@ public class NetworkClient : INetworkClient
         {
             Console.WriteLine($"[Client] Connected to server: {peer.EndPoint}");
             _serverPeer = peer;
+            StopAutoReconnectTimer_NoThrow();
 
             // 触发连接事件通知
             OnConnected?.Invoke(peer.EndPoint.ToString());
@@ -209,7 +216,7 @@ public class NetworkClient : INetworkClient
             if (_autoReconnectEnabled)
             {
                 Console.WriteLine($"[Client] Auto-reconnect enabled, will retry in {_retryInterval}ms");
-                // TODO: 实现自动重连逻辑
+                StartAutoReconnectTimer_NoThrow();
             }
         };
 
@@ -261,9 +268,12 @@ public class NetworkClient : INetworkClient
                messageType.StartsWith("Gap") ||
                messageType.StartsWith("Battle") ||
                messageType == "EnemySpawned" ||
+               messageType == NetworkMessageTypes.ChatMessage ||
                messageType == "StateSyncResponse" ||
                messageType == "FullStateSyncRequest" ||
                messageType == "FullStateSyncResponse" ||
+               messageType == NetworkMessageTypes.MidGameJoinRequest ||
+               messageType == NetworkMessageTypes.MidGameJoinResponse ||
                // 系统消息（用于 UI/远程玩家渲染等）：同样走 GameEvent 通道，便于统一订阅
                messageType == "Welcome" ||
                messageType == "PlayerJoined" ||
@@ -272,8 +282,30 @@ public class NetworkClient : INetworkClient
                messageType == "HostChanged";
     }
 
-    // TODO: 为 FullStateSyncResponse 增加客户端侧“落地消费”：
-    // - 将 FullSnapshot/PlayerSnapshot 应用到本地状态（需补齐 SynchronizationManager 的 ApplyRemoteEvent/CreateGameEventFromNetworkData）。
+    // 说明：FullStateSyncResponse 的“客户端落地”目前由 MidGameJoinManager 通过 DirectMessage
+    // 路线完成（Apply FullSnapshot + Replay MissedEvents）。若后续需要支持“非 DirectMessage 路由”
+    // 的 FullStateSyncResponse，可在此处补齐通用落地逻辑。
+
+    /// <summary>
+    /// 向本地注入一条“伪接收”的 GameEvent（用于回放/追赶/调试）。
+    /// 注意：不会向服务器发送任何数据，仅触发本地订阅者（Patch/Manager 等）。
+    /// </summary>
+    public void InjectLocalGameEvent(string eventType, object payload)
+    {
+        if (string.IsNullOrWhiteSpace(eventType))
+        {
+            return;
+        }
+
+        try
+        {
+            OnGameEventReceived?.Invoke(eventType, payload);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Client] Error injecting local game event {eventType}: {ex.Message}");
+        }
+    }
 
     /// <summary>
     /// 处理游戏同步事件，解析 JSON 数据并触发相应事件
@@ -316,6 +348,8 @@ public class NetworkClient : INetworkClient
     /// <param name="port">服务器端口号</param>
     public void ConnectToServer(string host, int port)
     {
+        _lastConnectHost = host;
+        _lastConnectPort = port;
         Console.WriteLine($"[Client] Attempting to connect to {host}:{port} with key '{_connectionKey}'...");
         NetDataWriter connectData = new();
         // 将连接密钥写入数据包，用于服务器身份验证
@@ -340,10 +374,70 @@ public class NetworkClient : INetworkClient
     /// </summary>
     public void Stop()
     {
+        StopAutoReconnectTimer_NoThrow();
         // 停止网络管理器，断开所有连接
         _netManager.Stop();
         _serverPeer = null;
         Console.WriteLine("[Client] Client services stopped.");
+    }
+
+    private void StartAutoReconnectTimer_NoThrow()
+    {
+        try
+        {
+            if (!_autoReconnectEnabled)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_lastConnectHost) || _lastConnectPort <= 0)
+            {
+                Console.WriteLine("[Client] Auto-reconnect skipped: missing last endpoint");
+                return;
+            }
+
+            lock (_reconnectLock)
+            {
+                _reconnectTimer?.Dispose();
+                _reconnectTimer = new Timer(_ =>
+                {
+                    try
+                    {
+                        if (IsConnected || IsConnecting)
+                        {
+                            return;
+                        }
+
+                        Console.WriteLine($"[Client] Auto-reconnect attempting: {_lastConnectHost}:{_lastConnectPort}");
+                        ConnectToServer(_lastConnectHost, _lastConnectPort);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[Client] Auto-reconnect error: {ex.Message}");
+                    }
+                }, null, _retryInterval, _retryInterval);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Client] Failed to start auto-reconnect timer: {ex.Message}");
+        }
+    }
+
+    private void StopAutoReconnectTimer_NoThrow()
+    {
+        try
+        {
+            lock (_reconnectLock)
+            {
+                _reconnectTimer?.Dispose();
+                _reconnectTimer = null;
+            }
+        }
+        catch
+        {
+            // ignore
+        }
     }
 
     /// <summary>

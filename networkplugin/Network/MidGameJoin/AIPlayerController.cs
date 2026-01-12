@@ -1,12 +1,12 @@
 using System.Collections.Generic;
-using Microsoft.Extensions.Logging;
+using BepInEx.Logging;
 
 namespace NetworkPlugin.Network.MidGameJoin;
 //TODO:ai角色,低优先级
 // AI Controller stub
-public class AIPlayerController(ILogger logger)
+public class AIPlayerController(ManualLogSource logger)
 {
-    private readonly ILogger _logger = logger;
+    private readonly ManualLogSource _logger = logger;
     private readonly HashSet<string> _controlledPlayers = [];
 
     public void StartControlling(string playerId)

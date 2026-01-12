@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Utils;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -43,7 +44,12 @@ public class NetworkStatusIndicator : MonoBehaviour
     private void Start()
     {
         _serviceProvider = ModService.ServiceProvider;
-        _networkClient = _serviceProvider?.GetService<INetworkClient>();
+        _networkClient = _serviceProvider?.GetService<INetworkClient>();        
+
+        if (_networkClient != null)
+        {
+            NetworkIdentityTracker.EnsureSubscribed(_networkClient);
+        }
 
         SetupUI();
         RegisterNetworkEvents();
@@ -218,7 +224,6 @@ public class NetworkStatusIndicator : MonoBehaviour
     {
         try
         {
-            // TODO: 从NetworkClient获取实际延迟值
             return _networkClient?.Ping ?? 0;
         }
         catch (Exception ex)
@@ -249,8 +254,13 @@ public class NetworkStatusIndicator : MonoBehaviour
     {
         try
         {
-            // TODO: 从NetworkClient获取实际玩家数量
-            return _networkClient?.IsConnected == true ? 1 : 0;
+            if (_networkClient?.IsConnected != true)
+            {
+                return 0;
+            }
+
+            // 基于 PlayerListUpdate 的快照统计玩家数量（比“已连接=1”更接近真实联机房间人数）
+            return NetworkIdentityTracker.GetPlayerIdsSnapshot().Count;
         }
         catch (Exception ex)
         {
@@ -268,9 +278,36 @@ public class NetworkStatusIndicator : MonoBehaviour
         {
             if (_networkClient != null)
             {
-                // TODO: 实现重连逻辑
-                // _networkClient.Reconnect();
-                AddSystemLog("正在尝试重新连接...");
+                if (_networkClient.IsConnected)
+                {
+                    AddSystemLog("已处于连接状态");
+                    return;
+                }
+
+                string host = Plugin.ConfigManager?.ServerIP?.Value;
+                int port = Plugin.ConfigManager?.ServerPort?.Value ?? 0;
+
+                if (string.IsNullOrWhiteSpace(host) || port <= 0)
+                {
+                    AddSystemLog("重连失败：未配置 ServerIP/ServerPort");
+                    return;
+                }
+
+                // 尽力启动客户端（可能已启动，异常忽略）
+                try
+                {
+                    _networkClient.Start();
+                }
+                catch
+                {
+                    // ignore
+                }
+
+                // 启用自动重连，避免按钮点击后立刻掉线导致“卡死”体验
+                _networkClient.EnableAutoReconnect(true);
+
+                _networkClient.ConnectToServer(host, port);
+                AddSystemLog($"正在尝试重新连接: {host}:{port} ...");
             }
         }
         catch (Exception ex)

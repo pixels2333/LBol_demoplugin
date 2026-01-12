@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
+using NetworkPlugin.Utils;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -88,10 +90,11 @@ public class ChatUI : MonoBehaviour
     /// </summary>
     private void RegisterNetworkEvents()
     {
-        // TODO: 注册聊天消息接收事件
-        if (_networkClient != null)
+        // 注册聊天消息接收事件（当前通过 NetworkClient.OnGameEventReceived 分发）
+        if (_networkClient is NetworkClient concrete)
         {
-            // _networkClient.OnChatMessageReceived += OnChatMessageReceived;
+            NetworkIdentityTracker.EnsureSubscribed(concrete);
+            concrete.OnGameEventReceived += OnNetworkGameEventReceived;
         }
     }
 
@@ -100,9 +103,62 @@ public class ChatUI : MonoBehaviour
     /// </summary>
     private void UnregisterNetworkEvents()
     {
-        if (_networkClient != null)
+        if (_networkClient is NetworkClient concrete)
         {
-            // _networkClient.OnChatMessageReceived -= OnChatMessageReceived;
+            concrete.OnGameEventReceived -= OnNetworkGameEventReceived;
+        }
+    }
+
+    private void OnNetworkGameEventReceived(string eventType, object payload)
+    {
+        if (!string.Equals(eventType, NetworkMessageTypes.ChatMessage, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        try
+        {
+            ChatMessage message = TryDeserializeChatMessage(payload);
+            if (message != null)
+            {
+                OnChatMessageReceived(message);
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[ChatUI] Error handling chat message: {ex.Message}");
+        }
+    }
+
+    private static ChatMessage TryDeserializeChatMessage(object payload)
+    {
+        if (payload == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            if (payload is ChatMessage cm)
+            {
+                return cm;
+            }
+
+            if (payload is JsonElement je)
+            {
+                return JsonSerializer.Deserialize<ChatMessage>(je.GetRawText());
+            }
+
+            if (payload is string s)
+            {
+                return JsonSerializer.Deserialize<ChatMessage>(s);
+            }
+
+            return JsonSerializer.Deserialize<ChatMessage>(JsonSerializer.Serialize(payload));
+        }
+        catch
+        {
+            return null;
         }
     }
 
@@ -320,8 +376,19 @@ public class ChatUI : MonoBehaviour
     {
         try
         {
-            // TODO: 从GameStateUtils获取玩家ID
-            return "Player_1";
+            string id = NetworkIdentityTracker.GetSelfPlayerId();
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                return id;
+            }
+
+            id = GameStateUtils.GetCurrentPlayerId();
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                return id;
+            }
+
+            return "Unknown_Player";
         }
         catch (Exception ex)
         {
@@ -337,8 +404,38 @@ public class ChatUI : MonoBehaviour
     {
         try
         {
-            // TODO: 从GameStateUtils获取玩家名称
-            return "玩家1";
+            object player = GameStateUtils.GetCurrentPlayer();
+            if (player != null)
+            {
+                // LBoL 的玩家对象可能有 userName/Name 等字段，优先取可读的名字
+                var prop = player.GetType().GetProperty("userName") ?? player.GetType().GetProperty("UserName") ?? player.GetType().GetProperty("Name");
+                if (prop != null && prop.PropertyType == typeof(string))
+                {
+                    string name = prop.GetValue(player) as string;
+                    if (!string.IsNullOrWhiteSpace(name))
+                    {
+                        return name;
+                    }
+                }
+
+                var fallback = player.GetType().GetProperty("ModelName") ?? player.GetType().GetProperty("Id");
+                if (fallback != null)
+                {
+                    object v = fallback.GetValue(player);
+                    if (v != null)
+                    {
+                        return v.ToString();
+                    }
+                }
+            }
+
+            string id = NetworkIdentityTracker.GetSelfPlayerId();
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                return id;
+            }
+
+            return "未知玩家";
         }
         catch (Exception ex)
         {

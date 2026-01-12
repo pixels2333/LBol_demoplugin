@@ -1,6 +1,6 @@
 
 
-//TODO:这个地方用了日志系统和依赖注入,如果使用了分离服务器,需要修改日志系统和依赖注入
+// NOTE: 这里使用了日志系统和依赖注入；如果后续引入分离服务器，需要相应调整日志系统与依赖注入。
 // 直连房主服务器：用于房主/客机直连联机，管理会话与广播游戏事件。
 using System;
 using System.Collections.Generic;
@@ -9,6 +9,7 @@ using System.Text.Json;
 using BepInEx.Logging;
 using LiteNetLib;
 using LiteNetLib.Utils;
+using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.Server.Core;
 
 namespace NetworkPlugin.Network.Server;
@@ -305,7 +306,6 @@ public class NetworkServer : BaseGameServer
 
     private void HandleSystemMessage(NetPeer fromPeer, string messageType, NetPacketReader dataReader)
     {
-        //TODO:未实现
         try
         {
             switch (messageType)
@@ -352,6 +352,7 @@ public class NetworkServer : BaseGameServer
                messageType.StartsWith("Mana") ||
                messageType.StartsWith("Gap") ||
                messageType.StartsWith("Battle") ||
+               messageType == NetworkMessageTypes.ChatMessage ||
                messageType == "StateSyncRequest" ||
                messageType == "FullStateSyncRequest" ||
                messageType == "FullStateSyncResponse";

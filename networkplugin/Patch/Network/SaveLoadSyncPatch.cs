@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -485,12 +486,23 @@ public class SaveLoadSyncPatch
         }
     }
 
-    private static string GetCurrentPlayerId()
+private static string GetCurrentPlayerId()
     {
         try
         {
-            // TODO: 从GameStateUtils获取玩家ID
-            return "current_player";
+            string id = NetworkIdentityTracker.GetSelfPlayerId();
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                return id;
+            }
+
+            id = GameStateUtils.GetCurrentPlayerId();
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                return id;
+            }
+
+            return "unknown_player";
         }
         catch (Exception ex)
         {
@@ -499,12 +511,17 @@ public class SaveLoadSyncPatch
         }
     }
 
-    private static bool IsHostPlayer()
+private static bool IsHostPlayer()
     {
         try
         {
-            // TODO: 检查当前玩家是否为主机
-            return true; // 临时返回true
+            // 优先使用 NetworkIdentityTracker（PlayerListUpdate/Welcom 会刷新），否则回退到 GameStateUtils 的反射判断
+            if (NetworkIdentityTracker.GetSelfIsHost())
+            {
+                return true;
+            }
+
+            return GameStateUtils.IsHost();
         }
         catch (Exception ex)
         {
@@ -513,25 +530,32 @@ public class SaveLoadSyncPatch
         }
     }
 
-    private static object CaptureGameState()
+private static object CaptureGameState()
     {
         try
         {
-            // TODO: 实现完整的游戏状态捕获
+            // 最小可用快照：用于诊断与“尽力同步”，不追求覆盖全部游戏内部状态。
+            // 完整的存档应用/回滚仍需要在游戏内验证（避免破坏原生存档流程）。
+            var player = GameStateUtils.GetCurrentPlayer();
             return new
             {
                 Timestamp = DateTime.Now.Ticks,
                 PlayerState = new
                 {
-                    // TODO: 捕获玩家状态
+                    PlayerId = GetCurrentPlayerId(),
+                    IsHost = IsHostPlayer(),
+                    ModelName = player?.ModelName,
+                    Hp = player?.Hp,
+                    MaxHp = player?.MaxHp
                 },
                 BattleState = new
                 {
-                    // TODO: 捕获战斗状态
+                    InBattle = player?.Battle != null
                 },
                 GameProgress = new
                 {
-                    // TODO: 捕获游戏进度
+                    GameStarted = player != null,
+                    RunTimestamp = GameStateUtils.GetCurrentGameRun() != null ? DateTime.Now.Ticks : 0
                 }
             };
         }

@@ -30,13 +30,13 @@ sequenceDiagram
     participant R as RelayServer
     participant H as Host
     J->>R: JoinRoom(RoomId)
-    J->>R: DirectMessage(Target=Host, Type=MidGameJoinRequest, Payload={RoomId, PlayerName, RequestId})
+    J->>R: DirectMessage(Target=Host, Type=MidGameJoinRequest, Payload={RequestId, RoomId, PlayerName, ClientPlayerId, ClientTimeUtcTicks})
     R->>H: MidGameJoinRequest
-    H->>R: DirectMessage(Target=Joiner, Type=MidGameJoinResponse, Payload={RequestId, JoinToken, BootstrappedState})
+    H->>R: DirectMessage(Target=Joiner, Type=MidGameJoinResponse, Payload={RequestId, Approved, Reason?, JoinToken, ExpiresAtUtcTicks, HostPlayerId, RoomId, PlayerName, BootstrappedState})
     R->>J: MidGameJoinResponse
-    J->>R: DirectMessage(Target=Host, Type=FullStateSyncRequest, Payload={RoomId, TargetPlayerId, LastKnownEventIndex})
+    J->>R: DirectMessage(Target=Host, Type=FullStateSyncRequest, Payload={RequestId, RoomId, TargetPlayerId, LastKnownEventIndex, JoinToken})
     R->>H: FullStateSyncRequest
-    H->>R: DirectMessage(Target=Joiner, Type=FullStateSyncResponse, Payload={TargetPlayerId, FullSnapshot, MissedEvents})
+    H->>R: DirectMessage(Target=Joiner, Type=FullStateSyncResponse, Payload={RequestId, TargetPlayerId, FullSnapshot, MissedEvents, ErrorMessage?, ServerTimeUtcTicks})
     R->>J: FullStateSyncResponse
     J->>J: Apply FullSnapshot + Replay MissedEvents
 ```
@@ -56,25 +56,34 @@ sequenceDiagram
 - `RequestId`: string
 - `RoomId`: string
 - `PlayerName`: string
-- `ClientPlayerId`: string（可选，若可从 `NetworkIdentityTracker.GetSelfPlayerId()` 获取）
+- `ClientPlayerId`: string（必填）
+- `ClientTimeUtcTicks`: long（可选；用于诊断）
 
 ### `MidGameJoinResponse`（内层）
 - `RequestId`: string
 - `Approved`: bool
 - `Reason`: string（拒绝原因）
 - `JoinToken`: string（批准时返回）
+- `ExpiresAtUtcTicks`: long（JoinToken 过期时间）
+- `HostPlayerId`: string（Host 的 PlayerId）
+- `RoomId`: string
+- `PlayerName`: string
 - `BootstrappedState`: `PlayerBootstrappedState`（批准时返回）
 
 ### `FullStateSyncRequest`（内层）
+- `RequestId`: string
 - `RoomId`: string
 - `TargetPlayerId`: string（Joiner 的 PlayerId）
-- `LastKnownEventIndex`: long（Joiner 已知的最后事件索引；首次可为 0）
+- `LastKnownEventIndex`: long（Joiner 已知的最后事件索引；首次可为 0）      
+- `JoinToken`: string（Host 侧会消费并校验；避免被非批准玩家滥用 FullSync）
 
 ### `FullStateSyncResponse`（内层）
+- `RequestId`: string
 - `TargetPlayerId`: string
 - `FullSnapshot`: `FullStateSnapshot`
 - `MissedEvents`: `List<GameEvent>`
-- `ServerTime`: long
+- `ErrorMessage`: string（可选；失败/拒绝原因）
+- `ServerTimeUtcTicks`: long
 
 ## 数据模型
 无持久化；仅在 `MidGameJoinManager` 内维护：
@@ -90,6 +99,13 @@ sequenceDiagram
 ## 测试与部署
 - **测试(手工/烟测):**
   1. Joiner 加入已开局房间：能申请 → Host 批准 → Joiner 收到快照后能进入可操作状态（以“能玩”为准）。
-  2. 非 Host 批准：应失败并提示。
-  3. 回放失败：允许降级为“仅快照落地”，并有日志提示。
+  2. 批准失败（Host 拒绝/不可用）：
+     - 将 Host 侧 `AllowMidGameJoin=false` 或让 Joiner 在未收到 `PlayerListUpdate` 前直接请求。
+     - 预期：Joiner 侧收到 `MidGameJoinResponse(Approved=false, Reason=...)` 或直接 `RequestJoin` 返回 Denied；日志包含 “Join denied”/“Host not found”。
+  3. FullSync 失败降级：
+     - 让 Host 不响应 `FullStateSyncRequest`（例如 Host 未初始化/未成为 Host），或网络不通导致 Joiner 超时。
+     - 预期：Joiner 侧 `ExecuteJoin` 返回 Failed，并给出 `FullStateSyncResponse timeout` 等可诊断错误。
+  4. 回放失败降级（尽力回放）：
+     - 在回放过程中若订阅者抛异常导致注入失败（或出现多次回放异常）。
+     - 预期：Joiner 侧出现 “Replay failed … degraded to snapshot-only” 日志，但不中断后续流程（以“能跑通/可诊断”为准）。
 - **部署:** 无额外部署步骤；仅插件代码更新。

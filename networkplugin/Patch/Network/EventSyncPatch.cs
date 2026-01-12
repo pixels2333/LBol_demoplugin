@@ -5,6 +5,7 @@ using LBoL.Core.Adventures;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -506,22 +507,43 @@ public class EventSyncPatch
     /// </summary>
     public static object BuildEventSnapshot()
     {
-        // TODO: 实现事件快照
-        // 包括：当前事件、选择状态、对话进度等
+        // 最小可用快照：用于诊断/同步占位，不承诺覆盖全部事件内部状态。
+        var player = GameStateUtils.GetCurrentPlayer();
 
         return new
         {
-            Timestamp = DateTime.Now.Ticks
-            // TODO: 添加实际数据
+            Timestamp = DateTime.Now.Ticks,
+            PlayerId = GetCurrentPlayerId(),
+            IsHost = NetworkIdentityTracker.GetSelfIsHost(),
+            PlayerModel = player?.ModelName,
+            InBattle = player?.Battle != null
         };
     }
 
     /// <summary>
     /// 获取当前玩家ID
-    /// TODO: 实现获取当前玩家ID
     /// </summary>
     private static string GetCurrentPlayerId()
     {
-        return "current_player";
+        try
+        {
+            string id = NetworkIdentityTracker.GetSelfPlayerId();
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                return id;
+            }
+
+            id = GameStateUtils.GetCurrentPlayerId();
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                return id;
+            }
+        }
+        catch
+        {
+            // ignore
+        }
+
+        return "unknown_player";
     }
 }

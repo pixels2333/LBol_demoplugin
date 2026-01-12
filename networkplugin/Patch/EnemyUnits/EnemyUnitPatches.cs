@@ -53,14 +53,14 @@ public class EnemyUnitPatches
                 return true; // 允许原始方法执行
             }
 
-            // 获取当前玩家数量作为调整系数
-            // TODO: 改为从config读取，支持自定义调整系数
+            // 获取当前玩家数量作为调整系数（并叠加配置中的倍率）
             int playerCount = networkManager.GetPlayerCount();
-            int hpCoefficient = Math.Max(1, playerCount); // 确保系数至少为1
+            float multiplier = Plugin.ConfigManager?.GetEnemyHpMultiplier(playerCount) ?? playerCount;
+            multiplier = Math.Max(1.0f, multiplier);
 
             // 计算调整后的血量
-            int modifiedHp = hp * hpCoefficient;
-            int modifiedMaxHp = maxHp * hpCoefficient;
+            int modifiedHp = (int)Math.Round(hp * multiplier);
+            int modifiedMaxHp = (int)Math.Round(maxHp * multiplier);
 
             // 使用Traverse调用基类的SetMaxHp方法
             // 这是一种反射技术，用于调用被Harmony补丁覆盖的原始方法
@@ -70,7 +70,7 @@ public class EnemyUnitPatches
                     .Method("SetMaxHp", modifiedHp, modifiedMaxHp)
                     .GetValue(_instance);
 
-            Plugin.Logger?.LogInfo($"[EnemyUnitPatches] Adjusted enemy HP: {maxHp} -> {modifiedMaxHp} (x{hpCoefficient} for {playerCount} players)");
+            Plugin.Logger?.LogInfo($"[EnemyUnitPatches] Adjusted enemy HP: {maxHp} -> {modifiedMaxHp} (x{multiplier:0.##} for {playerCount} players)");
 
             return false; // 跳过原始方法执行，因为我们已经手动调用了基类方法
         }

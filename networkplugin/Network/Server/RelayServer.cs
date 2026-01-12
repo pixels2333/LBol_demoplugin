@@ -763,6 +763,7 @@ public class RelayServer : BaseGameServer
                messageType.StartsWith("Mana", StringComparison.Ordinal) ||
                messageType.StartsWith("Gap", StringComparison.Ordinal) ||
                messageType.StartsWith("Battle", StringComparison.Ordinal) ||
+               messageType == NetworkMessageTypes.ChatMessage ||
                messageType == "StateSyncRequest" ||
                messageType == "FullStateSyncRequest" ||
                messageType == "FullStateSyncResponse";

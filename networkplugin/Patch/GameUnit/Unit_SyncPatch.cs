@@ -2,6 +2,7 @@ using System;
 using HarmonyLib;
 using LBoL.Core.Units;
 using NetworkPlugin.Network;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.GameUnit;
 
@@ -19,9 +20,22 @@ public class Unit_SyncPatch
     /// </summary>
     private static PlayerEntity GetLocalPlayer()
     {
-        // TODO: 实现获取本地玩家的逻辑
-        // 需要从NetworkManager或其他服务获取
-        return null;
+        try
+        {
+            // 尽力从游戏状态中获取本地玩家对象；若类型不匹配则安全返回 null。
+            object player = GameStateUtils.GetCurrentPlayer();
+            if (player == null)
+            {
+                return null;
+            }
+
+            return (PlayerEntity)player;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogDebug($"[Unit_SyncPatch] GetLocalPlayer failed: {ex.Message}");
+            return null;
+        }
     }
 
     /// <summary>

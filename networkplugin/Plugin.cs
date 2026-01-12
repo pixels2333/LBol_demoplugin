@@ -7,6 +7,7 @@ using NetworkPlugin.Configuration;
 using NetworkPlugin.Core;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.MidGameJoin;
 using NetworkPlugin.Network.NetworkPlayer;
 using NetworkPlugin.Network.Reconnection;
 
@@ -108,6 +109,16 @@ public class Plugin : BaseUnityPlugin
             Logger?.LogWarning($"[Plugin] Failed to initialize ReconnectionManager: {ex.Message}");
         }
 
+        // 初始化中途加入管理器（订阅必要的网络事件；幂等可重复调用）。
+        try
+        {
+            serviceProvider.GetService<MidGameJoinManager>()?.Initialize();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning($"[Plugin] Failed to initialize MidGameJoinManager: {ex.Message}");
+        }
+
         // 安全检查：确保GameObject不为空
         if (gameObject == null)
         {
@@ -147,6 +158,10 @@ public class Plugin : BaseUnityPlugin
 
         // 断线重连：作为单例服务提供；内部通过 INetworkClient 事件监听连接状态并维护快照/事件历史。
         services.AddSingleton(sp => new ReconnectionManager(new ReconnectionConfig(), null, sp, Logger));
+
+        // 中途加入：按“可用优先”先跑通 DirectMessage 协作闭环。
+        services.AddSingleton(new MidGameJoinConfig());
+        services.AddSingleton<MidGameJoinManager>();
     }
 
     /// <summary>
