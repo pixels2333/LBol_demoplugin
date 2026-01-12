@@ -5,8 +5,6 @@ using Microsoft.Extensions.Logging;
 using NetworkPlugin.Network.Event;
 using NetworkPlugin.Network.MidGameJoin.Result;
 using NetworkPlugin.Network.Room;
-using NetworkPlugin.Network.Event;
-using NetworkPlugin.Network.Room;
 
 namespace NetworkPlugin.Network.MidGameJoin;
 
@@ -144,7 +142,7 @@ public class MidGameJoinManager
             }
 
             // 检查批准权限（必须是房主）
-            var roomInfo = GetRoomStatus(request.RoomId);
+            var roomInfo = GetRoomInfo(request.RoomId);
             if (roomInfo?.HostPlayerId != approvedByPlayerId)
             {
                 return ApproveJoinResult.Failed("Only host can approve join requests");
@@ -387,17 +385,6 @@ public class MidGameJoinManager
 /// <summary>
 /// 中途加入配置
 /// </summary>
-public class MidGameJoinConfig
-{
-    public bool AllowMidGameJoin { get; set; } = true;
-    public int JoinRequestTimeoutMinutes { get; set; } = 2;
-    public int MaxJoinRequestsPerRoom { get; set; } = 5;
-    public int AIControlTimeoutMinutes { get; set; } = 10;
-    public bool EnableCompensation { get; set; } = true;
-    public bool EnableAIPassthrough { get; set; } = true;
-    public int CatchUpBatchSize { get; set; } = 50;
-}
-
 public enum JoinRequestStatus
 {
     Pending,

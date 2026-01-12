@@ -16,6 +16,7 @@ public partial class ConfigManager
     /// 网络不可用时事件队列的最大条目数量
     /// 超过此容量的新事件会被丢弃
     /// </summary>
+    #if false // Duplicate: kept for reference; actual declaration is in Configuration/ConfigManager.Sync.cs
     public ConfigEntry<int> MaxQueueSize { get; private set; }
 
     /// <summary>
@@ -24,6 +25,7 @@ public partial class ConfigManager
     /// 默认为5分钟，可以根据需要调整
     /// </summary>
     public ConfigEntry<float> StateCacheExpiryMinutes { get; private set; }
+    #endif
 
     /// <summary>
     /// 网络超时时间（秒）

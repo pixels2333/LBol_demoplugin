@@ -64,7 +64,7 @@ public class SaveLoadSyncPatch
         }
 
         [HarmonyPrefix]
-        public static void GameSave_Prefix(object __instance, object[] __args, out SaveSyncState __state)
+        private static void GameSave_Prefix(object __instance, object[] __args, out SaveSyncState __state)
         {
             __state = new SaveSyncState();
             try
@@ -84,7 +84,7 @@ public class SaveLoadSyncPatch
         }
 
         [HarmonyPostfix]
-        public static void GameSave_Postfix(object __instance, object[] __args, SaveSyncState __state)
+        private static void GameSave_Postfix(object __instance, object[] __args, SaveSyncState __state)
         {
             try
             {
@@ -193,7 +193,7 @@ public class SaveLoadSyncPatch
         }
 
         [HarmonyPrefix]
-        public static void GameLoad_Prefix(object __instance, object[] __args, out LoadSyncState __state)
+        private static void GameLoad_Prefix(object __instance, object[] __args, out LoadSyncState __state)
         {
             __state = new LoadSyncState();
             try
@@ -214,7 +214,7 @@ public class SaveLoadSyncPatch
         }
 
         [HarmonyPostfix]
-        public static void GameLoad_Postfix(object __instance, object[] __args, LoadSyncState __state)
+        private static void GameLoad_Postfix(object __instance, object[] __args, LoadSyncState __state)
         {
             try
             {

@@ -15,6 +15,7 @@ public partial class ConfigManager
     /// 卡牌同步开关
     /// 控制卡牌使用、抽取、洗牌等行为的网络同步
     /// </summary>
+    #if false // Duplicate: kept for reference; actual declaration is in Configuration/ConfigManager.Sync.cs
     public ConfigEntry<bool> EnableCardSync { get; private set; }
 
     /// <summary>
@@ -34,6 +35,7 @@ public partial class ConfigManager
     /// 控制地图探索、节点状态、地图事件的同步
     /// </summary>
     public ConfigEntry<bool> EnableMapSync { get; private set; }
+    #endif
 
     /// <summary>
     /// GapStation功能扩展开关
