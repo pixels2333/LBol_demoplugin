@@ -763,8 +763,14 @@ public class RelayServer : BaseGameServer
                messageType.StartsWith("Mana", StringComparison.Ordinal) ||
                messageType.StartsWith("Gap", StringComparison.Ordinal) ||
                messageType.StartsWith("Battle", StringComparison.Ordinal) ||
-               messageType == "StateSyncRequest";
+               messageType == "StateSyncRequest" ||
+               messageType == "FullStateSyncRequest" ||
+               messageType == "FullStateSyncResponse";
     }
+
+    // TODO: 实现 Relay 模式下 FullStateSyncRequest 的路由与响应：
+    // - 按 roomId 作用域将请求转发给房间 Host；
+    // - 由房间 Host 生成快照并返回 FullStateSyncResponse 给请求方。
 
     private static int? TryGetMetadataInt(Dictionary<string, object> metadata, string key)
     {

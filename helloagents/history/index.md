@@ -6,3 +6,5 @@
 | 202601091044 | remote_carduse_closedloop_unified | 功能 | 已完成 | `helloagents/history/2026-01/202601091044_remote_carduse_closedloop_unified/` |
 | 202601091140 | fix_midgamejoin_getroomstatus | 修复 | 已完成 | `helloagents/history/2026-01/202601091140_fix_midgamejoin_getroomstatus/` |
 | 202601091556 | unify_server_core_two_modes | 功能 | 已完成 | `helloagents/history/2026-01/202601091556_unify_server_core_two_modes/` |
+| 202601121443 | reconnection_manager_todos | 功能 | 待定 | `helloagents/history/2026-01/202601121443_reconnection_manager_todos/` |
+| 202601121600 | networkmanager_todos | 修复 | 已完成 | `helloagents/history/2026-01/202601121600_networkmanager_todos/` |

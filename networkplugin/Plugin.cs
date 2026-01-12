@@ -1,3 +1,4 @@
+using System;
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
@@ -7,6 +8,7 @@ using NetworkPlugin.Core;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.NetworkPlayer;
+using NetworkPlugin.Network.Reconnection;
 
 namespace NetworkPlugin;
 
@@ -96,6 +98,16 @@ public class Plugin : BaseUnityPlugin
         // 将服务提供者注册到模块服务中，供其他组件使用
         ModService.ServiceProvider = serviceProvider;
 
+        // 初始化断线重连管理器（即使未连接，也会保持低开销监听）。
+        try
+        {
+            serviceProvider.GetService<ReconnectionManager>()?.Initialize();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning($"[Plugin] Failed to initialize ReconnectionManager: {ex.Message}");
+        }
+
         // 安全检查：确保GameObject不为空
         if (gameObject == null)
         {
@@ -132,6 +144,9 @@ public class Plugin : BaseUnityPlugin
         services.AddSingleton<INetworkManager, NetworkManager>(); // 注册网络管理器服务
         services.AddSingleton<INetworkClient, NetworkClient>(); // 注册网络客户端服务
         services.AddSingleton<ISynchronizationManager, SynchronizationManager>(); // 注册同步管理器服务
+
+        // 断线重连：作为单例服务提供；内部通过 INetworkClient 事件监听连接状态并维护快照/事件历史。
+        services.AddSingleton(sp => new ReconnectionManager(new ReconnectionConfig(), null, sp, Logger));
     }
 
     /// <summary>

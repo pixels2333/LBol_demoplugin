@@ -12,6 +12,8 @@
 | ADR-202601091556 | 抽取 ServerCore + 双模式服务器（Host/Relay） | 2026-01-09 | 已采纳 | networkplugin | `helloagents/plan/202601091556_unify_server_core_two_modes/how.md` |
 
 ## 网络服务器架构（ServerCore + Host/Relay）
-- `ServerCore` 负责 LiteNetLib 生命周期、连接鉴权、入站消息队列（优先级/限流）、心跳/超时清理等公共能力。
-- Host 模式：`networkplugin/Network/Server/NetworkServer.cs`（保持原有直连语义与消息兼容）。
-- Relay 模式：`networkplugin/Network/Server/RelayServer.cs`（多房间/中继转发，并补齐 Host 依赖的系统消息）。
+- `IServerCore`：网络核心抽象接口，定义底层事件与生命周期，便于未来替换/扩展传输层实现。
+- `ServerCore`：`IServerCore` 的 LiteNetLib 实现，负责生命周期、连接鉴权、入站消息队列（优先级/限流）、心跳/超时清理等公共能力。
+- `BaseGameServer`：业务骨架层，统一接入 core 事件并维护会话映射（连接/断开/延迟/收包分流），为 Host/Relay 复用通用流程。
+- Host 模式：`networkplugin/Network/Server/NetworkServer.cs`（继承 `BaseGameServer`，保持原有直连语义与消息兼容）。
+- Relay 模式：`networkplugin/Network/Server/RelayServer.cs`（继承 `BaseGameServer`，多房间/中继转发，并补齐 Host 依赖的系统消息）。

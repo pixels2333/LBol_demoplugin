@@ -352,8 +352,14 @@ public class NetworkServer : BaseGameServer
                messageType.StartsWith("Mana") ||
                messageType.StartsWith("Gap") ||
                messageType.StartsWith("Battle") ||
-               messageType == "StateSyncRequest";
+               messageType == "StateSyncRequest" ||
+               messageType == "FullStateSyncRequest" ||
+               messageType == "FullStateSyncResponse";
     }
+
+    // TODO: 实现 FullStateSyncRequest 的服务端处理：
+    // - 由 Host 生成快照/追赶事件并向请求方回复 FullStateSyncResponse（而非简单广播）。
+    // - 将 ReconnectionManager 的快照/事件历史与该请求的响应对齐。
 
     /// <summary>
     /// 处理游戏同步事件

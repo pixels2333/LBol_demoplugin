@@ -262,6 +262,8 @@ public class NetworkClient : INetworkClient
                messageType.StartsWith("Battle") ||
                messageType == "EnemySpawned" ||
                messageType == "StateSyncResponse" ||
+               messageType == "FullStateSyncRequest" ||
+               messageType == "FullStateSyncResponse" ||
                // 系统消息（用于 UI/远程玩家渲染等）：同样走 GameEvent 通道，便于统一订阅
                messageType == "Welcome" ||
                messageType == "PlayerJoined" ||
@@ -269,6 +271,9 @@ public class NetworkClient : INetworkClient
                messageType == "PlayerListUpdate" ||
                messageType == "HostChanged";
     }
+
+    // TODO: 为 FullStateSyncResponse 增加客户端侧“落地消费”：
+    // - 将 FullSnapshot/PlayerSnapshot 应用到本地状态（需补齐 SynchronizationManager 的 ApplyRemoteEvent/CreateGameEventFromNetworkData）。
 
     /// <summary>
     /// 处理游戏同步事件，解析 JSON 数据并触发相应事件
