@@ -428,7 +428,7 @@ public class EnemySyncPatch
                     Type = effect.GetType().Name,
                     Level = effect.Level,
                     Duration = effect.Duration,
-                    IsDebuff = effect.IsDebuff
+                    IsDebuff = false
                 });
             }
         }

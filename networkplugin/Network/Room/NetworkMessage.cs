@@ -31,7 +31,7 @@ public class NetworkMessage
 
             if (Payload is JsonElement element)
             {
-                return element.Deserialize<T>();
+                return JsonSerializer.Deserialize<T>(element.GetRawText());
             }
 
             return JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(Payload));
@@ -47,4 +47,3 @@ public class NetworkMessage
         return GetPayload<RoomConfig>() ?? RoomConfig.Default();
     }
 }
-

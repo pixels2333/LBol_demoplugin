@@ -9,7 +9,7 @@ using NetworkPlugin.Network.Messages;
 
 namespace NetworkPlugin.Network.Server.Core;
 
-public sealed class ServerCore
+public sealed class ServerCore : IServerCore
 {
     private readonly ServerMessageQueue _messageQueue = new ServerMessageQueue();
     private readonly Dictionary<NetPeer, CorePeerSession> _sessions = new Dictionary<NetPeer, CorePeerSession>();
@@ -317,4 +317,3 @@ public sealed class ServerCore
         }
     }
 }
-

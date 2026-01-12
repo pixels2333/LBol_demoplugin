@@ -349,7 +349,7 @@ public class NetworkClient : INetworkClient
     public bool IsConnected => _serverPeer != null && _serverPeer.ConnectionState == ConnectionState.Connected;
 
     public bool IsConnecting
-        => !IsConnected && _netManager?.FirstPeer?.ConnectionState == ConnectionState.Outgoing;
+        => !IsConnected && _netManager?.FirstPeer != null;
 
     public int Ping => _serverPeer?.Ping ?? 0;
 

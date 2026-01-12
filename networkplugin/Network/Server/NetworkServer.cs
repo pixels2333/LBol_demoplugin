@@ -17,14 +17,14 @@ namespace NetworkPlugin.Network.Server;
 /// LiteNetLib网络服务器类
 /// 负责处理客户端连接、消息转发、玩家会话管理和游戏同步
 /// </summary>
-public class NetworkServer
+public class NetworkServer : BaseGameServer
 {
     #region 私有字段
 
     /// <summary>
     /// LiteNetLib事件监听器
     /// </summary>
-    private readonly ServerCore _core;
+    private IServerCore _core => Core;
 
     // 兼容：保留旧实现中对 `_listener/_netManager` 的引用，实际由 ServerCore 托管。
     private EventBasedNetListener _listener => _core.Listener;
@@ -58,9 +58,9 @@ public class NetworkServer
     /// <summary>
     /// 管理玩家会话的字典，键为Peer ID
     /// </summary>
-    private readonly Dictionary<string, PlayerSession> _sessionsByPlayerId = new();
+    private Dictionary<string, PlayerSession> _sessionsByPlayerId => SessionsByPlayerId;
     private readonly Dictionary<int, string> _playerIdByPeerId = new();
-    private readonly Dictionary<string, DateTime> _disconnectedAtByPlayerId = new();
+    private Dictionary<string, DateTime> _disconnectedAtByPlayerId => DisconnectedAtByPlayerId;
     private readonly TimeSpan _reconnectGracePeriod = TimeSpan.FromSeconds(60);
     private readonly Dictionary<int, PlayerSession> _playerSessions = new();
 
@@ -94,6 +94,7 @@ public class NetworkServer
     /// <param name="connectionKey">连接密钥</param>
     /// <param name="logger">日志记录器</param>
     public NetworkServer(int port, int maxConnections, string connectionKey, ManualLogSource logger)
+        : base(CreateCore(port, maxConnections, connectionKey, logger))
     {
         _port = port;
         _maxConnections = maxConnections;
@@ -101,21 +102,7 @@ public class NetworkServer
         // _listener = new EventBasedNetListener(); // 由 ServerCore 托管
         _logger = logger;
 
-        _core = new ServerCore(
-            new ServerOptions
-            {
-                Port = _port,
-                MaxConnections = _maxConnections,
-                ConnectionKey = _connectionKey,
-                DisconnectTimeoutMs = 30_000,
-                PingIntervalMs = 1_000,
-                UseBackgroundThread = false,
-            },
-            new BepInExServerLogger(_logger));
-        // _netManager = new NetManager(_listener); // 由 ServerCore 托管
-
-        // 注册网络事件处理器
-        RegisterCoreEvents();
+        // 事件注册由 BaseGameServer 托管（避免双通道注册导致行为不一致）
     }
 
     #endregion
@@ -379,8 +366,7 @@ public class NetworkServer
     {
         try
         {
-            // 验证发送者是否为已知玩家
-            if (!_playerSessions.TryGetValue(fromPeer.Id, out var session))
+            if (!SessionsByPeer.TryGetValue(fromPeer, out var session))
             {
                 Console.WriteLine($"[Server] Received game event from unknown peer: {fromPeer.EndPoint}");
                 return;
@@ -391,13 +377,10 @@ public class NetworkServer
 
             Console.WriteLine($"[Server] Received game event: {eventType} from {session.PlayerId}");
 
-            // 更新会话活动时间
             session.UpdateMessageTime();
 
-            // 触发游戏事件处理器，通知上层应用
             OnGameEventReceived?.Invoke(eventType, eventData, session);
 
-            // 广播游戏事件给其他玩家（除了发送者）
             BroadcastGameEvent(eventType, eventData, fromPeer.Id);
         }
         catch (Exception ex)
@@ -420,9 +403,8 @@ public class NetworkServer
             string jsonPayload = dataReader.GetString();
             var playerInfo = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonPayload);
 
-            if (_playerSessions.TryGetValue(fromPeer.Id, out var session))
+            if (SessionsByPeer.TryGetValue(fromPeer, out var session))
             {
-                // 提取玩家名称
                 if (playerInfo.TryGetValue("PlayerName", out object nameObj) && nameObj != null)
                 {
                     session.PlayerName = nameObj.ToString();
@@ -435,7 +417,6 @@ public class NetworkServer
 
                 Console.WriteLine($"[Server] Player {session.PlayerName} ({session.PlayerId}) joined the game");
 
-                // 广播玩家加入消息给其他玩家
                 BroadcastMessage("PlayerJoined", new
                 {
                     PlayerId = session.PlayerId,
@@ -444,7 +425,6 @@ public class NetworkServer
                     CharacterId = session.Metadata.TryGetValue("CharacterId", out var cid) ? cid?.ToString() : null
                 }, excludePeerId: fromPeer.Id);
 
-                // 同步全量玩家列表，确保扩展字段（角色/位置）被广播到所有客户端
                 BroadcastPlayerList();
             }
         }
@@ -462,12 +442,10 @@ public class NetworkServer
     /// <param name="fromPeer">发送心跳的网络对等体</param>
     private void HandleHeartbeat(NetPeer fromPeer)
     {
-        if (_playerSessions.TryGetValue(fromPeer.Id, out var session))
+        if (SessionsByPeer.TryGetValue(fromPeer, out var session))
         {
-            // 更新心跳时间
             session.UpdateHeartbeat();
 
-            // 发送心跳响应
             SendMessage(fromPeer, "HeartbeatResponse", new
             {
                 Timestamp = DateTime.UtcNow.Ticks,
@@ -484,7 +462,7 @@ public class NetworkServer
     /// <param name="dataReader">数据读取器（未使用）</param>
     private void HandleGetSelfRequest(NetPeer fromPeer, NetDataReader dataReader)
     {
-        if (_playerSessions.TryGetValue(fromPeer.Id, out var session))
+        if (SessionsByPeer.TryGetValue(fromPeer, out var session))
         {
             var responseData = new
             {
@@ -507,7 +485,7 @@ public class NetworkServer
     {
         try
         {
-            if (!_playerSessions.TryGetValue(fromPeer.Id, out var session))
+            if (!SessionsByPeer.TryGetValue(fromPeer, out var session))
             {
                 return;
             }
@@ -546,7 +524,6 @@ public class NetworkServer
                 session.Metadata["LocationName"] = nameElem.GetString();
             }
 
-            // 广播玩家列表更新（携带位置/外观等扩展字段）
             BroadcastPlayerList();
         }
         catch (Exception ex)
@@ -570,22 +547,21 @@ public class NetworkServer
     {
         string json = JsonSerializer.Serialize(eventData);
 
-        foreach (var kvp in _playerSessions)
+        foreach (var session in SessionsByPeer.Values)
         {
-            // 排除发送者，只转发给其他玩家
-            if (kvp.Key != excludePeerId && kvp.Value.IsConnected)
+            if (session.Peer.Id != excludePeerId && session.IsConnected)
             {
                 try
                 {
                     NetDataWriter writer = new NetDataWriter();
                     writer.Put(eventType);
                     writer.Put(json);
-                    kvp.Value.Peer.Send(writer, DeliveryMethod.ReliableOrdered);
+                    session.Peer.Send(writer, DeliveryMethod.ReliableOrdered);
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[Server] Error broadcasting game event to {kvp.Value.PlayerId}: {ex.Message}");
-                    _logger?.LogError($"[Server] Error broadcasting game event to {kvp.Value.PlayerId}: {ex.Message}");
+                    Console.WriteLine($"[Server] Error broadcasting game event to {session.PlayerId}: {ex.Message}");
+                    _logger?.LogError($"[Server] Error broadcasting game event to {session.PlayerId}: {ex.Message}");
                 }
             }
         }
@@ -599,20 +575,16 @@ public class NetworkServer
     /// <param name="excludePeerId">可选的要排除的Peer ID</param>
     private void BroadcastMessage(string messageType, object data, int? excludePeerId = null)
     {
-        string json = JsonSerializer.Serialize(data);
-
-        foreach (var kvp in _playerSessions)
+        foreach (var session in SessionsByPeer.Values)
         {
-            // 如果指定了要排除的Peer ID，则跳过
-            if (excludePeerId.HasValue && kvp.Key == excludePeerId.Value)
+            if (excludePeerId.HasValue && session.Peer.Id == excludePeerId.Value)
             {
                 continue;
             }
 
-            // 只发送给已连接的玩家
-            if (kvp.Value.IsConnected)
+            if (session.IsConnected)
             {
-                SendMessage(kvp.Value.Peer, messageType, data);
+                SendMessage(session.Peer, messageType, data);
             }
         }
     }
@@ -681,7 +653,7 @@ public class NetworkServer
         };
     }
 
-    private static string GenerateReconnectToken()
+    private static new string GenerateReconnectToken()
     {
         return Guid.NewGuid().ToString("N");
     }
@@ -776,7 +748,7 @@ public class NetworkServer
                 s.IsHost = false;
             }
 
-            var newHost = _playerSessions.Values.FirstOrDefault(s => s.IsConnected);
+            var newHost = SessionsByPeer.Values.FirstOrDefault(s => s.IsConnected);
             if (newHost != null)
             {
                 newHost.IsHost = true;
@@ -798,7 +770,7 @@ public class NetworkServer
     /// <returns>玩家会话集合</returns>
     public IReadOnlyCollection<PlayerSession> GetPlayerSessions()
     {
-        return _playerSessions.Values;
+        return SessionsByPeer.Values;
     }
 
     /// <summary>
@@ -808,14 +780,13 @@ public class NetworkServer
     /// <returns>玩家会话，如果不存在则返回null</returns>
     public PlayerSession GetPlayerSession(int peerId)
     {
-        _playerSessions.TryGetValue(peerId, out var session);
-        return session;
+        return SessionsByPeer.Values.FirstOrDefault(s => s.Peer.Id == peerId);
     }
 
     /// <summary>
     /// 获取当前连接的玩家数量
     /// </summary>
-    public int PlayerCount => _playerSessions.Count;
+    public int PlayerCount => SessionsByPeer.Count;
 
     private void HandleSystemMessage(NetPeer fromPeer, string messageType, string jsonPayload)
     {
@@ -855,7 +826,7 @@ public class NetworkServer
     {
         try
         {
-            if (!_playerSessions.TryGetValue(fromPeer.Id, out var session))
+            if (!SessionsByPeer.TryGetValue(fromPeer, out var session))
             {
                 Console.WriteLine($"[Server] Received game event from unknown peer: {fromPeer.EndPoint}");
                 return;
@@ -881,7 +852,7 @@ public class NetworkServer
         try
         {
             var playerInfo = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonPayload);
-            if (!_playerSessions.TryGetValue(fromPeer.Id, out var session))
+            if (!SessionsByPeer.TryGetValue(fromPeer, out var session))
             {
                 return;
             }
@@ -920,7 +891,7 @@ public class NetworkServer
 
     private void HandleGetSelfRequest(NetPeer fromPeer)
     {
-        if (_playerSessions.TryGetValue(fromPeer.Id, out var session))    
+        if (SessionsByPeer.TryGetValue(fromPeer, out var session))
         {
             var responseData = new
             {
@@ -931,7 +902,7 @@ public class NetworkServer
                 ReconnectToken = TryGetMetadataString(session.Metadata, "ReconnectToken"),
             };
 
-            SendMessage(fromPeer, "GetSelf_RESPONSE", responseData);      
+            SendMessage(fromPeer, "GetSelf_RESPONSE", responseData);
         }
     }
 
@@ -986,8 +957,10 @@ public class NetworkServer
             {
                 _playerIdByPeerId.Remove(fromPeer.Id);
                 _playerSessions.Remove(fromPeer.Id);
+
                 _sessionsByPlayerId.Remove(currentPlayerId);
                 _disconnectedAtByPlayerId.Remove(currentPlayerId);
+                SessionsByPeer.Remove(fromPeer);
             }
 
             targetSession.Peer = fromPeer;
@@ -998,6 +971,9 @@ public class NetworkServer
             _playerIdByPeerId[fromPeer.Id] = targetSession.PlayerId;
             _playerSessions[fromPeer.Id] = targetSession;
             _disconnectedAtByPlayerId.Remove(targetSession.PlayerId);
+
+            // 关键：更新 BaseGameServer 的 peer->session 映射，否则后续收包无法找到 session
+            SessionsByPeer[fromPeer] = targetSession;
 
             SendMessage(fromPeer, "Reconnect_RESPONSE", new
             {
@@ -1020,7 +996,7 @@ public class NetworkServer
     {
         try
         {
-            if (!_playerSessions.TryGetValue(fromPeer.Id, out var session))
+            if (!SessionsByPeer.TryGetValue(fromPeer, out var session))
             {
                 return;
             }
@@ -1071,7 +1047,7 @@ public class NetworkServer
     /// 启动网络服务器
     /// 开始监听指定端口，接受客户端连接
     /// </summary>
-    public void Start()
+    public override void Start()
     {
         _core.Start();
         Console.WriteLine($"[Server] Server started on port {_port}.");
@@ -1082,7 +1058,7 @@ public class NetworkServer
     /// 轮询网络事件
     /// 应在主游戏循环中定期调用以处理网络消息
     /// </summary>
-    public void PollEvents()
+    public override void PollEvents()
     {
         _core.PollEvents();
         CleanupDisconnectedSessions();
@@ -1092,7 +1068,7 @@ public class NetworkServer
     /// 停止网络服务器
     /// 断开所有客户端连接并停止监听
     /// </summary>
-    public void Stop()
+    public override void Stop()
     {
         _core.Stop();
         _playerSessions.Clear();
@@ -1101,6 +1077,75 @@ public class NetworkServer
         _disconnectedAtByPlayerId.Clear();
         Console.WriteLine("[Server] Server stopped.");
         _logger?.LogInfo("[Server] Server stopped.");
+    }
+
+    private static IServerCore CreateCore(int port, int maxConnections, string connectionKey, ManualLogSource logger)
+    {
+        return new ServerCore(
+            new ServerOptions
+            {
+                Port = port,
+                MaxConnections = maxConnections,
+                ConnectionKey = connectionKey,
+                DisconnectTimeoutMs = 30_000,
+                PingIntervalMs = 1_000,
+                UseBackgroundThread = false,
+            },
+            new BepInExServerLogger(logger));
+    }
+
+    protected override TimeSpan ReconnectGracePeriod => _reconnectGracePeriod;
+
+    protected override string CreatePlayerId(NetPeer peer) => $"Player_{peer.Id}";
+
+    protected override PlayerSession CreateSession(NetPeer peer, string playerId)
+    {
+        bool isHost = _sessionsByPlayerId.Values.All(s => !s.IsHost);
+        return new PlayerSession
+        {
+            Peer = peer,
+            PlayerId = playerId,
+            ConnectedAt = DateTime.UtcNow,
+            LastHeartbeat = DateTime.UtcNow,
+            LastMessageAt = DateTime.UtcNow,
+            IsConnected = true,
+            IsHost = isHost
+        };
+    }
+
+    protected override bool IsGameEventType(string messageType) => IsGameEvent(messageType);
+
+    protected override void HandleGameEvent(PlayerSession session, string eventType, string jsonPayload, DeliveryMethod deliveryMethod)
+    {
+        HandleGameEvent(session.Peer, eventType, jsonPayload);
+    }
+
+    protected override void HandleSystemMessage(PlayerSession session, string messageType, string jsonPayload, DeliveryMethod deliveryMethod)
+    {
+        HandleSystemMessage(session.Peer, messageType, jsonPayload);
+    }
+
+    protected override void OnSessionConnected(PlayerSession session)
+    {
+        _playerIdByPeerId[session.Peer.Id] = session.PlayerId;
+        _playerSessions[session.Peer.Id] = session;
+
+        Console.WriteLine($"[Server] Client connected: {session.Peer.EndPoint}");
+        _logger?.LogInfo($"[Server] Client connected: {session.Peer.EndPoint}");
+
+        BroadcastPlayerList();
+        SendWelcomeMessage(session.Peer, session);
+    }
+
+    protected override void OnSessionDisconnected(PlayerSession session, DisconnectInfo disconnectInfo)
+    {
+        Console.WriteLine($"[Server] Client disconnected: {session.Peer.EndPoint}, Reason: {disconnectInfo.Reason}");
+        _logger?.LogInfo($"[Server] Client disconnected: {session.Peer.EndPoint}, Reason: {disconnectInfo.Reason}");
+
+        _playerIdByPeerId.Remove(session.Peer.Id);
+        _playerSessions.Remove(session.Peer.Id);
+
+        BroadcastPlayerList();
     }
 
     #endregion

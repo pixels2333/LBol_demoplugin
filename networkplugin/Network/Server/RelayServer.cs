@@ -10,53 +10,41 @@ using NetworkPlugin.Configuration;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.Room;
 using NetworkPlugin.Network.Server.Core;
+using NetworkPlugin.Network.Utils;
 
 namespace NetworkPlugin.Network.Server;
 
-public class RelayServer
+public class RelayServer : BaseGameServer
 {
     private readonly ILogger<RelayServer> _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly ConfigManager _configManager;
 
-    private readonly object _lock = new();
+    private object _lock => SyncRoot;
     private readonly Dictionary<string, NetworkRoom> _rooms = [];
-    private readonly Dictionary<NetPeer, PlayerSession> _sessionsByPeer = [];
-    private readonly Dictionary<string, PlayerSession> _sessionsByPlayerId = [];
+    private Dictionary<NetPeer, PlayerSession> _sessionsByPeer => SessionsByPeer;
+    private Dictionary<string, PlayerSession> _sessionsByPlayerId => SessionsByPlayerId;
     private readonly Dictionary<string, NetworkConnection> _connectionsByPlayerId = [];
+    private Dictionary<string, DateTime> _disconnectedAtByPlayerId => DisconnectedAtByPlayerId;
+    private readonly TimeSpan _reconnectGracePeriod = TimeSpan.FromSeconds(60);
 
-    private readonly ServerCore _core;
+    private IServerCore _core => Core;
 
     public RelayServer(ILogger<RelayServer> logger, IServiceProvider serviceProvider, ConfigManager configManager)
+        : base(CreateCore(configManager, logger))
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
         _configManager = configManager;
-
-        _core = new ServerCore(
-            new ServerOptions
-            {
-                Port = _configManager.RelayServerPort.Value,
-                MaxConnections = _configManager.RelayServerMaxConnections.Value,
-                ConnectionKey = _configManager.RelayServerConnectionKey.Value,
-                DisconnectTimeoutMs = _configManager.NetworkTimeoutSeconds.Value * 1000,
-                PingIntervalMs = 1000,
-                MaxQueueSize = 2000,
-                UseBackgroundThread = true,
-                BackgroundThreadSleepMs = 15,
-            },
-            new MicrosoftServerLogger(_logger));
-
-        RegisterCoreEvents();
     }
 
-    public void Start()
+    public override void Start()
     {
         _core.Start();
         _logger.LogInformation($"[RelayServer] Server started on port {_configManager.RelayServerPort.Value}");
     }
 
-    public void Stop()
+    public override void Stop()
     {
         _logger.LogInformation("[RelayServer] Stopping server...");
         _core.Stop();
@@ -66,6 +54,7 @@ public class RelayServer
             _connectionsByPlayerId.Clear();
             _sessionsByPlayerId.Clear();
             _sessionsByPeer.Clear();
+            _disconnectedAtByPlayerId.Clear();
             _rooms.Clear();
         }
 
@@ -92,6 +81,8 @@ public class RelayServer
                     CurrentRoomId = string.Empty
                 };
 
+                session.Metadata["ReconnectToken"] = GenerateReconnectToken();
+
                 _sessionsByPeer[peer] = session;
                 _sessionsByPlayerId[playerId] = session;
                 _connectionsByPlayerId[playerId] = new NetworkConnection(peer, playerId);
@@ -102,6 +93,7 @@ public class RelayServer
                     Payload = new
                     {
                         PlayerId = playerId,
+                        ReconnectToken = TryGetMetadataString(session.Metadata, "ReconnectToken"),
                         ServerTime = DateTime.UtcNow.Ticks
                     },
                     SenderPlayerId = "SERVER"
@@ -120,9 +112,10 @@ public class RelayServer
                     return;
                 }
 
-                _logger.LogInformation($"[RelayServer] Client disconnected: {peer.EndPoint}, Reason: {disconnectInfo.Reason}, PlayerId={session.PlayerId}");
+                _logger.LogInformation($"[RelayServer] Client disconnected: {peer.EndPoint}, Reason: {disconnectInfo.Reason}, PlayerId={session.PlayerId}");    
 
                 session.IsConnected = false;
+                _disconnectedAtByPlayerId[session.PlayerId] = DateTime.UtcNow;
 
                 if (!string.IsNullOrEmpty(session.CurrentRoomId) && _rooms.TryGetValue(session.CurrentRoomId, out var room))
                 {
@@ -137,7 +130,6 @@ public class RelayServer
                 }
 
                 _connectionsByPlayerId.Remove(session.PlayerId);
-                _sessionsByPlayerId.Remove(session.PlayerId);
                 _sessionsByPeer.Remove(peer);
             }
         };
@@ -209,6 +201,16 @@ public class RelayServer
                     return;
                 case "KickPlayer":
                     HandleKickPlayer(session, message);
+                    return;
+                case "Reconnect_REQUEST":
+                    HandleReconnectRequest(fromPeer, message);
+                    return;
+
+                case NetworkMessageTypes.NatInfoReport:
+                    HandleNatInfoReport(session, message);
+                    return;
+                case NetworkMessageTypes.NatInfoRequest:
+                    HandleNatInfoRequest(session, message);
                     return;
 
                 // 兼容 Host 模式依赖的系统消息（按房间作用域生效）
@@ -446,6 +448,139 @@ public class RelayServer
 
         room.RemovePlayer(targetPlayerId);
         BroadcastPlayerList(room);
+    }
+
+    private sealed class ReconnectRequest
+    {
+        public string PlayerId { get; set; } = string.Empty;
+        public string ReconnectToken { get; set; } = string.Empty;
+    }
+
+    private void HandleReconnectRequest(NetPeer fromPeer, NetworkMessage message)
+    {
+        try
+        {
+            ReconnectRequest request = JsonSerializer.Deserialize<ReconnectRequest>(message.Payload?.ToString() ?? string.Empty);
+            if (request == null || string.IsNullOrWhiteSpace(request.PlayerId) || string.IsNullOrWhiteSpace(request.ReconnectToken))
+            {
+                SendMessageToPeer(fromPeer, new NetworkMessage { Type = "Reconnect_RESPONSE", Payload = new { Success = false, Error = "Invalid request" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
+                return;
+            }
+
+            lock (_lock)
+            {
+                if (!_sessionsByPlayerId.TryGetValue(request.PlayerId, out var session))
+                {
+                    SendMessageToPeer(fromPeer, new NetworkMessage { Type = "Reconnect_RESPONSE", Payload = new { Success = false, Error = "Unknown playerId" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
+                    return;
+                }
+
+                if (session.IsConnected)
+                {
+                    SendMessageToPeer(fromPeer, new NetworkMessage { Type = "Reconnect_RESPONSE", Payload = new { Success = false, Error = "Already connected" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
+                    return;
+                }
+
+                string expectedToken = TryGetMetadataString(session.Metadata, "ReconnectToken");
+                if (!string.Equals(expectedToken, request.ReconnectToken, StringComparison.Ordinal))
+                {
+                    SendMessageToPeer(fromPeer, new NetworkMessage { Type = "Reconnect_RESPONSE", Payload = new { Success = false, Error = "Invalid token" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
+                    return;
+                }
+
+                if (_disconnectedAtByPlayerId.TryGetValue(request.PlayerId, out var disconnectedAt) &&
+                    DateTime.UtcNow - disconnectedAt > _reconnectGracePeriod)
+                {
+                    SendMessageToPeer(fromPeer, new NetworkMessage { Type = "Reconnect_RESPONSE", Payload = new { Success = false, Error = "Reconnect window expired" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
+                    return;
+                }
+
+                session.Peer = fromPeer;
+                session.IsConnected = true;
+                session.UpdateHeartbeat();
+                session.UpdateMessageTime();
+
+                _sessionsByPeer[fromPeer] = session;
+                _connectionsByPlayerId[session.PlayerId] = new NetworkConnection(fromPeer, session.PlayerId, session.CurrentRoomId);
+                _disconnectedAtByPlayerId.Remove(session.PlayerId);
+
+                SendMessageToPeer(fromPeer, new NetworkMessage
+                {
+                    Type = "Reconnect_RESPONSE",
+                    Payload = new
+                    {
+                        Success = true,
+                        PlayerId = session.PlayerId,
+                        PlayerName = session.PlayerName,
+                        CurrentRoomId = session.CurrentRoomId
+                    },
+                    SenderPlayerId = "SERVER"
+                }, DeliveryMethod.ReliableOrdered);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[RelayServer] Error handling Reconnect_REQUEST");
+            SendMessageToPeer(fromPeer, new NetworkMessage { Type = "Reconnect_RESPONSE", Payload = new { Success = false, Error = "Server error" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
+        }
+    }
+
+    private void HandleNatInfoReport(PlayerSession session, NetworkMessage message)
+    {
+        try
+        {
+            JsonElement root = GetJsonElement(message.Payload);
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                SendMessageToPeer(session.Peer, new NetworkMessage { Type = NetworkMessageTypes.NatError, Payload = new { Error = "Invalid payload" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
+                return;
+            }
+
+            NatTraversal.NatInfo natInfo = JsonSerializer.Deserialize<NatTraversal.NatInfo>(root.GetRawText());
+            if (natInfo == null)
+            {
+                SendMessageToPeer(session.Peer, new NetworkMessage { Type = NetworkMessageTypes.NatError, Payload = new { Error = "Invalid natInfo" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
+                return;
+            }
+
+            NatTraversal.RegisterPeerNatInfo(session.PlayerId, natInfo);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[RelayServer] Error handling NatInfoReport");
+        }
+    }
+
+    private void HandleNatInfoRequest(PlayerSession session, NetworkMessage message)
+    {
+        try
+        {
+            string targetPlayerId = TryGetStringProperty(message.Payload, "TargetPlayerId");
+            if (string.IsNullOrWhiteSpace(targetPlayerId))
+            {
+                SendMessageToPeer(session.Peer, new NetworkMessage { Type = NetworkMessageTypes.NatError, Payload = new { Error = "Missing TargetPlayerId" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
+                return;
+            }
+
+            NatTraversal.NatInfo natInfo = NatTraversal.GetPeerNatInfo(targetPlayerId);
+            if (natInfo == null)
+            {
+                SendMessageToPeer(session.Peer, new NetworkMessage { Type = NetworkMessageTypes.NatError, Payload = new { Error = "Nat info not found" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
+                return;
+            }
+
+            SendMessageToPeer(session.Peer, new NetworkMessage
+            {
+                Type = NetworkMessageTypes.NatInfoResponse,
+                Payload = new { TargetPlayerId = targetPlayerId, NatInfo = natInfo },
+                SenderPlayerId = "SERVER"
+            }, DeliveryMethod.ReliableOrdered);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[RelayServer] Error handling NatInfoRequest");
+            SendMessageToPeer(session.Peer, new NetworkMessage { Type = NetworkMessageTypes.NatError, Payload = new { Error = "Server error" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
+        }
     }
 
     private void HandlePlayerJoined(PlayerSession session, NetworkMessage message)
@@ -716,7 +851,115 @@ public class RelayServer
         }
     }
 
+    private static IServerCore CreateCore(ConfigManager configManager, ILogger<RelayServer> logger)
+    {
+        return new ServerCore(
+            new ServerOptions
+            {
+                Port = configManager.RelayServerPort.Value,
+                MaxConnections = configManager.RelayServerMaxConnections.Value,
+                ConnectionKey = configManager.RelayServerConnectionKey.Value,
+                DisconnectTimeoutMs = configManager.NetworkTimeoutSeconds.Value * 1000,
+                PingIntervalMs = 1000,
+                MaxQueueSize = 2000,
+                UseBackgroundThread = true,
+                BackgroundThreadSleepMs = 15,
+            },
+            new MicrosoftServerLogger(logger));
+    }
+
+    protected override TimeSpan ReconnectGracePeriod => _reconnectGracePeriod;
+
+    protected override string CreatePlayerId(NetPeer peer) => GeneratePlayerId();
+
+    protected override PlayerSession CreateSession(NetPeer peer, string playerId)
+    {
+        return new PlayerSession
+        {
+            Peer = peer,
+            PlayerId = playerId,
+            PlayerName = $"Player_{playerId[..6]}",
+            ConnectedAt = DateTime.UtcNow,
+            LastHeartbeat = DateTime.UtcNow,
+            LastMessageAt = DateTime.UtcNow,
+            IsConnected = true,
+            IsHost = false,
+            CurrentRoomId = string.Empty
+        };
+    }
+
+    protected override bool IsGameEventType(string messageType) => IsGameEvent(messageType);
+
+    protected override void HandleGameEvent(PlayerSession session, string eventType, string jsonPayload, DeliveryMethod deliveryMethod)
+    {
+        ProcessMessage(session.Peer, new NetworkMessage
+        {
+            Type = eventType,
+            Payload = jsonPayload,
+            SenderPlayerId = session.PlayerId
+        }, deliveryMethod);
+    }
+
+    protected override void HandleSystemMessage(PlayerSession session, string messageType, string jsonPayload, DeliveryMethod deliveryMethod)
+    {
+        ProcessMessage(session.Peer, new NetworkMessage
+        {
+            Type = messageType,
+            Payload = jsonPayload,
+            SenderPlayerId = session.PlayerId
+        }, deliveryMethod);
+    }
+
+    protected override void OnSessionConnected(PlayerSession session)
+    {
+        lock (_lock)
+        {
+            _connectionsByPlayerId[session.PlayerId] = new NetworkConnection(session.Peer, session.PlayerId);
+        }
+
+        SendMessageToPeer(session.Peer, new NetworkMessage
+        {
+            Type = "Welcome",
+            Payload = new
+            {
+                PlayerId = session.PlayerId,
+                ReconnectToken = TryGetMetadataString(session.Metadata, "ReconnectToken"),
+                ServerTime = DateTime.UtcNow.Ticks
+            },
+            SenderPlayerId = "SERVER"
+        }, DeliveryMethod.ReliableOrdered);
+
+        _logger.LogInformation($"[RelayServer] Client connected: {session.Peer.EndPoint}, PlayerId={session.PlayerId}");
+    }
+
+    protected override void OnSessionDisconnected(PlayerSession session, DisconnectInfo disconnectInfo)
+    {
+        lock (_lock)
+        {
+            _logger.LogInformation($"[RelayServer] Client disconnected: {session.Peer.EndPoint}, Reason: {disconnectInfo.Reason}, PlayerId={session.PlayerId}");
+
+            if (!string.IsNullOrEmpty(session.CurrentRoomId) && _rooms.TryGetValue(session.CurrentRoomId, out var room))
+            {
+                room.RemovePlayer(session.PlayerId);
+                BroadcastPlayerList(room);
+
+                if (room.PlayerCount == 0)
+                {
+                    _rooms.Remove(room.RoomId);
+                    _logger.LogInformation($"[RelayServer] Room {room.RoomId} destroyed (empty)");
+                }
+            }
+
+            _connectionsByPlayerId.Remove(session.PlayerId);
+        }
+    }
+
     private static string GeneratePlayerId()
+    {
+        return Guid.NewGuid().ToString("N");
+    }
+
+    private static new string GenerateReconnectToken()
     {
         return Guid.NewGuid().ToString("N");
     }
@@ -728,4 +971,3 @@ public class RelayServer
         return new string(Enumerable.Repeat(chars, 6).Select(s => s[random.Next(s.Length)]).ToArray());
     }
 }
-

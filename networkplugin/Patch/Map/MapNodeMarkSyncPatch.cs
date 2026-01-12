@@ -8,6 +8,7 @@ using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.UI.Widgets;
 using Microsoft.Extensions.DependencyInjection;
+using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.NetworkPlayer;
