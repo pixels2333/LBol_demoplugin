@@ -385,7 +385,7 @@ public static class EnemySpawnSyncPatch
                     continue;
                 }
 
-                if (index >= 0 && e.Index != index)
+                if (index >= 0 && e.RootIndex != index)
                 {
                     continue;
                 }

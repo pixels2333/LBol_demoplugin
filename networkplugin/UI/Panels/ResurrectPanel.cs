@@ -292,10 +292,13 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 	/// 更新UI状态文本
 	/// </summary>
 	/// <param name="message">要显示的消息</param>
-	private void UpdateUIStatus(string message)
-	{
-		statusText?.text = message;
-	}
+        private void UpdateUIStatus(string message)
+        {
+                if (statusText != null)
+                {
+                        statusText.text = message;
+                }
+        }
 
 	/// <summary>
 	/// 创建玩家条目
@@ -387,7 +390,10 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		UpdateUIStatus($"{player.PlayerName} - {_resurrectionCost} Gold");
 
 		// 更新费用文本
-		costText?.text = "Resurrect.Cost".Localize() + $": {_resurrectionCost}";
+                if (costText != null)
+                {
+                        costText.text = "Resurrect.Cost".Localize() + $": {_resurrectionCost}";
+                }
 
 		// 检查是否有足够金币
 		bool canAfford = GameRun.Money >= _resurrectionCost;
@@ -410,7 +416,10 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 	/// </summary>
 	private void UpdateGoldDisplay()
 	{
-		goldAmount?.text = "Resurrect.CurrentGold".Localize() + $": {GameRun.Money}";
+                if (goldAmount != null)
+                {
+                        goldAmount.text = "Resurrect.CurrentGold".Localize() + $": {GameRun.Money}";
+                }
 	}
 	#endregion
 

@@ -175,16 +175,39 @@ public static class RemoteCardUsePatch
                 card.KickerPlaying = false; // 重置踢球状态
             }
         }
-        catch
-        {
-            // ignored
-        }
+            catch
+            {
+                // ignored
+            }
 
-        // 仅当卡牌已移动到PlayArea时退还法力（UseCardAction路径）
-        BattleAction refundAction = null;
-        try
-        {
-            if (battle != null && card != null && card.Zone == CardZone.PlayArea && consumingMana.Total > 0)
+            // 退还金钱（在 PlayCardAction/UseCardAction 中，金钱可能已在 GetActions 之前被扣除）
+            BattleAction refundMoneyAction = null;
+            try
+            {
+                int? moneyCost = null;
+                try { moneyCost = card?.Config?.MoneyCost; } catch { moneyCost = null; }
+
+                if (battle != null && card != null && moneyCost != null && moneyCost.Value > 0 &&
+                    (card.Zone == CardZone.PlayArea || card.Zone == CardZone.FollowArea))
+                {
+                    refundMoneyAction = new GainMoneyAction(moneyCost.Value);
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            if (refundMoneyAction != null)
+            {
+                yield return refundMoneyAction;
+            }
+
+            // 仅当卡牌已移动到PlayArea时退还法力（UseCardAction路径）      
+            BattleAction refundAction = null;
+            try
+            {
+                if (battle != null && card != null && card.Zone == CardZone.PlayArea && consumingMana.Total > 0)
             {
                 refundAction = new GainManaAction(consumingMana); // 退还法力
             }
@@ -360,7 +383,42 @@ public static class RemoteCardUsePatch
         }
     }
 
-    #region Send (patch Card.GetActions)
+        #region Send (patch Card.GetActions)
+
+        [HarmonyPatch(typeof(BattleController), "RequestUseCard", typeof(Card), typeof(UnitSelector), typeof(ManaGroup), typeof(bool))]
+        [HarmonyPrefix]
+        private static bool BattleController_RequestUseCard_Prefix(Card card, UnitSelector selector)
+        {
+            try
+            {
+                if (card == null || selector == null)
+                {
+                    return true;
+                }
+
+                if (selector.Type != TargetType.SingleEnemy)
+                {
+                    return true;
+                }
+
+                if (selector.SelectedEnemy is not RemotePlayerProxyEnemy proxy || string.IsNullOrWhiteSpace(proxy.RemotePlayerId))
+                {
+                    return true;
+                }
+
+                if (IsConnected(out _))
+                {
+                    return true;
+                }
+
+                ShowTopMessage("未连接，无法对队友出牌。");
+                return false;
+            }
+            catch
+            {
+                return true;
+            }
+        }
 
     /// <summary>
     /// Card.GetActions的前缀补丁，拦截对远程玩家代理目标的卡牌使用
@@ -664,6 +722,13 @@ public static class RemoteCardUsePatch
         {
             _selfPlayerId = null; // 断开连接时清空自身玩家ID
         }
+
+        lock (_resolvedLock)
+        {
+            _lastResolvedSeqByTarget.Clear();
+            _lastResolvedTimestampByTarget.Clear();
+            _processedResolvedRequestIdsByTarget.Clear();
+        }
     }
 
     /// <summary>
@@ -873,12 +938,29 @@ public static class RemoteCardUsePatch
                 cardType = GetString(cardEl, "CardType"); // 获取卡牌类型
             }
 
-            string anim = MapCardTypeToAnimation(cardType); // 映射卡牌类型到动画
+                string anim = MapCardTypeToAnimation(cardType); // 映射卡牌类型到动画
 
-            if (!string.IsNullOrWhiteSpace(senderId) && OtherPlayersOverlayPatch.TryGetRemoteCharacterUnitView(senderId, out UnitView casterView))
-            {
-                casterView.PlayAnimation(anim); // 播放施法者动画
-            }
+                string selfId;
+                lock (_syncLock)
+                {
+                    selfId = _selfPlayerId; // 获取自身ID
+                }
+
+                if (!string.IsNullOrWhiteSpace(senderId) && OtherPlayersOverlayPatch.TryGetRemoteCharacterUnitView(senderId, out UnitView casterView))      
+                {	
+                    casterView.PlayAnimation(anim); // 播放施法者动画       
+                }
+                else if (!string.IsNullOrWhiteSpace(selfId) && !string.IsNullOrWhiteSpace(senderId) && string.Equals(selfId, senderId, StringComparison.Ordinal))
+                {
+                    try
+                    {
+                        Singleton<GameDirector>.Instance?.PlayerUnitView?.PlayAnimation(anim); // 自身施法动画兜底
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
+                }
 
             bool hasDamage = false;
             try
@@ -910,17 +992,11 @@ public static class RemoteCardUsePatch
                 return; // 没有伤害或目标ID为空时返回
             }
 
-            string selfId;
-            lock (_syncLock)
-            {
-                selfId = _selfPlayerId; // 获取自身ID
-            }
-
-            if (!string.IsNullOrWhiteSpace(selfId) && string.Equals(selfId, targetId, StringComparison.Ordinal))
-            {
-                try
+                if (!string.IsNullOrWhiteSpace(selfId) && string.Equals(selfId, targetId, StringComparison.Ordinal))
                 {
-                    Singleton<GameDirector>.Instance?.PlayerUnitView?.PlayAnimation("hit"); // 播放自身受击动画
+                    try
+                    {
+                        Singleton<GameDirector>.Instance?.PlayerUnitView?.PlayAnimation("hit"); // 播放自身受击动画
                 }
                 catch
                 {

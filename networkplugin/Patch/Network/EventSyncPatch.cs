@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using LBoL.Core.Adventures;
 using Microsoft.Extensions.DependencyInjection;
+using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 
 namespace NetworkPlugin.Patch.Network;

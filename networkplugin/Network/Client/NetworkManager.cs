@@ -14,10 +14,11 @@ namespace NetworkPlugin.Network.Client;
 /// </summary>
 /// <param name="networkClient">网络客户端实例，用于处理网络通信</param>
 /// <remarks>
-/// 这个类目前是一个基础实现框架，所有方法都抛出NotImplementedException
-/// 在后续开发中需要实现完整的玩家管理逻辑
+/// 这个类是客户端侧的轻量玩家管理实现：
+/// - 玩家列表/身份主要由服务器 GameEvent 驱动（见 <see cref="NetworkIdentityTracker"/>）。
+/// - 远端玩家的“真实同步”由各个 *SyncPatch 负责，本类只维护可查询的玩家集合。
 /// </remarks>
-public class NetworkManager : INetworkManager     
+public class NetworkManager : INetworkManager
 {
     #region 私有字段
 
@@ -83,13 +84,9 @@ public class NetworkManager : INetworkManager
     /// 根据玩家ID获取对应的网络玩家实例
     /// </summary>
     /// <param name="id">玩家的唯一标识符</param>
-    /// <returns>对应的INetworkPlayer实例，如果未找到则返回null</returns>
-    /// <exception cref="NotImplementedException">当前方法尚未实现</exception>
+    /// <returns>对应的INetworkPlayer实例，如果未找到则返回null</returns> 
     /// <remarks>
-    /// 待实现功能：
-    /// 1. 在内部玩家集合中查找指定ID的玩家
-    /// 2. 处理ID不存在的情况
-    /// 3. 考虑ID格式验证和错误处理
+    /// 本方法会先与 <see cref="NetworkIdentityTracker"/> 同步玩家ID列表，然后在本地缓存中查询。
     /// </remarks>
     public INetworkPlayer GetPlayer(string id)
     {
@@ -104,11 +101,6 @@ public class NetworkManager : INetworkManager
             _players.TryGetValue(id, out var player);
             return player;
         }
-        // TODO: 实现根据ID获取玩家的逻辑
-        // 1. 验证输入的ID参数
-        // 2. 在内部玩家集合中查找匹配的玩家
-        // 3. 返回找到的玩家实例或null
-        // unreachable (return player above); kept as comment placeholder
     }
 
     /// <summary>
@@ -156,27 +148,12 @@ public class NetworkManager : INetworkManager
     /// 获取当前本地玩家的网络玩家实例
     /// </summary>
     /// <returns>当前玩家的INetworkPlayer实例，如果未注册则返回null</returns>
-    /// <exception cref="NotImplementedException">当前方法尚未实现</exception>
     /// <remarks>
-    /// 待实现功能：
-    /// 1. 通过网络客户端获取当前用户信息
-    /// 2. 查找或创建对应的网络玩家实例
-    /// 3. 处理用户未登录或未注册的情况
-    ///
-    /// 注释掉的代码展示了可能的实现思路：
-    /// - networkClient.SendRequest("GetSelf", ClientData.username);
-    /// 这表明需要通过网络请求获取当前用户信息
+    /// 本地玩家对象在构造函数中注入（或创建）并保持稳定引用；其 <c>userName</c> 会在可能时
+    /// 优先使用服务器侧分配的 PlayerId（见 <see cref="NetworkIdentityTracker.GetSelfPlayerId"/>）。
     /// </remarks>
     public INetworkPlayer GetSelf()
     {
-        // TODO: 实现获取当前玩家实例的逻辑
-        // 1. 获取当前登录用户的用户名/ID
-        // 2. 在玩家集合中查找对应的网络玩家
-        // 3. 如果不存在，考虑自动创建或返回null
-
-        // 示例实现思路（已注释）：
-        // networkClient.SendRequest("GetSelf", ClientData.username);
-
         return _selfPlayer;
     }
 
@@ -184,24 +161,12 @@ public class NetworkManager : INetworkManager
     /// 注册新的网络玩家到管理器中
     /// </summary>
     /// <param name="player">要注册的网络玩家实例</param>
-    /// <exception cref="NotImplementedException">当前方法尚未实现</exception>
     /// <exception cref="ArgumentNullException">当player参数为null时</exception>
     /// <remarks>
-    /// 待实现功能：
-    /// 1. 验证玩家实例的有效性
-    /// 2. 检查玩家ID是否已存在
-    /// 3. 将玩家添加到内部管理集合中
-    /// 4. 触发玩家注册事件
-    /// 5. 处理重复注册的错误情况
+    /// 本方法仅维护本地玩家集合与快照缓存，不负责网络广播；网络侧的加入/离开由事件驱动同步。
     /// </remarks>
     public void RegisterPlayer(INetworkPlayer player)
     {
-        // TODO: 实现注册玩家的逻辑
-        // 1. 验证player参数不为null
-        // 2. 检查玩家ID是否已存在，避免重复注册
-        // 3. 将玩家添加到内部管理集合中
-        // 4. 更新联机状态
-        // 5. 通知其他系统玩家已加入
         if (player == null)
         {
             throw new ArgumentNullException(nameof(player));
@@ -234,25 +199,11 @@ public class NetworkManager : INetworkManager
     /// 从管理器中移除指定的网络玩家
     /// </summary>
     /// <param name="id">要移除的玩家ID</param>
-    /// <exception cref="NotImplementedException">当前方法尚未实现</exception>
-    /// <exception cref="ArgumentException">当id参数为空或无效时</exception>
     /// <remarks>
-    /// 待实现功能：
-    /// 1. 验证玩家ID的有效性
-    /// 2. 在内部集合中查找并移除指定玩家
-    /// 3. 处理玩家不存在的情况
-    /// 4. 清理玩家相关资源
-    /// 5. 触发玩家移除事件
-    /// 6. 更新联机状态
+    /// 本方法仅修改本地集合并刷新快照；玩家离开事件会由网络事件驱动同步。
     /// </remarks>
     public void RemovePlayer(string id)
     {
-        // TODO: 实现移除玩家的逻辑
-        // 1. 验证id参数的有效性
-        // 2. 在内部集合中查找指定ID的玩家
-        // 3. 移除玩家并清理相关资源
-        // 4. 更新联机状态
-        // 5. 通知其他系统玩家已离开
         if (string.IsNullOrWhiteSpace(id))
         {
             return;
@@ -306,10 +257,53 @@ public class NetworkManager : INetworkManager
     /// 当接收到玩家状态更新时调用
     /// </summary>
     /// <param name="playerInfo">更新后的玩家信息</param>
-    internal void UpdatePlayerInfo(dynamic playerInfo)
+    internal void UpdatePlayerInfo(object playerInfo)
     {
-        // TODO: 实现玩家信息更新逻辑
-        // 解析玩家信息并更新相应的玩家实例
+        if (playerInfo == null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (!TryGetJsonElement(playerInfo, out JsonElement root))
+            {
+                string s = playerInfo as string ?? playerInfo.ToString();
+                if (string.IsNullOrWhiteSpace(s) || !TryGetJsonElement(s, out root))
+                {
+                    return;
+                }
+            }
+
+            if (root.ValueKind == JsonValueKind.Array)
+            {
+                UpdatePlayersFromArray(root);
+                return;
+            }
+
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                return;
+            }
+
+            if (TryGetPlayersArrayFromWelcome(root, out JsonElement list))
+            {
+                UpdatePlayersFromArray(list);
+                return;
+            }
+
+            if (root.TryGetProperty("Players", out JsonElement players) && players.ValueKind == JsonValueKind.Array)
+            {
+                UpdatePlayersFromArray(players);
+                return;
+            }
+
+            UpdateSinglePlayer(root);
+        }
+        catch
+        {
+            // ignored
+        }
     }
 
     public INetworkPlayer GetPlayerByPeerId(int peerId)

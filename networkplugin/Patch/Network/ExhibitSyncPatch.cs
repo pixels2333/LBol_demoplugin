@@ -5,6 +5,7 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin;
+using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 
 namespace NetworkPlugin.Patch.Network;
@@ -70,7 +71,7 @@ public static class ExhibitSyncPatch
                 }
 
                 var battle = __instance.Battle;
-                if (battle == null || battle.BattleShouldEnd || battle.PlayerTurnShouldEnd || !HasAliveEnemies(battle))
+                if (battle == null || battle.BattleShouldEnd || !HasAliveEnemies(battle))
                 {
                     return;
                 }

@@ -203,14 +203,23 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         ResetTradeData();
 
         // 设置玩家名称显示（使用默认值兜底）
-        player1NameText?.text = payload?.Player1Name ?? "Player 1";
-        player2NameText?.text = payload?.Player2Name ?? "Player 2";
+        if (player1NameText != null)
+        {
+            player1NameText.text = payload?.Player1Name ?? "Player 1";
+        }
+        if (player2NameText != null)
+        {
+            player2NameText.text = payload?.Player2Name ?? "Player 2";
+        }
 
         // 根据配置显示/隐藏取消按钮
         cancelButton?.gameObject.SetActive(_canCancel);
 
         // 允许面板交互
-        _canvasGroup?.interactable = true;
+        if (_canvasGroup != null)
+        {
+            _canvasGroup.interactable = true;
+        }
 
         // 刷新本地化文案
         UpdateUIStrings();
@@ -233,7 +242,10 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     protected override void OnHiding()
     {
         // 隐藏动画开始时禁用交互
-        _canvasGroup?.interactable = false;
+        if (_canvasGroup != null)
+        {
+            _canvasGroup.interactable = false;
+        }
 
         // 取消注册输入处理器
         UiManager.PopActionHandler(this);
@@ -292,7 +304,10 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
 
         // 默认禁止点击确认按钮，直到双方都放入了卡牌
-        confirmButton?.button?.interactable = false;
+        if (confirmButton?.button != null)
+        {
+            confirmButton.button.interactable = false;
+        }
     }
 
     /// <summary>
@@ -301,7 +316,10 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     /// <param name="message">要显示的消息内容。</param>
     private void UpdateUIStatus(string message)
     {
-        statusText?.text = message;
+        if (statusText != null)
+        {
+            statusText.text = message;
+        }
     }
 
     #endregion
@@ -405,7 +423,10 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         bool bothPlayersReady = _player1OfferedCards.Count > 0 && _player2OfferedCards.Count > 0;
 
         // 根据当前是否满足条件更新确认按钮状态
-        confirmButton?.button?.interactable = bothPlayersReady;
+        if (confirmButton?.button != null)
+        {
+            confirmButton.button.interactable = bothPlayersReady;
+        }
 
         // 更新提示文本
         if (bothPlayersReady)
@@ -470,8 +491,14 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private IEnumerator ExecuteTrade()
     {
         // 禁用按钮以防止重复点击触发多次交易
-        confirmButton?.button?.interactable = false;
-        cancelButton?.button?.interactable = false;
+        if (confirmButton?.button != null)
+        {
+            confirmButton.button.interactable = false;
+        }
+        if (cancelButton?.button != null)
+        {
+            cancelButton.button.interactable = false;
+        }
 
         // 将玩家1提供的卡牌从其卡组移除并加入到玩家2（当前实现视为本地玩家）
         foreach (Card card in _player1OfferedCards)

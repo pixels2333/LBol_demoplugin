@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyFirstPlugin", "MyFirstPlugin\MyFirstPlugin.csproj", "{25C0E399-F7D9-4E2A-A249-9376E66E383C}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "debugtools", "debugtools\debugtools.csproj", "{9F303A13-5D15-4788-BA9C-38466F79C65D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "networkplugin", "networkplugin\networkplugin.csproj", "{A9E205B8-876D-4E45-A583-DAC7893551A6}"
@@ -31,18 +29,6 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{25C0E399-F7D9-4E2A-A249-9376E66E383C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{25C0E399-F7D9-4E2A-A249-9376E66E383C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{25C0E399-F7D9-4E2A-A249-9376E66E383C}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{25C0E399-F7D9-4E2A-A249-9376E66E383C}.Debug|x64.Build.0 = Debug|Any CPU
-		{25C0E399-F7D9-4E2A-A249-9376E66E383C}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{25C0E399-F7D9-4E2A-A249-9376E66E383C}.Debug|x86.Build.0 = Debug|Any CPU
-		{25C0E399-F7D9-4E2A-A249-9376E66E383C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{25C0E399-F7D9-4E2A-A249-9376E66E383C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{25C0E399-F7D9-4E2A-A249-9376E66E383C}.Release|x64.ActiveCfg = Release|Any CPU
-		{25C0E399-F7D9-4E2A-A249-9376E66E383C}.Release|x64.Build.0 = Release|Any CPU
-		{25C0E399-F7D9-4E2A-A249-9376E66E383C}.Release|x86.ActiveCfg = Release|Any CPU
-		{25C0E399-F7D9-4E2A-A249-9376E66E383C}.Release|x86.Build.0 = Release|Any CPU
 		{9F303A13-5D15-4788-BA9C-38466F79C65D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9F303A13-5D15-4788-BA9C-38466F79C65D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9F303A13-5D15-4788-BA9C-38466F79C65D}.Debug|x64.ActiveCfg = Debug|Any CPU

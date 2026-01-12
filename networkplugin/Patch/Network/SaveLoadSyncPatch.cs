@@ -1,3 +1,4 @@
+// 存档/读档同步补丁：在保存与加载流程中广播必要的同步事件与快照。
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -613,7 +614,7 @@ public class SaveLoadSyncPatch
 
     // 数据结构
 
-    private class SaveSyncState
+    public class SaveSyncState
     {
         public DateTime SaveStartTime { get; set; }
         public string SaveType { get; set; }
@@ -621,7 +622,7 @@ public class SaveLoadSyncPatch
         public object GameStateBefore { get; set; }
     }
 
-    private class LoadSyncState
+    public class LoadSyncState
     {
         public DateTime LoadStartTime { get; set; }
         public string LoadType { get; set; }

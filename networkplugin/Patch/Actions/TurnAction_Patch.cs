@@ -10,9 +10,10 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
-using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Client;  
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.Snapshot;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Actions;
 
@@ -94,29 +95,30 @@ public class TurnAction_Patch
             var statusEffectsSnapshot = new List<StatusEffectStateSnapshot>();
 
             // 构建玩家状态快照
-            PlayerStateSnapshot playerStateSnapshot = new PlayerStateSnapshot(
-                userName: networkClient.GetSelf().userName,
-                health: source.Hp,
-                maxHealth: source.MaxHp,
-                block: source.Block,
-                shield: source.Shield,
-                mana: ConvertManaGroupToDictionary(battle.BattleMana),
-                maxMana: 0, // TODO: 获取最大法力值
-                gold: 0,
-                turnNumber: source.TurnCounter,
-                isInBattle: battle != null,
-                isAlive: source.IsAlive,
-                isPlayersTurn: source is PlayerUnit,
-                isInTurn: source.IsInTurn,
-                isExtraTurn: source.IsExtraTurn,
-                characterType: source is PlayerUnit ? "Player" : "Enemy",
-                reconnectToken: "",
-                disconnectTime: 0,
-                lastUpdateTime: DateTime.Now.Ticks,
-                isAIControlled: false,
-                turnCounter: source.TurnCounter,
-                timestamp: DateTime.Now
-            );
+            PlayerStateSnapshot playerStateSnapshot = new PlayerStateSnapshot
+            {
+                UserName = networkClient.GetSelf().userName,
+                Health = source.Hp,
+                MaxHealth = source.MaxHp,
+                Block = source.Block,
+                Shield = source.Shield,
+                ManaGroup = ManaUtils.ManaGroupToArray(battle.BattleMana),
+                MaxMana = 0, // TODO: 获取最大法力值
+                Gold = 0,
+                TurnNumber = source.TurnCounter,
+                IsInBattle = battle != null,
+                IsAlive = source.IsAlive,
+                IsPlayersTurn = source is PlayerUnit,
+                IsInTurn = source.IsInTurn,
+                IsExtraTurn = source.IsExtraTurn,
+                CharacterType = source is PlayerUnit ? "Player" : "Enemy",
+                ReconnectToken = string.Empty,
+                DisconnectTime = 0,
+                LastUpdateTime = DateTime.Now.Ticks,
+                IsAIControlled = false,
+                TurnCounter = source.TurnCounter,
+                Timestamp = DateTime.Now,
+            };
 
             // 构建意图快照 - 传递战斗控制器，让IntentionSnapshot类内部处理意图提取
             IntentionSnapshot intentionSnapshot = new IntentionSnapshot(battleController: battle);

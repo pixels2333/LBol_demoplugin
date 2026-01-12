@@ -109,7 +109,7 @@ public static class SpawnedEnemyManager
                 seed = unchecked(seed + (ulong)(rootIndex + 1));
                 seed = unchecked(seed + (ulong)(EnemySpawnCount + 1));
                 seed = unchecked(seed + (ulong)(spawner?.RootIndex ?? 0));
-                seed = unchecked(seed + (ulong)((spawner?.Index ?? 0) + 1));
+                seed = unchecked(seed + (ulong)((spawner?.RootIndex ?? 0) + 1));
                 seed = unchecked(seed + HashStable(type?.FullName ?? string.Empty));
                 seed = unchecked(seed + (isServant ? 1UL : 0UL));
 
@@ -155,15 +155,13 @@ public static class SpawnedEnemyManager
                         {
                             spawner.Id,
                             Type = spawner.GetType().Name,
-                            spawner.RootIndex,
-                            spawner.Index
+                            spawner.RootIndex
                         },
                     Spawned = new
                     {
                         __result.Id,
                         Type = __result.GetType().Name,
                         __result.RootIndex,
-                        __result.Index,
                         __result.MaxHp,
                         CurrentHp = __result.Hp,
                         __result.Block,
@@ -181,7 +179,7 @@ public static class SpawnedEnemyManager
                 if (SuppressBroadcastDepth <= 0)
                 {
                     client.SendRequest(NetworkMessageTypes.EnemySpawned, JsonSerializer.Serialize(spawnEvent));
-                    Plugin.Logger?.LogInfo($"[SpawnedEnemyManager] Enemy spawned: {__result.Name} (Type={__result.GetType().Name}, RootIndex={__result.RootIndex}, Index={__result.Index})");
+                    Plugin.Logger?.LogInfo($"[SpawnedEnemyManager] Enemy spawned: {__result.Name} (Type={__result.GetType().Name}, RootIndex={__result.RootIndex})");
                 }
             }
             catch (Exception ex)

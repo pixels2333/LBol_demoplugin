@@ -445,6 +445,28 @@ namespace NetworkPlugin.Network.Messages
         /// 快速存档同步
         /// </summary>
         public const string QuickSaveSync = "QuickSaveSync";
+
+        // === NAT/打洞协助（Relay 优先）===
+
+        /// <summary>
+        /// 客户端上报自身 NAT 信息（Relay 服务器存储并用于协助打洞/端点交换）
+        /// </summary>
+        public const string NatInfoReport = "NatInfoReport";
+
+        /// <summary>
+        /// 请求目标玩家的 NAT 候选端点信息（用于 P2P 优先尝试）
+        /// </summary>
+        public const string NatInfoRequest = "NatInfoRequest";
+
+        /// <summary>
+        /// NAT 信息响应（包含目标玩家的 NAT 信息与候选端点）
+        /// </summary>
+        public const string NatInfoResponse = "NatInfoResponse";
+
+        /// <summary>
+        /// 打洞协助的错误响应
+        /// </summary>
+        public const string NatError = "NatError";
     }
 
     /// <summary>

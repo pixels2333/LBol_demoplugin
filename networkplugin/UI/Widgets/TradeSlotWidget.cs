@@ -40,9 +40,12 @@ public class TradeSlotWidget : CommonButtonWidget
 		_currentCard = card;
 		_onRemoveCard = removeCallback;
 
-		if (card != null)
-		{
-			cardNameText?.text = card.Name;
+                if (card != null)
+                {
+                        if (cardNameText != null)
+                        {
+                                cardNameText.text = card.Name;
+                        }
 
 			// 隐藏卡牌图标（因为 Image 组件不直接支持卡牌的 Sprite）
 			cardIcon?.gameObject.SetActive(false);
@@ -67,11 +70,14 @@ public class TradeSlotWidget : CommonButtonWidget
 
 	public void ClearSlot()
 	{
-		_currentCard = null;
-		_onRemoveCard = null;
+                _currentCard = null;
+                _onRemoveCard = null;
 
-		cardNameText?.text = "";
-		cardIcon?.gameObject.SetActive(false);
+                if (cardNameText != null)
+                {
+                        cardNameText.text = "";
+                }
+                cardIcon?.gameObject.SetActive(false);
 
 		if (button != null)
 		{
