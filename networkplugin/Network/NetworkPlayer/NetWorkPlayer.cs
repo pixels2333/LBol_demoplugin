@@ -6,113 +6,180 @@ using LBoL.Core;
 namespace NetworkPlugin.Network.NetworkPlayer;
 
 /// <summary>
-/// 网络玩家数据模型，实现玩家的各种属性和操作。
+/// 网络玩家的数据模型。
 /// </summary>
+/// <remarks>
+/// 该类型主要用于序列化/反序列化与网络同步承载；字段名通过 <see cref="JsonPropertyNameAttribute"/> 与协议字段绑定。
+/// 注意：当前实现以 public 字段为主，后续若引入 SyncVar/属性封装，需要同步更新序列化与补丁逻辑。
+/// </remarks>
 public class NetWorkPlayer
 {
-    //TODO:需改成SyncVar
+    #region Json Fields
+
+    // TODO: 后续可改为 SyncVar/属性封装（需同时调整序列化与同步逻辑）。
+
+    /// <summary>
+    /// 玩家名称/标识。
+    /// </summary>
     [JsonPropertyName("username")]
     public string username;
 
+    /// <summary>
+    /// 当前生命值。
+    /// </summary>
     [JsonPropertyName("HP")]
     public int HP;
 
+    /// <summary>
+    /// 最大生命值。
+    /// </summary>
     [JsonPropertyName("maxHP")]
     public int maxHP;
 
+    /// <summary>
+    /// 格挡值。
+    /// </summary>
     [JsonPropertyName("block")]
     public int block;
 
+    /// <summary>
+    /// 护盾值。
+    /// </summary>
     [JsonPropertyName("shield")]
     public int shield;
 
+    /// <summary>
+    /// 金币数量。
+    /// </summary>
     [JsonPropertyName("coins")]
     public int coins;
 
+    /// <summary>
+    /// 角色标识（例如角色/模型名）。
+    /// </summary>
     [JsonPropertyName("chara")]
     public string chara;
 
+    /// <summary>
+    /// 终极能量/充能值。
+    /// </summary>
     [JsonPropertyName("UltimatePower")]
     public int UltimatePower;
 
+    /// <summary>
+    /// 位置名称（可由地图节点站点类型派生）。
+    /// </summary>
     [JsonPropertyName("location")]
     public string location;
 
+    /// <summary>
+    /// 是否已结束回合。
+    /// </summary>
     [JsonPropertyName("endturn")]
     public bool endturn;
 
+    /// <summary>
+    /// 法力数组（通常为红、蓝、绿、白四种）。
+    /// </summary>
     [JsonPropertyName("mana")]
     public int[] mana;
 
-    [JsonPropertyName("stance")]
-    public string stance; //TODO:需修改
+    /// <summary>
+    /// 战斗姿态标识。
+    /// </summary>
+    [JsonPropertyName("mood")]
+    public string mood; // TODO: 协议/枚举化需要统一。
 
+    /// <summary>
+    /// 展品列表。
+    /// </summary>
     [JsonPropertyName("exhibits")]
     public string[] exhibits;
 
+    /// <summary>
+    /// 交易状态。
+    /// </summary>
     [JsonPropertyName("tradingStatus")]
     public bool tradingStatus;
 
+    /// <summary>
+    /// 位置 X 坐标。
+    /// </summary>
     [JsonPropertyName("location_X")]
     public int location_X;
 
+    /// <summary>
+    /// 位置 Y 坐标。
+    /// </summary>
     [JsonPropertyName("location_Y")]
     public int location_Y;
 
+    #endregion
+
+    #region Runtime-only
+
     /// <summary>
-    /// 玩家当前访问的地图节点。
+    /// 玩家当前访问的地图节点（运行时引用）。
     /// </summary>
+    /// <remarks>
+    /// 该属性通常不参与 JSON 协议字段映射；更多用于本地逻辑关联。
+    /// </remarks>
     public MapNode VisitingNode { get; set; }
 
+    #endregion
+
     /// <summary>
-    /// 初始化玩家属性的构造函数。
+    /// 初始化 <see cref="NetWorkPlayer"/>。
     /// </summary>
-    /// <summary>
-    /// 初始化玩家属性的构造函数
-    /// 设置所有玩家属性的默认值，准备游戏开始状态
-    /// </summary>
+    /// <remarks>
+    /// 仅设置默认值，具体数值应在进入局内/同步时更新。
+    /// 注意：构造函数末尾访问 <see cref="VisitingNode"/> 坐标前，需要确保其已被赋值。
+    /// </remarks>
     public NetWorkPlayer()
     {
-        // 玩家身份信息初始化
-        username = "Player"; // 默认用户名，实际游戏中应从配置获取
+        // 身份信息
+        username = "Player"; // 默认用户名（实际应由外部配置/同步赋值）
 
-        // 战斗状态属性初始化
-        HP = 100; // 初始生命值，标准角色的起始生命
-        maxHP = 100; // 初始最大生命值，与初始HP保持一致
-        block = 0; // 初始格挡值，新角色无格挡
-        shield = 0; // 初始护盾值，新角色无护盾
+        // 战斗状态
+        HP = 100; // 默认生命值
+        maxHP = 100; // 默认最大生命值
+        block = 0; // 默认格挡
+        shield = 0; // 默认护盾
 
-        // 经济系统初始化
-        coins = 0; // 初始金币数量，新角色无金币
+        // 经济
+        coins = 0; // 默认金币
 
-        // 角色和位置信息初始化
-        chara = ""; // 初始角色标识，空表示未选择角色
+        // 角色/位置
+        chara = ""; // 默认角色标识
 
-        UltimatePower = 0; // 初始终极能量，新角色无大招能量
+        UltimatePower = 0; // 默认终极能量
 
-        location = ""; // 初始位置描述，空表示未在特定位置
+        location = ""; // 默认位置名称
 
-        // 回合制状态初始化
-        endturn = false; // 初始回合状态，表示未结束回合
+        // 回合
+        endturn = false; // 默认未结束回合
 
-        // 资源系统初始化 - 4色法力
-        mana = new int[4]; // 初始化法力数组，支持红、蓝、绿、白四色法力
+        // 资源：四色法力
+        mana = new int[4]; // 默认法力数组
 
-        stance = ""; //TODO:需修改，初始姿态，空表示默认姿态
+        mood = ""; // 默认姿态标识
 
-        // 装备系统初始化
-        exhibits = new string[4]; // 初始化展品数组，最多携带4个展品
+        // 装备
+        exhibits = new string[4]; // 默认展品数组
 
-        tradingStatus = false; // 初始交易状态，表示不在交易中
+        tradingStatus = false; // 默认不在交易中
 
-        // 位置坐标初始化 - 从访问节点获取坐标
-        location_X = VisitingNode.X; // 设置X坐标，与当前访问节点同步
-        location_Y = VisitingNode.Y; // 设置Y坐标，与当前访问节点同步
+        // 坐标：从访问节点同步（需确保 VisitingNode 非空）
+        location_X = VisitingNode.X; // 与访问节点同步 X
+        location_Y = VisitingNode.Y; // 与访问节点同步 Y
     }
 
     /// <summary>
     /// 发送玩家数据到网络。
     /// </summary>
+    /// <remarks>
+    /// 当前方法体为占位，具体实现应由网络层/同步补丁负责。
+    /// </remarks>
     public void SendData()
     {
         // ...existing code...
@@ -121,37 +188,42 @@ public class NetWorkPlayer
     /// <summary>
     /// 判断玩家是否为房主。
     /// </summary>
-    /// <returns>如果是房主返回true，否则抛出异常。</returns>
+    /// <returns>当前实现未提供可用结果。</returns>
+    /// <exception cref="NotImplementedException">当前版本尚未实现。</exception>
     public bool IsLobbyOwner()
     {
         throw new NotImplementedException("IsLobbyOwner method is not implemented yet."); // 未实现
     }
 
     /// <summary>
-    /// 存档加载后执行的操作，重置回合结束标志和格挡值。
+    /// 存档加载后的状态重置。
     /// </summary>
     public void PostSaveLoad()
     {
-        endturn = false; // 重置回合结束标志
-        block = 0; // 重置格挡
+        endturn = false; // 回合结束标记复位
+        block = 0; // 格挡复位
     }
 
     /// <summary>
     /// 判断玩家是否在同一房间。
     /// </summary>
-    /// <returns>如果在同一房间返回true，否则抛出异常。</returns>
+    /// <returns>当前实现未提供可用结果。</returns>
+    /// <exception cref="NotImplementedException">当前版本尚未实现。</exception>
     public bool IsPlayerInSameRoom()
     {
         throw new NotImplementedException("IsPlayerInSameRoom method is not implemented yet."); // 未实现
     }
 
     /// <summary>
-    /// 判断玩家是否在同一章节。
+    /// 判断玩家是否在同一章节（Act）。
     /// </summary>
-    /// <returns>如果在同一章节返回true，否则抛出异常。</returns>
+    /// <returns>当前实现未提供可用结果。</returns>
+    /// <exception cref="NotImplementedException">当前版本尚未实现。</exception>
     public bool IsPlayerOnSameAct()
     {
         throw new NotImplementedException("IsPlayerOnSameAct method is not implemented yet."); // 未实现
     }
+
+    // 说明：如后续补齐 INetworkPlayer 能力，可在此区域继续扩展对应方法。
 
 }
