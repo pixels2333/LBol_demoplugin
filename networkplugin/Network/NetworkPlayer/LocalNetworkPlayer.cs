@@ -21,7 +21,7 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
     private string _chara = string.Empty;
     private string _location = string.Empty;
     private bool _endTurn;
-    private string _stance = string.Empty;
+    private string _mood = string.Empty;
     private string[] _exhibits = Array.Empty<string>();
     private bool _tradingStatus;
     private bool _ultimatePower;
@@ -173,8 +173,14 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
 
     public string stance
     {
-        get => _stance;
-        set => _stance = value ?? string.Empty;
+        get => _mood;
+        set => _mood = value ?? string.Empty;
+    }
+
+    public string mood
+    {
+        get => _mood;
+        set => _mood = value ?? string.Empty;
     }
 
     public string[] exhibits
@@ -280,6 +286,7 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
     public void UpdateCoins(bool updateServer) { }
     public void UpdatePlayerInfo(bool updateServer) { }
     public void UpdateStance(bool updateServer) { }
+    public void UpdateMood(bool updateServer) { }
     public void UpdateStatusEffects(bool updateServer) { }
     public void UpdateUltimatePower(bool updateServer) { }
     public void UpdateExhibits(bool updateServer) { }

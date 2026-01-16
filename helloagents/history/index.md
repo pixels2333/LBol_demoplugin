@@ -10,3 +10,5 @@
 | 202601121600 | networkmanager_todos | 修复 | 已完成 | `helloagents/history/2026-01/202601121600_networkmanager_todos/` |
 | 202601121639 | midgamejoin_todo | 功能 | 已完成 | `helloagents/history/2026-01/202601121639_midgamejoin_todo/` |
 | 202601122206 | todo_sweep | 维护 | 已完成 | `helloagents/history/2026-01/202601122206_todo_sweep/` |
+| 202601161045 | networkplayer_dto_visitingnode_nullfix | 修复 | 已完成 | `helloagents/history/2026-01/202601161045_networkplayer_dto_visitingnode_nullfix/` |
+| 202601161615 | networkplayer_inetworkplayer_docfix | 文档 | 已完成 | `helloagents/history/2026-01/202601161615_networkplayer_inetworkplayer_docfix/` |

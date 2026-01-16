@@ -170,8 +170,8 @@ public class NetWorkPlayer
         tradingStatus = false; // 默认不在交易中
 
         // 坐标：从访问节点同步（需确保 VisitingNode 非空）
-        location_X = VisitingNode.X; // 与访问节点同步 X
-        location_Y = VisitingNode.Y; // 与访问节点同步 Y
+        location_X = VisitingNode?.X ?? 0; // 与访问节点同步 X（无节点时回退0）
+        location_Y = VisitingNode?.Y ?? 0; // 与访问节点同步 Y（无节点时回退0）
     }
 
     /// <summary>

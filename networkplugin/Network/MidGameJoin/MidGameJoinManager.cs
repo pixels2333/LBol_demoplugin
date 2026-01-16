@@ -154,23 +154,23 @@ public sealed class MidGameJoinManager
     {
         try
         {
-            if (!_config.AllowMidGameJoin) // 检查配置是否允许中途加入
+            if (!_config.AllowMidGameJoin) // 配置禁用则直接拒绝
             {
                 return JoinRequestResult.Denied("Mid-game joining is disabled");
             }
 
-            if (string.IsNullOrWhiteSpace(roomId)) // 验证房间ID
+            if (string.IsNullOrWhiteSpace(roomId)) // roomId 为空则拒绝
             {
                 return JoinRequestResult.Denied("Missing roomId");
             }
 
-            if (string.IsNullOrWhiteSpace(playerName)) // 验证玩家名称
+            if (string.IsNullOrWhiteSpace(playerName)) // playerName 为空则拒绝
             {
                 return JoinRequestResult.Denied("Missing playerName");
             }
 
             INetworkClient? client = _client ?? _serviceProvider.GetService<INetworkClient>();
-            if (client?.IsConnected != true) // 检查网络连接状态
+            if (client?.IsConnected != true) // 未连接则拒绝
             {
                 return JoinRequestResult.Denied("Not connected");
             }
@@ -182,12 +182,12 @@ public sealed class MidGameJoinManager
             }
 
             string? hostId;
-            lock (_lock) // 线程安全获取房主ID
+            lock (_lock) // 线程安全读取上次记录的房主ID
             {
                 hostId = _lastKnownHostPlayerId;
             }
 
-            if (string.IsNullOrWhiteSpace(hostId)) // 验证房主ID是否存在
+            if (string.IsNullOrWhiteSpace(hostId)) // 未获取到房主则拒绝
             {
                 return JoinRequestResult.Denied("Host not found (join room first and wait for PlayerListUpdate)");
             }
@@ -195,7 +195,7 @@ public sealed class MidGameJoinManager
             string requestId = GenerateRequestId(); // 生成唯一请求ID
             _logger.LogInfo($"[MidGameJoinManager] RequestJoin => host={hostId}, room={roomId}, requestId={requestId}");
 
-            SendDirectMessage(hostId, NetworkMessageTypes.MidGameJoinRequest, new // 发送直接消息给房主
+            SendDirectMessage(hostId, NetworkMessageTypes.MidGameJoinRequest, new // 通过 DirectMessage 向房主发起加入请求
             {
                 RequestId = requestId,
                 RoomId = roomId,
@@ -224,7 +224,7 @@ public sealed class MidGameJoinManager
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(requestId)) // 验证请求ID
+            if (string.IsNullOrWhiteSpace(requestId)) // requestId 为空则失败
             {
                 return ApproveJoinResult.Failed("Missing requestId");
             }
@@ -235,20 +235,20 @@ public sealed class MidGameJoinManager
                 return ApproveJoinResult.Failed("Missing self playerId");
             }
 
-            if (!string.Equals(selfId, approvedByPlayerId, StringComparison.Ordinal)) // 验证批准者身份
+            if (!string.Equals(selfId, approvedByPlayerId, StringComparison.Ordinal)) // 仅允许本人批准（防冒用）
             {
                 return ApproveJoinResult.Failed("approvedByPlayerId mismatch");
             }
 
-            if (!NetworkIdentityTracker.GetSelfIsHost()) // 验证是否为房主
+            if (!NetworkIdentityTracker.GetSelfIsHost()) // 非房主不允许批准
             {
                 return ApproveJoinResult.Failed("Only host can approve join requests");
             }
 
-            CleanupExpired_NoLock(); // 清理过期请求
+            CleanupExpired_NoLock(); // 清理过期请求与令牌
 
             GameJoinRequest? request;
-            lock (_lock) // 线程安全查找请求
+            lock (_lock) // 线程安全查找待处理请求
             {
                 request = _pendingRequests.FirstOrDefault(r => string.Equals(r.RequestId, requestId, StringComparison.Ordinal));
             }
@@ -258,10 +258,10 @@ public sealed class MidGameJoinManager
                 return ApproveJoinResult.Failed("Request not found");
             }
 
-            string joinToken = GenerateJoinToken(); // 生成加入令牌
+            string joinToken = GenerateJoinToken(); // 生成一次性加入令牌
             long expiresAtUtcTicks = DateTime.UtcNow.AddMinutes(_config.JoinRequestTimeoutMinutes).Ticks; // 计算过期时间
 
-            FullStateSnapshot snapshot = TryCreateFullSnapshot(); // 创建游戏状态快照
+            FullStateSnapshot snapshot = TryCreateFullSnapshot(); // 创建完整快照用于估算进度
             int progress = CalculateGameProgress(snapshot.GameState); // 计算游戏进度
 
             PlayerBootstrappedState bootstrapped = new() // 创建玩家引导状态
@@ -275,14 +275,14 @@ public sealed class MidGameJoinManager
                 LastEventIndex = snapshot.EventIndex
             };
 
-            if (_config.EnableCompensation) // 如果启用补偿机制
+            if (_config.EnableCompensation) // 启用补偿时生成起始资源（当前安全默认为空）
             {
                 bootstrapped.Cards = GenerateStartingCards(progress);
                 bootstrapped.Exhibits = GenerateStartingExhibits(progress);
                 bootstrapped.Potions = GenerateStartingPotions(progress);
             }
 
-            lock (_lock) // 线程安全存储令牌
+            lock (_lock) // 线程安全存储令牌并移除请求
             {
                 _issuedJoinTokens[joinToken] = new IssuedJoinToken
                 {
@@ -297,7 +297,7 @@ public sealed class MidGameJoinManager
 
             _logger.LogInfo($"[MidGameJoinManager] Join request approved: requestId={requestId}, joinToken={joinToken}, joiner={request.ClientPlayerId}");
 
-            SendDirectMessage(request.ClientPlayerId, NetworkMessageTypes.MidGameJoinResponse, new // 发送批准响应
+            SendDirectMessage(request.ClientPlayerId, NetworkMessageTypes.MidGameJoinResponse, new // 向请求方发送批准响应
             {
                 RequestId = requestId,
                 Approved = true,
@@ -329,13 +329,13 @@ public sealed class MidGameJoinManager
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(joinToken)) // 验证加入令牌
+            if (string.IsNullOrWhiteSpace(joinToken)) // joinToken 为空则失败
             {
                 return JoinExecutionResult.Failed("Missing joinToken");
             }
 
             INetworkClient? client = _client ?? _serviceProvider.GetService<INetworkClient>();
-            if (client?.IsConnected != true) // 检查网络连接
+            if (client?.IsConnected != true) // 未连接则无法执行加入
             {
                 return JoinExecutionResult.Failed("Not connected");
             }
@@ -347,26 +347,26 @@ public sealed class MidGameJoinManager
             }
 
             ApprovedJoin approvedJoin;
-            lock (_lock) // 线程安全获取批准信息
+            lock (_lock) // 线程安全读取已批准的加入信息
             {
                 if (!_approvedJoins.TryGetValue(joinToken, out approvedJoin!)) // 查找批准的加入请求
                 {
                     return JoinExecutionResult.Failed("Invalid joinToken (not approved or already consumed)");
                 }
 
-                if (DateTime.UtcNow.Ticks > approvedJoin.ExpiresAt) // 检查令牌是否过期
+                if (DateTime.UtcNow.Ticks > approvedJoin.ExpiresAt) // 过期则清理并失败
                 {
                     _approvedJoins.Remove(joinToken); // 清理过期令牌
                     return JoinExecutionResult.Failed("JoinToken expired");
                 }
 
-                if (!string.Equals(approvedJoin.ClientPlayerId, selfId, StringComparison.Ordinal)) // 验证令牌归属
+                if (!string.Equals(approvedJoin.ClientPlayerId, selfId, StringComparison.Ordinal)) // 验证令牌归属当前玩家
                 {
                     return JoinExecutionResult.Failed("JoinToken does not belong to this player");
                 }
             }
 
-            _fastSyncService.SyncPlayerState(selfId, approvedJoin.BootstrappedState); // 快速同步玩家状态
+            _fastSyncService.SyncPlayerState(selfId, approvedJoin.BootstrappedState); // 应用引导状态到本地玩家
 
             (FullStateSnapshot? snapshot, List<GameEvent> missedEvents, string? error) = RequestFullStateSync( // 请求完整状态同步
                 approvedJoin.RoomId,
@@ -375,25 +375,25 @@ public sealed class MidGameJoinManager
                 joinToken,
                 approvedJoin.HostPlayerId);
 
-            if (!string.IsNullOrWhiteSpace(error)) // 检查同步错误
+            if (!string.IsNullOrWhiteSpace(error)) // 同步失败直接返回错误
             {
                 return JoinExecutionResult.Failed("Failed to sync full state: " + error);
             }
 
-            if (snapshot != null) // 更新引导状态
+            if (snapshot != null) // 根据快照刷新进度与事件索引
             {
                 approvedJoin.BootstrappedState.GameProgress = CalculateGameProgress(snapshot.GameState);
                 approvedJoin.BootstrappedState.LastEventIndex = snapshot.EventIndex;
                 _logger.LogInfo($"[MidGameJoinManager] FullSnapshot received: eventIndex={snapshot.EventIndex}, progress={approvedJoin.BootstrappedState.GameProgress}%");
             }
 
-            CatchUpResult catchUp = ApplyCatchUpEvents(missedEvents); // 应用追赶事件
+            CatchUpResult catchUp = ApplyCatchUpEvents(missedEvents); // 尽力回放错过事件
             if (!catchUp.IsSuccess)
             {
                 _logger.LogWarning($"[MidGameJoinManager] Catch-up replay degraded: {catchUp.ErrorMessage}");
             }
 
-            lock (_lock) // 线程安全移除已使用的令牌
+            lock (_lock) // 线程安全移除已消费的批准记录
             {
                 _approvedJoins.Remove(joinToken);
             }
@@ -416,30 +416,30 @@ public sealed class MidGameJoinManager
     /// <returns>游戏进度百分比（0-100）</returns>
     private int CalculateGameProgress(GameStateSnapshot gameState)
     {
-        if (gameState == null) // 空状态处理
+        if (gameState == null) // 空快照视为未开始
         {
             return 0;
         }
 
-        if (gameState.GameEnded) // 游戏已结束
+        if (gameState.GameEnded) // 游戏结束视为 100%
         {
             return 100;
         }
 
-        if (!gameState.GameStarted) // 游戏未开始
+        if (!gameState.GameStarted) // 游戏未开始视为 0%
         {
             return 0;
         }
 
-        int act = Math.Clamp(gameState.CurrentAct, 1, 4); // 确保Act在1-4范围内
-        int floor = Math.Clamp(gameState.CurrentFloor, 0, 20); // 确保楼层在0-20范围内
+        int act = Math.Clamp(gameState.CurrentAct, 1, 4); // Act 范围裁剪到 1-4
+        int floor = Math.Clamp(gameState.CurrentFloor, 0, 20); // Floor 范围裁剪到 0-20
 
         // 粗略映射：每个 Act 25%，楼层在该 Act 内占 25%。
-        double actBase = (act - 1) * 25.0; // 基础进度：前一个Act的进度
-        double floorProgress = (floor / 20.0) * 25.0; // 当前Act内的楼层进度
+        double actBase = (act - 1) * 25.0; // Act 基础进度
+        double floorProgress = (floor / 20.0) * 25.0; // Act 内楼层进度
 
-        int progress = (int)Math.Round(actBase + floorProgress); // 计算总进度
-        return Math.Clamp(progress, 0, 99); // 确保进度在0-99之间
+        int progress = (int)Math.Round(actBase + floorProgress); // 合并并四舍五入
+        return Math.Clamp(progress, 0, 99); // 约束在 0-99（结束态单独返回 100）
     }
 
     /// <summary>
@@ -450,8 +450,7 @@ public sealed class MidGameJoinManager
     /// <returns>初始卡牌ID列表（当前返回空列表）</returns>
     private List<string> GenerateStartingCards(int progress)
     {
-        // 无法在不依赖游戏数据库的前提下保证卡牌 ID 合法；
-        // 为避免生成非法内容，当前默认不补偿卡牌（后续可接入白名单/数据库校验）。
+        // 安全默认：不生成卡牌，避免非法 ID 导致异常。
         return [];
     }
 
@@ -484,13 +483,13 @@ public sealed class MidGameJoinManager
     /// <returns>追赶结果，包含成功应用的事件数量</returns>
     private CatchUpResult ApplyCatchUpEvents(List<GameEvent> missedEvents)
     {
-        if (missedEvents == null || missedEvents.Count == 0) // 无事件需要追赶
+        if (missedEvents == null || missedEvents.Count == 0) // 无错过事件则无需回放
         {
             return CatchUpResult.Success(0);
         }
 
-        NetworkClient? concrete = _concreteClient ?? (_client as NetworkClient); // 获取具体客户端实例
-        if (concrete == null) // 检查是否支持本地事件注入
+        NetworkClient? concrete = _concreteClient ?? (_client as NetworkClient); // 获取 NetworkClient 以支持本地注入
+        if (concrete == null) // 不支持注入则降级为仅快照
         {
             return CatchUpResult.Failed("NetworkClient does not support local event injection");
         }
@@ -498,7 +497,7 @@ public sealed class MidGameJoinManager
         int applied = 0; // 成功应用的事件计数
         int failed = 0; // 失败事件计数
 
-        foreach (GameEvent e in missedEvents.OrderBy(e => e.Timestamp)) // 按时间戳排序处理
+        foreach (GameEvent e in missedEvents.OrderBy(e => e.Timestamp)) // 按时间戳顺序回放
         {
             if (!ShouldReplayEventType(e.EventType)) // 检查事件类型是否应该回放
             {
@@ -507,20 +506,20 @@ public sealed class MidGameJoinManager
 
             try
             {
-                concrete.InjectLocalGameEvent(e.EventType, e.Data); // 注入本地事件
+                concrete.InjectLocalGameEvent(e.EventType, e.Data); // 注入本地事件（触发同一套事件处理）
                 applied++;
             }
             catch (Exception ex)
             {
                 failed++;
                 _logger.LogWarning($"[MidGameJoinManager] Replay failed: type={e.EventType}, err={ex.Message}");
-                if (failed >= 3) // 失败次数过多时降级
+                if (failed >= 3) // 失败次数过多时停止回放并降级
                 {
                     return CatchUpResult.Failed("Too many replay failures; degraded to snapshot-only");
                 }
             }
 
-            if (_config.CatchUpBatchSize > 0 && applied % _config.CatchUpBatchSize == 0) // 批量日志记录
+            if (_config.CatchUpBatchSize > 0 && applied % _config.CatchUpBatchSize == 0) // 按批次输出进度日志
             {
                 _logger.LogDebug($"[MidGameJoinManager] Catch-up batch applied: {applied}");
             }
@@ -554,6 +553,7 @@ public sealed class MidGameJoinManager
     /// </summary>
     /// <returns>请求ID字符串</returns>
     private static string GenerateRequestId() => Guid.NewGuid().ToString("N");
+
     /// <summary>
     /// 生成加入令牌（GUID无横线格式）
     /// </summary>
@@ -591,13 +591,13 @@ public sealed class MidGameJoinManager
     {
         long now = DateTime.UtcNow.Ticks; // 当前时间戳
 
-        _pendingRequests.RemoveAll(r => now - r.RequestTime > TimeSpan.FromMinutes(_config.JoinRequestTimeoutMinutes).Ticks); // 清理过期请求
+        _pendingRequests.RemoveAll(r => now - r.RequestTime > TimeSpan.FromMinutes(_config.JoinRequestTimeoutMinutes).Ticks); // 清理超时的加入请求
 
         foreach ((string key, IssuedJoinToken issued) in _issuedJoinTokens.ToList()) // 遍历已颁发的令牌
         {
             if (now > issued.ExpiresAtUtcTicks) // 检查令牌是否过期
             {
-                _issuedJoinTokens.Remove(key); // 移除过期令牌
+                _issuedJoinTokens.Remove(key); // 移除过期的加入令牌
             }
         }
     }
@@ -611,7 +611,7 @@ public sealed class MidGameJoinManager
         try
         {
             ReconnectionManager? reconnection = _serviceProvider.GetService<ReconnectionManager>(); // 获取重连管理器
-            return reconnection?.CreateFullSnapshot() ?? new FullStateSnapshot // 优先使用重连管理器的快照
+            return reconnection?.CreateFullSnapshot() ?? new FullStateSnapshot // 优先使用重连系统的快照
             {
                 Timestamp = DateTime.UtcNow.Ticks,
                 GameState = new GameStateSnapshot(),
@@ -648,7 +648,7 @@ public sealed class MidGameJoinManager
             return;
         }
 
-        client.SendGameEventData("DirectMessage", new // 发送直接消息事件
+        client.SendGameEventData("DirectMessage", new // 统一用 DirectMessage 封装点对点消息
         {
             TargetPlayerId = targetPlayerId,
             Type = innerType,
@@ -697,7 +697,7 @@ public sealed class MidGameJoinManager
                 JoinToken = joinToken
             });
 
-            bool signaled = pending.WaitHandle.Wait(TimeSpan.FromSeconds(10)); // 等待响应，超时10秒
+            bool signaled = pending.WaitHandle.Wait(TimeSpan.FromSeconds(10)); // 等待 FullStateSyncResponse（超时 10 秒）
             if (!signaled) // 超时处理
             {
                 return (null, [], "FullStateSyncResponse timeout");
@@ -862,7 +862,7 @@ public sealed class MidGameJoinManager
             string? hostId = idElem.GetString();
             if (!string.IsNullOrWhiteSpace(hostId))
             {
-                lock (_lock) // 线程安全更新房主ID
+                lock (_lock) // 线程安全更新当前房主ID
                 {
                     _lastKnownHostPlayerId = hostId;
                 }
@@ -897,7 +897,7 @@ public sealed class MidGameJoinManager
             return;
         }
 
-        if (!_config.AllowMidGameJoin) // 检查配置是否允许中途加入
+        if (!_config.AllowMidGameJoin) // 配置禁用则拒绝
         {
             SendDirectMessage(clientPlayerId, NetworkMessageTypes.MidGameJoinResponse, new // 发送拒绝响应
             {
@@ -910,9 +910,9 @@ public sealed class MidGameJoinManager
 
         lock (_lock) // 线程安全操作
         {
-            CleanupExpired_NoLock(); // 清理过期请求
+            CleanupExpired_NoLock(); // 清理过期请求与令牌
 
-            int activeCount = _pendingRequests.Count(r => string.Equals(r.RoomId, roomId, StringComparison.Ordinal)); // 统计当前房间的活跃请求
+            int activeCount = _pendingRequests.Count(r => string.Equals(r.RoomId, roomId, StringComparison.Ordinal)); // 统计该房间的待处理请求数
             if (activeCount >= _config.MaxJoinRequestsPerRoom) // 检查请求数量限制
             {
                 SendDirectMessage(clientPlayerId, NetworkMessageTypes.MidGameJoinResponse, new // 发送拒绝响应
@@ -924,7 +924,7 @@ public sealed class MidGameJoinManager
                 return;
             }
 
-            _pendingRequests.Add(new GameJoinRequest // 添加待处理请求
+            _pendingRequests.Add(new GameJoinRequest // 记录待处理请求
             {
                 RequestId = requestId,
                 RoomId = roomId,
@@ -935,7 +935,7 @@ public sealed class MidGameJoinManager
             });
         }
 
-        // 可用优先：自动批准。
+        // 最小可用实现：自动批准（后续可改为 UI/投票）。
         string selfId = NetworkIdentityTracker.GetSelfPlayerId(); // 获取自身玩家ID
         if (string.IsNullOrWhiteSpace(selfId))
         {
@@ -1010,7 +1010,7 @@ public sealed class MidGameJoinManager
             BootstrappedState = bootstrapped,
         };
 
-        lock (_lock) // 线程安全存储批准记录
+        lock (_lock) // 线程安全存储 joinToken -> 批准记录
         {
             _approvedJoins[joinToken] = approvedJoin;
         }
@@ -1042,7 +1042,7 @@ public sealed class MidGameJoinManager
             return;
         }
 
-        if (!TryConsumeIssuedJoinToken(joinToken, targetPlayerId, roomId ?? string.Empty, out string? denial)) // 验证并消费令牌
+        if (!TryConsumeIssuedJoinToken(joinToken, targetPlayerId, roomId ?? string.Empty, out string? denial)) // 验证并消费一次性令牌
         {
             SendDirectMessage(targetPlayerId, NetworkMessageTypes.FullStateSyncResponse, new // 发送拒绝响应
             {
@@ -1055,8 +1055,8 @@ public sealed class MidGameJoinManager
         }
 
         ReconnectionManager? reconnection = _serviceProvider.GetService<ReconnectionManager>(); // 获取重连管理器
-        FullStateSnapshot snapshot = reconnection?.CreateFullSnapshot() ?? TryCreateFullSnapshot(); // 创建完整快照
-        List<GameEvent> missed = reconnection?.GetMissedEvents(lastKnownEventIndex) ?? []; // 获取错过的事件
+        FullStateSnapshot snapshot = reconnection?.CreateFullSnapshot() ?? TryCreateFullSnapshot(); // 生成 FullSnapshot
+        List<GameEvent> missed = reconnection?.GetMissedEvents(lastKnownEventIndex) ?? []; // 提供 lastKnownEventIndex 之后的事件用于追赶
 
         SendDirectMessage(targetPlayerId, NetworkMessageTypes.FullStateSyncResponse, new // 发送完整状态响应
         {
@@ -1123,24 +1123,24 @@ public sealed class MidGameJoinManager
     {
         try
         {
-            if (payload is JsonElement je) // 已经是JsonElement类型
+            if (payload is JsonElement je) // 已是 JsonElement 直接返回
             {
                 root = je;
                 return true;
             }
 
-            if (payload is string s) // 字符串类型，直接反序列化
+            if (payload is string s) // string 载荷按 JSON 解析
             {
                 root = JsonSerializer.Deserialize<JsonElement>(s);
                 return true;
             }
 
-            root = JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(payload)); // 其他类型，先序列化再反序列化
+            root = JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(payload)); // 其他类型：序列化后再解析成 JsonElement
             return true;
         }
         catch
         {
-            root = default; // 异常时返回默认值
+            root = default; // 转换失败返回 default
             return false;
         }
     }
@@ -1157,7 +1157,7 @@ public sealed class MidGameJoinManager
             root.TryGetProperty(property, out JsonElement p) && // 尝试获取属性
             p.ValueKind == JsonValueKind.String) // 确保属性值是字符串类型
         {
-            return p.GetString(); // 返回字符串值
+            return p.GetString(); // 读取 string 属性值
         }
 
         return null; // 属性不存在或类型不匹配
@@ -1216,11 +1216,11 @@ public sealed class MidGameJoinManager
     {
         try
         {
-            return JsonSerializer.Deserialize<T>(elem.GetRawText()); // 使用原始文本反序列化
+            return JsonSerializer.Deserialize<T>(elem.GetRawText()); // 使用 raw json 反序列化
         }
         catch
         {
-            return null; // 反序列化失败返回null
+            return null; // 反序列化失败返回 null
         }
     }
 
@@ -1231,7 +1231,7 @@ public sealed class MidGameJoinManager
     /// <returns>是否应该回放该事件</returns>
     private static bool ShouldReplayEventType(string eventType)
     {
-        if (string.IsNullOrWhiteSpace(eventType)) // 空事件类型不重放
+        if (string.IsNullOrWhiteSpace(eventType)) // 空类型不回放
         {
             return false;
         }
@@ -1244,12 +1244,12 @@ public sealed class MidGameJoinManager
             string.Equals(eventType, NetworkMessageTypes.PlayerListUpdate, StringComparison.Ordinal) ||
             string.Equals(eventType, NetworkMessageTypes.PlayerJoined, StringComparison.Ordinal) ||
             string.Equals(eventType, NetworkMessageTypes.PlayerLeft, StringComparison.Ordinal) ||
-            string.Equals(eventType, NetworkMessageTypes.HostChanged, StringComparison.Ordinal)) // 系统管理事件不重放
+            string.Equals(eventType, NetworkMessageTypes.HostChanged, StringComparison.Ordinal)) // 系统/握手/管理类消息不回放
         {
             return false;
         }
 
-        return eventType.StartsWith("On", StringComparison.Ordinal) || // 游戏状态事件
+        return eventType.StartsWith("On", StringComparison.Ordinal) || // 统一的游戏状态事件
                eventType.StartsWith("Mana", StringComparison.Ordinal) || // 法力相关事件
                eventType.StartsWith("Gap", StringComparison.Ordinal) || // 间隙相关事件
                eventType.StartsWith("Battle", StringComparison.Ordinal) || // 战斗相关事件

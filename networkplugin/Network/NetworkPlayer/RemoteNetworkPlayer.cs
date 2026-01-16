@@ -74,9 +74,18 @@ public sealed class RemoteNetworkPlayer : INetworkPlayer
     public int[] mana { get; set; }
 
     /// <summary>
-    /// 当前架势（Stance）标识。
+    /// 当前心境（Mood）标识（兼容 stance）。
     /// </summary>
-    public string stance { get; set; } = string.Empty;
+    public string stance
+    {
+        get => mood;
+        set => mood = value ?? string.Empty;
+    }
+
+    /// <summary>
+    /// 当前心境（Mood）标识。
+    /// </summary>
+    public string mood { get; set; } = string.Empty;
 
     /// <summary>
     /// 当前展品列表。
@@ -190,6 +199,12 @@ public sealed class RemoteNetworkPlayer : INetworkPlayer
     /// </summary>
     /// <param name="updateServer">是否需要同步到服务器（远程占位对象忽略）。</param>
     public void UpdateStance(bool updateServer) { }
+
+    /// <summary>
+    /// 更新心境（mood）显示/同步。
+    /// </summary>
+    /// <param name="updateServer">是否需要同步到服务器（远程占位对象忽略）。</param>
+    public void UpdateMood(bool updateServer) { }
 
     /// <summary>
     /// 更新状态效果显示/同步。

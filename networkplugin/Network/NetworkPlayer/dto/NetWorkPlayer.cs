@@ -10,7 +10,7 @@ namespace NetworkPlugin.Network.NetworkPlayer.dto;
 /// </summary>
 public class NetWorkPlayer
 {
-    //TODO:需改成SyncVar
+    
     [JsonPropertyName("username")]
     public string username;
 
@@ -44,8 +44,23 @@ public class NetWorkPlayer
     [JsonPropertyName("mana")]
     public int[] mana;
 
+    [JsonPropertyName("mood")]
+    public string mood;
+
+    // 兼容旧协议字段：旧版本可能仍发送 "stance"。
+    // 约定：若同时出现 mood 与 stance，以 mood 为准。
     [JsonPropertyName("stance")]
-    public string stance; //TODO:需修改
+    public string legacy_stance
+    {
+        get => null;
+        set
+        {
+            if (string.IsNullOrWhiteSpace(mood))
+            {
+                mood = value;
+            }
+        }
+    }
 
     [JsonPropertyName("exhibits")]
     public string[] exhibits;
@@ -98,7 +113,7 @@ public class NetWorkPlayer
         // 资源系统初始化 - 4色法力
         mana = new int[4]; // 初始化法力数组，支持红、蓝、绿、白四色法力
 
-        stance = ""; //TODO:需修改，初始姿态，空表示默认姿态
+        mood = ""; // 初始心境标识，空表示默认/无心境
 
         // 装备系统初始化
         exhibits = new string[4]; // 初始化展品数组，最多携带4个展品
@@ -106,8 +121,8 @@ public class NetWorkPlayer
         tradingStatus = false; // 初始交易状态，表示不在交易中
 
         // 位置坐标初始化 - 从访问节点获取坐标
-        location_X = VisitingNode.X; // 设置X坐标，与当前访问节点同步
-        location_Y = VisitingNode.Y; // 设置Y坐标，与当前访问节点同步
+        location_X = VisitingNode?.X ?? 0; // 设置X坐标，与当前访问节点同步（无节点时回退0）
+        location_Y = VisitingNode?.Y ?? 0; // 设置Y坐标，与当前访问节点同步（无节点时回退0）
     }
 
     /// <summary>

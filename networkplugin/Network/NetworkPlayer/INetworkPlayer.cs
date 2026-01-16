@@ -21,6 +21,10 @@ namespace NetworkPlugin.Network.NetworkPlayer;
 /// 所有Update方法都包含updateServer参数，控制是否同步到服务器
 /// 确保客户端状态与服务器保持一致性
 /// </summary>
+/// <remarks>
+/// 说明：为与联机协议/序列化字段保持一致，本接口成员命名可能不遵循常规 C# 命名规范（例如 lowerCamelCase、下划线）。
+/// 多数 Update* 方法的 updateServer 用于控制“本地状态更新后是否需要向服务器提交/广播”，具体行为由实现类决定。
+/// </remarks>
 public interface INetworkPlayer
 {
     /// <summary>
@@ -70,6 +74,11 @@ public interface INetworkPlayer
     /// 用于释放大招或特殊技能的高级资源
     /// </summary>
 
+    /// <remarks>
+    /// 注意：此段为历史遗留的占位描述。
+    /// 当前接口内与终极相关的同步字段/方法以 ultimatePower 与 UpdateUltimatePower(bool) 为准。
+    /// </remarks>
+
     /// <summary>
     /// 玩家当前位置描述
     /// 如村庄、商店、战斗房间等位置信息
@@ -86,6 +95,10 @@ public interface INetworkPlayer
     /// 玩家法力数组
     /// 支持多色法力系统，每个元素代表一种颜色的法力值
     /// </summary>
+    /// <remarks>
+    /// 当前联机同步通常使用固定长度数组（常见为 4 槽）表达“简化法力视图”；数组长度与颜色映射应以协议/DTO 实现为准。
+    /// 原游戏内部存在更完整的法力表示（例如 ManaColor/ManaGroup），此处仅承载网络同步所需的最小信息。
+    /// </remarks>
     int[] mana { get; set; }
 
     /// <summary>
@@ -93,7 +106,19 @@ public interface INetworkPlayer
     /// TODO:stance名称可能要改
     /// 表示玩家的战斗姿态或状态
     /// </summary>
+    /// <remarks>
+    /// TODO 说明：原游戏侧更接近“mood（心境）”语义；此处的 stance 为历史遗留命名。
+    /// 兼容策略：新增 mood 作为主字段，stance 保留为别名以减少破坏性；网络协议字段也应逐步迁移为 mood。
+    /// </remarks>
     string stance { get; set; }
+
+    /// <summary>
+    /// 玩家当前心境（Mood）标识。
+    /// </summary>
+    /// <remarks>
+    /// 该字段为联机侧的“心境/架势”主语义；与原游戏中通过 StatusEffect.UnitEffectName 驱动的心境特效概念保持一致。
+    /// </remarks>
+    string mood { get; set; }
 
     /// <summary>
     /// 玩家持有的展品列表
@@ -111,6 +136,10 @@ public interface INetworkPlayer
     /// 玩家终极能量（备用属性）
     /// 与UltimatePower功能重复，可能需要重构
     /// </summary>
+    /// <remarks>
+    /// 该字段当前以 bool 表示“终极技能是否可用/是否处于充能完成状态”。
+    /// 若未来需要同步数值型“终极能量/进度”，应通过扩展协议与接口成员实现。
+    /// </remarks>
     bool ultimatePower { get; set; }
 
     /// <summary>
@@ -220,7 +249,16 @@ public interface INetworkPlayer
     /// 同步姿态变化到网络和其他客户端
     /// </summary>
     /// <param name="updateServer">是否同步到服务器</param>
+    /// <remarks>
+    /// 兼容入口：与历史字段 stance 对应；实现建议内部转调 UpdateMood。
+    /// </remarks>
     void UpdateStance(bool updateServer);
+
+    /// <summary>
+    /// 更新玩家心境（Mood）信息。
+    /// </summary>
+    /// <param name="updateServer">是否同步到服务器</param>
+    void UpdateMood(bool updateServer);
 
     // void ClearPowers(bool updateServer);
 
@@ -240,6 +278,9 @@ public interface INetworkPlayer
     /// 同步终极能量变化到网络和其他客户端
     /// </summary>
     /// <param name="updateServer">是否同步到服务器</param>
+    /// <remarks>
+    /// 当前实现通常同步的是“终极状态（bool）”，与 ultimatePower 字段语义保持一致。
+    /// </remarks>
     void UpdateUltimatePower(bool updateServer);
 
     /// <summary>
@@ -269,6 +310,9 @@ public interface INetworkPlayer
     /// </summary>
     /// <param name="visitingnode">访问的地图节点</param>
     /// <param name="updateServer">是否同步到服务器，默认为true</param>
+    /// <remarks>
+    /// MapNode 来自 LBoL.Core，除 X/Y 外还包含 Act、StationType 等关键信息；此处用于同步“正在访问的节点”。
+    /// </remarks>
     void UpdateLocation(MapNode visitingnode, bool updateServer = true);
 
     /// <summary>
@@ -279,11 +323,16 @@ public interface INetworkPlayer
     void UpdateLiveStatus(bool updateServer);
 
     //TODO:预计弃用
+    // NOTE: 若后续引入统一的玩家管理器/上下文，本方法可被替代为从上下文获取本地玩家实例。
     /// <summary>
     /// 获取玩家自身实例
     /// 返回当前玩家的网络对象引用
     /// </summary>
     /// <returns>当前玩家的INetworkPlayer实例</returns>
+    /// <remarks>
+    /// TODO 说明：GetMyself 可能导致接口职责不清（接口同时承担“行为契约”和“全局访问点”）。
+    /// 建议后续由上层维护本地玩家引用（例如 PlayerManager/NetworkContext），并逐步迁移调用点。
+    /// </remarks>
     INetworkPlayer GetMyself();
 
     /// <summary>

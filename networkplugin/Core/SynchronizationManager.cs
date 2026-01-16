@@ -19,9 +19,7 @@ namespace NetworkPlugin.Core;
 
 public class SynchronizationManager : ISynchronizationManager
 {
-    // ========================================
-    // 单例模式相关字段
-    // ========================================
+    #region 单例模式相关字段
 
     /// <summary>
     /// 全局唯一的同步管理器实例
@@ -45,9 +43,9 @@ public class SynchronizationManager : ISynchronizationManager
         }
     }
 
-    // ========================================
-    // 依赖注入和网络服务
-    // ========================================
+    #endregion
+
+    #region 依赖注入和网络服务
 
     /// <summary>
     /// 依赖注入服务提供者
@@ -61,9 +59,9 @@ public class SynchronizationManager : ISynchronizationManager
     /// </summary>
     private INetworkClient _networkClient;
 
-    // ========================================
-    /// 状态管理和缓存
-    // ========================================
+    #endregion
+
+    #region 状态管理和缓存
 
     /// <summary>
     /// 网络不可用时的事件队列
@@ -93,9 +91,9 @@ public class SynchronizationManager : ISynchronizationManager
     /// </summary>
     private readonly SyncConfiguration _config = new();
 
-    // ========================================
-    /// 网络状态管理
-    // ========================================
+    #endregion
+
+    #region 网络状态管理
 
     /// <summary>
     /// 网络连接状态标志
@@ -116,6 +114,8 @@ public class SynchronizationManager : ISynchronizationManager
     /// 用于同步频率控制和性能监控
     /// </summary>
     private DateTime _lastSyncTime = DateTime.MinValue;
+
+    #endregion
 
     /// <summary>
     /// 私有构造函数
@@ -261,9 +261,7 @@ public class SynchronizationManager : ISynchronizationManager
         }
     }
 
-    // ========================================
-    // 有序事件处理方法
-    // ========================================
+    #region 有序事件处理方法
 
     /// <summary>
     /// 处理缓冲区中的网络事件
@@ -445,6 +443,8 @@ public class SynchronizationManager : ISynchronizationManager
         }
     }
 
+    #endregion
+
     /// <summary>
     /// 获取远程事件缓冲区统计信息
     /// 用于调试和监控有序事件处理的状态
@@ -507,9 +507,7 @@ public class SynchronizationManager : ISynchronizationManager
         }
     }
 
-    // ========================================
-    // 专用事件发送方法
-    // ========================================
+    #region 专用事件发送方法
 
     /// <summary>
     /// 发送卡牌使用事件
@@ -632,9 +630,9 @@ public class SynchronizationManager : ISynchronizationManager
         }
     }
 
-    // ========================================
-    /// 网络连接状态处理方法
-    // ========================================
+    #endregion
+
+    #region 网络连接状态处理方法
 
     /// <summary>
     /// 处理网络连接恢复事件
@@ -742,9 +740,9 @@ public class SynchronizationManager : ISynchronizationManager
         };
     }
 
-    // ========================================
-    /// 私有辅助方法
-    // ========================================
+    #endregion
+
+    #region 私有辅助方法
 
     /// <summary>
     /// 验证网络客户端的连接状态
@@ -1091,5 +1089,7 @@ public class SynchronizationManager : ISynchronizationManager
             Plugin.Logger?.LogError($"[SyncManager] 状态缓存清理异常: {ex.Message}");
         }
     }
+
+    #endregion
 
 }
