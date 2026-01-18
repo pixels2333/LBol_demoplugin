@@ -9,6 +9,7 @@ using System.Text.Json;
 using BepInEx.Logging;
 using LiteNetLib;
 using LiteNetLib.Utils;
+using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.Server.Core;
 
@@ -354,13 +355,10 @@ public class NetworkServer : BaseGameServer
                messageType.StartsWith("Battle") ||
                messageType == NetworkMessageTypes.ChatMessage ||
                messageType == "StateSyncRequest" ||
-               messageType == "FullStateSyncRequest" ||
-               messageType == "FullStateSyncResponse";
+               // FullSync 控制消息：仍视为 GameEvent 进入 HandleGameEvent，但必须禁止广播。
+               messageType == NetworkMessageTypes.FullStateSyncRequest ||
+               messageType == NetworkMessageTypes.FullStateSyncResponse;
     }
-
-    // TODO: 实现 FullStateSyncRequest 的服务端处理：
-    // - 由 Host 生成快照/追赶事件并向请求方回复 FullStateSyncResponse（而非简单广播）。
-    // - 将 ReconnectionManager 的快照/事件历史与该请求的响应对齐。
 
     /// <summary>
     /// 处理游戏同步事件
@@ -388,12 +386,113 @@ public class NetworkServer : BaseGameServer
 
             OnGameEventReceived?.Invoke(eventType, eventData, session);
 
+            // FullSync 控制消息不能广播：它们携带 JoinToken/快照/追赶事件，仅应定向到参与方。
+            if (string.Equals(eventType, NetworkMessageTypes.FullStateSyncRequest, StringComparison.Ordinal))
+            {
+                RouteFullStateSyncRequest(session, jsonPayload);
+                return;
+            }
+
+            if (string.Equals(eventType, NetworkMessageTypes.FullStateSyncResponse, StringComparison.Ordinal))
+            {
+                RouteFullStateSyncResponse(session, jsonPayload);
+                return;
+            }
+
             BroadcastGameEvent(eventType, eventData, fromPeer.Id);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[Server] Error handling game event: {ex.Message}");
             _logger?.LogError($"[Server] Error handling game event: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Host/直连模式下的 FullStateSyncRequest 路由：将请求转发给房主（由房主侧 MidGameJoinManager 生成快照并回发响应）。
+    /// </summary>
+    /// <param name="senderSession">请求方会话。</param>
+    /// <param name="jsonPayload">请求负载 JSON。</param>
+    private void RouteFullStateSyncRequest(PlayerSession senderSession, string jsonPayload)
+    {
+        try
+        {
+            // 查找房主会话（直连模式的权威端）。
+            PlayerSession hostSession = SessionsByPeer.Values.FirstOrDefault(s => s.IsHost && s.IsConnected);
+            if (hostSession == null)
+            {
+                return;
+            }
+
+            // 请求必须以自己为 TargetPlayerId，避免代替他人拉取快照。
+            JsonElement root = JsonSerializer.Deserialize<JsonElement>(jsonPayload);
+            string targetPlayerId = root.TryGetProperty("TargetPlayerId", out var tpid) && tpid.ValueKind == JsonValueKind.String ? tpid.GetString() : null;
+            if (!string.IsNullOrWhiteSpace(targetPlayerId) && !string.Equals(targetPlayerId, senderSession.PlayerId, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            // 定向转发给房主：由房主侧进行 JoinToken 校验与快照生成。
+            SendRawJsonToPeer(hostSession.Peer, NetworkMessageTypes.FullStateSyncRequest, jsonPayload);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError($"[Server] Error routing FullStateSyncRequest: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Host/直连模式下的 FullStateSyncResponse 路由：仅单播给请求方（payload.TargetPlayerId）。
+    /// </summary>
+    /// <param name="senderSession">响应发送方（应为房主）。</param>
+    /// <param name="jsonPayload">响应负载 JSON。</param>
+    private void RouteFullStateSyncResponse(PlayerSession senderSession, string jsonPayload)
+    {
+        try
+        {
+            if (!senderSession.IsHost)
+            {
+                return;
+            }
+
+            JsonElement root = JsonSerializer.Deserialize<JsonElement>(jsonPayload);
+            string targetPlayerId = root.TryGetProperty("TargetPlayerId", out var tpid) && tpid.ValueKind == JsonValueKind.String ? tpid.GetString() : null;
+            if (string.IsNullOrWhiteSpace(targetPlayerId))
+            {
+                return;
+            }
+
+            if (!TryGetSession(targetPlayerId, out var targetSession) || !targetSession.IsConnected)
+            {
+                return;
+            }
+
+            SendRawJsonToPeer(targetSession.Peer, NetworkMessageTypes.FullStateSyncResponse, jsonPayload);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError($"[Server] Error routing FullStateSyncResponse: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 向指定 peer 发送一条“类型 + JSON payload”的原始消息（避免二次序列化改变字段结构）。
+    /// </summary>
+    /// <param name="peer">目标 peer。</param>
+    /// <param name="messageType">消息类型。</param>
+    /// <param name="jsonPayload">JSON payload 字符串。</param>
+    private void SendRawJsonToPeer(NetPeer peer, string messageType, string jsonPayload)
+    {
+        try
+        {
+            NetDataWriter writer = new();
+            writer.Put(messageType);
+            writer.Put(jsonPayload ?? string.Empty);
+            peer.Send(writer, DeliveryMethod.ReliableOrdered);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError($"[Server] Error sending raw message {messageType}: {ex.Message}");
         }
     }
 
@@ -816,6 +915,9 @@ public class NetworkServer : BaseGameServer
                 case "Reconnect_REQUEST":
                     HandleReconnectRequest(fromPeer, jsonPayload);
                     return;
+                case "DirectMessage":
+                    HandleDirectMessage(fromPeer, jsonPayload);
+                    return;
                 default:
                     Console.WriteLine($"[Server] Unknown system message type: {messageType} from {fromPeer.EndPoint}");
                     _logger?.LogWarning($"[Server] Unknown system message type: {messageType} from {fromPeer.EndPoint}");
@@ -826,6 +928,76 @@ public class NetworkServer : BaseGameServer
         {
             Console.WriteLine($"[Server] Error handling system message {messageType} from {fromPeer.EndPoint}: {ex.Message}");
             _logger?.LogError($"[Server] Error handling system message {messageType} from {fromPeer.EndPoint}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 处理点对点消息中继（DirectMessage）。
+    /// </summary>
+    /// <param name="fromPeer">发送者 peer。</param>
+    /// <param name="jsonPayload">外层 DirectMessage payload（包含 TargetPlayerId/Type/Payload）。</param>
+    private void HandleDirectMessage(NetPeer fromPeer, string jsonPayload)
+    {
+        try
+        {
+            if (!SessionsByPeer.TryGetValue(fromPeer, out var senderSession))
+            {
+                return;
+            }
+
+            JsonElement root = JsonSerializer.Deserialize<JsonElement>(jsonPayload);
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                return;
+            }
+
+            string targetPlayerId = root.TryGetProperty("TargetPlayerId", out var tpid) && tpid.ValueKind == JsonValueKind.String
+                ? tpid.GetString()
+                : null;
+
+            if (string.IsNullOrWhiteSpace(targetPlayerId) || !TryGetSession(targetPlayerId, out var targetSession) || !targetSession.IsConnected)
+            {
+                return;
+            }
+
+            string innerType = root.TryGetProperty("Type", out var typeElem) && typeElem.ValueKind == JsonValueKind.String
+                ? typeElem.GetString()
+                : "DirectMessage";
+
+            // FullSync 控制消息：不信任客户端指定的 TargetPlayerId，强制按房主/请求方规则路由。
+            if (string.Equals(innerType, NetworkMessageTypes.FullStateSyncRequest, StringComparison.Ordinal))
+            {
+                PlayerSession hostSession = SessionsByPeer.Values.FirstOrDefault(s => s.IsHost && s.IsConnected);
+                if (hostSession == null)
+                {
+                    return;
+                }
+
+                // 透传内层 payload（保持 MidGameJoinManager 既有 JSON 结构）。
+                string innerJson = root.TryGetProperty("Payload", out var payloadElem) ? payloadElem.GetRawText() : "{}";
+                SendRawJsonToPeer(hostSession.Peer, NetworkMessageTypes.FullStateSyncRequest, innerJson);
+                return;
+            }
+
+            if (string.Equals(innerType, NetworkMessageTypes.FullStateSyncResponse, StringComparison.Ordinal))
+            {
+                if (!senderSession.IsHost)
+                {
+                    return;
+                }
+
+                string innerJson = root.TryGetProperty("Payload", out var payloadElem) ? payloadElem.GetRawText() : "{}";
+                SendRawJsonToPeer(targetSession.Peer, NetworkMessageTypes.FullStateSyncResponse, innerJson);
+                return;
+            }
+
+            // 其他 DirectMessage：透传内层类型与 payload。
+            string payloadJson = root.TryGetProperty("Payload", out var innerPayload) ? innerPayload.GetRawText() : "{}";
+            SendRawJsonToPeer(targetSession.Peer, innerType, payloadJson);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError($"[Server] Error handling DirectMessage: {ex.Message}");
         }
     }
 
@@ -845,6 +1017,20 @@ public class NetworkServer : BaseGameServer
             session.UpdateMessageTime();
 
             OnGameEventReceived?.Invoke(eventType, eventData, session);
+
+            // FullSync 控制消息不能广播：仅应在房主/请求方之间定向转发。
+            if (string.Equals(eventType, NetworkMessageTypes.FullStateSyncRequest, StringComparison.Ordinal))
+            {
+                RouteFullStateSyncRequest(session, jsonPayload);
+                return;
+            }
+
+            if (string.Equals(eventType, NetworkMessageTypes.FullStateSyncResponse, StringComparison.Ordinal))
+            {
+                RouteFullStateSyncResponse(session, jsonPayload);
+                return;
+            }
+
             BroadcastGameEvent(eventType, eventData, fromPeer.Id);
         }
         catch (Exception ex)

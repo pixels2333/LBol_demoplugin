@@ -101,16 +101,7 @@ public interface INetworkPlayer
     /// </remarks>
     int[] mana { get; set; }
 
-    /// <summary>
-    /// 玩家当前姿态
-    /// TODO:stance名称可能要改
-    /// 表示玩家的战斗姿态或状态
-    /// </summary>
-    /// <remarks>
-    /// TODO 说明：原游戏侧更接近“mood（心境）”语义；此处的 stance 为历史遗留命名。
-    /// 兼容策略：新增 mood 作为主字段，stance 保留为别名以减少破坏性；网络协议字段也应逐步迁移为 mood。
-    /// </remarks>
-    string stance { get; set; }
+
 
     /// <summary>
     /// 玩家当前心境（Mood）标识。
@@ -243,16 +234,7 @@ public interface INetworkPlayer
     /// <param name="updateServer">是否同步到服务器</param>
     void UpdatePlayerInfo(bool updateServer);
 
-    //TODO:stance名称可能要改
-    /// <summary>
-    /// 更新玩家姿态信息
-    /// 同步姿态变化到网络和其他客户端
-    /// </summary>
-    /// <param name="updateServer">是否同步到服务器</param>
-    /// <remarks>
-    /// 兼容入口：与历史字段 stance 对应；实现建议内部转调 UpdateMood。
-    /// </remarks>
-    void UpdateStance(bool updateServer);
+
 
     /// <summary>
     /// 更新玩家心境（Mood）信息。

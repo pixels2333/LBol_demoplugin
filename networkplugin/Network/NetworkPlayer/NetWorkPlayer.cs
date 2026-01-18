@@ -16,8 +16,6 @@ public class NetWorkPlayer
 {
     #region Json Fields
 
-    // TODO: 后续可改为 SyncVar/属性封装（需同时调整序列化与同步逻辑）。
-
     /// <summary>
     /// 玩家名称/标识。
     /// </summary>
@@ -85,10 +83,10 @@ public class NetWorkPlayer
     public int[] mana;
 
     /// <summary>
-    /// 战斗姿态标识。
+    /// 心境标识。
     /// </summary>
     [JsonPropertyName("mood")]
-    public string mood; // TODO: 协议/枚举化需要统一。
+    public string mood; 
 
     /// <summary>
     /// 展品列表。

@@ -1,10 +1,10 @@
 using System;
 using System.Threading;
 using HarmonyLib;
+using LBoL.Presentation;
 using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Dialogs;
 using LBoL.Presentation.UI.Panels;
-using LBoL.Presentation;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Configuration;
 using NetworkPlugin.Network;
@@ -16,24 +16,43 @@ using UnityEngine.UI;
 namespace NetworkPlugin.Patch.UI;
 
 /// <summary>
-/// 主菜单增加“多人游戏”入口（参照 Together in Spire: MainMenuButtonsPatch / MainMenuPanelPatch）。
-/// - 在 <see cref="MainMenuPanel"/> 主菜单按钮组中克隆一个按钮作为“多人游戏”入口。
-/// - 点击后提供 Host / Join 两种快速流程（使用配置的 ServerIP/ServerPort）。
+/// 在主菜单增加“多人游戏”入口（参考 Together in Spire: MainMenuButtonsPatch / MainMenuPanelPatch）。
 /// </summary>
+/// <remarks>
+/// 实现方式：
+/// - 在 <see cref="MainMenuPanel"/> 中克隆一个模板按钮作为“多人游戏”按钮。
+/// - 点击后提供 Host / Join 两条快捷路径：
+///   - 确认：启动本机服务器并连接（Host）
+///   - 取消：连接到配置的服务器（Join）
+/// </remarks>
 [HarmonyPatch]
 public static class MainMenuMultiplayerEntryPatch
 {
+    #region 常量与字段
+
     private const string MultiplayerButtonName = "NetworkPlugin_MultiplayerButton";
     private const string SingleplayerText = "单人游戏";
 
     private static Button _multiplayerButton;
+
     private static NetworkServer _localServer;
     private static bool _localServerRunning;
     private static Thread _localServerThread;
     private static CancellationTokenSource _localServerCts;
 
+    #endregion
+
+    #region 依赖注入获取
+
+    /// <summary>
+    /// 依赖注入服务提供者。
+    /// </summary>
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
+    /// <summary>
+    /// 尝试从依赖注入解析网络客户端。
+    /// </summary>
+    /// <returns>解析成功返回 <see cref="INetworkClient"/>，失败返回 null。</returns>
     private static INetworkClient TryGetNetworkClient()
     {
         try
@@ -46,6 +65,10 @@ public static class MainMenuMultiplayerEntryPatch
         }
     }
 
+    /// <summary>
+    /// 获取配置管理器（优先从依赖注入解析，失败则回落到插件静态实例）。
+    /// </summary>
+    /// <returns>配置管理器实例。</returns>
     private static ConfigManager TryGetConfig()
     {
         try
@@ -58,21 +81,36 @@ public static class MainMenuMultiplayerEntryPatch
         }
     }
 
+    #endregion
+
+    #region Harmony 补丁入口
+
+    /// <summary>
+    /// 主菜单 Awake 后置：确保多人游戏按钮存在，并尝试重命名单人按钮文案。
+    /// </summary>
+    /// <param name="__instance">主菜单面板实例。</param>
     [HarmonyPatch(typeof(MainMenuPanel), "Awake")]
     [HarmonyPostfix]
     public static void MainMenuPanel_Awake_Postfix(MainMenuPanel __instance)
     {
         try
         {
+            // 确保按钮已创建。
             EnsureMultiplayerButton(__instance);
+
+            // 尝试统一单人按钮文案。
             TryRenameSingleplayerButtons(__instance);
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] Failed to add button: {ex.Message}");
+            Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] 添加按钮失败: {ex.Message}");
         }
     }
 
+    /// <summary>
+    /// 主菜单刷新档案后置：确保按钮存在并重新显示。
+    /// </summary>
+    /// <param name="__instance">主菜单面板实例。</param>
     [HarmonyPatch(typeof(MainMenuPanel), "RefreshProfile")]
     [HarmonyPostfix]
     public static void MainMenuPanel_RefreshProfile_Postfix(MainMenuPanel __instance)
@@ -85,22 +123,33 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+            // 忽略：刷新过程中失败不影响主菜单可用性。
         }
     }
 
+    #endregion
+
+    #region 按钮构建与文案
+
+    /// <summary>
+    /// 确保“多人游戏”按钮被创建并挂载到主菜单按钮组。
+    /// </summary>
+    /// <param name="panel">主菜单面板。</param>
     private static void EnsureMultiplayerButton(MainMenuPanel panel)
     {
+        // 面板为空时直接返回。
         if (panel == null)
         {
             return;
         }
 
+        // 已创建则不重复创建。
         if (_multiplayerButton != null)
         {
             return;
         }
 
+        // 从主菜单中取一个现有按钮作为模板（通常是 newGameButton）。
         Button template = Traverse.Create(panel).Field("newGameButton").GetValue<Button>();
         if (template == null)
         {
@@ -113,20 +162,27 @@ public static class MainMenuMultiplayerEntryPatch
             return;
         }
 
+        // 克隆模板按钮并替换点击回调。
         _multiplayerButton = UnityEngine.Object.Instantiate(template, parent);
         _multiplayerButton.name = MultiplayerButtonName;
 
         _multiplayerButton.onClick.RemoveAllListeners();
         _multiplayerButton.onClick.AddListener(OpenMultiplayerEntry);
 
+        // 设置按钮文案。
         TrySetButtonText(_multiplayerButton, "多人游戏");
         TrySetButtonText(template, SingleplayerText);
 
+        // 让多人按钮紧挨模板按钮之后。
         int sibling = template.transform.GetSiblingIndex();
         _multiplayerButton.transform.SetSiblingIndex(Mathf.Min(sibling + 1, parent.childCount - 1));
         _multiplayerButton.gameObject.SetActive(true);
     }
 
+    /// <summary>
+    /// 尝试把单人相关按钮的文字统一命名。
+    /// </summary>
+    /// <param name="panel">主菜单面板。</param>
     private static void TryRenameSingleplayerButtons(MainMenuPanel panel)
     {
         if (panel == null)
@@ -136,20 +192,27 @@ public static class MainMenuMultiplayerEntryPatch
 
         try
         {
+            // 通过字段名获取按钮引用。
             Button newGame = Traverse.Create(panel).Field("newGameButton").GetValue<Button>();
             Button restore = Traverse.Create(panel).Field("restoreGameButton").GetValue<Button>();
             Button abandon = Traverse.Create(panel).Field("abandonGameButton").GetValue<Button>();
 
+            // 统一按钮文案。
             TrySetButtonText(newGame, SingleplayerText);
             TrySetButtonText(restore, $"{SingleplayerText} - 继续");
             TrySetButtonText(abandon, $"{SingleplayerText} - 放弃");
         }
         catch
         {
-            // ignored
+            // 忽略：UI 结构变化时不强依赖此功能。
         }
     }
 
+    /// <summary>
+    /// 尝试设置按钮上的 TextMeshPro 文本。
+    /// </summary>
+    /// <param name="button">目标按钮。</param>
+    /// <param name="text">设置的文本。</param>
     private static void TrySetButtonText(Button button, string text)
     {
         try
@@ -159,6 +222,7 @@ public static class MainMenuMultiplayerEntryPatch
                 return;
             }
 
+            // 主菜单按钮通常使用 TextMeshProUGUI。
             var label = button.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
             if (label != null)
             {
@@ -167,12 +231,20 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+            // 忽略：设置 UI 文案失败不影响整体流程。
         }
     }
 
+    #endregion
+
+    #region 弹窗流程
+
+    /// <summary>
+    /// 打开“多人游戏”入口弹窗。
+    /// </summary>
     private static void OpenMultiplayerEntry()
     {
+        // 若已连接，则提示是否断开。
         INetworkClient client = TryGetNetworkClient();
         if (client?.IsConnected == true)
         {
@@ -180,6 +252,7 @@ public static class MainMenuMultiplayerEntryPatch
             return;
         }
 
+        // 未连接：提示选择 Host/Join。
         UiManager.GetDialog<MessageDialog>().Show(
             new MessageContent
             {
@@ -187,11 +260,15 @@ public static class MainMenuMultiplayerEntryPatch
                 Icon = MessageIcon.Warning,
                 Buttons = DialogButtons.ConfirmCancel,
                 OnConfirm = TryHostLocalServerAndConnect,
-                OnCancel = ShowJoinConfirmDialog
+                OnCancel = ShowJoinConfirmDialog,
             }
         );
     }
 
+    /// <summary>
+    /// 已处于联机状态时的提示弹窗。
+    /// </summary>
+    /// <param name="client">网络客户端。</param>
     private static void ShowConnectedDialog(INetworkClient client)
     {
         UiManager.GetDialog<MessageDialog>().Show(
@@ -201,11 +278,14 @@ public static class MainMenuMultiplayerEntryPatch
                 Icon = MessageIcon.Warning,
                 Buttons = DialogButtons.ConfirmCancel,
                 OnConfirm = () => Disconnect(client),
-                OnCancel = null
+                OnCancel = null,
             }
         );
     }
 
+    /// <summary>
+    /// 加入服务器确认弹窗（显示将连接的地址与端口）。
+    /// </summary>
     private static void ShowJoinConfirmDialog()
     {
         ConfigManager config = TryGetConfig();
@@ -219,11 +299,18 @@ public static class MainMenuMultiplayerEntryPatch
                 Icon = MessageIcon.Warning,
                 Buttons = DialogButtons.ConfirmCancel,
                 OnConfirm = () => TryConnectToServer(ip, port),
-                OnCancel = null
+                OnCancel = null,
             }
         );
     }
 
+    #endregion
+
+    #region 连接与断开
+
+    /// <summary>
+    /// 尝试启动本机服务器并连接（Host 流程）。
+    /// </summary>
     private static void TryHostLocalServerAndConnect()
     {
         ConfigManager config = TryGetConfig();
@@ -233,6 +320,7 @@ public static class MainMenuMultiplayerEntryPatch
 
         try
         {
+            // 若本机服务器未运行，则启动并开启轮询线程。
             if (!_localServerRunning)
             {
                 _localServer = new NetworkServer(port, maxConn, key, Plugin.Logger);
@@ -243,21 +331,27 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] Failed to start local server: {ex.Message}");
+            Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] 启动本机服务器失败: {ex.Message}");
             UiManager.GetDialog<MessageDialog>().Show(
                 new MessageContent
                 {
                     Text = "启动本机服务器失败，请检查日志。",
                     Icon = MessageIcon.Warning,
-                    Buttons = DialogButtons.Confirm
+                    Buttons = DialogButtons.Confirm,
                 }
             );
             return;
         }
 
+        // 启动成功后连接本机。
         TryConnectToServer("127.0.0.1", port);
     }
 
+    /// <summary>
+    /// 尝试连接到指定服务器（Join/Host 共用）。
+    /// </summary>
+    /// <param name="host">服务器地址。</param>
+    /// <param name="port">服务器端口。</param>
     private static void TryConnectToServer(string host, int port)
     {
         INetworkClient client = TryGetNetworkClient();
@@ -268,31 +362,37 @@ public static class MainMenuMultiplayerEntryPatch
                 {
                     Text = "网络客户端未初始化（INetworkClient 解析失败）。\n请先确认依赖注入与网络模块已就绪。",
                     Icon = MessageIcon.Warning,
-                    Buttons = DialogButtons.Confirm
+                    Buttons = DialogButtons.Confirm,
                 }
             );
             return;
         }
 
+        // 确保客户端已启动（重复启动可能抛异常，因此做容错）。
         try
         {
             client.Start();
         }
         catch
         {
-            // ignored: may already started
+            // 忽略：可能已启动。
         }
 
+        // 发起连接。
         try
         {
             client.ConnectToServer(host, port);
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] Connect failed: {ex.Message}");
+            Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] 连接失败: {ex.Message}");
         }
     }
 
+    /// <summary>
+    /// 断开连接，并停止本机服务器轮询与实例。
+    /// </summary>
+    /// <param name="client">网络客户端。</param>
     private static void Disconnect(INetworkClient client)
     {
         try
@@ -301,10 +401,11 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+            // 忽略：断开失败不影响后续资源回收。
         }
 
         StopLocalServerLoop();
+
         try
         {
             if (_localServerRunning)
@@ -314,7 +415,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+            // 忽略：停止服务器失败时继续清理引用。
         }
         finally
         {
@@ -323,15 +424,24 @@ public static class MainMenuMultiplayerEntryPatch
         }
     }
 
+    #endregion
+
+    #region 本机服务器轮询线程
+
+    /// <summary>
+    /// 启动本机服务器事件轮询线程。
+    /// </summary>
     private static void StartLocalServerLoop()
     {
         try
         {
+            // 避免重复启动。
             StopLocalServerLoop();
 
             _localServerCts = new CancellationTokenSource();
             CancellationToken token = _localServerCts.Token;
 
+            // 轮询线程：周期性调用服务器 PollEvents。
             _localServerThread = new Thread(() =>
             {
                 while (!token.IsCancellationRequested)
@@ -342,7 +452,7 @@ public static class MainMenuMultiplayerEntryPatch
                     }
                     catch
                     {
-                        // ignored
+                        // 忽略：单次轮询失败不应终止线程。
                     }
 
                     Thread.Sleep(15);
@@ -350,17 +460,20 @@ public static class MainMenuMultiplayerEntryPatch
             })
             {
                 IsBackground = true,
-                Name = "NetworkPlugin.LocalServerPoll"
+                Name = "NetworkPlugin.LocalServerPoll",
             };
 
             _localServerThread.Start();
         }
         catch
         {
-            // ignored
+            // 忽略：启动轮询失败不应导致主菜单不可用。
         }
     }
 
+    /// <summary>
+    /// 停止本机服务器事件轮询线程并释放取消令牌。
+    /// </summary>
     private static void StopLocalServerLoop()
     {
         try
@@ -369,7 +482,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+            // 忽略：取消失败继续进行 Join/Dispose。
         }
 
         try
@@ -381,7 +494,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+            // 忽略：Join 失败不阻断清理。
         }
         finally
         {
@@ -390,4 +503,6 @@ public static class MainMenuMultiplayerEntryPatch
             _localServerCts = null;
         }
     }
+
+    #endregion
 }

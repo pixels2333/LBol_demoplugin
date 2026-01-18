@@ -10,7 +10,7 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
-using NetworkPlugin.Network.Client;  
+using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.Snapshot;
 using NetworkPlugin.Utils;
@@ -18,83 +18,69 @@ using NetworkPlugin.Utils;
 namespace NetworkPlugin.Patch.Actions;
 
 /// <summary>
-/// 回合管理同步补丁类
-/// 使用Harmony框架拦截LBoL游戏的回合和战斗管理逻辑
-/// 实现回合开始、结束以及战斗状态的网络同步功能
+/// 回合/战斗关键动作同步补丁。
 /// </summary>
 /// <remarks>
-/// 这个类负责同步游戏中的回合制关键事件，包括：
-/// 1. 玩家回合的开始和结束
-/// 2. 战斗的启动和结束
-/// 3. 回合间的状态转换
-///
-///
-/// 这些注释的代码展示了回合同步的实现思路，可在找到正确的API后重新启用
+/// 目标：在回合开始/结束、战斗开始/结束等关键节点，将本地状态打包并发送到服务器，
+/// 以便远端玩家对齐时间线与状态。
 /// </remarks>
 public class TurnAction_Patch
 {
-    /// <summary>
-    /// 服务提供者实例，用于获取依赖注入的网络客户端服务
-    /// </summary>
-    private static IServiceProvider serviceProvider =>
-        ModService.ServiceProvider;
-
+    #region 依赖注入
 
     /// <summary>
-    /// 玩家回合开始事件同步补丁
-    /// 在StartPlayerTurnAction方法执行完成后被调用
-    /// 同步玩家回合开始时的游戏状态，包括回合数、抽牌数量、法力重置等信息
+    /// 依赖注入服务提供者（用于解析网络客户端服务）。
     /// </summary>
-    /// <param name="__instance">被补丁的StartPlayerTurnAction实例（Harmony自动注入）</param>
-    /// <remarks>
-    /// 当前被注释的原因：
-    /// - StartPlayerTurnAction类可能不存在Execute方法
-    /// - 或者方法签名与预期不符
-    /// - 需要查找LBoL源码确定正确的拦截点
-    ///
-    /// 同步的信息包括：
-    /// - 玩家ID和回合数
-    /// - 抽牌数量和额外回合状态
-    /// - 牌库状态（手牌、牌库、弃牌堆）
-    /// - 法力重置标志
-    ///
-    /// 发送的事件类型：OnTurnStart
-    /// </remarks>
+    private static IServiceProvider serviceProvider => ModService.ServiceProvider;
+
+    #endregion
+
+    #region 玩家回合开始同步
+
+    /// <summary>
+    /// 玩家回合开始后置补丁：构建回合开始快照并发送。
+    /// </summary>
+    /// <param name="__instance">被补丁的 <see cref="StartPlayerTurnAction"/> 实例（Harmony 注入）。</param>
     [HarmonyPatch(typeof(StartPlayerTurnAction), "Execute")]
     [HarmonyPostfix]
     public static void StartPlayerTurn_Postfix(StartPlayerTurnAction __instance)
     {
         try
         {
-            // 验证服务提供者是否已初始化
+            // 依赖注入服务未就绪时跳过。
             if (serviceProvider == null)
             {
-                Plugin.Logger?.LogDebug("[TurnSync] ServiceProvider not initialized for StartPlayerTurn");
+                Plugin.Logger?.LogDebug("[TurnSync] ServiceProvider 未初始化（StartPlayerTurn）");
                 return;
             }
 
-            // 获取并验证网络客户端
+            // 获取网络客户端并确认连接。
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
             {
-                Plugin.Logger?.LogDebug("[TurnSync] Network client not available for StartPlayerTurn");
+                Plugin.Logger?.LogDebug("[TurnSync] 网络客户端不可用（StartPlayerTurn）");
                 return;
             }
 
-            // 获取回合动作的来源单位和战斗信息
-
+            // 取战斗上下文与本地玩家单位。
             BattleController battle = __instance.Unit?.Battle;
-            PlayerUnit source = battle.Player;
             if (battle == null)
             {
-                Plugin.Logger?.LogDebug("[TurnSync] Battle is null for StartPlayerTurn");
+                Plugin.Logger?.LogDebug("[TurnSync] battle 为空（StartPlayerTurn）");
                 return;
             }
 
-            // 构建状态效果快照列表
+            PlayerUnit source = battle.Player;
+            if (source == null)
+            {
+                Plugin.Logger?.LogDebug("[TurnSync] battle.Player 为空（StartPlayerTurn）");
+                return;
+            }
+
+            // 状态效果快照：此处保留空列表，后续可在合适的 API 点补充。
             var statusEffectsSnapshot = new List<StatusEffectStateSnapshot>();
 
-            // 构建玩家状态快照
+            // 构建玩家状态快照。
             PlayerStateSnapshot playerStateSnapshot = new PlayerStateSnapshot
             {
                 UserName = networkClient.GetSelf().userName,
@@ -103,10 +89,10 @@ public class TurnAction_Patch
                 Block = source.Block,
                 Shield = source.Shield,
                 ManaGroup = ManaUtils.ManaGroupToArray(battle.BattleMana),
-                MaxMana = 0, // TODO: 获取最大法力值
-                Gold = 0,
+                MaxMana = 0, // TODO：后续补齐最大法力获取逻辑
+                Gold = 0, // TODO：后续补齐金币获取逻辑
                 TurnNumber = source.TurnCounter,
-                IsInBattle = battle != null,
+                IsInBattle = true,
                 IsAlive = source.IsAlive,
                 IsPlayersTurn = source is PlayerUnit,
                 IsInTurn = source.IsInTurn,
@@ -120,165 +106,114 @@ public class TurnAction_Patch
                 Timestamp = DateTime.Now,
             };
 
-            // 构建意图快照 - 传递战斗控制器，让IntentionSnapshot类内部处理意图提取
+            // 构建意图快照（由 IntentionSnapshot 内部根据战斗控制器提取）。
             IntentionSnapshot intentionSnapshot = new IntentionSnapshot(battleController: battle);
 
-            // 构建详细的回合开始同步数据
+            // 构建回合开始同步数据。
             TurnStartStateSnapshot turnData = new TurnStartStateSnapshot(
                 statusEffectStateSnapshot: statusEffectsSnapshot,
                 playerStateSnapshot: playerStateSnapshot,
                 intentionSnapshot: intentionSnapshot
             );
 
-
-            // 发送回合开始事件到网络服务器
+            // 序列化并发送回合开始事件。
             string json = JsonSerializer.Serialize(turnData);
-            //TODO:服务器接收需要将数据应用变更至INetworkPlayer
+
+            // TODO：服务器接收后需要将数据应用到对应的 INetworkPlayer。
             networkClient.SendRequest(NetworkMessageTypes.OnTurnStart, json);
 
-
-            // 记录回合开始的详细日志
-            Plugin.Logger?.LogInfo(
-                $"[TurnSync] Player turn started. "
-
-            );
+            Plugin.Logger?.LogInfo("[TurnSync] 玩家回合开始已同步");
         }
         catch (Exception ex)
         {
-            // 捕获并记录异常，防止补丁错误影响游戏
-            Plugin.Logger?.LogError($"[TurnSync] Error in StartPlayerTurn_Postfix: {ex.Message}\n{ex.StackTrace}");
+            // 捕获异常，避免补丁异常影响回合流程。
+            Plugin.Logger?.LogError($"[TurnSync] StartPlayerTurn_Postfix 异常: {ex.Message}\n{ex.StackTrace}");
         }
     }
 
+    #endregion
 
+    #region 玩家回合结束同步
 
     /// <summary>
-    /// 玩家回合结束事件同步补丁
-    /// 在EndPlayerTurnAction方法执行完成后被调用
-    /// 同步玩家回合结束时的最终状态，包括手牌数量、格挡值等状态信息
+    /// 玩家回合结束后置补丁（预留）。
     /// </summary>
-    /// <param name="__instance">被补丁的EndPlayerTurnAction实例（Harmony自动注入）</param>
-    /// <remarks>
-    /// 当前被注释的原因：
-    /// - EndPlayerTurnAction类可能不存在Execute方法
-    /// - 或者方法签名与预期不符
-    /// - 需要查找LBoL源码确定正确的拦截点
-    ///
-    /// 同步的信息包括：
-    /// - 玩家ID和回合数
-    /// - 牌库状态（手牌、弃牌堆）
-    /// - 玩家防御状态（格挡值、护盾值）
-    /// - 额外回合标志
-    ///
-    /// 发送的事件类型：OnTurnEnd
-    /// </remarks>
+    /// <param name="__instance">被补丁的 <see cref="EndPlayerTurnAction"/> 实例（Harmony 注入）。</param>
     [HarmonyPatch(typeof(EndPlayerTurnAction), "Execute")]
     [HarmonyPostfix]
     public static void EndPlayerTurn_Postfix(EndPlayerTurnAction __instance)
     {
         try
         {
-            //TODO:待定
+            // TODO：待确认 EndPlayerTurn 的可用字段与同步内容。
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[TurnSync] Error in EndPlayerTurn_Postfix: {ex.Message}\n{ex.StackTrace}");
+            Plugin.Logger?.LogError($"[TurnSync] EndPlayerTurn_Postfix 异常: {ex.Message}\n{ex.StackTrace}");
         }
     }
 
+    #endregion
 
+    #region 战斗开始/结束同步（预留）
 
     /// <summary>
-    /// 战斗开始事件同步补丁
-    /// 在StartBattleAction方法执行完成后被调用
-    /// 同步战斗开始时的初始状态，包括玩家状态和敌人信息
+    /// 战斗开始后置补丁（预留）。
     /// </summary>
-    /// <param name="__instance">被补丁的StartBattleAction实例（Harmony自动注入）</param>
-    /// <remarks>
-    /// 当前被注释的原因：
-    /// - StartBattleAction类可能不存在Execute方法
-    /// - 或者方法签名与预期不符
-    /// - 需要查找LBoL源码确定正确的拦截点
-    ///
-    /// 同步的信息包括：
-    /// - 战斗唯一标识
-    /// - 玩家信息和初始状态
-    /// - 敌人组信息和数量
-    /// - 初始HP、格挡、护盾值
-    ///
-    /// 发送的事件类型：OnBattleStart
-    /// </remarks>
+    /// <param name="__instance">被补丁的 <see cref="StartBattleAction"/> 实例（Harmony 注入）。</param>
     [HarmonyPatch(typeof(StartBattleAction), "Execute")]
     [HarmonyPostfix]
     public static void StartBattle_Postfix(StartBattleAction __instance)
     {
-
+        // TODO：待确认 StartBattle 的可用字段与同步内容。
     }
 
-
-
     /// <summary>
-    /// 战斗结束事件同步补丁
-    /// 在EndBattleAction方法执行完成后被调用
-    /// 同步战斗结束时的最终结果，包括胜利状态、玩家最终状态等信息
+    /// 战斗结束后置补丁（预留）。
     /// </summary>
-    /// <param name="__instance">被补丁的EndBattleAction实例（Harmony自动注入）</param>
-    /// <remarks>
-    /// 当前被注释的原因：
-    /// - EndBattleAction类可能不存在Execute方法
-    /// - 或者方法签名与预期不符
-    /// - 需要查找LBoL源码确定正确的拦截点
-    ///
-    /// 同步的信息包括：
-    /// - 战斗标识和结果状态
-    /// - 玩家最终HP和状态
-    /// - 胜利/逃跑标志
-    /// - 战斗奖励信息
-    ///
-    /// 发送的事件类型：OnBattleEnd
-    /// </remarks>
+    /// <param name="__instance">被补丁的 <see cref="EndBattleAction"/> 实例（Harmony 注入）。</param>
     [HarmonyPatch(typeof(EndBattleAction), "Execute")]
     [HarmonyPostfix]
     public static void EndBattle_Postfix(EndBattleAction __instance)
     {
-
+        // TODO：待确认 EndBattle 的可用字段与同步内容。
     }
 
+    #endregion
 
-    // ========================================
-    // 辅助方法 - 用于数据转换（注释掉的补丁使用的工具方法）
-    // ========================================
+    #region 辅助方法
 
     /// <summary>
-    /// 将ManaGroup对象转换为整数数组
-    /// 用于网络传输中的法力值序列化
+    /// 将 <see cref="ManaGroup"/> 转换为整数数组，用于网络序列化。
     /// </summary>
-    /// <param name="manaGroup">法力组对象</param>
-    /// <returns>包含四种颜色法力值的数组 [红, 蓝, 绿, 白]</returns>
+    /// <param name="manaGroup">法力组对象。</param>
+    /// <returns>数组格式：<c>[红, 蓝, 绿, 白]</c>。</returns>
     private static int[] GetManaGroup(ManaGroup manaGroup)
     {
         if (manaGroup == null)
         {
-            return [0, 0, 0, 0]; // 默认值：所有颜色法力为0
+            // 默认值：所有颜色法力为 0。
+            return [0, 0, 0, 0];
         }
 
+        // 按颜色顺序输出。
         return
         [
-        manaGroup.Red,    // 红色法力（火）
-        manaGroup.Blue,   // 蓝色法力（水）
-        manaGroup.Green,  // 绿色法力（木）
-        manaGroup.White   // 白色法力（光）
+            manaGroup.Red,
+            manaGroup.Blue,
+            manaGroup.Green,
+            manaGroup.White,
         ];
     }
 
     /// <summary>
-    /// 将ManaGroup对象转换为Dictionary&lt;ManaColor, int&gt;
-    /// 用于网络传输中的法力值序列化
+    /// 将 <see cref="ManaGroup"/> 转换为字典形式（颜色 -> 数量），用于网络序列化。
     /// </summary>
-    /// <param name="manaGroup">法力组对象</param>
-    /// <returns>包含所有颜色法力值的字典</returns>
+    /// <param name="manaGroup">法力组对象。</param>
+    /// <returns>颜色到数量的映射字典。</returns>
     private static Dictionary<ManaColor, int> ConvertManaGroupToDictionary(ManaGroup manaGroup)
     {
+        // 空法力组直接返回空字典。
         if (manaGroup.IsEmpty)
         {
             return [];
@@ -294,16 +229,15 @@ public class TurnAction_Patch
             [ManaColor.Green] = manaGroup.Green,
             [ManaColor.Colorless] = manaGroup.Colorless,
             [ManaColor.Philosophy] = manaGroup.Philosophy,
-            [ManaColor.Hybrid] = manaGroup.Hybrid
+            [ManaColor.Hybrid] = manaGroup.Hybrid,
         };
     }
 
     /// <summary>
-    /// 获取敌人组中的敌人类型列表
-    /// 用于战斗开始时的敌人信息同步
+    /// 从敌人组中提取敌人类型名称列表，用于战斗开始同步。
     /// </summary>
-    /// <param name="enemyGroup">敌人组</param>
-    /// <returns>敌人类型名称列表</returns>
+    /// <param name="enemyGroup">敌人组。</param>
+    /// <returns>敌人名称数组。</returns>
     private static string[] GetEnemyTypes(IEnumerable<EnemyUnit> enemyGroup)
     {
         if (enemyGroup == null)
@@ -316,8 +250,9 @@ public class TurnAction_Patch
         {
             enemyTypes.Add(enemy?.Name ?? "Unknown");
         }
+
         return enemyTypes.ToArray();
     }
 
-
+    #endregion
 }

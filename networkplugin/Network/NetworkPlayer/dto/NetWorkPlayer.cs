@@ -47,20 +47,6 @@ public class NetWorkPlayer
     [JsonPropertyName("mood")]
     public string mood;
 
-    // 兼容旧协议字段：旧版本可能仍发送 "stance"。
-    // 约定：若同时出现 mood 与 stance，以 mood 为准。
-    [JsonPropertyName("stance")]
-    public string legacy_stance
-    {
-        get => null;
-        set
-        {
-            if (string.IsNullOrWhiteSpace(mood))
-            {
-                mood = value;
-            }
-        }
-    }
 
     [JsonPropertyName("exhibits")]
     public string[] exhibits;

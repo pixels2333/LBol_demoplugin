@@ -27,3 +27,14 @@
   5. Joiner 收到 `FullStateSyncResponse` 后尽力回放 `MissedEvents`（失败降级为“仅快照/不中断”）。
 - 最小安全约束：
   - `JoinToken` 仅由 Host 签发、带超时、单次消费（在 Host 侧随 `FullStateSyncRequest` 校验并移除）。
+
+### FullStateSync（完整快照同步）路由约定
+- 目的：避免把 `JoinToken` / `FullSnapshot` / `MissedEvents` 作为房间广播扩散，且避免无谓负载放大。
+- Relay 模式（RelayServer）：
+  - `FullStateSyncRequest`：按 `RoomId` 作用域定向转发给房主（HostPlayerId）。
+  - `FullStateSyncResponse`：仅单播给 `TargetPlayerId`。
+  - 对 `DirectMessage` 内层为 `FullStateSync*` 的情况，服务端强制按房间作用域与房主规则路由，忽略客户端自填的目标。
+- Host/直连模式（NetworkServer）：
+  - 服务端实现 `DirectMessage` 中继（用于 `MidGameJoin*` 与 `FullStateSync*` 的既有链路）。
+  - `FullStateSyncRequest`：服务端定向转发给房主客户端（由房主侧 `MidGameJoinManager` 校验 JoinToken 并生成响应）。
+  - `FullStateSyncResponse`：服务端仅单播给 `TargetPlayerId`。

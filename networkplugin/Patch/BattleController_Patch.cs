@@ -14,118 +14,107 @@ using NetworkPlugin.Network.Client;
 namespace NetworkPlugin.Patch;
 
 /// <summary>
-/// 战斗控制器补丁类
-/// 使用Harmony框架拦截和修改LBoL游戏的核心战斗逻辑
-/// 实现战斗状态的网络同步，包括伤害、状态效果、治疗等关键战斗事件
+/// 战斗控制器相关补丁。
+/// 通过 Harmony 拦截 <see cref="BattleController"/> 的关键流程，并将本地玩家的战斗状态变化同步到联机层。
 /// </summary>
 /// <remarks>
-/// 这个类包含多个Harmony后置补丁，用于在游戏战斗系统执行关键操作后
-/// 将相关的状态变化同步到网络中的其他玩家，确保多人游戏的一致性
+/// 说明：这里的同步以“本地玩家”为中心，避免在同一房间中对其他玩家的状态进行重复广播造成冲突。
 /// </remarks>
 [HarmonyPatch]
 public class BattleController_Patch
 {
+    #region 依赖注入与客户端
+
     /// <summary>
-    /// 服务提供者访问器，用于获取依赖注入的组件
-    /// 通过模块服务获取网络客户端和其他服务
+    /// 服务提供者（依赖注入入口），用于解析网络客户端等服务。
     /// </summary>
     private static IServiceProvider serviceProvider = ModService.ServiceProvider;
 
     /// <summary>
-    /// 网络客户端属性，用于发送网络请求
-    /// 采用延迟加载模式，避免初始化时的依赖问题
+    /// 网络客户端（通过依赖注入获取）。
     /// </summary>
     private static INetworkClient networkClient => serviceProvider?.GetRequiredService<INetworkClient>();
 
+    #endregion
+
+    #region 伤害同步
 
     /// <summary>
-    /// 伤害同步补丁 - 在伤害应用后同步本地玩家的状态
-    /// 重要: 只同步本地玩家的状态变化，避免同步所有玩家造成冲突
+    /// 伤害应用完成后同步（仅同步本地玩家）。
     /// </summary>
-    /// <param name="__instance">被补丁的BattleController实例（Harmony自动注入）</param>
-    /// <param name="damageinfo">包含伤害详细信息的DamageInfo结构体</param>
-    /// <param name="target">受到伤害的目标单位</param>
-    /// <remarks>
-    /// 重要说明：此补丁只同步本地玩家的伤害状态，避免同步所有玩家状态造成冲突
-    ///
-    /// 同步的伤害信息包括：
-    /// - 总伤害值（包括溢出伤害）
-    /// - 实际HP伤害
-    /// - 被格挡的伤害
-    /// - 被护盾吸收的伤害
-    /// - 伤害类型和其他属性
-    /// - 目标受伤后的完整状态
-    /// </remarks>
+    /// <param name="__instance">被补丁的 <see cref="BattleController"/> 实例（Harmony 注入）。</param>
+    /// <param name="damageinfo">本次伤害信息（结构体）。</param>
+    /// <param name="target">伤害目标单位。</param>
     [HarmonyPatch(typeof(BattleController), "Damage")]
     [HarmonyPostfix]
     public static void Damage_Postfix(BattleController __instance, DamageInfo damageinfo, Unit target)
     {
         try
         {
-            // 参数验证 - DamageInfo是struct，不能直接与null比较
+            // 参数校验：DamageInfo 是 struct，不能与 null 比较；这里只检查引用类型参数。
             if (target == null || __instance == null)
             {
                 Plugin.Logger?.LogWarning("[DamageSync] Damage_Postfix received null parameter");
                 return;
             }
 
-            // 服务验证 - 检查依赖注入服务是否已初始化
+            // 依赖注入服务未就绪时直接跳过。
             if (serviceProvider == null)
             {
                 Plugin.Logger?.LogDebug("[DamageSync] ServiceProvider not initialized");
                 return;
             }
 
-            // 获取网络客户端实例并验证连接状态
-            var networkClient = serviceProvider.GetService<INetworkClient>();
-            if (networkClient == null || !networkClient.IsConnected)
+            // 获取网络客户端并确认联机状态。
+            var client = serviceProvider.GetService<INetworkClient>();
+            if (client == null || !client.IsConnected)
             {
                 Plugin.Logger?.LogDebug("[DamageSync] Network client not available");
                 return;
             }
 
-            // 只同步玩家单位的伤害 - 使用模式匹配减少嵌套层级
+            // 只同步玩家单位的伤害（敌人伤害在其他补丁中处理）。
             if (target is not PlayerUnit playerTarget)
             {
-                return; // 非玩家单位（如敌人）不进行网络同步
+                return;
             }
 
-            // 确保是本地玩家 - 避免同步其他玩家的状态造成冲突
+            // 只同步本地玩家：避免同步其他玩家的状态导致彼此覆盖。
             var battle = __instance;
             if (battle.Player == null || battle.Player != playerTarget)
             {
-                return; // 不是本地控制的玩家，跳过同步
+                return;
             }
 
-            // 构建详细的伤害同步数据 - 包含完整的伤害信息和目标状态
+            // 构建“伤害 + 目标快照”的同步数据。
             var damageData = new
             {
-                TotalDamage = damageinfo.Amount, // 总伤害值，包含所有类型的伤害
-                HpDamage = damageinfo.Damage,    // 实际HP伤害，对玩家血量有直接影响
-                BlockedDamage = damageinfo.DamageBlocked, // 被格挡的伤害量
-                ShieldedDamage = damageinfo.DamageShielded, // 被护盾吸收的伤害量
-                damageinfo.DamageType, // 伤害类型（物理、魔法等）
-                damageinfo.IsGrazed,    // 是否是擦伤伤害
-                damageinfo.IsAccuracy,  // 是否是精准命中
-                damageinfo.OverDamage,  // 溢出伤害量
-                TargetState = new       // 目标单位当前状态
+                TotalDamage = damageinfo.Amount, // 总伤害（含溢出等统计）
+                HpDamage = damageinfo.Damage, // 实际扣血
+                BlockedDamage = damageinfo.DamageBlocked, // 被格挡的伤害
+                ShieldedDamage = damageinfo.DamageShielded, // 被护盾吸收的伤害
+                damageinfo.DamageType, // 伤害类型
+                damageinfo.IsGrazed, // 是否擦伤
+                damageinfo.IsAccuracy, // 是否精准
+                damageinfo.OverDamage, // 溢出伤害
+                TargetState = new
                 {
-                    playerTarget.Id,                     // 玩家唯一标识
-                    playerTarget.Hp,                     // 当前HP
-                    playerTarget.MaxHp,                  // 最大HP
-                    playerTarget.Block,                  // 当前格挡值
-                    playerTarget.Shield,                 // 当前护盾值
-                    Status = playerTarget.Status.ToString(), // 状态效果摘要
-                    playerTarget.IsAlive                 // 存活状态
+                    playerTarget.Id,
+                    playerTarget.Hp,
+                    playerTarget.MaxHp,
+                    playerTarget.Block,
+                    playerTarget.Shield,
+                    Status = playerTarget.Status.ToString(),
+                    playerTarget.IsAlive,
                 },
-                Timestamp = DateTime.Now.Ticks // 时间戳，用于时序同步
+                Timestamp = DateTime.Now.Ticks,
             };
 
-            // 序列化伤害数据并发送到服务器
+            // 序列化并发送事件。
             string json = JsonSerializer.Serialize(damageData);
-            networkClient.SendRequest("OnPlayerDamage", json);
+            client.SendRequest("OnPlayerDamage", json);
 
-            // 记录详细的伤害同步日志 - 便于调试和问题追踪
+            // 记录日志，便于排查同步问题。
             Plugin.Logger?.LogInfo(
                 $"[DamageSync] Player took {damageinfo.Amount:F1} damage (HP: {damageinfo.Damage:F1}, " +
                 $"Block: {damageinfo.DamageBlocked:F1}, Shield: {damageinfo.DamageShielded:F1}). " +
@@ -133,60 +122,54 @@ public class BattleController_Patch
         }
         catch (Exception ex)
         {
-            // 捕获并记录异常，防止补丁错误影响游戏正常运行
+            // 捕获异常：防止补丁异常影响游戏主流程。
             Plugin.Logger?.LogError($"[DamageSync] Error in Damage_Postfix: {ex.Message}\n{ex.StackTrace}");
         }
     }
 
+    #endregion
+
+    #region 状态效果同步
+
     /// <summary>
-    /// 状态效果添加同步补丁方法
-    /// 在BattleController.TryAddStatusEffect方法执行完成后被调用
-    /// 将角色添加状态效果后的完整状态列表同步到网络
+    /// 添加状态效果完成后，同步目标单位的完整状态列表。
     /// </summary>
-    /// <param name="__instance">被补丁的BattleController实例（Harmony自动注入）</param>
-    /// <param name="target">添加状态效果的目标单位</param>
-    /// <remarks>
-    /// 此补丁使用Harmony的Traverse工具访问私有的_statusEffects字段
-    /// 获取角色的完整状态效果列表并同步到服务器
-    /// </remarks>
+    /// <param name="__instance">被补丁的 <see cref="BattleController"/> 实例（Harmony 注入）。</param>
+    /// <param name="target">被添加状态效果的单位。</param>
     [HarmonyPatch(typeof(BattleController), "TryAddStatusEffect")]
     [HarmonyPostfix]
     public static void TryAddStatusEffect_Postfix(BattleController __instance, Unit target)
     {
         try
         {
-            // 向服务器上传玩家添加状态效果后的完整状态信息
-
-            // 验证服务提供者是否已初始化
+            // 依赖注入服务未就绪时跳过。
             if (serviceProvider == null)
             {
                 Plugin.Logger?.LogDebug("[StatusSync] ServiceProvider not initialized for TryAddStatusEffect");
                 return;
             }
 
-            // 使用Harmony的Traverse工具访问私有的_statusEffects字段
-            // 这里需要访问私有字段来获取完整的状态效果列表
-            var _statusEffects = Traverse.Create(target)
-                                       .Field("_statusEffects")?
-                                       .GetValue<OrderedList<StatusEffect>>();
+            // 通过 Traverse 访问私有字段 _statusEffects 以获取完整列表。
+            var statusEffects = Traverse.Create(target)
+                .Field("_statusEffects")?
+                .GetValue<OrderedList<StatusEffect>>();
 
-            // 将所有StatusEffect对象转换为字符串形式
-            // 使用ToString()方法确保序列化兼容性
-            List<string> _statusEffectList = [];
-            foreach (var se in _statusEffects)
+            // 将状态效果对象转换为字符串，保证序列化简单可靠。
+            List<string> statusEffectList = [];
+            foreach (var se in statusEffects)
             {
-                _statusEffectList.Add(se.ToString());
+                statusEffectList.Add(se.ToString());
             }
 
-            // 构建状态效果同步数据
+            // 构建并发送同步数据。
             string json = JsonSerializer.Serialize(new
             {
-                statusEffects = _statusEffectList,
-                TargetId = target?.Id, // 添加目标ID用于服务器端识别
-                Timestamp = DateTime.Now.Ticks
+                statusEffects = statusEffectList,
+                TargetId = target?.Id,
+                Timestamp = DateTime.Now.Ticks,
             });
 
-            // TODO: 请求应该添加用户ID - 需要在后续版本中完善
+            // TODO：后续可补充用户 ID（服务端侧更容易定位来源）。
             networkClient.SendRequest("UpdateAfterTryAddStatusEffects", json);
 
             Plugin.Logger?.LogInfo($"[StatusSync] Status effects updated after addition for unit {target?.Id}");
@@ -198,54 +181,47 @@ public class BattleController_Patch
     }
 
     /// <summary>
-    /// 状态效果移除同步补丁方法
-    /// 在BattleController.RemoveStatusEffect方法执行完成后被调用
-    /// 将角色移除状态效果后的完整状态列表同步到网络
+    /// 移除状态效果完成后，同步目标单位的完整状态列表。
     /// </summary>
-    /// <param name="__instance">被补丁的BattleController实例（Harmony自动注入）</param>
-    /// <param name="target">移除状态效果的目标单位</param>
-    /// <remarks>
-    /// 与添加状态效果的补丁逻辑相同，获取移除后的完整状态效果列表进行同步
-    /// </remarks>
+    /// <param name="__instance">被补丁的 <see cref="BattleController"/> 实例（Harmony 注入）。</param>
+    /// <param name="target">被移除状态效果的单位。</param>
     [HarmonyPatch(typeof(BattleController), "RemoveStatusEffect")]
     [HarmonyPostfix]
     public static void RemoveStatusEffect_Postfix(BattleController __instance, Unit target)
     {
         try
         {
-        // 向服务器上传player的状态信息，确保移除操作在网络中同步
+            // 依赖注入服务未就绪时跳过。
+            if (serviceProvider == null)
+            {
+                Plugin.Logger?.LogDebug("[StatusSync] ServiceProvider not initialized for RemoveStatusEffect");
+                return;
+            }
 
-        // 验证服务提供者是否已初始化
-        if (serviceProvider == null)
-        {
-            Plugin.Logger?.LogDebug("[StatusSync] ServiceProvider not initialized for RemoveStatusEffect");
-            return;
-        }
+            // 通过 Traverse 访问私有字段 _statusEffects 以获取完整列表。
+            var statusEffects = Traverse.Create(target)
+                .Field("_statusEffects")?
+                .GetValue<OrderedList<StatusEffect>>();
 
-        // 使用Harmony的Traverse工具访问私有的_statusEffects字段
-        var _statusEffects = Traverse.Create(target)
-                                   .Field("_statusEffects")?
-                                   .GetValue<OrderedList<StatusEffect>>();
+            // 将状态效果对象转换为字符串，保证序列化简单可靠。
+            List<string> statusEffectList = [];
+            foreach (var se in statusEffects)
+            {
+                statusEffectList.Add(se.ToString());
+            }
 
-        // 将所有StatusEffect对象转换为字符串形式
-        List<string> _statusEffectList = [];
-        foreach (var se in _statusEffects)
-        {
-            _statusEffectList.Add(se.ToString());
-        }
+            // 构建并发送同步数据。
+            string json = JsonSerializer.Serialize(new
+            {
+                statusEffects = statusEffectList,
+                TargetId = target?.Id,
+                Timestamp = DateTime.Now.Ticks,
+            });
 
-        // 构建状态效果同步数据
-        string json = JsonSerializer.Serialize(new
-        {
-            statusEffects = _statusEffectList,
-            TargetId = target?.Id, // 添加目标ID用于服务器端识别
-            Timestamp = DateTime.Now.Ticks
-        });
+            // TODO：后续可补充用户 ID（服务端侧更容易定位来源）。
+            networkClient.SendRequest("UpdateAfterTryRemoveStatusEffects", json);
 
-        // TODO: 请求应该添加用户ID - 需要在后续版本中完善
-        networkClient.SendRequest("UpdateAfterTryRemoveStatusEffects", json);
-
-        Plugin.Logger?.LogInfo($"[StatusSync] Status effects updated after removal for unit {target?.Id}");
+            Plugin.Logger?.LogInfo($"[StatusSync] Status effects updated after removal for unit {target?.Id}");
         }
         catch (Exception ex)
         {
@@ -253,61 +229,60 @@ public class BattleController_Patch
         }
     }
 
+    #endregion
+
+    #region 治疗同步
+
     /// <summary>
-    /// 治疗同步补丁方法
-    /// 在BattleController.Heal方法执行完成后被调用
-    /// 将角色治疗后的生命值、护盾、屏障等信息同步到网络
+    /// 治疗完成后同步目标单位的生命相关数据。
     /// </summary>
-    /// <param name="__instance">被补丁的BattleController实例（Harmony自动注入）</param>
-    /// <param name="target">接受治疗的目标单位</param>
-    /// <remarks>
-    /// 同步治疗后的完整生命状态，包括HP、格挡值、护盾值和状态效果
-    /// 确保网络中所有玩家看到的治疗结果一致
-    /// </remarks>
+    /// <param name="__instance">被补丁的 <see cref="BattleController"/> 实例（Harmony 注入）。</param>
+    /// <param name="target">接受治疗的目标单位。</param>
     [HarmonyPatch(typeof(BattleController), "Heal")]
-[HarmonyPostfix]
-public static void Heal_Postfix(BattleController __instance, Unit target)
-{
-    try
+    [HarmonyPostfix]
+    public static void Heal_Postfix(BattleController __instance, Unit target)
     {
-        // 向服务器上传玩家治疗后的完整血量信息
-
-        // 验证服务提供者是否已初始化
-        if (serviceProvider == null)
+        try
         {
-            Plugin.Logger?.LogDebug("[HealSync] ServiceProvider not initialized");
-            return;
+            // 依赖注入服务未就绪时跳过。
+            if (serviceProvider == null)
+            {
+                Plugin.Logger?.LogDebug("[HealSync] ServiceProvider not initialized");
+                return;
+            }
+
+            // 网络客户端不可用时跳过。
+            if (networkClient == null)
+            {
+                Plugin.Logger?.LogDebug("[HealSync] Network client not available");
+                return;
+            }
+
+            // 构建“治疗后目标快照”。
+            string json = JsonSerializer.Serialize(new
+            {
+                Hp = target.Hp.ToString(),
+                Block = target.Block.ToString(),
+                Shield = target.Shield.ToString(),
+                Status = target.Status.ToString(),
+                TargetId = target?.Id,
+                MaxHp = target.MaxHp.ToString(),
+                IsAlive = target.IsAlive,
+                Timestamp = DateTime.Now.Ticks,
+            });
+
+            // TODO：后续可补充用户 ID（服务端侧更容易定位来源）。
+            networkClient.SendRequest("UpdateHealthAfterHeal", json);
+
+            Plugin.Logger?.LogInfo(
+                $"[HealSync] Health updated after heal for unit {target?.Id}: " +
+                $"HP {target.Hp}/{target.MaxHp}, Block {target.Block}, Shield {target.Shield}");
         }
-
-        // 验证网络客户端是否可用
-        if (networkClient == null)
+        catch (Exception ex)
         {
-            Plugin.Logger?.LogDebug("[HealSync] Network client not available");
-            return;
+            Plugin.Logger?.LogError($"[HealSync] Error in Heal_Postfix: {ex.Message}\n{ex.StackTrace}");
         }
-
-        // 构建治疗后的状态同步数据
-        string json = JsonSerializer.Serialize(new
-        {
-            Hp = target.Hp.ToString(),           // 当前HP
-            Block = target.Block.ToString(),     // 当前格挡值
-            Shield = target.Shield.ToString(),   // 当前护盾值
-            Status = target.Status.ToString(),   // 状态效果摘要
-            TargetId = target?.Id,               // 目标ID
-            MaxHp = target.MaxHp.ToString(),     // 最大HP
-            IsAlive = target.IsAlive,            // 存活状态
-            Timestamp = DateTime.Now.Ticks       // 治疗时间戳
-        });
-
-        // TODO: 请求应该添加用户ID - 需要在后续版本中完善
-        networkClient.SendRequest("UpdateHealthAfterHeal", json);
-
-        Plugin.Logger?.LogInfo($"[HealSync] Health updated after heal for unit {target?.Id}: " +
-                              $"HP {target.Hp}/{target.MaxHp}, Block {target.Block}, Shield {target.Shield}");
     }
-    catch (Exception ex)
-    {
-        Plugin.Logger?.LogError($"[HealSync] Error in Heal_Postfix: {ex.Message}\n{ex.StackTrace}");
-    }
-}
+
+    #endregion
 }

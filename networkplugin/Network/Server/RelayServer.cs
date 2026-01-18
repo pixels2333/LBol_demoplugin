@@ -351,6 +351,16 @@ public class RelayServer : BaseGameServer
                     // 更新位置信息：用于房间 UI 显示（地图坐标/关卡/地点名）。
                     HandleUpdatePlayerLocation(session, message);
                     return;
+
+                case NetworkMessageTypes.FullStateSyncRequest:
+                    // 完整状态快照请求：按 roomId 作用域定向转发给房主（避免广播泄漏 JoinToken）。
+                    HandleFullStateSyncRequest(session, message, deliveryMethod);
+                    return;
+
+                case NetworkMessageTypes.FullStateSyncResponse:
+                    // 完整状态快照响应：仅单播给请求方（避免房间内广播导致敏感信息扩散/无谓负载）。
+                    HandleFullStateSyncResponse(session, message, deliveryMethod);
+                    return;
             }
 
             // 不属于系统消息：尝试按“游戏事件”规则转发给同房间其他玩家（同步/战斗/聊天等）。
@@ -616,16 +626,40 @@ public class RelayServer : BaseGameServer
     {
         // 解析目标玩家 ID。
         string targetPlayerId = TryGetStringProperty(message.Payload, "TargetPlayerId");
+
+        // 解析内层类型与负载（同 RoomMessage 的结构）。
+        string innerType = TryGetStringProperty(message.Payload, "Type") ?? "DirectMessage";
+        object innerPayload = TryGetObjectProperty(message.Payload, "Payload") ?? message.Payload;
+
+        // FullSync 控制消息：强制走“按房间作用域 + 房主/请求方定向”逻辑，避免滥用 DirectMessage 绕过房间隔离。
+        if (string.Equals(innerType, NetworkMessageTypes.FullStateSyncRequest, StringComparison.Ordinal))
+        {
+            HandleFullStateSyncRequest(session, new NetworkMessage
+            {
+                Type = innerType,
+                Payload = innerPayload,
+                SenderPlayerId = session.PlayerId
+            }, deliveryMethod);
+            return;
+        }
+
+        if (string.Equals(innerType, NetworkMessageTypes.FullStateSyncResponse, StringComparison.Ordinal))
+        {
+            HandleFullStateSyncResponse(session, new NetworkMessage
+            {
+                Type = innerType,
+                Payload = innerPayload,
+                SenderPlayerId = session.PlayerId
+            }, deliveryMethod);
+            return;
+        }
+
         if (string.IsNullOrEmpty(targetPlayerId) || !_connectionsByPlayerId.TryGetValue(targetPlayerId, out var connection))
         {
             // 目标不在线/不存在：拒绝发送。
             SendErrorMessage(session.Peer, "DirectMessageFailed", "Target not found");
             return;
         }
-
-        // 解析内层类型与负载（同 RoomMessage 的结构）。
-        string innerType = TryGetStringProperty(message.Payload, "Type") ?? "DirectMessage";
-        object innerPayload = TryGetObjectProperty(message.Payload, "Payload") ?? message.Payload;
 
         // 通过 NetworkConnection 向目标 peer 发送消息。
         connection.SendMessage(new NetworkMessage
@@ -1115,14 +1149,138 @@ public class RelayServer : BaseGameServer
                messageType.StartsWith("Gap", StringComparison.Ordinal) ||
                messageType.StartsWith("Battle", StringComparison.Ordinal) ||
                messageType == NetworkMessageTypes.ChatMessage ||
-               messageType == "StateSyncRequest" ||
-               messageType == "FullStateSyncRequest" ||
-               messageType == "FullStateSyncResponse";
+               messageType == "StateSyncRequest";
     }
 
-    // TODO: 实现 Relay 模式下 FullStateSyncRequest 的路由与响应：
-    // - 按 roomId 作用域将请求转发给房间 Host；
-    // - 由房间 Host 生成快照并返回 FullStateSyncResponse 给请求方。
+    /// <summary>
+    /// Relay 模式下的完整状态快照请求路由：按 roomId 作用域转发给房间房主。
+    /// </summary>
+    /// <param name="session">发起请求的会话（通常是中途加入者）。</param>
+    /// <param name="message">请求消息（payload 内应包含 RequestId/RoomId/TargetPlayerId/LastKnownEventIndex/JoinToken）。</param>
+    /// <param name="deliveryMethod">投递方式（通常为可靠有序）。</param>
+    private void HandleFullStateSyncRequest(PlayerSession session, NetworkMessage message, DeliveryMethod deliveryMethod)
+    {
+        // 作用域：优先取 payload.RoomId；否则回退 session.CurrentRoomId。
+        string roomId = TryGetStringProperty(message.Payload, "RoomId") ?? session.CurrentRoomId;
+        if (string.IsNullOrWhiteSpace(roomId) || !_rooms.TryGetValue(roomId, out var room))
+        {
+            SendErrorMessage(session.Peer, "FullStateSyncRequestFailed", "Room not found");
+            return;
+        }
+
+        // 发送者必须属于该房间，避免跨房间请求窥探。
+        if (!string.Equals(session.CurrentRoomId, roomId, StringComparison.Ordinal) || !room.ContainsPlayer(session.PlayerId))
+        {
+            SendErrorMessage(session.Peer, "FullStateSyncRequestFailed", "Not in room");
+            return;
+        }
+
+        // 请求必须以自己为 TargetPlayerId（防止请求方代替他人拉取快照）。
+        string targetPlayerId = TryGetStringProperty(message.Payload, "TargetPlayerId");
+        if (!string.IsNullOrWhiteSpace(targetPlayerId) && !string.Equals(targetPlayerId, session.PlayerId, StringComparison.Ordinal))
+        {
+            SendErrorMessage(session.Peer, "FullStateSyncRequestFailed", "Target mismatch");
+            return;
+        }
+
+        // 将请求定向转发给房主；房主侧由 MidGameJoinManager 生成快照并回发 FullStateSyncResponse。
+        string hostPlayerId = room.HostPlayerId;
+        if (string.IsNullOrWhiteSpace(hostPlayerId) || !_connectionsByPlayerId.TryGetValue(hostPlayerId, out var hostConnection))
+        {
+            SendErrorMessage(session.Peer, "FullStateSyncRequestFailed", "Host not available");
+            return;
+        }
+
+        // 确保 payload 带 RoomId，便于房主侧做一致性校验/日志。
+        object payloadToHost = EnsureRoomIdInPayload(message.Payload, roomId);
+
+        hostConnection.SendMessage(new NetworkMessage
+        {
+            Type = NetworkMessageTypes.FullStateSyncRequest,
+            Payload = payloadToHost,
+            SenderPlayerId = session.PlayerId
+        }, deliveryMethod);
+    }
+
+    /// <summary>
+    /// Relay 模式下的完整状态快照响应路由：仅单播给请求方（payload.TargetPlayerId）。
+    /// </summary>
+    /// <param name="session">发送响应的会话（必须是房主）。</param>
+    /// <param name="message">响应消息（payload 内应包含 RequestId/TargetPlayerId/FullSnapshot/MissedEvents 等）。</param>
+    /// <param name="deliveryMethod">投递方式（通常为可靠有序）。</param>
+    private void HandleFullStateSyncResponse(PlayerSession session, NetworkMessage message, DeliveryMethod deliveryMethod)
+    {
+        // 房间作用域：优先取 payload.RoomId；否则回退 session.CurrentRoomId。
+        string roomId = TryGetStringProperty(message.Payload, "RoomId") ?? session.CurrentRoomId;
+        if (string.IsNullOrWhiteSpace(roomId) || !_rooms.TryGetValue(roomId, out var room))
+        {
+            SendErrorMessage(session.Peer, "FullStateSyncResponseFailed", "Room not found");
+            return;
+        }
+
+        // 只有房主可发送 FullSync 响应，避免成员伪造快照。
+        if (!string.Equals(room.HostPlayerId, session.PlayerId, StringComparison.Ordinal))
+        {
+            SendErrorMessage(session.Peer, "FullStateSyncResponseFailed", "Only host can respond");
+            return;
+        }
+
+        string targetPlayerId = TryGetStringProperty(message.Payload, "TargetPlayerId");
+        if (string.IsNullOrWhiteSpace(targetPlayerId))
+        {
+            SendErrorMessage(session.Peer, "FullStateSyncResponseFailed", "Missing TargetPlayerId");
+            return;
+        }
+
+        // 目标必须仍在房间内，避免把快照发给无关会话。
+        if (!room.ContainsPlayer(targetPlayerId) || !_connectionsByPlayerId.TryGetValue(targetPlayerId, out var targetConnection))
+        {
+            SendErrorMessage(session.Peer, "FullStateSyncResponseFailed", "Target not in room");
+            return;
+        }
+
+        targetConnection.SendMessage(new NetworkMessage
+        {
+            Type = NetworkMessageTypes.FullStateSyncResponse,
+            Payload = message.Payload,
+            SenderPlayerId = session.PlayerId
+        }, deliveryMethod);
+    }
+
+    /// <summary>
+    /// 为 FullSync 请求确保 payload 包含 RoomId 字段（保持原字段结构平铺，避免嵌套改变协议形状）。
+    /// </summary>
+    /// <param name="payload">原始 payload（可能是 JSON 字符串/JsonElement/匿名对象）。</param>
+    /// <param name="roomId">要补充的 RoomId。</param>
+    /// <returns>包含 RoomId 的 payload（失败时回退为原 payload）。</returns>
+    private static object EnsureRoomIdInPayload(object payload, string roomId)
+    {
+        if (string.IsNullOrWhiteSpace(roomId))
+        {
+            return payload;
+        }
+
+        try
+        {
+            // 已存在 RoomId：无需修改。
+            string existingRoomId = TryGetStringProperty(payload, "RoomId");
+            if (!string.IsNullOrWhiteSpace(existingRoomId))
+            {
+                return payload;
+            }
+
+            // 合并字段：使用字典承载，避免匿名对象反射复杂度。
+            string json = payload is string s ? s : JsonSerializer.Serialize(payload);
+            var dict = JsonSerializer.Deserialize<Dictionary<string, object>>(json) ?? new Dictionary<string, object>();
+            dict["RoomId"] = roomId;
+            return dict;
+        }
+        catch
+        {
+            // 保守回退：不因为补字段失败而阻断请求。
+            return payload;
+        }
+    }
 
     #endregion
 

@@ -14,86 +14,77 @@ using NetworkPlugin.Network.Client;
 namespace NetworkPlugin.Patch;
 
 /// <summary>
-/// 玩家死亡处理补丁类
-/// 使用Harmony框架拦截和修改LBoL游戏的玩家死亡相关逻辑
-/// 实现联机模式下的假死（Fake Death）机制和死亡状态同步
+/// 玩家死亡处理补丁：在联机模式下实现“假死（Fake Death）”机制，并同步死亡/复活状态。
 /// </summary>
 /// <remarks>
-/// 这个类包含以下核心功能：
-/// 1. 玩家假死处理 - 在联机模式下，玩家"死亡"时不会真正结束游戏，而是进入假死状态
-/// 2. 死亡状态同步 - 将玩家的死亡状态同步给其他网络玩家
-/// 3. 复活逻辑 - 处理玩家的复活机制（由Gap复活或其他方式）
-/// 4. 死亡相关行为禁用 - 在假死状态下禁用玩家的某些游戏行为（抽牌、出牌等）
-///
+/// 核心思路：
+/// - 单人模式：沿用原版死亡流程。
+/// - 联机模式：当玩家“死亡”时不立即结束游戏，而进入假死状态，允许其他玩家继续。
+/// - 当满足条件（例如所有玩家都死亡或强制结束）时，才允许真死。
 /// </remarks>
 [HarmonyPatch]
 public class DeathPatches
 {
+    #region 全局开关与依赖注入
+
     /// <summary>
-    /// 控制是否允许玩家真正死亡的标志
-    /// 当为 false 时，玩家死亡会进入假死状态；为 true 时才能真正结束游戏
-    /// 仅在所有玩家都死亡或游戏强制结束时设置为 true
+    /// 是否允许玩家进入“真正死亡”流程。
     /// </summary>
+    /// <remarks>
+    /// - false：联机中默认不允许真死（进入假死）。
+    /// - true：允许游戏走原版死亡/结束流程（通常用于“所有玩家都死亡”等终局条件）。
+    /// </remarks>
     public static bool AllowRealDeath = false;
 
     /// <summary>
-    /// 服务提供者访问器，用于获取依赖注入的组件
-    /// 通过模块服务获取网络客户端和其他服务
+    /// 依赖注入服务提供者。
     /// </summary>
     private static IServiceProvider ServiceProvider = ModService.ServiceProvider;
 
     /// <summary>
-    /// 网络客户端属性，用于发送网络请求
-    /// 采用延迟加载模式，避免初始化时的依赖问题
+    /// 网络客户端（用于判断联机状态与发送同步消息）。
     /// </summary>
     private static INetworkClient NetworkClient => ServiceProvider?.GetRequiredService<INetworkClient>();
 
-    #region 核心逻辑方法
+    #endregion
+
+    #region 核心状态判断
 
     /// <summary>
-    /// 检查玩家是否处于假死状态（在联机模式下）
+    /// 判断玩家是否处于“假死”状态。
     /// </summary>
-    /// <param name="player">要检查的玩家单位</param>
-    /// <returns>
-    /// 在联机模式下，如果玩家已死且不允许真正死亡则返回 true；
-    /// 否则返回 false（包括单人游戏模式）
-    /// </returns>
-    /// <remarks>
-    /// 假死（Fake Death）是联机模式中的特殊状态：
-    /// - 玩家生命值变为 0，标记为死亡（IsDead = true）
-    /// - 但游戏不会立即结束，其他玩家继续游戏
-    /// - 玩家可以通过复活机制（如Gap复活）恢复
-    /// </remarks>
+    /// <param name="player">玩家单位。</param>
+    /// <returns>处于联机模式，且玩家已死且不允许真死时返回 true，否则 false。</returns>
     private static bool IsPlayerInFakeDeath(PlayerUnit player)
     {
-        // 单人游戏不使用假死机制
+        // 未联机时不启用假死机制。
         if (NetworkClient == null || !NetworkClient.IsConnected)
         {
             return false;
         }
 
-        // 联机模式：玩家已死且不允许真正死亡 = 假死状态
+        // 联机：已死 + 不允许真死 => 假死。
         return player != null && player.IsDead && !AllowRealDeath;
     }
 
+    #endregion
+
+    #region 假死/复活处理
+
     /// <summary>
-    /// 处理玩家假死逻辑
-    /// 当玩家生命值变为 0 时，恢复生命值到 1
+    /// 处理玩家假死：将 HP 拉回到可存活的最小值，并同步状态。
     /// </summary>
-    /// <param name="player">要处理的玩家单位</param>
-    /// <remarks>
-    /// 这个方法模拟了"假死"后的复苏状态：
-    /// - 通过反射调用内部 Heal 方法将生命值恢复到 1（防止真正死亡）
-    /// - 同步网络状态告知其他玩家该玩家仍存活
-    /// </remarks>
+    /// <param name="player">玩家单位。</param>
     private static void HandleFakeDeath(PlayerUnit player)
     {
-        if (player == null) return;
+        if (player == null)
+        {
+            return;
+        }
 
         try
         {
-            // 使用反射调用内部的 Heal 方法
-            // 如果当前 HP 为 0 或负数，计算需要恢复的量
+            // 通过反射调用内部 Heal：确保 HP 至少为 1，避免触发真死。
             int hpToRecover = Math.Max(1, 1 - player.Hp);
             if (hpToRecover > 0)
             {
@@ -101,41 +92,39 @@ public class DeathPatches
                 traverse.Method("Heal", hpToRecover).GetValue();
             }
 
-            // 同步网络状态
+            // 同步死亡状态（标记为假死）。
             SyncPlayerDeathStatus(player, true);
 
-            Plugin.Logger?.LogInfo($"[DeathPatch] Player {player.Id} entered fake death state (Hp: {player.Hp})");
+            Plugin.Logger?.LogInfo($"[DeathPatch] 玩家 {player.Id} 进入假死状态 (Hp: {player.Hp})");
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[DeathPatch] Error in HandleFakeDeath: {ex.Message}\n{ex.StackTrace}");
+            Plugin.Logger?.LogError($"[DeathPatch] HandleFakeDeath 异常: {ex.Message}\n{ex.StackTrace}");
         }
     }
 
     /// <summary>
-    /// 处理玩家复活逻辑
-    /// 恢复玩家生命值，更新其他玩家状态
+    /// 处理玩家复活：恢复 HP，并同步状态。
     /// </summary>
-    /// <param name="player">要复活的玩家单位</param>
-    /// <param name="resurrectionHp">复活后的生命值，如果为 null 则设置为最大生命值的 50%</param>
-    /// <remarks>
-    /// 复活（Resurrection）机制用于恢复假死的玩家：
-    /// - 通常由特殊事件（如 Gap 的复活能力）触发
-    /// - 恢复玩家生命值（如果未指定则为最大 HP 的 50%）
-    /// - 通知其他玩家该玩家已复活
-    /// - 更新游戏UI和游戏流程
-    /// </remarks>
+    /// <param name="player">玩家单位。</param>
+    /// <param name="resurrectionHp">复活后的目标 HP；为 null 时默认取最大生命的一半。</param>
     private static void HandleResurrection(PlayerUnit player, int? resurrectionHp = null)
     {
-        if (player == null) return;
+        if (player == null)
+        {
+            return;
+        }
 
         try
         {
-            // 计算复活生命值
+            // 计算复活目标生命值。
             int finalHp = resurrectionHp ?? (player.MaxHp / 2);
-            if (finalHp <= 0) finalHp = 1; // 确保至少有 1 点生命值
+            if (finalHp <= 0)
+            {
+                finalHp = 1;
+            }
 
-            // 计算需要恢复的生命值
+            // 计算需要恢复的量，并通过 Heal 补回。
             int hpToRecover = finalHp - player.Hp;
             if (hpToRecover > 0)
             {
@@ -143,25 +132,32 @@ public class DeathPatches
                 traverse.Method("Heal", hpToRecover).GetValue();
             }
 
-            // 同步网络状态
+            // 同步复活状态。
             SyncPlayerResurrectionStatus(player, finalHp);
 
-            Plugin.Logger?.LogInfo($"[DeathPatch] Player {player.Id} resurrected with Hp: {player.Hp}/{player.MaxHp}");
+            Plugin.Logger?.LogInfo($"[DeathPatch] 玩家 {player.Id} 已复活 (Hp: {player.Hp}/{player.MaxHp})");
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[DeathPatch] Error in HandleResurrection: {ex.Message}\n{ex.StackTrace}");
+            Plugin.Logger?.LogError($"[DeathPatch] HandleResurrection 异常: {ex.Message}\n{ex.StackTrace}");
         }
     }
 
+    #endregion
+
+    #region 网络同步
+
     /// <summary>
-    /// 同步玩家的死亡状态到网络
+    /// 同步玩家死亡状态（真死/假死）到服务器。
     /// </summary>
-    /// <param name="player">玩家单位</param>
-    /// <param name="isFakeDeath">是否是假死</param>
+    /// <param name="player">玩家单位。</param>
+    /// <param name="isFakeDeath">是否假死。</param>
     private static void SyncPlayerDeathStatus(PlayerUnit player, bool isFakeDeath)
     {
-        if (NetworkClient == null || !NetworkClient.IsConnected) return;
+        if (NetworkClient == null || !NetworkClient.IsConnected)
+        {
+            return;
+        }
 
         try
         {
@@ -172,28 +168,31 @@ public class DeathPatches
                 Hp = player.Hp,
                 MaxHp = player.MaxHp,
                 Status = player.Status.ToString(),
-                Timestamp = DateTime.Now.Ticks
+                Timestamp = DateTime.Now.Ticks,
             };
 
             string json = JsonSerializer.Serialize(deathData);
             NetworkClient.SendRequest("OnPlayerDeathStatusChanged", json);
 
-            Plugin.Logger?.LogDebug($"[DeathPatch] Death status synced - IsFakeDeath: {isFakeDeath}, Hp: {player.Hp}");
+            Plugin.Logger?.LogDebug($"[DeathPatch] 已同步死亡状态（IsFakeDeath: {isFakeDeath}, Hp: {player.Hp}）");
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[DeathPatch] Error syncing death status: {ex.Message}");
+            Plugin.Logger?.LogError($"[DeathPatch] 同步死亡状态失败: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// 同步玩家的复活状态到网络
+    /// 同步玩家复活状态到服务器。
     /// </summary>
-    /// <param name="player">玩家单位</param>
-    /// <param name="resurrectionHp">复活后的生命值</param>
+    /// <param name="player">玩家单位。</param>
+    /// <param name="resurrectionHp">复活后目标生命值。</param>
     private static void SyncPlayerResurrectionStatus(PlayerUnit player, int resurrectionHp)
     {
-        if (NetworkClient == null || !NetworkClient.IsConnected) return;
+        if (NetworkClient == null || !NetworkClient.IsConnected)
+        {
+            return;
+        }
 
         try
         {
@@ -203,17 +202,17 @@ public class DeathPatches
                 ResurrectionHp = resurrectionHp,
                 MaxHp = player.MaxHp,
                 Status = player.Status.ToString(),
-                Timestamp = DateTime.Now.Ticks
+                Timestamp = DateTime.Now.Ticks,
             };
 
             string json = JsonSerializer.Serialize(resurrectionData);
             NetworkClient.SendRequest("OnPlayerResurrected", json);
 
-            Plugin.Logger?.LogDebug($"[DeathPatch] Resurrection status synced - Hp: {resurrectionHp}");
+            Plugin.Logger?.LogDebug($"[DeathPatch] 已同步复活状态（Hp: {resurrectionHp}）");
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[DeathPatch] Error syncing resurrection status: {ex.Message}");
+            Plugin.Logger?.LogError($"[DeathPatch] 同步复活状态失败: {ex.Message}");
         }
     }
 
@@ -222,127 +221,139 @@ public class DeathPatches
     #region Harmony 补丁点
 
     /// <summary>
-    /// 玩家受到伤害后的补丁
-    /// 在玩家生命值变为 0 时，如果处于联机模式且不允许真死，则恢复为 1
-    /// 这是假死机制的核心：防止玩家真正死亡
+    /// 战斗伤害结算后置：当伤害将本地玩家打到 0 HP 时，在不允许真死的联机模式下触发假死。
     /// </summary>
-    /// <param name="__instance">被补丁的 BattleController 实例</param>
-    /// <remarks>
-    /// 重要的补丁点：当伤害导致玩家 HP 变为 0 时，
-    /// 在不允许真死的联机模式下，恢复 HP 到 1，触发假死处理
-    /// </remarks>
+    /// <param name="__instance">战斗控制器实例。</param>
     [HarmonyPatch(typeof(BattleController), "Damage")]
     [HarmonyPostfix]
     public static void Damage_Postfix(BattleController __instance)
     {
         try
         {
-            if (__instance?.Player == null) return;
+            if (__instance?.Player == null)
+            {
+                return;
+            }
 
             PlayerUnit player = __instance.Player;
 
-            // 只处理联机模式下的假死
+            // 只处理联机模式。
             if (NetworkClient == null || !NetworkClient.IsConnected)
             {
                 return;
             }
 
-            // 如果玩家生命值为 0 且不允许真死，则进入假死状态
+            // HP <= 0 且不允许真死 => 进入假死。
             if (player.Hp <= 0 && !AllowRealDeath)
             {
-                // 使用反射恢复生命值到 1
+                // 先通过 Heal 把 HP 拉回到 1，避免原版死亡流程继续推进。
                 Traverse traverse = Traverse.Create(player);
                 traverse.Method("Heal", 1).GetValue();
-                HandleFakeDeath(player); // 处理假死逻辑
+
+                // 再执行统一的假死处理（包含同步）。
+                HandleFakeDeath(player);
             }
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[DeathPatch] Error in Damage_Postfix: {ex.Message}\n{ex.StackTrace}");
+            Plugin.Logger?.LogError($"[DeathPatch] Damage_Postfix 异常: {ex.Message}\n{ex.StackTrace}");
         }
     }
 
     /// <summary>
-    /// 死亡屏幕构造函数补丁
-    /// 在联机模式下，当玩家死亡时，如果不允许真死，则跳过死亡屏幕显示
-    /// 转而进入假死状态，允许游戏继续进行
+    /// 单位死亡前置：在联机且不允许真死时，阻止玩家进入原版死亡流程并触发假死。
     /// </summary>
-    /// <returns>SpireReturn 对象，如果是假死则返回 SpireReturn.Return() 跳过原方法</returns>
-    /// <remarks>
-    /// 这个补丁拦截死亡屏幕的显示，在假死时返回而不显示游戏结束界面
-    /// </remarks>
+    /// <param name="__instance">即将死亡的单位。</param>
+    /// <returns>返回 false 表示跳过原方法（阻止真死）。</returns>
     [HarmonyPatch(typeof(Unit), "Die")]
     [HarmonyPrefix]
     public static bool Die_Prefix(Unit __instance)
     {
         try
         {
-            // 只处理玩家单位
-            if (__instance is not PlayerUnit player) return true;
+            // 只处理玩家单位。
+            if (__instance is not PlayerUnit player)
+            {
+                return true;
+            }
 
-            // 只处理联机模式
-            if (NetworkClient == null || !NetworkClient.IsConnected) return true;
+            // 未联机时沿用原版流程。
+            if (NetworkClient == null || !NetworkClient.IsConnected)
+            {
+                return true;
+            }
 
-            // 如果不允许真死，则进入假死状态而不真正死亡
+            // 不允许真死且已判定死亡：转为假死并阻止原死亡流程。
             if (!AllowRealDeath && player.IsDead)
             {
                 HandleFakeDeath(player);
-                return false; // 阻止真正的死亡流程
+                return false;
             }
 
-            return true; // 继续执行原有的死亡逻辑
+            // 允许真死时继续原流程。
+            return true;
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[DeathPatch] Error in Die_Prefix: {ex.Message}\n{ex.StackTrace}");
-            return true; // 出错时继续执行
+            Plugin.Logger?.LogError($"[DeathPatch] Die_Prefix 异常: {ex.Message}\n{ex.StackTrace}");
+            // 出错时保守起见，放行原流程。
+            return true;
         }
     }
 
     /// <summary>
-    /// BattleController 回合开始补丁
-    /// 如果玩家处于假死状态，则跳过玩家回合逻辑
+    /// 回合开始前置：若玩家处于假死状态，则跳过玩家回合开始逻辑。
     /// </summary>
+    /// <param name="__instance">战斗控制器实例。</param>
+    /// <returns>返回 false 表示阻止原方法。</returns>
     [HarmonyPatch(typeof(BattleController), "StartPlayerTurn")]
     [HarmonyPrefix]
     public static bool StartPlayerTurn_Prefix(BattleController __instance)
     {
         try
         {
-            if (__instance?.Player == null) return true;
+            if (__instance?.Player == null)
+            {
+                return true;
+            }
 
-            // 假死状态下跳过回合开始处理
+            // 假死状态下不应进入玩家回合（避免卡牌/输入等流程）。
             if (IsPlayerInFakeDeath(__instance.Player))
             {
-                Plugin.Logger?.LogDebug("[DeathPatch] Player turn start skipped - player in fake death");
-                return false; // 阻止回合开始
+                Plugin.Logger?.LogDebug("[DeathPatch] 玩家处于假死，跳过回合开始");
+                return false;
             }
 
             return true;
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[DeathPatch] Error in StartPlayerTurn_Prefix: {ex.Message}");
+            Plugin.Logger?.LogError($"[DeathPatch] StartPlayerTurn_Prefix 异常: {ex.Message}");
             return true;
         }
     }
 
     /// <summary>
-    /// BattleController 卡牌使用请求补丁
-    /// 如果玩家处于假死状态，则阻止出牌
+    /// 出牌请求前置：若玩家处于假死状态，则阻止出牌。
     /// </summary>
+    /// <param name="__instance">战斗控制器实例。</param>
+    /// <param name="card">请求使用的卡牌。</param>
+    /// <returns>返回 false 表示阻止原方法。</returns>
     [HarmonyPatch(typeof(BattleController), "RequestUseCard")]
     [HarmonyPrefix]
     public static bool RequestUseCard_Prefix(BattleController __instance, Card card)
     {
         try
         {
-            if (__instance?.Player == null || card == null) return true;
+            if (__instance?.Player == null || card == null)
+            {
+                return true;
+            }
 
-            // 假死状态下不能出牌
+            // 假死状态下不能出牌。
             if (IsPlayerInFakeDeath(__instance.Player))
             {
-                Plugin.Logger?.LogDebug("[DeathPatch] Card play blocked - player in fake death");
+                Plugin.Logger?.LogDebug("[DeathPatch] 玩家处于假死，阻止出牌");
                 return false;
             }
 
@@ -350,27 +361,31 @@ public class DeathPatches
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[DeathPatch] Error in RequestUseCard_Prefix: {ex.Message}");
+            Plugin.Logger?.LogError($"[DeathPatch] RequestUseCard_Prefix 异常: {ex.Message}");
             return true;
         }
     }
 
     /// <summary>
-    /// BattleController 结束回合请求补丁
-    /// 如果玩家处于假死状态，则阻止结束回合（应当由系统自动跳过）
+    /// 结束回合请求前置：若玩家处于假死状态，则阻止手动结束回合。
     /// </summary>
+    /// <param name="__instance">战斗控制器实例。</param>
+    /// <returns>返回 false 表示阻止原方法。</returns>
     [HarmonyPatch(typeof(BattleController), "RequestEndPlayerTurn")]
     [HarmonyPrefix]
     public static bool RequestEndPlayerTurn_Prefix(BattleController __instance)
     {
         try
         {
-            if (__instance?.Player == null) return true;
+            if (__instance?.Player == null)
+            {
+                return true;
+            }
 
-            // 假死状态下不能手动结束回合
+            // 假死状态下不应等待玩家手动结束回合。
             if (IsPlayerInFakeDeath(__instance.Player))
             {
-                Plugin.Logger?.LogDebug("[DeathPatch] End turn request blocked - player in fake death");
+                Plugin.Logger?.LogDebug("[DeathPatch] 玩家处于假死，阻止结束回合请求");
                 return false;
             }
 
@@ -378,24 +393,28 @@ public class DeathPatches
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[DeathPatch] Error in RequestEndPlayerTurn_Prefix: {ex.Message}");
+            Plugin.Logger?.LogError($"[DeathPatch] RequestEndPlayerTurn_Prefix 异常: {ex.Message}");
             return true;
         }
     }
 
     /// <summary>
-    /// 战斗结束条件检查补丁
-    /// 检查游戏是否应该结束（所有玩家都死亡或战斗胜利）
+    /// 战斗结束条件后置：若玩家处于假死状态，则强制让战斗继续（不结束）。
     /// </summary>
+    /// <param name="__instance">战斗控制器实例。</param>
+    /// <param name="__result">原方法计算结果（Harmony 注入）。</param>
     [HarmonyPatch(typeof(BattleController), "BattleShouldEnd", MethodType.Getter)]
     [HarmonyPostfix]
     public static void BattleShouldEnd_Postfix(BattleController __instance, ref bool __result)
     {
         try
         {
-            if (__instance?.Player == null) return;
+            if (__instance?.Player == null)
+            {
+                return;
+            }
 
-            // 只处理联机模式
+            // 只处理联机模式。
             if (NetworkClient == null || !NetworkClient.IsConnected)
             {
                 return;
@@ -403,37 +422,41 @@ public class DeathPatches
 
             var player = __instance.Player;
 
-            // 在假死状态下（玩家已死但不允许真死），游戏继续进行
-            // 只有在允许真死或玩家活着时才检查真正的战斗结束条件
+            // 假死（已死但不允许真死）时，战斗不应结束。
             if (player.IsDead && !AllowRealDeath)
             {
-                __result = false; // 游戏不结束，等待复活或所有玩家死亡
-                Plugin.Logger?.LogDebug("[DeathPatch] Battle continues - player in fake death");
+                __result = false;
+                Plugin.Logger?.LogDebug("[DeathPatch] 玩家处于假死，战斗继续");
             }
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[DeathPatch] Error in BattleShouldEnd_Postfix: {ex.Message}");
+            Plugin.Logger?.LogError($"[DeathPatch] BattleShouldEnd_Postfix 异常: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// 玩家输入等待状态检查补丁
-    /// 如果玩家处于假死状态，则不等待玩家输入
+    /// 是否等待玩家输入前置：假死状态下不等待输入（避免卡住回合）。
     /// </summary>
+    /// <param name="__instance">战斗控制器实例。</param>
+    /// <param name="__result">返回值（Harmony 注入）。</param>
+    /// <returns>返回 false 表示跳过原 getter，并使用 __result。</returns>
     [HarmonyPatch(typeof(BattleController), "IsWaitingPlayerInput", MethodType.Getter)]
     [HarmonyPrefix]
     public static bool IsWaitingPlayerInput_Prefix(BattleController __instance, ref bool __result)
     {
         try
         {
-            if (__instance?.Player == null) return true;
+            if (__instance?.Player == null)
+            {
+                return true;
+            }
 
-            // 假死状态下不等待玩家输入
+            // 假死状态下不等待输入。
             if (IsPlayerInFakeDeath(__instance.Player))
             {
                 __result = false;
-                Plugin.Logger?.LogDebug("[DeathPatch] Player input wait cancelled - player in fake death");
+                Plugin.Logger?.LogDebug("[DeathPatch] 玩家处于假死，不等待输入");
                 return false;
             }
 
@@ -441,42 +464,40 @@ public class DeathPatches
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[DeathPatch] Error in IsWaitingPlayerInput_Prefix: {ex.Message}");
+            Plugin.Logger?.LogError($"[DeathPatch] IsWaitingPlayerInput_Prefix 异常: {ex.Message}");
             return true;
         }
     }
 
     #endregion
 
-    #region 公共接口方法（供网络回调或其他模块调用）
+    #region 对外接口
 
     /// <summary>
-    /// 公开方法：触发玩家复活事件
-    /// 可由网络回调或 Gap 等特殊事件调用
+    /// 触发玩家复活（供网络回调或特殊事件调用）。
     /// </summary>
-    /// <param name="player">要复活的玩家</param>
-    /// <param name="resurrectionHp">复活生命值，null 则为最大 HP 的 50%</param>
+    /// <param name="player">要复活的玩家。</param>
+    /// <param name="resurrectionHp">复活生命值（null 表示最大生命的 50%）。</param>
     public static void ResurrectPlayer(PlayerUnit player, int? resurrectionHp = null)
     {
         HandleResurrection(player, resurrectionHp);
     }
 
     /// <summary>
-    /// 公开方法：设置是否允许真正死亡
-    /// 当所有联机玩家都死亡时调用此方法
+    /// 设置是否允许真死。
     /// </summary>
-    /// <param name="allow">是否允许真正死亡</param>
+    /// <param name="allow">是否允许真死。</param>
     public static void SetAllowRealDeath(bool allow)
     {
         AllowRealDeath = allow;
-        Plugin.Logger?.LogInfo($"[DeathPatch] AllowRealDeath set to: {allow}");
+        Plugin.Logger?.LogInfo($"[DeathPatch] AllowRealDeath 设置为: {allow}");
     }
 
     /// <summary>
-    /// 公开方法：获取玩家死亡状态
+    /// 判断玩家是否处于假死状态（对外暴露）。
     /// </summary>
-    /// <param name="player">要检查的玩家</param>
-    /// <returns>如果玩家处于假死状态则返回 true</returns>
+    /// <param name="player">玩家单位。</param>
+    /// <returns>处于假死返回 true，否则 false。</returns>
     public static bool IsPlayerDead(PlayerUnit player)
     {
         return IsPlayerInFakeDeath(player);

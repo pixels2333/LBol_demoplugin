@@ -13,29 +13,58 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
-
+/// <summary>
+/// 存档/读档同步补丁。
+/// </summary>
+/// <remarks>
+/// 主要目标：
+/// - 主机在保存时广播必要的快照，供客户端尽力对齐进度。
+/// - 客户端在加载后可请求主机发送一次最新快照。
+/// 注意：该模块以“诊断/尽力同步”为主，不承诺能完全覆盖游戏内部存档细节。
+/// </remarks>
 public class SaveLoadSyncPatch
 {
-    private static IServiceProvider serviceProvider => ModService.ServiceProvider;
-    private static readonly Dictionary<string, GameStateSnapshot> _syncedSnapshots = [];
-    private static readonly object _syncLock = new();
+    #region 字段与同步缓存
 
     /// <summary>
-    /// 游戏保存同步 - 当游戏保存时同步状态
+    /// 依赖注入服务提供者。
+    /// </summary>
+    private static IServiceProvider serviceProvider => ModService.ServiceProvider;
+
+    /// <summary>
+    /// 按玩家缓存最近一次同步的快照。
+    /// </summary>
+    private static readonly Dictionary<string, GameStateSnapshot> _syncedSnapshots = [];
+
+    /// <summary>
+    /// 同步锁，保护快照缓存。
+    /// </summary>
+    private static readonly object _syncLock = new();
+
+    #endregion
+
+    #region 保存同步
+
+    /// <summary>
+    /// 游戏保存同步：在保存流程前后记录状态并广播。
     /// </summary>
     [HarmonyPatch]
     public static class GameSaveSync
     {
+        /// <summary>
+        /// 目标方法集合：通过反射扫描可能的 Save 入口。
+        /// </summary>
+        /// <returns>可能的保存方法列表。</returns>
         [HarmonyTargetMethods]
-        static System.Collections.Generic.IEnumerable<System.Reflection.MethodBase> TargetMethods()
+        private static IEnumerable<MethodBase> TargetMethods()
         {
-            string[] methodNames = new[]
-            {
+            string[] methodNames =
+            [
                 "SaveGame",
                 "SaveToFile",
                 "WriteSaveData",
-                "CreateSave"
-            };
+                "CreateSave",
+            ];
 
             List<MethodBase> methods = [];
 
@@ -47,44 +76,57 @@ public class SaveLoadSyncPatch
                     {
                         foreach (var method in type.GetMethods())
                         {
-                            if (methodNames.Any(name => method.Name.Contains(name)) ||
-                                (method.ReturnType == typeof(void) &&
-                                 method.GetParameters().Any(p => p.ParameterType.Name.Contains("Save"))))
+                            bool nameMatch = methodNames.Any(name => method.Name.Contains(name));
+                            bool paramMatch = method.ReturnType == typeof(void)
+                                             && method.GetParameters().Any(p => p.ParameterType.Name.Contains("Save"));
+
+                            if (nameMatch || paramMatch)
                             {
                                 methods.Add(method);
                             }
                         }
                     }
                 }
-                catch (Exception)
+                catch
                 {
-                    // 忽略无法访问的程序集
+                    // 忽略无法访问的程序集。
                 }
             }
 
             return methods;
         }
 
+        /// <summary>
+        /// 保存前置：记录保存类型与保存前快照。
+        /// </summary>
+        /// <param name="__instance">保存调用实例。</param>
+        /// <param name="__args">保存调用参数。</param>
+        /// <param name="__state">用于保存前置信息。</param>
         [HarmonyPrefix]
         private static void GameSave_Prefix(object __instance, object[] __args, out SaveSyncState __state)
         {
             __state = new SaveSyncState();
             try
             {
-                // 记录保存前的状态
                 __state.SaveStartTime = DateTime.Now;
                 __state.SaveType = DetermineSaveType(__instance, __args);
                 __state.PlayerId = GetCurrentPlayerId();
                 __state.GameStateBefore = CaptureGameState();
 
-                Plugin.Logger?.LogInfo($"[SaveLoadSync] Starting game save: {__state.SaveType}");
+                Plugin.Logger?.LogInfo($"[SaveLoadSync] 开始保存: {__state.SaveType}");
             }
             catch (Exception ex)
             {
-                Plugin.Logger?.LogError($"[SaveLoadSync] Error in GameSave_Prefix: {ex.Message}");
+                Plugin.Logger?.LogError($"[SaveLoadSync] GameSave_Prefix 异常: {ex.Message}");
             }
         }
 
+        /// <summary>
+        /// 保存后置：主机广播保存后的快照。
+        /// </summary>
+        /// <param name="__instance">保存调用实例。</param>
+        /// <param name="__args">保存调用参数。</param>
+        /// <param name="__state">前置保存的信息。</param>
         [HarmonyPostfix]
         private static void GameSave_Postfix(object __instance, object[] __args, SaveSyncState __state)
         {
@@ -101,10 +143,10 @@ public class SaveLoadSyncPatch
                     return;
                 }
 
-                // 只同步主机保存，避免客户端重复同步
+                // 只同步主机保存，避免客户端重复广播。
                 if (!IsHostPlayer())
                 {
-                    Plugin.Logger?.LogDebug("[SaveLoadSync] Non-host save, skipping sync");
+                    Plugin.Logger?.LogDebug("[SaveLoadSync] 非主机保存，跳过同步");
                     return;
                 }
 
@@ -121,16 +163,16 @@ public class SaveLoadSyncPatch
                     GameStateSnapshot = gameStateAfter,
                     SaveSlot = DetermineSaveSlot(__args),
                     IsAutoSave = __state.SaveType.Contains("Auto"),
-                    MultiplayerSync = true
+                    MultiplayerSync = true,
                 };
 
-                // 缓存存档快照用于同步
+                // 缓存快照，供后续查询/响应。
                 GameStateSnapshot snapshot = new GameStateSnapshot
                 {
                     PlayerId = __state.PlayerId,
                     SaveType = __state.SaveType,
                     Timestamp = DateTime.Now.Ticks,
-                    GameState = gameStateAfter
+                    GameState = gameStateAfter,
                 };
 
                 lock (_syncLock)
@@ -140,31 +182,39 @@ public class SaveLoadSyncPatch
 
                 SendGameEvent(NetworkMessageTypes.OnGameSave, syncData);
 
-                Plugin.Logger?.LogInfo($"[SaveLoadSync] Game save synced: {__state.SaveType} (took {saveTime.TotalMilliseconds:F1}ms)");
+                Plugin.Logger?.LogInfo($"[SaveLoadSync] 保存同步完成: {__state.SaveType} (耗时 {saveTime.TotalMilliseconds:F1}ms)");
             }
             catch (Exception ex)
             {
-                Plugin.Logger?.LogError($"[SaveLoadSync] Error in GameSave_Postfix: {ex.Message}");
+                Plugin.Logger?.LogError($"[SaveLoadSync] GameSave_Postfix 异常: {ex.Message}");
             }
         }
     }
 
+    #endregion
+
+    #region 加载同步
+
     /// <summary>
-    /// 游戏加载同步 - 当游戏加载时同步状态
+    /// 游戏加载同步：在加载流程前后记录状态并广播。
     /// </summary>
     [HarmonyPatch]
     public static class GameLoadSync
     {
+        /// <summary>
+        /// 目标方法集合：通过反射扫描可能的 Load 入口。
+        /// </summary>
+        /// <returns>可能的加载方法列表。</returns>
         [HarmonyTargetMethods]
-        static System.Collections.Generic.IEnumerable<System.Reflection.MethodBase> TargetMethods()
+        private static IEnumerable<MethodBase> TargetMethods()
         {
-            string[] methodNames = new[]
-            {
+            string[] methodNames =
+            [
                 "LoadGame",
                 "LoadFromFile",
                 "ReadSaveData",
-                "LoadSave"
-            };
+                "LoadSave",
+            ];
 
             List<MethodBase> methods = [];
 
@@ -176,45 +226,58 @@ public class SaveLoadSyncPatch
                     {
                         foreach (var method in type.GetMethods())
                         {
-                            if (methodNames.Any(name => method.Name.Contains(name)) ||
-                                (method.ReturnType != typeof(void) &&
-                                 method.GetParameters().Any(p => p.ParameterType.Name.Contains("Save"))))
+                            bool nameMatch = methodNames.Any(name => method.Name.Contains(name));
+                            bool paramMatch = method.ReturnType != typeof(void)
+                                             && method.GetParameters().Any(p => p.ParameterType.Name.Contains("Save"));
+
+                            if (nameMatch || paramMatch)
                             {
                                 methods.Add(method);
                             }
                         }
                     }
                 }
-                catch (Exception)
+                catch
                 {
-                    // 忽略无法访问的程序集
+                    // 忽略无法访问的程序集。
                 }
             }
 
             return methods;
         }
 
+        /// <summary>
+        /// 加载前置：记录加载类型与加载前快照。
+        /// </summary>
+        /// <param name="__instance">加载调用实例。</param>
+        /// <param name="__args">加载调用参数。</param>
+        /// <param name="__state">用于保存前置信息。</param>
         [HarmonyPrefix]
         private static void GameLoad_Prefix(object __instance, object[] __args, out LoadSyncState __state)
         {
             __state = new LoadSyncState();
             try
             {
-                // 记录加载前的状态
                 __state.LoadStartTime = DateTime.Now;
                 __state.LoadType = DetermineLoadType(__args);
                 __state.PlayerId = GetCurrentPlayerId();
                 __state.GameStateBefore = CaptureGameState();
                 __state.SaveSlot = DetermineSaveSlot(__args);
 
-                Plugin.Logger?.LogInfo($"[SaveLoadSync] Starting game load: {__state.LoadType}");
+                Plugin.Logger?.LogInfo($"[SaveLoadSync] 开始加载: {__state.LoadType}");
             }
             catch (Exception ex)
             {
-                Plugin.Logger?.LogError($"[SaveLoadSync] Error in GameLoad_Prefix: {ex.Message}");
+                Plugin.Logger?.LogError($"[SaveLoadSync] GameLoad_Prefix 异常: {ex.Message}");
             }
         }
 
+        /// <summary>
+        /// 加载后置：广播加载后的快照；客户端可额外请求主机同步。
+        /// </summary>
+        /// <param name="__instance">加载调用实例。</param>
+        /// <param name="__args">加载调用参数。</param>
+        /// <param name="__state">前置保存的信息。</param>
         [HarmonyPostfix]
         private static void GameLoad_Postfix(object __instance, object[] __args, LoadSyncState __state)
         {
@@ -234,7 +297,7 @@ public class SaveLoadSyncPatch
                 var loadTime = DateTime.Now - __state.LoadStartTime;
                 object gameStateAfter = CaptureGameState();
 
-                // 请求主机发送最新的存档同步
+                // 客户端加载后可请求主机发送一次最新快照。
                 if (!IsHostPlayer())
                 {
                     SaveSyncManager.RequestHostSaveSync(__state.SaveSlot);
@@ -250,22 +313,26 @@ public class SaveLoadSyncPatch
                     GameStateSnapshot = gameStateAfter,
                     SaveSlot = __state.SaveSlot,
                     IsAutoLoad = __state.LoadType.Contains("Auto"),
-                    RequestingHostSync = !IsHostPlayer()
+                    RequestingHostSync = !IsHostPlayer(),
                 };
 
                 SendGameEvent(NetworkMessageTypes.OnGameLoad, syncData);
 
-                Plugin.Logger?.LogInfo($"[SaveLoadSync] Game load synced: {__state.LoadType} (took {loadTime.TotalMilliseconds:F1}ms)");
+                Plugin.Logger?.LogInfo($"[SaveLoadSync] 加载同步完成: {__state.LoadType} (耗时 {loadTime.TotalMilliseconds:F1}ms)");
             }
             catch (Exception ex)
             {
-                Plugin.Logger?.LogError($"[SaveLoadSync] Error in GameLoad_Postfix: {ex.Message}");
+                Plugin.Logger?.LogError($"[SaveLoadSync] GameLoad_Postfix 异常: {ex.Message}");
             }
         }
     }
 
+    #endregion
+
+    #region 自动保存/快速保存同步
+
     /// <summary>
-    /// 快速保存同步 - 游戏中的自动保存
+    /// 快速保存同步：对自动保存类方法做节流同步。
     /// </summary>
     [HarmonyPatch]
     public static class QuickSaveSync
@@ -273,15 +340,19 @@ public class SaveLoadSyncPatch
         private static DateTime _lastQuickSave = DateTime.MinValue;
         private static readonly TimeSpan QUICK_SAVE_COOLDOWN = TimeSpan.FromSeconds(30);
 
+        /// <summary>
+        /// 目标方法集合：通过反射扫描 QuickSave/AutoSave/CheckpointSave。
+        /// </summary>
+        /// <returns>可能的快速保存方法列表。</returns>
         [HarmonyTargetMethods]
-        static System.Collections.Generic.IEnumerable<System.Reflection.MethodBase> TargetMethods()
+        private static IEnumerable<MethodBase> TargetMethods()
         {
-            string[] methodNames = new[]
-            {
+            string[] methodNames =
+            [
                 "QuickSave",
                 "AutoSave",
-                "CheckpointSave"
-            };
+                "CheckpointSave",
+            ];
 
             List<MethodBase> methods = [];
 
@@ -300,15 +371,20 @@ public class SaveLoadSyncPatch
                         }
                     }
                 }
-                catch (Exception)
+                catch
                 {
-                    // 忽略无法访问的程序集
+                    // 忽略无法访问的程序集。
                 }
             }
 
             return methods;
         }
 
+        /// <summary>
+        /// 快速保存后置：主机按冷却时间节流后广播快照。
+        /// </summary>
+        /// <param name="__instance">调用实例。</param>
+        /// <param name="__args">调用参数。</param>
         [HarmonyPostfix]
         public static void QuickSave_Postfix(object __instance, object[] __args)
         {
@@ -317,7 +393,8 @@ public class SaveLoadSyncPatch
                 var now = DateTime.Now;
                 if (now - _lastQuickSave < QUICK_SAVE_COOLDOWN)
                 {
-                    return; // 避免过于频繁的快速保存同步
+                    // 节流：避免过于频繁广播。
+                    return;
                 }
 
                 if (serviceProvider == null)
@@ -331,9 +408,10 @@ public class SaveLoadSyncPatch
                     return;
                 }
 
+                // 只有主机执行快速保存同步。
                 if (!IsHostPlayer())
                 {
-                    return; // 只有主机执行快速保存同步
+                    return;
                 }
 
                 object gameState = CaptureGameState();
@@ -343,30 +421,35 @@ public class SaveLoadSyncPatch
                     EventType = "QuickSaveSync",
                     PlayerId = GetCurrentPlayerId(),
                     GameStateSnapshot = gameState,
-                    SaveFrequency = "Throttled"
+                    SaveFrequency = "Throttled",
                 };
 
                 SendGameEvent("QuickSaveSync", syncData);
 
                 _lastQuickSave = now;
 
-                Plugin.Logger?.LogDebug("[SaveLoadSync] Quick save synced");
+                Plugin.Logger?.LogDebug("[SaveLoadSync] 快速保存已同步");
             }
             catch (Exception ex)
             {
-                Plugin.Logger?.LogError($"[SaveLoadSync] Error in QuickSave_Postfix: {ex.Message}");
+                Plugin.Logger?.LogError($"[SaveLoadSync] QuickSave_Postfix 异常: {ex.Message}");
             }
         }
     }
 
+    #endregion
+
+    #region 存档同步管理器
+
     /// <summary>
-    /// 存档同步管理器 - 处理存档同步请求和响应
+    /// 存档同步管理器：处理“向主机请求快照”与“主机响应快照”。
     /// </summary>
     public static class SaveSyncManager
     {
         /// <summary>
-        /// 请求主机发送存档同步
+        /// 请求主机发送存档同步。
         /// </summary>
+        /// <param name="saveSlot">存档槽标识。</param>
         public static void RequestHostSaveSync(string saveSlot)
         {
             try
@@ -388,22 +471,23 @@ public class SaveLoadSyncPatch
                     EventType = "SaveSyncRequest",
                     RequesterId = GetCurrentPlayerId(),
                     SaveSlot = saveSlot,
-                    RequestType = "FullSync"
+                    RequestType = "FullSync",
                 };
 
                 SendGameEvent("SaveSyncRequest", requestData);
 
-                Plugin.Logger?.LogInfo($"[SaveLoadSync] Requested host save sync for slot: {saveSlot}");
+                Plugin.Logger?.LogInfo($"[SaveLoadSync] 已请求主机同步存档槽: {saveSlot}");
             }
             catch (Exception ex)
             {
-                Plugin.Logger?.LogError($"[SaveLoadSync] Error requesting host save sync: {ex.Message}");
+                Plugin.Logger?.LogError($"[SaveLoadSync] 请求主机存档同步失败: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// 响应存档同步请求 - 主机发送存档数据
+        /// 主机响应存档同步请求：发送一次完整快照。
         /// </summary>
+        /// <param name="requesterId">请求方玩家 Id。</param>
         public static void RespondToSaveSyncRequest(string requesterId)
         {
             try
@@ -433,39 +517,46 @@ public class SaveLoadSyncPatch
                     HostId = GetCurrentPlayerId(),
                     GameStateSnapshot = gameState,
                     SyncType = "FullSync",
-                    SaveTime = DateTime.Now.Ticks
+                    SaveTime = DateTime.Now.Ticks,
                 };
 
                 SendGameEvent("SaveSyncResponse", responseData);
 
-                Plugin.Logger?.LogInfo($"[SaveLoadSync] Responded to save sync request from {requesterId}");
+                Plugin.Logger?.LogInfo($"[SaveLoadSync] 已响应存档同步请求: {requesterId}");
             }
             catch (Exception ex)
             {
-                Plugin.Logger?.LogError($"[SaveLoadSync] Error responding to save sync request: {ex.Message}");
+                Plugin.Logger?.LogError($"[SaveLoadSync] 响应存档同步请求失败: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// 应用来自主机的存档同步数据
+        /// 应用来自主机的存档同步数据（预留）。
         /// </summary>
+        /// <param name="saveSyncData">同步数据。</param>
         public static void ApplyHostSaveSync(object saveSyncData)
         {
             try
             {
-                // TODO: 实现将主机的存档状态应用到本地游戏
-                // 这可能需要调用游戏内部的存档应用API
-                Plugin.Logger?.LogInfo("[SaveLoadSync] Host save sync applied successfully");
+                // TODO：实现将主机的存档状态应用到本地游戏。
+                Plugin.Logger?.LogInfo("[SaveLoadSync] 主机存档同步应用成功（占位）");
             }
             catch (Exception ex)
             {
-                Plugin.Logger?.LogError($"[SaveLoadSync] Error applying host save sync: {ex.Message}");
+                Plugin.Logger?.LogError($"[SaveLoadSync] 应用主机存档同步失败: {ex.Message}");
             }
         }
     }
 
-    // 辅助方法
+    #endregion
 
+    #region 辅助方法
+
+    /// <summary>
+    /// 发送游戏事件（优先使用 SendGameEventData，失败则回落到 SendRequest）。
+    /// </summary>
+    /// <param name="eventType">事件类型。</param>
+    /// <param name="eventData">事件数据。</param>
     private static void SendGameEvent(string eventType, object eventData)
     {
         try
@@ -482,11 +573,15 @@ public class SaveLoadSyncPatch
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[SaveLoadSync] Error sending game event {eventType}: {ex.Message}");
+            Plugin.Logger?.LogError($"[SaveLoadSync] 发送事件 {eventType} 失败: {ex.Message}");
         }
     }
 
-private static string GetCurrentPlayerId()
+    /// <summary>
+    /// 获取当前玩家 ID。
+    /// </summary>
+    /// <returns>玩家标识字符串。</returns>
+    private static string GetCurrentPlayerId()
     {
         try
         {
@@ -506,16 +601,20 @@ private static string GetCurrentPlayerId()
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[SaveLoadSync] Error getting current player ID: {ex.Message}");
+            Plugin.Logger?.LogError($"[SaveLoadSync] 获取当前玩家 ID 失败: {ex.Message}");
             return "unknown_player";
         }
     }
 
-private static bool IsHostPlayer()
+    /// <summary>
+    /// 判断当前玩家是否主机。
+    /// </summary>
+    /// <returns>是主机返回 true，否则 false。</returns>
+    private static bool IsHostPlayer()
     {
         try
         {
-            // 优先使用 NetworkIdentityTracker（PlayerListUpdate/Welcom 会刷新），否则回退到 GameStateUtils 的反射判断
+            // 优先使用 NetworkIdentityTracker（Welcome/PlayerListUpdate 会刷新），否则回退到 GameStateUtils 的判断。
             if (NetworkIdentityTracker.GetSelfIsHost())
             {
                 return true;
@@ -525,17 +624,19 @@ private static bool IsHostPlayer()
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[SaveLoadSync] Error checking host status: {ex.Message}");
+            Plugin.Logger?.LogError($"[SaveLoadSync] 判断主机状态失败: {ex.Message}");
             return false;
         }
     }
 
-private static object CaptureGameState()
+    /// <summary>
+    /// 抓取最小可用游戏状态快照（用于诊断与尽力同步）。
+    /// </summary>
+    /// <returns>可序列化对象。</returns>
+    private static object CaptureGameState()
     {
         try
         {
-            // 最小可用快照：用于诊断与“尽力同步”，不追求覆盖全部游戏内部状态。
-            // 完整的存档应用/回滚仍需要在游戏内验证（避免破坏原生存档流程）。
             var player = GameStateUtils.GetCurrentPlayer();
             return new
             {
@@ -546,26 +647,32 @@ private static object CaptureGameState()
                     IsHost = IsHostPlayer(),
                     ModelName = player?.ModelName,
                     Hp = player?.Hp,
-                    MaxHp = player?.MaxHp
+                    MaxHp = player?.MaxHp,
                 },
                 BattleState = new
                 {
-                    InBattle = player?.Battle != null
+                    InBattle = player?.Battle != null,
                 },
                 GameProgress = new
                 {
                     GameStarted = player != null,
-                    RunTimestamp = GameStateUtils.GetCurrentGameRun() != null ? DateTime.Now.Ticks : 0
-                }
+                    RunTimestamp = GameStateUtils.GetCurrentGameRun() != null ? DateTime.Now.Ticks : 0,
+                },
             };
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[SaveLoadSync] Error capturing game state: {ex.Message}");
+            Plugin.Logger?.LogError($"[SaveLoadSync] 抓取快照失败: {ex.Message}");
             return new { Error = ex.Message, Timestamp = DateTime.Now.Ticks };
         }
     }
 
+    /// <summary>
+    /// 根据调用实例/参数推断保存类型。
+    /// </summary>
+    /// <param name="instance">调用实例。</param>
+    /// <param name="args">调用参数。</param>
+    /// <returns>保存类型字符串。</returns>
     private static string DetermineSaveType(object instance, object[] args)
     {
         try
@@ -589,11 +696,16 @@ private static object CaptureGameState()
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[SaveLoadSync] Error determining save type: {ex.Message}");
+            Plugin.Logger?.LogError($"[SaveLoadSync] 推断保存类型失败: {ex.Message}");
             return "UnknownSave";
         }
     }
 
+    /// <summary>
+    /// 根据调用参数推断加载类型。
+    /// </summary>
+    /// <param name="args">调用参数。</param>
+    /// <returns>加载类型字符串。</returns>
     private static string DetermineLoadType(object[] args)
     {
         try
@@ -617,11 +729,16 @@ private static object CaptureGameState()
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[SaveLoadSync] Error determining load type: {ex.Message}");
+            Plugin.Logger?.LogError($"[SaveLoadSync] 推断加载类型失败: {ex.Message}");
             return "UnknownLoad";
         }
     }
 
+    /// <summary>
+    /// 根据参数推断存档槽。
+    /// </summary>
+    /// <param name="args">调用参数。</param>
+    /// <returns>存档槽字符串。</returns>
     private static string DetermineSaveSlot(object[] args)
     {
         try
@@ -631,35 +748,71 @@ private static object CaptureGameState()
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[SaveLoadSync] Error determining save slot: {ex.Message}");
+            Plugin.Logger?.LogError($"[SaveLoadSync] 推断存档槽失败: {ex.Message}");
             return "DefaultSlot";
         }
     }
 
-    // 数据结构
+    #endregion
 
+    #region 数据结构
+
+    /// <summary>
+    /// 保存同步前置状态。
+    /// </summary>
     public class SaveSyncState
     {
+        /// <summary>保存开始时间。</summary>
         public DateTime SaveStartTime { get; set; }
+
+        /// <summary>保存类型。</summary>
         public string SaveType { get; set; }
+
+        /// <summary>玩家 Id。</summary>
         public string PlayerId { get; set; }
+
+        /// <summary>保存前快照。</summary>
         public object GameStateBefore { get; set; }
     }
 
+    /// <summary>
+    /// 加载同步前置状态。
+    /// </summary>
     public class LoadSyncState
     {
+        /// <summary>加载开始时间。</summary>
         public DateTime LoadStartTime { get; set; }
+
+        /// <summary>加载类型。</summary>
         public string LoadType { get; set; }
+
+        /// <summary>玩家 Id。</summary>
         public string PlayerId { get; set; }
+
+        /// <summary>加载前快照。</summary>
         public object GameStateBefore { get; set; }
+
+        /// <summary>存档槽标识。</summary>
         public string SaveSlot { get; set; }
     }
 
+    /// <summary>
+    /// 缓存用的游戏状态快照（按玩家保存最后一次快照）。
+    /// </summary>
     private class GameStateSnapshot
     {
+        /// <summary>玩家 Id。</summary>
         public string PlayerId { get; set; }
+
+        /// <summary>保存类型。</summary>
         public string SaveType { get; set; }
+
+        /// <summary>时间戳。</summary>
         public long Timestamp { get; set; }
+
+        /// <summary>快照数据。</summary>
         public object GameState { get; set; }
     }
+
+    #endregion
 }
