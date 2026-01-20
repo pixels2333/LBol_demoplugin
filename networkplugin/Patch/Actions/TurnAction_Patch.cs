@@ -145,7 +145,103 @@ public class TurnAction_Patch
     {
         try
         {
-            // TODO：待确认 EndPlayerTurn 的可用字段与同步内容。
+            // 依赖注入服务未就绪时跳过。
+            if (serviceProvider == null)
+            {
+                Plugin.Logger?.LogDebug("[TurnSync] ServiceProvider 未初始化（EndPlayerTurn）");
+                return;
+            }
+
+            // 获取网络客户端并确认连接。
+            var networkClient = serviceProvider.GetService<INetworkClient>();
+            if (networkClient == null || !networkClient.IsConnected)
+            {
+                Plugin.Logger?.LogDebug("[TurnSync] 网络客户端不可用（EndPlayerTurn）");
+                return;
+            }
+
+            // 回合结束的“协商/锁定”逻辑由 EndTurnSyncPatch 处理（EndTurnRequest/Confirm）。
+            // 当真正执行到 EndPlayerTurnAction 时，说明回合已实际结束；此处仅发送“回合边界快照”，不介入协商过程。
+
+            // 取战斗上下文与本地玩家单位。
+            BattleController battle = __instance.Unit?.Battle;
+            if (battle == null)
+            {
+                Plugin.Logger?.LogDebug("[TurnSync] battle 为空（EndPlayerTurn）");
+                return;
+            }
+
+            PlayerUnit source = battle.Player;
+            if (source == null)
+            {
+                Plugin.Logger?.LogDebug("[TurnSync] battle.Player 为空（EndPlayerTurn）");
+                return;
+            }
+
+            // 状态效果快照：此处保留空列表，后续可在合适的 API 点补充。
+            var statusEffectsSnapshot = new List<StatusEffectStateSnapshot>();
+
+            // 构建玩家状态快照（回合结束后的最终状态）。
+            PlayerStateSnapshot playerStateSnapshot = new PlayerStateSnapshot
+            {
+                UserName = networkClient.GetSelf().userName,
+                Health = source.Hp,
+                MaxHealth = source.MaxHp,
+                Block = source.Block,
+                Shield = source.Shield,
+                ManaGroup = ManaUtils.ManaGroupToArray(battle.BattleMana),
+                MaxMana = 0, // TODO：后续补齐最大法力获取逻辑
+                Gold = 0, // TODO：后续补齐金币获取逻辑
+                TurnNumber = source.TurnCounter,
+                IsInBattle = true,
+                IsAlive = source.IsAlive,
+                IsPlayersTurn = false,
+                IsInTurn = source.IsInTurn,
+                IsExtraTurn = source.IsExtraTurn,
+                CharacterType = source is PlayerUnit ? "Player" : "Enemy",
+                ReconnectToken = string.Empty,
+                DisconnectTime = 0,
+                LastUpdateTime = DateTime.Now.Ticks,
+                IsAIControlled = false,
+                TurnCounter = source.TurnCounter,
+                Timestamp = DateTime.Now,
+            };
+
+            // 构建意图快照（回合结束后通常进入敌方回合；意图可能已变化，仍以当前战斗控制器提取为准）。
+            IntentionSnapshot intentionSnapshot = new IntentionSnapshot(battleController: battle);
+
+            // 复用 EndTurnSyncPatch 的 battleId 生成策略，保证跨客户端一致。
+            string battleId = "battle";
+            try
+            {
+                var run = GameStateUtils.GetCurrentGameRun();
+                var node = run?.CurrentMap?.VisitingNode;
+                if (node != null)
+                {
+                    battleId = $"Act{node.Act}:{node.X}:{node.Y}:{node.StationType}";
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            int round = battle.RoundCounter;
+
+            // 构建回合结束同步数据。
+            TurnEndStateSnapshot turnEndData = new TurnEndStateSnapshot(
+                statusEffectStateSnapshot: statusEffectsSnapshot,
+                playerStateSnapshot: playerStateSnapshot,
+                intentionSnapshot: intentionSnapshot,
+                battleId: battleId,
+                round: round
+            );
+
+            // 序列化并发送回合结束事件。
+            string json = JsonSerializer.Serialize(turnEndData);
+            networkClient.SendRequest(NetworkMessageTypes.OnTurnEnd, json);
+
+            Plugin.Logger?.LogInfo("[TurnSync] 玩家回合结束已同步");
         }
         catch (Exception ex)
         {

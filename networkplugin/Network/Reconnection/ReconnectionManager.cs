@@ -857,17 +857,8 @@ public sealed class ReconnectionManager : IDisposable
     /// <param name="player">网络玩家对象。</param>
     private PlayerStateSnapshot CreateSnapshotFromNetworkPlayer(INetworkPlayer player)
     {
-        // mana 可能为空或长度不足（不同角色/版本字段差异），这里统一为 4 位数组，避免序列化/反序列化出错。
-        int[] mana = player.mana ?? [0, 0, 0, 0];
-        if (mana.Length < 4)
-        {
-            int[] fixedMana = [0, 0, 0, 0];
-            for (int i = 0; i < mana.Length; i++)
-            {
-                fixedMana[i] = mana[i];
-            }
-            mana = fixedMana;
-        }
+        // mana 不在 INetworkPlayer 接口中声明：使用兼容层从实现类读取并规范化为 4 位数组。
+        int[] mana = player.GetManaArraySafe();
 
         return new PlayerStateSnapshot
         {

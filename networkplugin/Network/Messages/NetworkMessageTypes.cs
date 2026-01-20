@@ -206,6 +206,58 @@ namespace NetworkPlugin.Network.Messages
         /// </summary>
         public const string OnMapNodeMarkChanged = "OnMapNodeMarkChanged";
 
+        // === 事件/对话同步消息 ===
+
+        /// <summary>
+        /// 事件开始（进入 AdventureStation 或启动事件对话）。
+        /// </summary>
+        public const string OnEventStart = "OnEventStart";
+
+        /// <summary>
+        /// 事件选项确认（权威端广播）。
+        /// </summary>
+        public const string OnEventSelection = "OnEventSelection";
+
+        /// <summary>
+        /// 事件结果同步（可选）。
+        /// </summary>
+        public const string OnEventResult = "OnEventResult";
+
+        /// <summary>
+        /// 对话文本同步（主要用于日志/诊断）。
+        /// </summary>
+        public const string OnDialogText = "OnDialogText";
+
+        /// <summary>
+        /// 对话选项列表同步（用于断线重连/诊断，或跟随推进）。
+        /// </summary>
+        public const string OnDialogOptions = "OnDialogOptions";
+
+        /// <summary>
+        /// 事件投票：投票提交。
+        /// </summary>
+        public const string OnEventVoteCast = "OnEventVoteCast";
+
+        /// <summary>
+        /// 事件投票：结算结果。
+        /// </summary>
+        public const string OnEventVotingResult = "OnEventVotingResult";
+
+        /// <summary>
+        /// Boss 奖励选择同步。
+        /// </summary>
+        public const string OnBossRewardSelection = "OnBossRewardSelection";
+
+        /// <summary>
+        /// 商店事件同步。
+        /// </summary>
+        public const string OnShopEvent = "OnShopEvent";
+
+        /// <summary>
+        /// 宝箱/宝藏事件同步。
+        /// </summary>
+        public const string OnTreasureEvent = "OnTreasureEvent";
+
         /// <summary>
         /// 进入休息点（GapStation）
         /// </summary>

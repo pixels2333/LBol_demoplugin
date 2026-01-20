@@ -38,3 +38,18 @@
   - 服务端实现 `DirectMessage` 中继（用于 `MidGameJoin*` 与 `FullStateSync*` 的既有链路）。
   - `FullStateSyncRequest`：服务端定向转发给房主客户端（由房主侧 `MidGameJoinManager` 校验 JoinToken 并生成响应）。
   - `FullStateSyncResponse`：服务端仅单播给 `TargetPlayerId`。
+
+## 方案库记录：TurnEnd
+
+### OnTurnEnd（回合结束快照）
+- 发送端：在 `EndPlayerTurnAction.Execute` 的 Harmony Postfix 触发，发送 `NetworkMessageTypes.OnTurnEnd`，payload 为 `TurnEndStateSnapshot`。
+- 接收端：订阅 `INetworkClient.OnGameEventReceived`，解析 `OnTurnEnd` 并更新远端玩家状态缓存（不直接改动 LBoL 的战斗状态）。
+  - 实现：`networkplugin/Patch/Network/TurnEndSnapshotReceivePatch.cs`
+- 边界：
+  - `EndTurnSyncPatch` 负责 EndTurnRequest/Confirm 的协商与 UI 锁定。
+  - `OnTurnEnd` 仅用于“回合已实际结束后”的边界快照/对齐，不参与协商。
+
+### mana 兼容层
+- 背景：历史代码中存在对 `INetworkPlayer.mana` 的直接访问，但该成员未在接口中声明。
+- 方案：使用反射兼容层读取/写入实现类上的 `mana` 属性，避免改接口造成破坏性修改。
+  - 实现：`networkplugin/Utils/NetworkPlayerManaCompat.cs`

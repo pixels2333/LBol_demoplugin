@@ -91,15 +91,7 @@ public interface INetworkPlayer
     /// </summary>
     bool endturn { get; set; }
 
-    /// <summary>
-    /// 玩家法力数组
-    /// 支持多色法力系统，每个元素代表一种颜色的法力值
-    /// </summary>
-    /// <remarks>
-    /// 当前联机同步通常使用固定长度数组（常见为 4 槽）表达“简化法力视图”；数组长度与颜色映射应以协议/DTO 实现为准。
-    /// 原游戏内部存在更完整的法力表示（例如 ManaColor/ManaGroup），此处仅承载网络同步所需的最小信息。
-    /// </remarks>
-    int[] mana { get; set; }
+
 
 
 

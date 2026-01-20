@@ -16,6 +16,7 @@ using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Event;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.NetworkPlayer;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Actions;
 
@@ -116,7 +117,7 @@ public class PlayCardAction_Patch
                 ["MaxHp"] = player.maxHP,
                 ["Block"] = player.block,
                 ["Shield"] = player.shield,
-                ["Mana"] = player.mana,
+                ["Mana"] = player.GetManaArraySafe(),
 
                 // 牌库区域计数（便于远端校验一致性）。
                 ["CardsInHand"] = battle.HandZone?.Count ?? 0,
@@ -197,7 +198,7 @@ public class PlayCardAction_Patch
                     ["MaxHp"] = player.maxHP,
                     ["Block"] = player.block,
                     ["Shield"] = player.shield,
-                    ["Mana"] = player.mana,
+                    ["Mana"] = player.GetManaArraySafe(),
                     ["CardsInHand"] = battle.HandZone?.Count ?? 0,
                     ["CardsInDraw"] = battle.DrawZone?.Count ?? 0,
                     ["CardsInDiscard"] = battle.DiscardZone?.Count ?? 0,
@@ -275,7 +276,7 @@ public class PlayCardAction_Patch
                     ["MaxHp"] = player.maxHP,
                     ["Block"] = player.block,
                     ["Shield"] = player.shield,
-                    ["Mana"] = player.mana,
+                    ["Mana"] = player.GetManaArraySafe(),
                     ["CardsInHand"] = battle.HandZone?.Count ?? 0,
                     ["CardsInDraw"] = battle.DrawZone?.Count ?? 0,
                     ["CardsInDiscard"] = battle.DiscardZone?.Count ?? 0,

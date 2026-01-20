@@ -54,7 +54,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
     /// <summary>
     /// 聊天历史记录列表，按时间顺序存储所有接收和发送的消息
     /// </summary>
-    private readonly List<ChatMessage> _chatHistory = [];
+    private readonly List<ChatMessage> _chatHistory = []; 
 
     /// <summary>
     /// 聊天历史记录的最大条数限制
