@@ -6,6 +6,21 @@ namespace NetworkPlugin.UI.Panels;
 /// </summary>
 public class TradePayload
 {
+	/// <summary>
+	/// 本次交易会话 ID（可选；为空时由 UI/同步层生成）。
+	/// </summary>
+	public string TradeId { get; set; }
+
+	/// <summary>
+	/// 玩家1的网络 PlayerId（可选；为空时默认使用本地玩家）。
+	/// </summary>
+	public string Player1Id { get; set; }
+
+	/// <summary>
+	/// 玩家2的网络 PlayerId（可选；为空时将自动选择一个远端玩家）。
+	/// </summary>
+	public string Player2Id { get; set; }
+
 	/// <summary>玩家1的名称</summary>
 	public string Player1Name { get; set; }
 

@@ -28,6 +28,15 @@ namespace NetworkPlugin.Network.NetworkPlayer;
 public interface INetworkPlayer
 {
     /// <summary>
+    /// 服务器分配的玩家唯一标识（PlayerId）。
+    /// </summary>
+    /// <remarks>
+    /// 该字段用于网络协议中的 RequesterPlayerId/TargetPlayerId 等唯一定位。
+    /// 由服务端在握手/Welcome 包中下发，客户端保存并持续使用。
+    /// </remarks>
+    string playerId { get; set; }
+
+    /// <summary>
     /// 玩家用户名
     /// 用于标识和显示玩家的名称，在网络游戏中需要保持同步
     /// </summary>

@@ -258,6 +258,65 @@ namespace NetworkPlugin.Network.Messages
         /// </summary>
         public const string OnTreasureEvent = "OnTreasureEvent";
 
+        // === 交易同步消息 ===
+
+        /// <summary>
+        /// 交易：发起交易请求（客户端->Host）。
+        /// </summary>
+        public const string OnTradeStartRequest = "OnTradeStartRequest";
+
+        /// <summary>
+        /// 交易：报价变更请求（客户端->Host）。
+        /// </summary>
+        public const string OnTradeOfferUpdateRequest = "OnTradeOfferUpdateRequest";
+
+        /// <summary>
+        /// 交易：确认交易请求（客户端->Host）。
+        /// </summary>
+        public const string OnTradeConfirmRequest = "OnTradeConfirmRequest";
+
+        /// <summary>
+        /// 交易：取消交易请求（客户端->Host）。
+        /// </summary>
+        public const string OnTradeCancelRequest = "OnTradeCancelRequest";
+
+        /// <summary>
+        /// 交易：状态更新（Host->所有参与者广播）。
+        /// </summary>
+        public const string OnTradeStateUpdate = "OnTradeStateUpdate";
+
+        /// <summary>
+        /// 交易：请求会话快照（客户端->Host，用于重连/中途加入）。
+        /// </summary>
+        public const string OnTradeSnapshotRequest = "OnTradeSnapshotRequest";
+
+        /// <summary>
+        /// 交易：提交前校验结果（客户端->Host，用于失败回退到 Open 并允许重试）。
+        /// </summary>
+        public const string OnTradePrepareResultRequest = "OnTradePrepareResultRequest";
+
+        // === 死亡/复活（Gap）同步消息 ===
+
+        /// <summary>
+        /// 玩家死亡状态变化（假死/真死/HP 等）同步。
+        /// </summary>
+        public const string OnPlayerDeathStatusChanged = "OnPlayerDeathStatusChanged";
+
+        /// <summary>
+        /// 复活请求：客户端 -> Host。
+        /// </summary>
+        public const string OnResurrectRequest = "OnResurrectRequest";
+
+        /// <summary>
+        /// 复活失败：Host -> 全体（携带 RequesterPlayerId，用于发起者提示/退款）。
+        /// </summary>
+        public const string OnResurrectFailed = "OnResurrectFailed";
+
+        /// <summary>
+        /// 复活结果：Host -> 全体。
+        /// </summary>
+        public const string OnPlayerResurrected = "OnPlayerResurrected";
+
         /// <summary>
         /// 进入休息点（GapStation）
         /// </summary>

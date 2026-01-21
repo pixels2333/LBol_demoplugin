@@ -37,19 +37,32 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
     private static PlayerUnit CurrentPlayer => GameStateUtils.GetCurrentPlayer();
     private static GameRunController CurrentGameRun => GameStateUtils.GetCurrentGameRun();
 
+    public string playerId
+    {
+        get
+        {
+            try
+            {
+                NetworkIdentityTracker.EnsureSubscribed(_client);
+                return NetworkIdentityTracker.GetSelfPlayerId();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        set
+        {
+            // PlayerId 由服务端下发并由 NetworkIdentityTracker 维护，此处不允许客户端随意覆写。
+        }
+    }
+
     public string userName
     {
         get
         {
             try
             {
-                // 优先使用服务器侧分配的 PlayerId（便于排查），其次使用游戏内角色名。
-                string id = NetworkIdentityTracker.GetSelfPlayerId();
-                if (!string.IsNullOrWhiteSpace(id))
-                {
-                    return id;
-                }
-
                 string name = CurrentPlayer?.Name;
                 if (!string.IsNullOrWhiteSpace(name))
                 {

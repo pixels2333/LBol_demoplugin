@@ -61,6 +61,11 @@ public static class ShopTradeIconPatch
         }
     }
 
+    private static bool IsTradeEnabledAndConnected()
+    {
+        return TradeUiMessages.IsTradeEnabledAndConnected(out _);
+    }
+
     private static bool TryGetShopPanel(out ShopPanel shopPanel)
     {
         shopPanel = null;
@@ -87,19 +92,7 @@ public static class ShopTradeIconPatch
             return false;
         }
 
-        var config = TryGetConfig();
-        if (config?.AllowTrading?.Value != true)
-        {
-            return false;
-        }
-
-        var client = TryGetNetworkClient();
-        if (client == null || !client.IsConnected)
-        {
-            return false;
-        }
-
-        return true;
+        return IsTradeEnabledAndConnected();
     }
 
     [HarmonyPatch(typeof(GameDirector), "Update")]
@@ -292,9 +285,9 @@ public static class ShopTradeIconPatch
     {
         try
         {
-            if (!ShouldShow(shopPanel))
+            if (!TradeUiMessages.IsTradeEnabledAndConnected(out string reason))
             {
-                ShowTopMessage("Trading is not available (not connected or disabled).");
+                TradeUiMessages.ShowTopMessage(reason ?? "Trading is not available.");
                 return;
             }
 
@@ -322,28 +315,11 @@ public static class ShopTradeIconPatch
                 }
             }
 
-            ShowTopMessage("Trade UI is not available yet. Use the GapStation trade option or implement TradePanel prefab/runtime UI.");
+            TradeUiMessages.ShowTradePanelMissing();
         }
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[ShopTradeIcon] Click failed: {ex.Message}");
-        }
-    }
-
-    private static void ShowTopMessage(string message)
-    {
-        try
-        {
-            if (!UiManager.IsInitialized)
-            {
-                return;
-            }
-
-            UiManager.GetPanel<TopMessagePanel>().ShowMessage(message);
-        }
-        catch
-        {
-            // ignored
         }
     }
 }

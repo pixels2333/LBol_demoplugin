@@ -16,6 +16,7 @@ using NetworkPlugin.Core;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.UI.Panels;
+using NetworkPlugin.Utils;
 using UnityEngine;
 
 namespace NetworkPlugin.Patch.UI;
@@ -222,10 +223,22 @@ public class GapOptionsPanel_Patch
                 try
                 {
                     Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 处理交易选项");
+
+                    if (!TradeUiMessages.IsTradeEnabledAndConnected(out string reason))
+                    {
+                        TradeUiMessages.ShowTopMessage(reason ?? "Trading is not available.");
+                        Traverse.Create(__instance).Method("SelectedAndHide").GetValue();
+                        return false;
+                    }
+
                     TradePanel tradePanel = GetOrCreateTradePanel();
                     if (tradePanel != null)
                     {
                         Traverse.Create(__instance).Method("StartCoroutine").GetValue(tradePanel.ShowTradeAsync(new TradePayload()));
+                    }
+                    else
+                    {
+                        TradeUiMessages.ShowTradePanelMissing();
                     }
                     Traverse.Create(__instance).Method("SelectedAndHide").GetValue();
                 }
@@ -245,7 +258,16 @@ public class GapOptionsPanel_Patch
                     ResurrectPanel resurrectPanel = GetOrCreateResurrectPanel();
                     if (resurrectPanel != null)
                     {
-                        Traverse.Create(__instance).Method("StartCoroutine").GetValue(resurrectPanel.ShowResurrectAsync(new ResurrectPayload()));
+                        var payload = new ResurrectPayload
+                        {
+                            DeadPlayers = DeathRegistry.GetDeadPlayersSnapshot(),
+                            CanCancel = true,
+                            // 需求：复活后 HP = Cost/2。
+                            // v1 规则：以目标 MaxHp 为成本基准 => desiredHp=MaxHp/2 => cost=MaxHp。
+                            CostCalculator = desiredHp => Math.Max(0, desiredHp * 2),
+                        };
+
+                        Traverse.Create(__instance).Method("StartCoroutine").GetValue(resurrectPanel.ShowResurrectAsync(payload));
                     }
                     Traverse.Create(__instance).Method("SelectedAndHide").GetValue();
                 }
@@ -374,9 +396,25 @@ public class GapOptionsPanel_Patch
             if (panel != null)
                 return panel;
 
-            // 如果没有找到，创建新的面板
-            var tradePanelGO = new GameObject("TradePanel");
-            return tradePanelGO.AddComponent<TradePanel>();
+            // 其次：从场景中查找已存在的 TradePanel（例如由 Prefab/其他模块创建）。
+            try
+            {
+                panel = UnityEngine.Object.FindObjectOfType<TradePanel>(true);
+                if (panel != null)
+                {
+                    return panel;
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            // 没有 prefab/实例时不要裸创建：TradePanel 依赖序列化字段（按钮/槽位/文本），直接 AddComponent 会导致空引用。
+            Plugin.Logger?.LogWarning("[GapOptionsPanel_Patch] TradePanel UI instance not found (no prefab). Skipping creation.");
+            TradeUiMessages.ShowTradePanelMissing();
+
+            return null;
         }
         catch (Exception ex)
         {

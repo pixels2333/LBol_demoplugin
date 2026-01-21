@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using NetworkPlugin.Network.NetworkPlayer;
 using NetworkPlugin.Network.Messages;
+using NetworkPlugin.Patch.Network;
 using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Network.Client;
@@ -322,6 +323,9 @@ public class NetworkManager : INetworkManager
         {
             NetworkIdentityTracker.EnsureSubscribed(_networkClient);
 
+            // Ensure resurrect sync patch is listening on all peers (especially Host).
+            ResurrectSyncPatch.EnsureSubscribed(_networkClient);
+
             _networkClient.OnGameEventReceived += OnGameEventReceived;
             _networkClient.OnConnectionStateChanged += OnConnectionStateChanged;
         }
@@ -534,6 +538,15 @@ public class NetworkManager : INetworkManager
             bool changed = false;
             if (string.Equals(playerId, _selfKey, StringComparison.Ordinal))
             {
+                try
+                {
+                    _selfPlayer.playerId = playerId;
+                }
+                catch
+                {
+                    // ignored
+                }
+
                 if (string.IsNullOrWhiteSpace(_selfPlayer?.userName) && !string.IsNullOrWhiteSpace(playerName))
                 {
                     _selfPlayer.userName = playerName;
@@ -544,9 +557,18 @@ public class NetworkManager : INetworkManager
 
             if (!_players.TryGetValue(playerId, out INetworkPlayer existing) || existing == null)
             {
-                existing = new RemoteNetworkPlayer(playerId);
+                existing = new RemoteNetworkPlayer(playerId, playerName);
                 _players[playerId] = existing;
                 changed = true;
+            }
+
+            try
+            {
+                existing.playerId = playerId;
+            }
+            catch
+            {
+                // ignored
             }
 
             if (!string.IsNullOrWhiteSpace(playerName))

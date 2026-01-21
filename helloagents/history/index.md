@@ -13,3 +13,7 @@
 | 202601161045 | networkplayer_dto_visitingnode_nullfix | 修复 | 已完成 | `helloagents/history/2026-01/202601161045_networkplayer_dto_visitingnode_nullfix/` |
 | 202601161615 | networkplayer_inetworkplayer_docfix | 文档 | 已完成 | `helloagents/history/2026-01/202601161615_networkplayer_inetworkplayer_docfix/` |
 | 202601201930 | turnend_receive_and_buildfix | 功能 | 已完成 | `helloagents/history/2026-01/202601201930_turnend_receive_and_buildfix/` |
+| 202601211430 | event_dialog_sync_v1 | 功能 | 已完成 | `helloagents/history/2026-01/202601211430_event_dialog_sync_v1/` |
+| 202601211900 | resurrect_panel_sync_v1 | 功能 | 已完成 | `helloagents/history/2026-01/202601211900_resurrect_panel_sync_v1/` |
+| 202601211700 | tradepanel_trade_sync_v1 | 功能 | 已完成 | `helloagents/history/2026-01/202601211700_tradepanel_trade_sync_v1/` |
+| 202601211930 | tradepanel_trade_sync_v2 | 功能 | 已完成 | `helloagents/history/2026-01/202601211930_tradepanel_trade_sync_v2/` |

@@ -16,12 +16,15 @@ public sealed class RemoteNetworkPlayer : INetworkPlayer
     /// 创建一个用于本地占位的远程玩家对象。
     /// </summary>
     /// <param name="userName">远程玩家显示名；为空时会回退为默认值。</param>
-    public RemoteNetworkPlayer(string userName)
+    public RemoteNetworkPlayer(string playerId, string userName = null)
     {
+        this.playerId = playerId ?? string.Empty;
         this.userName = string.IsNullOrWhiteSpace(userName) ? "Player" : userName; // 规范化显示名，避免空/空白导致 UI 或逻辑异常
         mana = new int[4]; // 初始化法力槽位（与现有 UI/同步逻辑期望的长度保持一致）
         exhibits = Array.Empty<string>(); // 默认无展品，避免空引用
     }
+
+    public string playerId { get; set; } = string.Empty;
 
     /// <summary>
     /// 玩家显示名。

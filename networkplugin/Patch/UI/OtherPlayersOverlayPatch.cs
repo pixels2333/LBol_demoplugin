@@ -1011,6 +1011,37 @@ public static class OtherPlayersOverlayPatch
         }
     }
 
+    // Expose a lightweight snapshot for other UI (e.g. TradePanel partner picker).
+    // We return ValueTuples to avoid leaking the private PlayerSummary type.
+    internal static List<(string PlayerId, string PlayerName, bool IsConnected, bool IsHost)> SnapshotPlayers()
+    {
+        try
+        {
+            lock (_syncLock)
+            {
+                var list = _players.Values
+                    .Where(p => p != null && !string.IsNullOrWhiteSpace(p.PlayerId))
+                    .OrderByDescending(p => p.IsHost)
+                    .ThenByDescending(p => p.IsConnected)
+                    .ThenBy(p => p.PlayerName, StringComparer.OrdinalIgnoreCase)
+                    .Select(p => (p.PlayerId, p.PlayerName, p.IsConnected, p.IsHost))
+                    .ToList();
+
+                // Ensure self exists in the snapshot even if PlayerList doesn't include it for some reason.
+                if (!string.IsNullOrWhiteSpace(_selfPlayerId) && list.All(p => p.PlayerId != _selfPlayerId))
+                {
+                    list.Insert(0, (_selfPlayerId, _selfPlayerId, true, false));
+                }
+
+                return list;
+            }
+        }
+        catch
+        {
+            return new List<(string PlayerId, string PlayerName, bool IsConnected, bool IsHost)>();
+        }
+    }
+
     internal static bool TryGetPointedRemotePlayer(Vector2 screenPosition, out string playerId, out string playerName)
     {
         playerId = null;

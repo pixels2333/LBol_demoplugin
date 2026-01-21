@@ -40,6 +40,12 @@ public class TradeSlotWidget : CommonButtonWidget
 		_currentCard = card;
 		_onRemoveCard = removeCallback;
 
+		// Avoid accumulating listeners if SetCard is called multiple times.
+		if (button != null)
+		{
+			button.onClick.RemoveListener(OnRemoveClicked);
+		}
+
                 if (card != null)
                 {
                         if (cardNameText != null)

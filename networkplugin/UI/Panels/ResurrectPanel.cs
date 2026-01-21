@@ -7,7 +7,11 @@ using LBoL.Presentation.UI.Widgets;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Core;
 using NetworkPlugin.Network;
+using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Messages;
+using NetworkPlugin.Patch.Network;
 using NetworkPlugin.UI.Widgets;
+using NetworkPlugin.Utils;
 using TMPro;
 using UnityEngine;
 
@@ -90,6 +94,9 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 	/// 复活费用
 	/// </summary>
 	private int _resurrectionCost = 0;
+
+	private string _selfPlayerId;
+	private string _pendingRequestId;
 
 	/// <summary>
 	/// 面板负载数据
@@ -174,11 +181,30 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		// 重置复活数据
 		ResetResurrectData();
 
-		// 从payload加载死亡玩家列表
-		if (payload?.DeadPlayers != null)
+		// 优先从网络死亡登记册加载（仅 Gap 场景使用）。payload 可作为覆盖/扩展。
+		var list = DeathRegistry.GetDeadPlayersSnapshot();
+		if (payload?.DeadPlayers != null && payload.DeadPlayers.Count > 0)
 		{
-			_deadPlayers.AddRange(payload.DeadPlayers);
+			list = payload.DeadPlayers;
 		}
+		if (list != null)
+		{
+			_deadPlayers.AddRange(list);
+		}
+
+		// 记录 self PlayerId
+		try
+		{
+			INetworkClient client = ModService.ServiceProvider.GetService<INetworkClient>();
+			NetworkIdentityTracker.EnsureSubscribed(client);
+			_selfPlayerId = NetworkIdentityTracker.GetSelfPlayerId();
+		}
+		catch
+		{
+			_selfPlayerId = null;
+		}
+
+		_pendingRequestId = null;
 
 		// 如果没有死亡玩家，显示提示并自动隐藏
 		if (_deadPlayers.Count == 0)
@@ -203,6 +229,7 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 
 		// 更新UI字符串
 		UpdateUIStrings();
+		ResurrectSyncPatch.OnResurrectResult += OnResurrectResult;
 		// 注册输入处理器
 		UiManager.PushActionHandler(this);
 	}
@@ -224,6 +251,7 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 	{
 		// 禁用交互
 		_canvasGroup.interactable = false;
+		ResurrectSyncPatch.OnResurrectResult -= OnResurrectResult;
 		// 移除输入处理器
 		UiManager.PopActionHandler(this);
 	}
@@ -380,8 +408,13 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 
 		// 设置当前选中的玩家
 		_selectedPlayer = player;
-		// 获取复活费用
+		// 获取复活费用：优先使用 payload.CostCalculator（实现规则：HP = Cost/2）
 		_resurrectionCost = player.ResurrectionCost;
+		if (_payload?.CostCalculator != null)
+		{
+			int desiredHp = Math.Max(1, player.MaxHp > 0 ? (player.MaxHp / 2) : 1);
+			_resurrectionCost = _payload.CostCalculator(desiredHp);
+		}
 
 		// 更新选中状态
 		widget?.SetSelected(true);
@@ -434,6 +467,13 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		if (_selectedPlayer == null || !_selectedPlayer.CanResurrect)
 			return;
 
+		// 只允许复活他人
+		if (!string.IsNullOrWhiteSpace(_selfPlayerId) && string.Equals(_selfPlayerId, _selectedPlayer.PlayerId, StringComparison.Ordinal))
+		{
+			UpdateUIStatus("Resurrect.CannotResurrect".Localize());
+			return;
+		}
+
 		// 检查金币是否足够
 		if (GameRun.Money < _resurrectionCost)
 		{
@@ -441,11 +481,21 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 			return;
 		}
 
-		// 扣除金币
-		GameRun.ConsumeMoney(_resurrectionCost);
+		// v1：延迟扣费。先发请求，成功回包后再扣费；失败则提示（等价退款）。
+		_pendingRequestId = Guid.NewGuid().ToString("N");
+		SendResurrectionEvent(_selectedPlayer);
 
-		// 执行复活逻辑
-		StartCoroutine(ExecuteResurrection());
+		// 禁用按钮，等待结果
+		if (resurrectButton?.button != null)
+		{
+			resurrectButton.button.interactable = false;
+		}
+		if (cancelButton?.button != null)
+		{
+			cancelButton.button.interactable = false;
+		}
+
+		UpdateUIStatus("Resurrect.Resurrecting".Localize() + ": " + _selectedPlayer.PlayerName);
 	}
 
 	/// <summary>
@@ -497,14 +547,8 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		// 等待1秒
 		yield return new WaitForSeconds(1f);
 
-		// 执行实际的复活逻辑
-		yield return ResurrectPlayer(_selectedPlayer);
-
-		// 更新状态为复活完成
-		UpdateUIStatus("Resurrect.Resurrected".Localize() + ": " + _selectedPlayer.PlayerName);
-
-		// 发送网络事件
-		SendResurrectionEvent(_selectedPlayer);
+		// ExecuteResurrection 仅作为 UI 动画占位；v1 真正复活落地由网络广播触发。
+		yield return null;
 
 		// 等待复活完成时间
 		yield return new WaitForSeconds(ResurrectCompleteWaitTime);
@@ -520,23 +564,6 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 	/// <param name="player">要复活的死亡玩家</param>
 	private IEnumerator ResurrectPlayer(DeadPlayerEntry player)
 	{
-		// 实际的复活逻辑
-		// 这里需要根据游戏的具体实现来处理
-		// 示例：恢复玩家的生命值，重新加入游戏等
-
-		// 如果是本地玩家，直接恢复
-		if (player.PlayerName == GameRun.Player.Name)
-		{
-			// 恢复满生命值
-			GameRun.Heal(GameRun.Player.MaxHp, false, null);
-			// 通过Heal方法自动恢复玩家状态为Alive
-		}
-		else
-		{
-			// 其他玩家需要通过网络同步
-			// 发送复活请求到服务器或其他玩家
-		}
-
 		yield return null;
 	}
 
@@ -549,26 +576,65 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 	{
 		try
 		{
-			// 获取同步管理器
-			ISynchronizationManager syncManager = ModService.ServiceProvider.GetService<ISynchronizationManager>();
-			if (syncManager != null)
+			INetworkClient client = ModService.ServiceProvider.GetService<INetworkClient>();
+			if (client == null)
 			{
-				// 构建复活数据字典
-				Dictionary<string, object> resurrectionData = new Dictionary<string, object>
-				{
-					["EventType"] = "PlayerResurrected",
-					["PlayerName"] = player.PlayerName,
-					["Cost"] = _resurrectionCost,
-					["Timestamp"] = DateTime.Now.Ticks
-				};
-
-				// TODO: 根据实际的网络管理器实现发送逻辑
-				// syncManager.SendGameEvent(resurrectionData);
+				return;
 			}
+
+			ResurrectSyncPatch.EnsureSubscribed(client);
+			NetworkIdentityTracker.EnsureSubscribed(client);
+			string requesterId = _selfPlayerId ?? NetworkIdentityTracker.GetSelfPlayerId();
+			string targetId = player.PlayerId;
+			if (string.IsNullOrWhiteSpace(requesterId) || string.IsNullOrWhiteSpace(targetId))
+			{
+				return;
+			}
+
+			client.SendGameEventData(NetworkMessageTypes.OnResurrectRequest, new
+			{
+				RequestId = _pendingRequestId,
+				RequesterPlayerId = requesterId,
+				TargetPlayerId = targetId,
+				Cost = _resurrectionCost,
+				Timestamp = DateTime.UtcNow.Ticks,
+			});
 		}
 		catch (Exception ex)
 		{
 			Debug.LogError($"[ResurrectPanel] 发送复活事件失败: {ex.Message}");
+		}
+	}
+
+	private void OnResurrectResult(string requestId, bool success, string reason)
+	{
+		if (string.IsNullOrWhiteSpace(_pendingRequestId) || !string.Equals(_pendingRequestId, requestId, StringComparison.Ordinal))
+		{
+			return;
+		}
+
+		_pendingRequestId = null;
+
+		if (success)
+		{
+			// 成功后扣费
+			GameRun.ConsumeMoney(_resurrectionCost);
+			UpdateGoldDisplay();
+			UpdateUIStatus("Resurrect.Resurrected".Localize() + ": " + _selectedPlayer?.PlayerName);
+			StartCoroutine(HideAfterDelay(ResurrectCompleteWaitTime));
+		}
+		else
+		{
+			UpdateUIStatus("Resurrect.CannotResurrect".Localize() + (string.IsNullOrWhiteSpace(reason) ? string.Empty : $": {reason}"));
+			// 失败：未扣费即等价退款
+			if (resurrectButton?.button != null)
+			{
+				resurrectButton.button.interactable = _selectedPlayer != null && GameRun.Money >= _resurrectionCost;
+			}
+			if (cancelButton?.button != null)
+			{
+				cancelButton.button.interactable = true;
+			}
 		}
 	}
 	#endregion

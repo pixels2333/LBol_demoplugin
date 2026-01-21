@@ -69,6 +69,11 @@ public static class PotionToolSyncPatch
         {
             try
             {
+                if (TradeSyncPatch.IsApplyingTrade)
+                {
+                    return;
+                }
+
                 var toolCards = cards?.Where(c => c != null && c.CardType == CardType.Tool).ToArray();
                 if (toolCards == null || toolCards.Length == 0)
                 {
@@ -115,6 +120,11 @@ public static class PotionToolSyncPatch
         {
             try
             {
+                if (TradeSyncPatch.IsApplyingTrade)
+                {
+                    return;
+                }
+
                 if (__state == null || __state.Length == 0)
                 {
                     return;

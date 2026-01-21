@@ -10,6 +10,9 @@ using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Messages;
+using NetworkPlugin.UI.Panels;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch;
 
@@ -45,6 +48,11 @@ public class DeathPatches
     /// 网络客户端（用于判断联机状态与发送同步消息）。
     /// </summary>
     private static INetworkClient NetworkClient => ServiceProvider?.GetRequiredService<INetworkClient>();
+
+    /// <summary>
+    /// 在“从网络落地”的场景下抑制再次向网络广播，避免回环/重复消息。
+    /// </summary>
+    public static bool SuppressNetworkSync { get; set; }
 
     #endregion
 
@@ -159,20 +167,66 @@ public class DeathPatches
             return;
         }
 
+        if (SuppressNetworkSync)
+        {
+            return;
+        }
+
         try
         {
+            // 需求：以服务端分配的 PlayerId 作为唯一标识。
+            string playerId = null;
+            try
+            {
+                NetworkIdentityTracker.EnsureSubscribed(NetworkClient);
+                playerId = NetworkIdentityTracker.GetSelfPlayerId();
+            }
+            catch
+            {
+                // ignored
+            }
+
+            // 兜底：极少数情况下 Welcome 尚未到达，先退回本地 Id。
+            if (string.IsNullOrWhiteSpace(playerId))
+            {
+                playerId = player?.Id;
+            }
+
             var deathData = new
             {
-                PlayerId = player.Id,
+                PlayerId = playerId,
                 IsFakeDeath = isFakeDeath,
                 Hp = player.Hp,
                 MaxHp = player.MaxHp,
                 Status = player.Status.ToString(),
-                Timestamp = DateTime.Now.Ticks,
+                Timestamp = DateTime.UtcNow.Ticks,
             };
 
             string json = JsonSerializer.Serialize(deathData);
-            NetworkClient.SendRequest("OnPlayerDeathStatusChanged", json);
+            NetworkClient.SendRequest(NetworkMessageTypes.OnPlayerDeathStatusChanged, json);
+
+            // 重要：服务端广播会排除发送方，因此本地也同步更新登记册，避免 Host 无法校验“复活 Host”请求。
+            if (!string.IsNullOrWhiteSpace(playerId))
+            {
+                if (isFakeDeath)
+                {
+                    DeathRegistry.UpsertDeadPlayer(new DeadPlayerEntry
+                    {
+                        PlayerId = playerId,
+                        PlayerName = playerId,
+                        DeadCause = "FakeDeath",
+                        CanResurrect = true,
+                        MaxHp = player.MaxHp,
+                        DeathTime = DateTime.UtcNow,
+                        ResurrectionCost = Math.Max(0, player.MaxHp),
+                        Level = 0,
+                    });
+                }
+                else
+                {
+                    DeathRegistry.MarkAlive(playerId);
+                }
+            }
 
             Plugin.Logger?.LogDebug($"[DeathPatch] 已同步死亡状态（IsFakeDeath: {isFakeDeath}, Hp: {player.Hp}）");
         }
@@ -194,19 +248,48 @@ public class DeathPatches
             return;
         }
 
+        if (SuppressNetworkSync)
+        {
+            return;
+        }
+
         try
         {
+            string playerId = null;
+            try
+            {
+                NetworkIdentityTracker.EnsureSubscribed(NetworkClient);
+                playerId = NetworkIdentityTracker.GetSelfPlayerId();
+            }
+            catch
+            {
+                // ignored
+            }
+
+            if (string.IsNullOrWhiteSpace(playerId))
+            {
+                playerId = player?.Id;
+            }
+
             var resurrectionData = new
             {
-                PlayerId = player.Id,
+                // 兼容字段：PlayerId / TargetPlayerId 都指向被复活者（自己）。
+                PlayerId = playerId,
+                TargetPlayerId = playerId,
                 ResurrectionHp = resurrectionHp,
                 MaxHp = player.MaxHp,
                 Status = player.Status.ToString(),
-                Timestamp = DateTime.Now.Ticks,
+                Timestamp = DateTime.UtcNow.Ticks,
             };
 
             string json = JsonSerializer.Serialize(resurrectionData);
-            NetworkClient.SendRequest("OnPlayerResurrected", json);
+            NetworkClient.SendRequest(NetworkMessageTypes.OnPlayerResurrected, json);
+
+            if (!string.IsNullOrWhiteSpace(playerId))
+            {
+                // 本地同步清理登记册（同理：广播不会回到发送方）。
+                DeathRegistry.MarkAlive(playerId);
+            }
 
             Plugin.Logger?.LogDebug($"[DeathPatch] 已同步复活状态（Hp: {resurrectionHp}）");
         }

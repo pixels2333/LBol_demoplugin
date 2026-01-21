@@ -4,6 +4,29 @@
 提供联机同步与 UI 扩展补丁。
 
 ## 规范
+### Trade（交易同步）
+- Host 权威会话：`networkplugin/Patch/Network/TradeSyncPatch.cs` 维护 `TradeSessionState` 并广播。
+- Client UI：`networkplugin/UI/Panels/TradePanel.cs` 仅联机可用，完成后仅对本地 `GameRun` 落地。
+
+#### v2 状态机与握手
+- `Open`：双方可以修改报价；每次 OfferUpdate 会重置双方确认。
+- `Preparing`：双方进行本地严格校验（卡实例存在、金币足够、展品存在且可交易），并通过 PrepareResult 上报；失败时回到 `Open` 允许修改后重试。
+- `Completed`：客户端严格落地（找不到/不可移除/金币不足/展品创建失败等都视为失败）。
+
+#### v2 多资产报价
+- 卡牌/道具：用 `CardRef` 列表表达（Tool 即 `CardType.Tool`）。
+- 金币：`MoneyA/MoneyB`。
+- 展品：`ExhibitsA/ExhibitsB`（最小字段为 `ExhibitId`）。
+
+#### 展品可交易规则
+- 默认仅允许 `LosableType == Losable` 的 Exhibit 进入报价。
+- 额外黑名单：`networkplugin/UI/Panels/TradeExhibitRules.cs` 通过枚举维护不可交易展品（枚举成员名 == `Exhibit.Id`）。
+
+#### 入口一致性
+- GapStation 入口：`networkplugin/Patch/UI/GapOptionsPanel_Patch.cs`。
+- 商店入口：`networkplugin/Patch/UI/ShopTradeIconPatch.cs`。
+- 两者通过 `networkplugin/Patch/UI/TradeUiMessages.cs` 统一“未连接/配置禁用/缺少 TradePanel 实例”等提示。
+
 ### 远端队友作为出牌目标（单体目标）
 - 通过 `RemotePlayerProxyEnemy : EnemyUnit` 兼容 `UnitSelector.SelectedEnemy` 的类型约束。
 - 发送端在 `Card.GetActions` 处拦截：不本地结算，改为发送 `OnRemoteCardUse`。

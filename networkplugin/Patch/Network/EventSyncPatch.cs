@@ -51,6 +51,14 @@ public class EventSyncPatch
 
     private static readonly Dictionary<string, PendingSelection> _pendingSelectionByEventId = new(StringComparer.Ordinal);
 
+    // Host 侧用于“重连/中途加入追赶”的最小缓存：最新 options + 最终已确认的 selection。
+    private static readonly Dictionary<string, List<DialogSync.DialogOptionData>> _cachedDialogOptionsByEventId = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, PendingSelection> _lastConfirmedSelectionByEventId = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, int> _appliedOptionIdByEventId = new(StringComparer.Ordinal);
+
+    private static long _lastDialogOptionsBroadcastTicks;
+    private static long _lastSnapshotBroadcastTicks;
+
     private static long _suppressOutgoingUntilTicks;
 
     private sealed class PendingSelection
@@ -58,8 +66,22 @@ public class EventSyncPatch
         public string EventId { get; set; } = string.Empty;
         public int OptionId { get; set; }
         public int OptionIndex { get; set; }
+        public string OptionText { get; set; } = string.Empty;
         public string FromPlayerId { get; set; } = string.Empty;
         public long TimestampTicks { get; set; }
+    }
+
+    private static bool ShouldBroadcastAgain(ref long lastTicks, TimeSpan interval)
+    {
+        long now = DateTime.Now.Ticks;
+        long last = Volatile.Read(ref lastTicks);
+        if (last > 0 && now - last < interval.Ticks)
+        {
+            return false;
+        }
+
+        Volatile.Write(ref lastTicks, now);
+        return true;
     }
 
     private static bool IsOutgoingSuppressed
@@ -132,6 +154,20 @@ public class EventSyncPatch
             return;
         }
 
+        // Host：当有新玩家加入/收到欢迎包时，尝试重发“当前事件/对话最小快照”，用于追赶。
+        if (string.Equals(eventType, NetworkMessageTypes.PlayerJoined, StringComparison.Ordinal) ||
+            string.Equals(eventType, NetworkMessageTypes.Welcome, StringComparison.Ordinal) ||
+            string.Equals(eventType, NetworkMessageTypes.PlayerListUpdate, StringComparison.Ordinal))
+        {
+            // 限频：避免 PlayerListUpdate 高频触发导致网络风暴。
+            if (NetworkIdentityTracker.GetSelfIsHost() && ShouldBroadcastAgain(ref _lastSnapshotBroadcastTicks, TimeSpan.FromSeconds(1)))
+            {
+                TryBroadcastActiveDialogSnapshot();
+            }
+
+            return;
+        }
+
         if (!string.Equals(eventType, NetworkMessageTypes.OnEventStart, StringComparison.Ordinal) &&
             !string.Equals(eventType, NetworkMessageTypes.OnEventSelection, StringComparison.Ordinal) &&
             !string.Equals(eventType, NetworkMessageTypes.OnDialogOptions, StringComparison.Ordinal) &&
@@ -170,7 +206,42 @@ public class EventSyncPatch
 
             if (string.Equals(eventType, NetworkMessageTypes.OnDialogOptions, StringComparison.Ordinal))
             {
-                // 目前仅用于诊断/断线重连占位。
+                string eventId = GetString(root, "EventId");
+                if (string.IsNullOrWhiteSpace(eventId))
+                {
+                    return;
+                }
+
+                if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("Options", out JsonElement optionsElem) &&
+                    optionsElem.ValueKind == JsonValueKind.Array)
+                {
+                    var list = new List<DialogSync.DialogOptionData>();
+                    foreach (JsonElement item in optionsElem.EnumerateArray())
+                    {
+                        if (item.ValueKind != JsonValueKind.Object)
+                        {
+                            continue;
+                        }
+
+                        list.Add(new DialogSync.DialogOptionData
+                        {
+                            Index = GetInt(item, "Index", -1),
+                            OptionId = GetInt(item, "OptionId", -1),
+                            Text = GetString(item, "Text"),
+                            IsAvailable = GetInt(item, "IsAvailable", 0) == 1 ||
+                                          (item.TryGetProperty("IsAvailable", out var av) && av.ValueKind == JsonValueKind.True),
+                            Tooltip = GetString(item, "Tooltip"),
+                        });
+                    }
+
+                    lock (SyncLock)
+                    {
+                        _cachedDialogOptionsByEventId[eventId] = list;
+                    }
+                }
+
+                // 若先收到了 selection，再进入 options 等待阶段，可在这里尝试落地。
+                TryApplyPendingSelectionNow(eventId);
                 return;
             }
 
@@ -180,8 +251,9 @@ public class EventSyncPatch
                 int optionId = GetInt(root, "OptionId", -1);
                 int optionIndex = GetInt(root, "OptionIndex", -1);
                 string fromPlayerId = GetString(root, "PlayerId");
+                string optionText = GetString(root, "OptionText");
 
-                if (string.IsNullOrWhiteSpace(eventId) || optionId < 0)
+                if (string.IsNullOrWhiteSpace(eventId) || (optionId < 0 && optionIndex < 0))
                 {
                     return;
                 }
@@ -192,12 +264,14 @@ public class EventSyncPatch
                     OptionId = optionId,
                     OptionIndex = optionIndex,
                     FromPlayerId = fromPlayerId,
+                    OptionText = optionText,
                     TimestampTicks = DateTime.Now.Ticks,
                 };
 
                 lock (SyncLock)
                 {
                     _pendingSelectionByEventId[eventId] = pending;
+                    _lastConfirmedSelectionByEventId[eventId] = pending;
                 }
 
                 // 远端落地：设置一个短暂的 outgoing 抑制窗口，避免自动 SelectOption 触发回环发送。
@@ -229,8 +303,95 @@ public class EventSyncPatch
 
             if (string.Equals(eventType, NetworkMessageTypes.OnEventVotingResult, StringComparison.Ordinal))
             {
-                // 非 Host 收到结算后，等待随后的 OnEventSelection 推进；这里仅留作日志。
+                // 非 Host 收到结算后，等待随后的 OnEventSelection 推进；这里保留最小缓存用于诊断。
+                // （真正推进仍以 OnEventSelection 为准。）
                 return;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static void TryBroadcastActiveDialogSnapshot()
+    {
+        try
+        {
+            if (serviceProvider == null)
+            {
+                return;
+            }
+
+            var client = serviceProvider.GetService<INetworkClient>();
+            if (client == null || !client.IsConnected)
+            {
+                return;
+            }
+
+            if (!NetworkIdentityTracker.GetSelfIsHost())
+            {
+                return;
+            }
+
+            string eventId;
+            string eventName;
+            lock (SyncLock)
+            {
+                eventId = _activeEventId;
+                eventName = _activeEventName;
+            }
+
+            if (string.IsNullOrWhiteSpace(eventId))
+            {
+                return;
+            }
+
+            // 1) 重发 OnEventStart（最小上下文）
+            client.SendGameEventData(NetworkMessageTypes.OnEventStart, new
+            {
+                Timestamp = DateTime.Now.Ticks,
+                EventId = eventId,
+                EventName = eventName ?? string.Empty,
+                EventType = "Snapshot",
+                PlayerId = GetCurrentPlayerId(),
+            });
+
+            // 2) 重发 options（用于重连追赶）
+            List<DialogSync.DialogOptionData> options;
+            lock (SyncLock)
+            {
+                _cachedDialogOptionsByEventId.TryGetValue(eventId, out options);
+            }
+
+            if (options != null && options.Count > 0)
+            {
+                DialogSync.SyncDialogOptions(eventId, options);
+            }
+
+            // 3) 若已有最终选择，重发 selection（幂等：客户端侧会做 apply 去重）
+            PendingSelection last;
+            lock (SyncLock)
+            {
+                _lastConfirmedSelectionByEventId.TryGetValue(eventId, out last);
+            }
+
+            if (last != null && (last.OptionId >= 0 || last.OptionIndex >= 0))
+            {
+                string text = last.OptionText;
+                if (string.IsNullOrWhiteSpace(text) && options != null && last.OptionIndex >= 0)
+                {
+                    foreach (var opt in options)
+                    {
+                        if (opt.Index == last.OptionIndex)
+                        {
+                            text = opt.Text;
+                            break;
+                        }
+                    }
+                }
+
+                EventSelectionSync.SyncEventSelection(eventId, last.OptionIndex, last.OptionId, text ?? string.Empty, "SnapshotResend");
             }
         }
         catch
@@ -258,6 +419,54 @@ public class EventSyncPatch
                 return;
             }
 
+            DialogRunner runner = AccessTools.Field(typeof(VnPanel), "_dialogRunner")?.GetValue(vnPanel) as DialogRunner;
+            DialogOptionsPhase phase = runner?.CurrentPhase as DialogOptionsPhase;
+            if (phase == null)
+            {
+                return;
+            }
+
+            int resolvedOptionId = pending.OptionId;
+            if (resolvedOptionId < 0 && pending.OptionIndex >= 0 && pending.OptionIndex < phase.Options.Length)
+            {
+                resolvedOptionId = phase.Options[pending.OptionIndex].Id;
+            }
+
+            if (resolvedOptionId < 0 && pending.OptionIndex >= 0)
+            {
+                List<DialogSync.DialogOptionData> cached;
+                lock (SyncLock)
+                {
+                    _cachedDialogOptionsByEventId.TryGetValue(eventId, out cached);
+                }
+
+                if (cached != null)
+                {
+                    foreach (var opt in cached)
+                    {
+                        if (opt.Index == pending.OptionIndex && opt.OptionId >= 0)
+                        {
+                            resolvedOptionId = opt.OptionId;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (resolvedOptionId < 0)
+            {
+                return;
+            }
+
+            lock (SyncLock)
+            {
+                if (_appliedOptionIdByEventId.TryGetValue(eventId, out int already) && already == resolvedOptionId)
+                {
+                    _pendingSelectionByEventId.Remove(eventId);
+                    return;
+                }
+            }
+
             // 尝试直接写入 _selectedOptionId，让 ShowOptions 协程继续。
             var selectedField = AccessTools.Field(typeof(VnPanel), "_selectedOptionId");
             if (selectedField == null)
@@ -265,10 +474,13 @@ public class EventSyncPatch
                 return;
             }
 
-            object cur = selectedField.GetValue(vnPanel);
-            if (cur is int?)
+            object value = selectedField.FieldType == typeof(int?) ? (int?)resolvedOptionId : resolvedOptionId;
+            selectedField.SetValue(vnPanel, value);
+
+            lock (SyncLock)
             {
-                selectedField.SetValue(vnPanel, (int?)pending.OptionId);
+                _appliedOptionIdByEventId[eventId] = resolvedOptionId;
+                _pendingSelectionByEventId.Remove(eventId);
             }
         }
         catch
@@ -613,6 +825,9 @@ public class EventSyncPatch
         {
             /// <summary>选项序号。</summary>
             public int Index { get; set; }
+
+            /// <summary>选项 Id（若可获得）。用于断线重连/追赶时的 OptionIndex -> OptionId 映射。</summary>
+            public int OptionId { get; set; }
 
             /// <summary>选项文本。</summary>
             public string Text { get; set; } = string.Empty;
@@ -1119,8 +1334,8 @@ public class EventSyncPatch
             EnsureSubscribed(client);
             NetworkIdentityTracker.EnsureSubscribed(client);
 
-            // 只由 Host 广播事件开始，避免多端重复。
-            if (!client.IsConnected || !NetworkIdentityTracker.GetSelfIsHost())
+            // 权威模型B：允许非 Host 触发“事件开始”上报，但最终推进仍由 Host 仲裁。
+            if (!client.IsConnected)
             {
                 return;
             }
@@ -1240,6 +1455,12 @@ public class EventSyncPatch
             }
         }
 
+        // options 阶段期间：Host 周期性重发 options，便于断线重连/中途加入追赶。
+        if (panel != null && options != null && NetworkIdentityTracker.GetSelfIsHost())
+        {
+            ShouldBroadcastAgain(ref _lastDialogOptionsBroadcastTicks, TimeSpan.FromSeconds(2));
+        }
+
         while (original != null && original.MoveNext())
         {
             // 每帧推进时尝试落地 pending selection（直到成功）。
@@ -1254,6 +1475,11 @@ public class EventSyncPatch
                 if (!string.IsNullOrWhiteSpace(eventId))
                 {
                     TryApplyPendingSelectionNow(eventId);
+
+                    if (NetworkIdentityTracker.GetSelfIsHost() && ShouldBroadcastAgain(ref _lastDialogOptionsBroadcastTicks, TimeSpan.FromSeconds(2)))
+                    {
+                        TrySendDialogOptions(panel, options);
+                    }
                 }
             }
             catch
@@ -1304,10 +1530,16 @@ public class EventSyncPatch
                 list.Add(new DialogSync.DialogOptionData
                 {
                     Index = i,
+                    OptionId = opt.Id,
                     Text = opt.GetLocalizedText(runner),
                     IsAvailable = opt.Available,
                     Tooltip = string.Empty,
                 });
+            }
+
+            lock (SyncLock)
+            {
+                _cachedDialogOptionsByEventId[eventId] = list;
             }
 
             DialogSync.SyncDialogOptions(eventId, list);
