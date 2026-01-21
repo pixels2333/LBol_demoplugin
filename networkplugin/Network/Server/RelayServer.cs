@@ -361,6 +361,18 @@ public class RelayServer : BaseGameServer
                     // 完整状态快照响应：仅单播给请求方（避免房间内广播导致敏感信息扩散/无谓负载）。
                     HandleFullStateSyncResponse(session, message, deliveryMethod);
                     return;
+
+                case NetworkMessageTypes.RoomStateRequest:
+                    HandleRoomStateRequest(session, message, deliveryMethod);
+                    return;
+
+                case NetworkMessageTypes.RoomStateUpload:
+                    HandleRoomStateUpload(session, message, deliveryMethod);
+                    return;
+
+                case NetworkMessageTypes.RoomStateResponse:
+                    HandleRoomStateResponse(session, message, deliveryMethod);
+                    return;
             }
 
             // 不属于系统消息：尝试按“游戏事件”规则转发给同房间其他玩家（同步/战斗/聊天等）。
@@ -1149,7 +1161,115 @@ public class RelayServer : BaseGameServer
                messageType.StartsWith("Gap", StringComparison.Ordinal) ||
                messageType.StartsWith("Battle", StringComparison.Ordinal) ||
                messageType == NetworkMessageTypes.ChatMessage ||
-               messageType == "StateSyncRequest";
+               messageType == "StateSyncRequest" ||
+               messageType == NetworkMessageTypes.RoomStateBroadcast;
+    }
+
+    /// <summary>
+    /// Relay 模式下的房间状态请求：按 roomId 作用域定向转发给房间房主。
+    /// </summary>
+    private void HandleRoomStateRequest(PlayerSession session, NetworkMessage message, DeliveryMethod deliveryMethod)
+    {
+        string roomId = TryGetStringProperty(message.Payload, "RoomId") ?? session.CurrentRoomId;
+        if (string.IsNullOrWhiteSpace(roomId) || !_rooms.TryGetValue(roomId, out var room))
+        {
+            SendErrorMessage(session.Peer, "RoomStateRequestFailed", "Room not found");
+            return;
+        }
+
+        if (!string.Equals(session.CurrentRoomId, roomId, StringComparison.Ordinal) || !room.ContainsPlayer(session.PlayerId))
+        {
+            SendErrorMessage(session.Peer, "RoomStateRequestFailed", "Not in room");
+            return;
+        }
+
+        string hostPlayerId = room.HostPlayerId;
+        if (string.IsNullOrWhiteSpace(hostPlayerId) || !_connectionsByPlayerId.TryGetValue(hostPlayerId, out var hostConnection))
+        {
+            SendErrorMessage(session.Peer, "RoomStateRequestFailed", "Host not available");
+            return;
+        }
+
+        // 确保 payload 带 RoomId，便于房主侧校验/日志。
+        object payloadToHost = EnsureRoomIdInPayload(message.Payload, roomId);
+
+        hostConnection.SendMessage(new NetworkMessage
+        {
+            Type = NetworkMessageTypes.RoomStateRequest,
+            Payload = payloadToHost,
+            SenderPlayerId = session.PlayerId
+        }, deliveryMethod);
+    }
+
+    /// <summary>
+    /// Relay 模式下的房间状态上传：上传定向转发给房间房主。
+    /// </summary>
+    private void HandleRoomStateUpload(PlayerSession session, NetworkMessage message, DeliveryMethod deliveryMethod)
+    {
+        string roomId = TryGetStringProperty(message.Payload, "RoomId") ?? session.CurrentRoomId;
+        if (string.IsNullOrWhiteSpace(roomId) || !_rooms.TryGetValue(roomId, out var room))
+        {
+            SendErrorMessage(session.Peer, "RoomStateUploadFailed", "Room not found");
+            return;
+        }
+
+        if (!string.Equals(session.CurrentRoomId, roomId, StringComparison.Ordinal) || !room.ContainsPlayer(session.PlayerId))
+        {
+            SendErrorMessage(session.Peer, "RoomStateUploadFailed", "Not in room");
+            return;
+        }
+
+        string hostPlayerId = room.HostPlayerId;
+        if (string.IsNullOrWhiteSpace(hostPlayerId) || !_connectionsByPlayerId.TryGetValue(hostPlayerId, out var hostConnection))
+        {
+            SendErrorMessage(session.Peer, "RoomStateUploadFailed", "Host not available");
+            return;
+        }
+
+        object payloadToHost = EnsureRoomIdInPayload(message.Payload, roomId);
+
+        hostConnection.SendMessage(new NetworkMessage
+        {
+            Type = NetworkMessageTypes.RoomStateUpload,
+            Payload = payloadToHost,
+            SenderPlayerId = session.PlayerId
+        }, deliveryMethod);
+    }
+
+    /// <summary>
+    /// Relay 模式下的房间状态响应：仅单播给请求方（payload.TargetPlayerId 或 payload.RequesterId）。
+    /// </summary>
+    private void HandleRoomStateResponse(PlayerSession session, NetworkMessage message, DeliveryMethod deliveryMethod)
+    {
+        string roomId = TryGetStringProperty(message.Payload, "RoomId") ?? session.CurrentRoomId;
+        if (string.IsNullOrWhiteSpace(roomId) || !_rooms.TryGetValue(roomId, out var room))
+        {
+            SendErrorMessage(session.Peer, "RoomStateResponseFailed", "Room not found");
+            return;
+        }
+
+        // 仅房主可发送 Response，避免伪造。
+        if (!string.Equals(room.HostPlayerId, session.PlayerId, StringComparison.Ordinal))
+        {
+            SendErrorMessage(session.Peer, "RoomStateResponseFailed", "Not host");
+            return;
+        }
+
+        string targetPlayerId = TryGetStringProperty(message.Payload, "TargetPlayerId") ?? TryGetStringProperty(message.Payload, "RequesterId");
+        if (string.IsNullOrWhiteSpace(targetPlayerId) || !_connectionsByPlayerId.TryGetValue(targetPlayerId, out var targetConnection))
+        {
+            SendErrorMessage(session.Peer, "RoomStateResponseFailed", "Target not available");
+            return;
+        }
+
+        object payloadToTarget = EnsureRoomIdInPayload(message.Payload, roomId);
+
+        targetConnection.SendMessage(new NetworkMessage
+        {
+            Type = NetworkMessageTypes.RoomStateResponse,
+            Payload = payloadToTarget,
+            SenderPlayerId = session.PlayerId
+        }, deliveryMethod);
     }
 
     /// <summary>

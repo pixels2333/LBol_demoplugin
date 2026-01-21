@@ -401,6 +401,28 @@ namespace NetworkPlugin.Network.Messages
         /// </summary>
         public const string FullStateSyncResponse = "FullStateSyncResponse";
 
+        // === 房间/战斗残局同步消息 ===
+
+        /// <summary>
+        /// 请求主机返回指定房间（RoomKey）的最新状态快照。
+        /// </summary>
+        public const string RoomStateRequest = "RoomStateRequest";
+
+        /// <summary>
+        /// 主机响应房间状态快照（定向单播给请求方）。
+        /// </summary>
+        public const string RoomStateResponse = "RoomStateResponse";
+
+        /// <summary>
+        /// 进入房间/战斗的权威方上传房间状态给主机（主机作为中枢缓存）。
+        /// </summary>
+        public const string RoomStateUpload = "RoomStateUpload";
+
+        /// <summary>
+        /// （可选）主机把房间状态更新推送给房间内其他玩家。
+        /// </summary>
+        public const string RoomStateBroadcast = "RoomStateBroadcast";
+
         // === 游戏控制消息 ===
 
         /// <summary>

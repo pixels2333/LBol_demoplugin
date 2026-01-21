@@ -17,3 +17,4 @@
 | 202601211900 | resurrect_panel_sync_v1 | 功能 | 已完成 | `helloagents/history/2026-01/202601211900_resurrect_panel_sync_v1/` |
 | 202601211700 | tradepanel_trade_sync_v1 | 功能 | 已完成 | `helloagents/history/2026-01/202601211700_tradepanel_trade_sync_v1/` |
 | 202601211930 | tradepanel_trade_sync_v2 | 功能 | 已完成 | `helloagents/history/2026-01/202601211930_tradepanel_trade_sync_v2/` |
+| 202601211945 | saveload_sync_apply_host_snapshot_v1 | 功能 | 已完成 | `helloagents/history/2026-01/202601211945_saveload_sync_apply_host_snapshot_v1/` |

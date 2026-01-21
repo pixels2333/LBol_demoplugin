@@ -357,7 +357,12 @@ public class NetworkServer : BaseGameServer
                messageType == "StateSyncRequest" ||
                // FullSync 控制消息：仍视为 GameEvent 进入 HandleGameEvent，但必须禁止广播。
                messageType == NetworkMessageTypes.FullStateSyncRequest ||
-               messageType == NetworkMessageTypes.FullStateSyncResponse;
+               messageType == NetworkMessageTypes.FullStateSyncResponse ||
+               // 房间残局同步：同样需要进入 HandleGameEvent，但必须禁止广播（由路由函数定向转发）。
+               messageType == NetworkMessageTypes.RoomStateRequest ||
+               messageType == NetworkMessageTypes.RoomStateResponse ||
+               messageType == NetworkMessageTypes.RoomStateUpload ||
+               messageType == NetworkMessageTypes.RoomStateBroadcast;
     }
 
     /// <summary>
@@ -399,12 +404,122 @@ public class NetworkServer : BaseGameServer
                 return;
             }
 
+            // 房间残局同步：必须定向路由（不允许广播）。
+            if (string.Equals(eventType, NetworkMessageTypes.RoomStateRequest, StringComparison.Ordinal))
+            {
+                RouteRoomStateRequest(session, jsonPayload);
+                return;
+            }
+
+            if (string.Equals(eventType, NetworkMessageTypes.RoomStateUpload, StringComparison.Ordinal))
+            {
+                RouteRoomStateUpload(session, jsonPayload);
+                return;
+            }
+
+            if (string.Equals(eventType, NetworkMessageTypes.RoomStateResponse, StringComparison.Ordinal))
+            {
+                RouteRoomStateResponse(session, jsonPayload);
+                return;
+            }
+
+            // 可选：主机推送给同房间其他玩家时，允许广播（由主机显式发送 RoomStateBroadcast）。
+            if (string.Equals(eventType, NetworkMessageTypes.RoomStateBroadcast, StringComparison.Ordinal))
+            {
+                BroadcastGameEvent(eventType, eventData, fromPeer.Id);
+                return;
+            }
+
             BroadcastGameEvent(eventType, eventData, fromPeer.Id);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[Server] Error handling game event: {ex.Message}");
             _logger?.LogError($"[Server] Error handling game event: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Host/直连模式下的 RoomStateRequest 路由：请求定向转发给房主（主机作为房间状态中枢）。
+    /// </summary>
+    private void RouteRoomStateRequest(PlayerSession senderSession, string jsonPayload)
+    {
+        try
+        {
+            PlayerSession hostSession = SessionsByPeer.Values.FirstOrDefault(s => s.IsHost && s.IsConnected);
+            if (hostSession == null)
+            {
+                return;
+            }
+
+            // 定向转发给房主：由房主侧 RoomStateManager 生成并回发 RoomStateResponse。
+            SendRawJsonToPeer(hostSession.Peer, NetworkMessageTypes.RoomStateRequest, jsonPayload);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError($"[Server] Error routing RoomStateRequest: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Host/直连模式下的 RoomStateUpload 路由：上传定向转发给房主。
+    /// </summary>
+    private void RouteRoomStateUpload(PlayerSession senderSession, string jsonPayload)
+    {
+        try
+        {
+            PlayerSession hostSession = SessionsByPeer.Values.FirstOrDefault(s => s.IsHost && s.IsConnected);
+            if (hostSession == null)
+            {
+                return;
+            }
+
+            SendRawJsonToPeer(hostSession.Peer, NetworkMessageTypes.RoomStateUpload, jsonPayload);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError($"[Server] Error routing RoomStateUpload: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Host/直连模式下的 RoomStateResponse 路由：仅单播给请求方（payload.TargetPlayerId 或 payload.RequesterId）。
+    /// </summary>
+    private void RouteRoomStateResponse(PlayerSession senderSession, string jsonPayload)
+    {
+        try
+        {
+            if (!senderSession.IsHost)
+            {
+                return;
+            }
+
+            JsonElement root = JsonSerializer.Deserialize<JsonElement>(jsonPayload);
+            string targetPlayerId = null;
+            if (root.TryGetProperty("TargetPlayerId", out var tpid) && tpid.ValueKind == JsonValueKind.String)
+            {
+                targetPlayerId = tpid.GetString();
+            }
+            if (string.IsNullOrWhiteSpace(targetPlayerId) && root.TryGetProperty("RequesterId", out var rid) && rid.ValueKind == JsonValueKind.String)
+            {
+                targetPlayerId = rid.GetString();
+            }
+
+            if (string.IsNullOrWhiteSpace(targetPlayerId))
+            {
+                return;
+            }
+
+            if (!TryGetSession(targetPlayerId, out var targetSession) || !targetSession.IsConnected)
+            {
+                return;
+            }
+
+            SendRawJsonToPeer(targetSession.Peer, NetworkMessageTypes.RoomStateResponse, jsonPayload);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError($"[Server] Error routing RoomStateResponse: {ex.Message}");
         }
     }
 

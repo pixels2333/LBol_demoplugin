@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
+using NetworkPlugin.Network.RoomSync;
 using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
@@ -538,8 +539,34 @@ public class SaveLoadSyncPatch
         {
             try
             {
-                // TODO：实现将主机的存档状态应用到本地游戏。
-                Plugin.Logger?.LogInfo("[SaveLoadSync] 主机存档同步应用成功（占位）");
+                // 兼容：原 TODO 计划用于“主机存档/快照应用”。
+                // 目前项目的同步目标已转向“房间/战斗残局同步”，这里把可识别的房间快照透传给 RoomSyncManager。
+                if (saveSyncData == null)
+                {
+                    return;
+                }
+
+                // 如果 payload 已经是 RoomStateResponse/RoomStateBroadcast 形态（包含 RoomKey），则直接注入给 RoomSyncManager。
+                // RoomSyncManager 通过订阅 OnGameEventReceived 处理 JsonElement；这里走一次本地注入，确保 Host/Client 都可用。
+                if (serviceProvider != null)
+                {
+                    var client = serviceProvider.GetService<INetworkClient>();
+                    if (client != null)
+                    {
+                        NetworkIdentityTracker.EnsureSubscribed(client);
+                        RoomSyncManager.EnsureSubscribed(client);
+
+                        // 仅当底层实现支持本地注入时才注入；否则依赖正常网络通道。
+                        if (client is NetworkClient liteNetClient)
+                        {
+                            liteNetClient.InjectLocalGameEvent(NetworkMessageTypes.RoomStateResponse, saveSyncData);
+                            Plugin.Logger?.LogInfo("[SaveLoadSync] 已将主机快照交由 RoomSyncManager 处理。");
+                            return;
+                        }
+                    }
+                }
+
+                Plugin.Logger?.LogInfo("[SaveLoadSync] 已收到主机同步数据，但客户端未就绪，已跳过应用。");
             }
             catch (Exception ex)
             {

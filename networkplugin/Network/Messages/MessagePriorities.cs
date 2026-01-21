@@ -28,6 +28,12 @@ namespace NetworkPlugin.Network.Messages
             [NetworkMessageTypes.FullStateSyncRequest] = MessagePriority.Critical,
             [NetworkMessageTypes.FullStateSyncResponse] = MessagePriority.Critical,
 
+            // 房间/战斗残局同步：优先级应高于普通战斗增量事件，避免进入房间时卡住。
+            [NetworkMessageTypes.RoomStateRequest] = MessagePriority.Critical,
+            [NetworkMessageTypes.RoomStateResponse] = MessagePriority.Critical,
+            [NetworkMessageTypes.RoomStateUpload] = MessagePriority.High,
+            [NetworkMessageTypes.RoomStateBroadcast] = MessagePriority.High,
+
             // 聊天消息 - 低优先级
             [NetworkMessageTypes.ChatMessage] = MessagePriority.Low
         };

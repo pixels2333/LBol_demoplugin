@@ -272,6 +272,10 @@ public class NetworkClient : INetworkClient
                messageType == "StateSyncResponse" ||
                messageType == "FullStateSyncRequest" ||
                messageType == "FullStateSyncResponse" ||
+               messageType == NetworkMessageTypes.RoomStateRequest ||
+               messageType == NetworkMessageTypes.RoomStateResponse ||
+               messageType == NetworkMessageTypes.RoomStateUpload ||
+               messageType == NetworkMessageTypes.RoomStateBroadcast ||
                messageType == NetworkMessageTypes.MidGameJoinRequest ||
                messageType == NetworkMessageTypes.MidGameJoinResponse ||
                // 系统消息（用于 UI/远程玩家渲染等）：同样走 GameEvent 通道，便于统一订阅
