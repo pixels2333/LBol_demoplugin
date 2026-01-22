@@ -161,6 +161,48 @@ namespace NetworkPlugin.Network.Messages
         public const string OnMoodEffectLoopEnded = "OnMoodEffectLoopEnded";
         public const string OnMoodEffectStateSync = "OnMoodEffectStateSync";
 
+        // === Battle* (Host 权威广播 / Client 上报) ===
+
+        /// <summary>
+        /// 客户端上报：本地玩家受到伤害（发送给 Host/Server 以便仲裁/转发）。
+        /// </summary>
+        public const string BattlePlayerDamageReport = "BattlePlayerDamageReport";
+
+        /// <summary>
+        /// 主机广播：玩家受到伤害（权威端广播给房间内其他客户端）。
+        /// </summary>
+        public const string BattlePlayerDamageBroadcast = "BattlePlayerDamageBroadcast";
+
+        /// <summary>
+        /// 客户端上报：本地玩家治疗事件。
+        /// </summary>
+        public const string BattlePlayerHealReport = "BattlePlayerHealReport";
+
+        /// <summary>
+        /// 主机广播：玩家治疗事件。
+        /// </summary>
+        public const string BattlePlayerHealBroadcast = "BattlePlayerHealBroadcast";
+
+        /// <summary>
+        /// 客户端上报：玩家状态效果变化(增量)。
+        /// </summary>
+        public const string BattlePlayerStatusEffectsDeltaReport = "BattlePlayerStatusEffectsDeltaReport";
+
+        /// <summary>
+        /// 主机广播：玩家状态效果变化(增量)。
+        /// </summary>
+        public const string BattlePlayerStatusEffectsDeltaBroadcast = "BattlePlayerStatusEffectsDeltaBroadcast";
+
+        /// <summary>
+        /// 客户端上报：玩家状态效果全量快照(用于校验/追赶)。
+        /// </summary>
+        public const string BattlePlayerStatusEffectsFullReport = "BattlePlayerStatusEffectsFullReport";
+
+        /// <summary>
+        /// 主机广播：玩家状态效果全量快照(用于校验/追赶)。
+        /// </summary>
+        public const string BattlePlayerStatusEffectsFullBroadcast = "BattlePlayerStatusEffectsFullBroadcast";
+
         // === 回合同步消息 ===
 
         /// <summary>

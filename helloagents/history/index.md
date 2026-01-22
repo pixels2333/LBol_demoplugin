@@ -18,3 +18,4 @@
 | 202601211700 | tradepanel_trade_sync_v1 | 功能 | 已完成 | `helloagents/history/2026-01/202601211700_tradepanel_trade_sync_v1/` |
 | 202601211930 | tradepanel_trade_sync_v2 | 功能 | 已完成 | `helloagents/history/2026-01/202601211930_tradepanel_trade_sync_v2/` |
 | 202601211945 | saveload_sync_apply_host_snapshot_v1 | 功能 | 已完成 | `helloagents/history/2026-01/202601211945_saveload_sync_apply_host_snapshot_v1/` |
+| 202601221045 | nat_traversal_upnp_stun_fix_v1 | 修复 | 已完成 | `helloagents/history/2026-01/202601221045_nat_traversal_upnp_stun_fix_v1/` |

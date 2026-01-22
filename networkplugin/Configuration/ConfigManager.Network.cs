@@ -12,6 +12,12 @@ public partial class ConfigManager
     #region 网络参数
 
     /// <summary>
+    /// 玩家自定义 PlayerId（可选）。
+    /// 说明：优先用于联机层身份标识；为空时将回退到服务器 Welcome 下发的 PlayerId。
+    /// </summary>
+    public ConfigEntry<string> PlayerIdOverride { get; private set; }
+
+    /// <summary>
     /// 服务器端口号
     /// 联机服务器监听的端口号
     /// 默认值为 7777
@@ -69,6 +75,14 @@ public partial class ConfigManager
     /// </summary>
     private void BindNetworkSettings(ConfigFile configFile)
     {
+        // 玩家自定义身份（可选）。
+        PlayerIdOverride = configFile.Bind(
+            "Network",
+            "PlayerIdOverride",
+            "",
+            "玩家自定义 PlayerId（可选；为空则使用服务器下发的 PlayerId）。"
+        );
+
         // 在Network区域下绑定网络相关配置
         ServerPort = configFile.Bind(
             "Network",

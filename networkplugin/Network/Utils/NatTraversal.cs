@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using BepInEx.Logging;
 
@@ -16,6 +19,10 @@ namespace NetworkPlugin.Network.Utils;
 /// </summary>
 public partial class NatTraversal
 {
+    private const int DefaultTokenTtlSeconds = 300;
+    private const int DefaultUpnpProbeTimeoutMs = 500;
+    private const int DefaultStunTimeoutMs = 1500;
+
     /// <summary>
     /// 日志记录器
     /// </summary>
@@ -115,11 +122,13 @@ public partial class NatTraversal
         /// <summary>
         /// 公网端点（经过NAT转换后的地址）
         /// </summary>
+        [JsonConverter(typeof(IPEndPointJsonConverter))]
         public IPEndPoint PublicEndPoint { get; set; }
 
         /// <summary>
         /// 本地端点（局域网内地址）
         /// </summary>
+        [JsonConverter(typeof(IPEndPointJsonConverter))]
         public IPEndPoint LocalEndPoint { get; set; }
 
         /// <summary>
@@ -194,6 +203,7 @@ public partial class NatTraversal
         /// <summary>
         /// 公网端点（外部可见地址）
         /// </summary>
+        [JsonConverter(typeof(IPEndPointJsonConverter))]
         public IPEndPoint PublicEndPoint { get; set; }
 
         /// <summary>
@@ -217,6 +227,94 @@ public partial class NatTraversal
         public string ErrorMessage { get; set; }
     }
     #endregion
+
+    /// <summary>
+    /// IPEndPoint 的 JSON 转换器，使用字符串格式："ip:port"。
+    /// 说明：System.Text.Json 默认无法序列化 IPEndPoint；我们用属性级标注保证两端默认序列化路径可用。
+    /// </summary>
+    public sealed class IPEndPointJsonConverter : JsonConverter<IPEndPoint>
+    {
+        public override IPEndPoint Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.Null)
+            {
+                return null;
+            }
+
+            if (reader.TokenType != JsonTokenType.String)
+            {
+                throw new JsonException("Expected string for IPEndPoint.");
+            }
+
+            string s = reader.GetString();
+            if (string.IsNullOrWhiteSpace(s))
+            {
+                return null;
+            }
+
+            if (!TryParseEndPoint(s, out var ep))
+            {
+                throw new JsonException($"Invalid IPEndPoint string: '{s}'");
+            }
+
+            return ep;
+        }
+
+        public override void Write(Utf8JsonWriter writer, IPEndPoint value, JsonSerializerOptions options)
+        {
+            if (value == null)
+            {
+                writer.WriteNullValue();
+                return;
+            }
+
+            writer.WriteStringValue($"{value.Address}:{value.Port}");
+        }
+
+        private static bool TryParseEndPoint(string s, out IPEndPoint endPoint)
+        {
+            endPoint = null;
+
+            // IPv6 常见格式为 [::1]:1234，这里做最小兼容；项目主要使用 IPv4。
+            if (s.StartsWith("[", StringComparison.Ordinal))
+            {
+                int idx = s.IndexOf("]:", StringComparison.Ordinal);
+
+                if (idx <= 0)
+                {
+                    return false;
+                }
+
+                string ipPart = s.Substring(1, idx - 1);
+                string portPart = s.Substring(idx + 2);
+
+                if (!IPAddress.TryParse(ipPart, out var ip) || !int.TryParse(portPart, out int port))
+                {
+                    return false;
+                }
+
+                endPoint = new IPEndPoint(ip, port);
+                return true;
+            }
+
+            int lastColon = s.LastIndexOf(':');
+            if (lastColon <= 0)
+            {
+                return false;
+            }
+
+            string ipStr = s.Substring(0, lastColon);
+            string portStr = s.Substring(lastColon + 1);
+
+            if (!IPAddress.TryParse(ipStr, out var ip4) || !int.TryParse(portStr, out int port4))
+            {
+                return false;
+            }
+
+            endPoint = new IPEndPoint(ip4, port4);
+            return true;
+        }
+    }
     #region UPnP端口映射
 
     /// <summary>
@@ -231,22 +329,33 @@ public partial class NatTraversal
                 externalPort = internalPort;
             }
 
-            UpnpMappingResult result = new()
+            // UPnP 不是主流程依赖：按当前需求，默认假设多数环境不支持 UPnP。
+            bool available = await CheckUpnpAvailability();
+            if (!available)
             {
+                _upnpEnabled = false;
+                return new UpnpMappingResult
+                {
+                    Success = false,
+                    ErrorMessage = "UPnP not available (treated as unsupported by default).",
+                    InternalPort = internalPort,
+                    ExternalPort = externalPort,
+                    Protocol = "UDP",
+                    Description = description
+                };
+            }
+
+            // TODO(可选增强): 如未来需要真实映射，可接入 Open.NAT 并在此创建端口映射。
+            _upnpEnabled = false;
+            return new UpnpMappingResult
+            {
+                Success = false,
+                ErrorMessage = "UPnP mapping not implemented (optional enhancement).",
                 InternalPort = internalPort,
                 ExternalPort = externalPort,
                 Protocol = "UDP",
-                Description = description,
-                // TODO: 实现实际的UPnP映射
-                // 这里需要使用Windows的UPnP API或第三方库
-
-                // 模拟UPnP映射成功
-                Success = true
+                Description = description
             };
-            _upnpEnabled = true;
-
-            _logger?.LogInfo($"[NATTraversal] UPnP mapping enabled: {internalPort} -> {externalPort}");
-            return result;
         }
         catch (Exception ex)
         {
@@ -265,36 +374,37 @@ public partial class NatTraversal
     /// <summary>
     /// 禁用UPnP端口映射
     /// </summary>
-    public static async Task<bool> DisableUpnpMapping(int port)
+    public static Task<bool> DisableUpnpMapping(int port)
     {
         try
         {
-            // TODO: 实现UPnP映射删除
+            // UPnP 映射属于可选增强，本实现不做真实映射删除，仅清理标记并返回 false/true 的可诊断结果。
             _upnpEnabled = false;
             _logger?.LogInfo($"[NATTraversal] UPnP mapping disabled for port: {port}");
-            return true;
+            return Task.FromResult(false);
         }
         catch (Exception ex)
         {
             _logger?.LogError($"[NATTraversal] Failed to disable UPnP mapping: {ex.Message}");
-            return false;
+            return Task.FromResult(false);
         }
     } // 禁用UPnP端口映射：删除已创建的端口映射，释放网络资源
 
     /// <summary>
     /// 检查UPnP可用性
     /// </summary>
-    public static async Task<bool> CheckUpnpAvailability()
+    public static Task<bool> CheckUpnpAvailability()
     {
         try
         {
-            // TODO: 实现UPnP可用性检查
-            return true;
+            // 默认按“不支持”处理，避免把 UPnP 变成主流程依赖。
+            // 如未来需要更精确探测，可实现 SSDP/IGD 发现并在成功时返回 true。
+            return Task.FromResult(false);
         }
         catch (Exception ex)
         {
             _logger?.LogError($"[NATTraversal] UPnP availability check failed: {ex.Message}");
-            return false;
+            return Task.FromResult(false);
         }
     } // 检查UPnP可用性：检测系统是否支持UPnP协议，用于NAT穿透
 
@@ -330,20 +440,44 @@ public partial class NatTraversal
         try
         {
             string server = stunServer ?? DefaultStunServers[0];
-            StunResponse result = new StunResponse
-            {
-                StunServer = server,
-                // TODO: 实现真实的STUN协议交互
-                // 这里需要实现STUN绑定请求和响应解析
 
-                // 模拟STUN响应
+            var (host, port) = ParseHostPort(server, 3478);
+            using UdpClient udp = new(AddressFamily.InterNetwork);
+            udp.Client.ReceiveTimeout = DefaultStunTimeoutMs;
+            udp.Client.SendTimeout = DefaultStunTimeoutMs;
+
+            byte[] request = BuildStunBindingRequest(out byte[] transactionId);
+            await udp.SendAsync(request, request.Length, host, port);
+
+            UdpReceiveResult recv = await udp.ReceiveAsync();
+            if (!TryParseStunBindingResponse(recv.Buffer, transactionId, out var publicEp, out string parseError))
+            {
+                return new StunResponse
+                {
+                    Success = false,
+                    ErrorMessage = parseError,
+                    DetectedNatType = NatType.Unknown,
+                    StunServer = server
+                };
+            }
+
+            NatType natType = NatType.Unknown;
+            IPAddress localIp = GetLocalIpAddress();
+            if (publicEp != null && localIp != null && publicEp.Address.Equals(localIp) && !IsPrivateOrLoopback(localIp))
+            {
+                natType = NatType.OpenInternet;
+            }
+
+            StunResponse result = new()
+            {
                 Success = true,
-                DetectedNatType = NatType.OpenInternet, // 模拟开放网络
-                PublicEndPoint = new IPEndPoint(IPAddress.Parse("203.0.113.1"), 12345),
-                SupportsHairpinning = true
+                DetectedNatType = natType,
+                PublicEndPoint = publicEp,
+                SupportsHairpinning = false,
+                StunServer = server
             };
 
-            _logger?.LogInfo($"[NATTraversal] NAT type detected: {result.DetectedNatType}");
+            _logger?.LogInfo($"[NATTraversal] NAT type detected: {result.DetectedNatType}, public={result.PublicEndPoint}");
             return result;
         }
         catch (Exception ex)
@@ -398,7 +532,7 @@ public partial class NatTraversal
             NatInfo info = new()
             {
                 LocalEndPoint = new IPEndPoint(GetLocalIpAddress(), listenPort),
-                LastUpdate = DateTime.Now
+                LastUpdate = DateTime.UtcNow
             };
 
             // 检测端口是否可用
@@ -409,11 +543,17 @@ public partial class NatTraversal
                 info.LocalEndPoint = new(info.LocalEndPoint.Address, localPort);
             }
 
-            // 检测UPnP支持
-            Task.Run(async () =>
+            // 检测UPnP支持：保持结果一致性（同步等待，带超时；默认返回 false）。
+            try
             {
-                info.SupportsUPnP = await CheckUpnpAvailability();
-            });
+                Task<bool> checkTask = CheckUpnpAvailability();
+                bool completed = Task.WhenAny(checkTask, Task.Delay(DefaultUpnpProbeTimeoutMs)).GetAwaiter().GetResult() == checkTask;
+                info.SupportsUPnP = completed && checkTask.GetAwaiter().GetResult();
+            }
+            catch
+            {
+                info.SupportsUPnP = false;
+            }
 
             _logger?.LogInfo($"[NATTraversal] Local connectivity detected: {info.LocalEndPoint}");
             return info;
@@ -472,7 +612,16 @@ public partial class NatTraversal
     /// <returns>Base64编码的连接令牌字符串</returns>
     public static string GenerateConnectionToken(string peerId, IPEndPoint endPoint)
     {
-        string data = $"{peerId}:{endPoint.Address}:{endPoint.Port}:{DateTime.Now.Ticks}";
+        // 使用分隔符 '|'，避免与 IPv6/冒号冲突。
+        long issuedAt = DateTime.UtcNow.Ticks;
+        byte[] nonceBytes = new byte[8];
+        using (var rng = RandomNumberGenerator.Create())
+        {
+            rng.GetBytes(nonceBytes);
+        }
+
+        string nonce = Convert.ToBase64String(nonceBytes);
+        string data = $"{peerId}|{endPoint.Address}|{endPoint.Port}|{issuedAt}|{nonce}";
         return Convert.ToBase64String(Encoding.UTF8.GetBytes(data));
     } // 生成连接令牌：为P2P连接创建包含时间戳的安全令牌
 
@@ -489,18 +638,36 @@ public partial class NatTraversal
         try
         {
             string data = Encoding.UTF8.GetString(Convert.FromBase64String(token)); // 解码Base64令牌获取原始数据
-            string[] parts = data.Split(':'); // 按冒号分割令牌数据
+            string[] parts = data.Split('|'); // 使用 '|' 分割，避免 IPv6 冒号冲突
 
-            if (parts.Length >= 4 && parts[3] == DateTime.Now.Ticks.ToString()) // 验证令牌格式和时间戳
+            if (parts.Length < 5)
             {
-                peerId = parts[0]; // 提取对等方ID
-                endPoint = new IPEndPoint(IPAddress.Parse(parts[1]), int.Parse(parts[2])); // 构造网络端点
-                return true; // 验证成功
+                peerId = null;
+                endPoint = null;
+                return false;
             }
 
-            peerId = null; // 清空输出参数
-            endPoint = null; // 清空输出参数
-            return false; // 验证失败
+            peerId = parts[0];
+            if (!IPAddress.TryParse(parts[1], out var ip) || !int.TryParse(parts[2], out int port))
+            {
+                endPoint = null;
+                return false;
+            }
+
+            endPoint = new IPEndPoint(ip, port);
+
+            if (!long.TryParse(parts[3], out long issuedAtTicks))
+            {
+                return false;
+            }
+
+            TimeSpan age = DateTime.UtcNow - new DateTime(issuedAtTicks, DateTimeKind.Utc);
+            if (age < TimeSpan.Zero || age > TimeSpan.FromSeconds(DefaultTokenTtlSeconds))
+            {
+                return false;
+            }
+
+            return true;
         }
         catch (Exception ex)
         {
@@ -510,6 +677,179 @@ public partial class NatTraversal
             return false; // 验证失败
         }
     } // 验证连接令牌：验证P2P连接令牌的有效性和安全性
+
+    private static (string host, int port) ParseHostPort(string hostPort, int defaultPort)
+    {
+        if (string.IsNullOrWhiteSpace(hostPort))
+        {
+            return ("", defaultPort);
+        }
+
+        int idx = hostPort.LastIndexOf(':');
+        if (idx > 0 && idx < hostPort.Length - 1 && int.TryParse(hostPort.Substring(idx + 1), out int p))
+        {
+            return (hostPort.Substring(0, idx), p);
+        }
+
+        return (hostPort, defaultPort);
+    }
+
+    private static byte[] BuildStunBindingRequest(out byte[] transactionId)
+    {
+        transactionId = new byte[12];
+        using (var rng = RandomNumberGenerator.Create())
+        {
+            rng.GetBytes(transactionId);
+        }
+
+        byte[] buf = new byte[20];
+
+        // Type: Binding Request (0x0001)
+        buf[0] = 0x00;
+        buf[1] = 0x01;
+
+        // Length: 0
+        buf[2] = 0x00;
+        buf[3] = 0x00;
+
+        // Magic cookie: 0x2112A442
+        buf[4] = 0x21;
+        buf[5] = 0x12;
+        buf[6] = 0xA4;
+        buf[7] = 0x42;
+
+        Buffer.BlockCopy(transactionId, 0, buf, 8, 12);
+        return buf;
+    }
+
+    private static bool TryParseStunBindingResponse(byte[] buf, byte[] transactionId, out IPEndPoint publicEndPoint, out string error)
+    {
+        publicEndPoint = null;
+        error = null;
+
+        if (buf == null || buf.Length < 20)
+        {
+            error = "STUN response too short.";
+            return false;
+        }
+
+        // Success response should be 0x0101
+        if (buf[0] != 0x01 || buf[1] != 0x01)
+        {
+            error = "STUN response is not success.";
+            return false;
+        }
+
+        // Magic cookie
+        if (buf[4] != 0x21 || buf[5] != 0x12 || buf[6] != 0xA4 || buf[7] != 0x42)
+        {
+            error = "STUN magic cookie mismatch.";
+            return false;
+        }
+
+        for (int i = 0; i < 12; i++)
+        {
+            if (buf[8 + i] != transactionId[i])
+            {
+                error = "STUN transaction ID mismatch.";
+                return false;
+            }
+        }
+
+        int msgLen = (buf[2] << 8) | buf[3];
+        int end = 20 + msgLen;
+        if (end > buf.Length)
+        {
+            end = buf.Length;
+        }
+
+        int offset = 20;
+        while (offset + 4 <= end)
+        {
+            int attrType = (buf[offset] << 8) | buf[offset + 1];
+            int attrLen = (buf[offset + 2] << 8) | buf[offset + 3];
+            offset += 4;
+
+            if (offset + attrLen > end)
+            {
+                break;
+            }
+
+            // XOR-MAPPED-ADDRESS = 0x0020
+            if (attrType == 0x0020 && attrLen >= 8)
+            {
+                // 0: reserved, 1: family
+                byte family = buf[offset + 1];
+                if (family == 0x01) // IPv4
+                {
+                    int xPort = (buf[offset + 2] << 8) | buf[offset + 3];
+                    int port = xPort ^ 0x2112;
+
+                    byte[] addr = new byte[4];
+                    addr[0] = (byte)(buf[offset + 4] ^ 0x21);
+                    addr[1] = (byte)(buf[offset + 5] ^ 0x12);
+                    addr[2] = (byte)(buf[offset + 6] ^ 0xA4);
+                    addr[3] = (byte)(buf[offset + 7] ^ 0x42);
+
+                    publicEndPoint = new IPEndPoint(new IPAddress(addr), port);
+                    return true;
+                }
+            }
+
+            // MAPPED-ADDRESS = 0x0001
+            if (attrType == 0x0001 && attrLen >= 8 && publicEndPoint == null)
+            {
+                byte family = buf[offset + 1];
+                if (family == 0x01)
+                {
+                    int port = (buf[offset + 2] << 8) | buf[offset + 3];
+                    byte[] addr = new byte[4];
+                    Buffer.BlockCopy(buf, offset + 4, addr, 0, 4);
+                    publicEndPoint = new IPEndPoint(new IPAddress(addr), port);
+                    // don't return yet; prefer XOR if present
+                }
+            }
+
+            // 4-byte padding
+            offset += attrLen;
+            int pad = attrLen % 4;
+            if (pad != 0)
+            {
+                offset += (4 - pad);
+            }
+        }
+
+        if (publicEndPoint != null)
+        {
+            return true;
+        }
+
+        error = "STUN response missing mapped address.";
+        return false;
+    }
+
+    private static bool IsPrivateOrLoopback(IPAddress ip)
+    {
+        if (ip == null)
+        {
+            return true;
+        }
+
+        if (IPAddress.IsLoopback(ip))
+        {
+            return true;
+        }
+
+        if (ip.AddressFamily != AddressFamily.InterNetwork)
+        {
+            return false;
+        }
+
+        byte[] b = ip.GetAddressBytes();
+        return b[0] == 10 ||
+               (b[0] == 172 && b[1] >= 16 && b[1] <= 31) ||
+               (b[0] == 192 && b[1] == 168);
+    }
 
     /// <summary>
     /// 获取本地IP地址

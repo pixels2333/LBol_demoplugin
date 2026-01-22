@@ -208,6 +208,7 @@ public class Plugin : BaseUnityPlugin
         Logger.LogInfo($"  网络超时时间: {ConfigManager.NetworkTimeoutSeconds.Value} 秒");
         Logger.LogInfo($"  最大重连尝试: {ConfigManager.MaxReconnectAttempts.Value}");
         Logger.LogInfo($"网络参数:");
+        Logger.LogInfo($"  PlayerIdOverride: {ConfigManager.PlayerIdOverride.Value}");
         Logger.LogInfo($"  服务器IP: {ConfigManager.ServerIP.Value}");
         Logger.LogInfo($"  服务器端口: {ConfigManager.ServerPort.Value}");
         Logger.LogInfo($"  日志详细程度: {ConfigManager.LogVerbosity.Value}");

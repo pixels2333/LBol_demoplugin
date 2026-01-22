@@ -76,3 +76,24 @@
 - 背景：历史代码中存在对 `INetworkPlayer.mana` 的直接访问，但该成员未在接口中声明。
 - 方案：使用反射兼容层读取/写入实现类上的 `mana` 属性，避免改接口造成破坏性修改。
   - 实现：`networkplugin/Utils/NetworkPlayerManaCompat.cs`
+
+## NAT Traversal（NAT/端点辅助）
+
+### 目标场景
+- 主场景：虚拟局域网（VPN/LAN）直连房主 IP。
+- 端口：固定且由用户输入。
+
+### NatTraversal 约定
+- 实现：`networkplugin/Network/Utils/NatTraversal.cs`
+- `NatTraversal.NatInfo` 会被 Relay 侧缓存/转发（见 `RelayServer.HandleNatInfoReport/HandleNatInfoRequest`），因此需要稳定的 JSON 形状。
+
+### 端点序列化
+- `IPEndPoint` 默认无法被 `System.Text.Json` 序列化。
+- 方案：使用属性级 `JsonConverter<IPEndPoint>`，字符串格式为 `ip:port`，保证两端默认 `JsonSerializer.Serialize/Deserialize` 可用。
+
+### Token
+- `GenerateConnectionToken/ValidateConnectionToken` 使用 TTL 校验（默认 5 分钟），用于防误用与过期控制（熟人局域网场景，不做强签名）。
+
+### UPnP/STUN
+- UPnP：默认按“不支持/不可用”处理，不作为主流程依赖（失败仅记录日志）。
+- STUN：提供最小 Binding 探测获取公网端点，作为可选增强/诊断手段。
