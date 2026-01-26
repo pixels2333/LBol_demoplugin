@@ -1,7 +1,9 @@
 using System;
 using LBoL.Core;
+using LBoL.Presentation;
 using LBoL.Core.Units;
 using NetworkPlugin.Network;
+using UnityEngine;
 
 namespace NetworkPlugin.Utils
 {
@@ -10,6 +12,27 @@ namespace NetworkPlugin.Utils
     /// </summary>
     public static class GameStateUtils
     {
+        private static GameMaster _cachedGameMaster;
+
+        private static GameMaster TryGetGameMaster()
+        {
+            try
+            {
+                // Avoid creating a new singleton instance implicitly.
+                if (_cachedGameMaster != null)
+                {
+                    return _cachedGameMaster;
+                }
+
+                _cachedGameMaster = Object.FindObjectOfType<GameMaster>();
+                return _cachedGameMaster;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public static PlayerUnit GetCurrentPlayer()
         {
             try
@@ -34,9 +57,9 @@ namespace NetworkPlugin.Utils
         {
             try
             {
-                var gameRunControllerType = typeof(GameRunController);
-                var instanceProperty = gameRunControllerType.GetProperty("Instance", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-                return instanceProperty?.GetValue(null) as GameRunController;
+                // LBoL run lives on GameMaster; this avoids relying on an Instance property that may not exist.
+                GameMaster gm = TryGetGameMaster();
+                return gm?.CurrentGameRun;
             }
             catch (Exception ex)
             {

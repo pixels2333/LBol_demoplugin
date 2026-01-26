@@ -3,9 +3,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using BepInEx.Logging;
+using LBoL.Core;
+using LBoL.Core.SaveData;
+using LBoL.Presentation;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Event;
@@ -46,7 +51,11 @@ public sealed class MidGameJoinManager
         public FullStateSnapshot? FullSnapshot { get; set; }
         public List<GameEvent> MissedEvents { get; set; } = [];
         public string? ErrorMessage { get; set; }
-        public void Dispose() => WaitHandle.Dispose();
+
+        public void Dispose()
+        {
+            WaitHandle.Dispose();
+        }
     }
 
     #endregion
@@ -385,6 +394,16 @@ public sealed class MidGameJoinManager
                 approvedJoin.BootstrappedState.GameProgress = CalculateGameProgress(snapshot.GameState);
                 approvedJoin.BootstrappedState.LastEventIndex = snapshot.EventIndex;
                 _logger.LogInfo($"[MidGameJoinManager] FullSnapshot received: eventIndex={snapshot.EventIndex}, progress={approvedJoin.BootstrappedState.GameProgress}%");
+
+                // 将 MapState 暂存给追赶执行器：本地 GameRun 可用后再尽力应用。
+                try
+                {
+                    _serviceProvider.GetService<MapCatchUpOrchestrator>()?.SetPendingFullSnapshot(snapshot);
+                }
+                catch
+                {
+                    // ignored
+                }
             }
 
             CatchUpResult catchUp = ApplyCatchUpEvents(missedEvents); // 尽力回放错过事件
@@ -674,7 +693,7 @@ public sealed class MidGameJoinManager
     {
         if (string.IsNullOrWhiteSpace(hostPlayerId)) // 验证房主ID
         {
-            return (null, [], "Missing host playerId");
+            return (null, new List<GameEvent>(), "Missing host playerId");
         }
 
         string requestId = GenerateRequestId(); // 生成请求ID
@@ -800,6 +819,26 @@ public sealed class MidGameJoinManager
     {
         if (!TryGetJsonElement(payload, out JsonElement root)) // 转换载荷为JSON元素
         {
+            try
+            {
+                string payloadType = payload?.GetType().FullName ?? "<null>";
+                string head = payload as string;
+                if (head != null)
+                {
+                    head = head.Replace("\r", " ").Replace("\n", " ");
+                    if (head.Length > 200)
+                    {
+                        head = head.Substring(0, 200);
+                    }
+                }
+
+                Plugin.Logger?.LogWarning($"[MidGameJoin] Ignore event with invalid payload: type={eventType}, payloadType={payloadType}, head200={head}");
+            }
+            catch
+            {
+                // ignored
+            }
+
             return;
         }
 
@@ -832,29 +871,28 @@ public sealed class MidGameJoinManager
     }
 
     /// <summary>
-    /// 尝试从玩家列表更新中提取房主ID
+    /// 尝试从玩家列表更新中提取房主ID。
     /// </summary>
-    /// <param name="root">玩家列表更新事件的JSON根</param>
     private void TryUpdateHostFromPlayerListUpdate(JsonElement root)
     {
-        if (!root.TryGetProperty("Players", out JsonElement playersElem) || playersElem.ValueKind != JsonValueKind.Array) // 检查Players数组
+        if (!root.TryGetProperty("Players", out JsonElement playersElem) || playersElem.ValueKind != JsonValueKind.Array)
         {
             return;
         }
 
-        foreach (JsonElement p in playersElem.EnumerateArray()) // 遍历所有玩家
+        foreach (JsonElement p in playersElem.EnumerateArray())
         {
-            if (p.ValueKind != JsonValueKind.Object) // 确保是对象类型
+            if (p.ValueKind != JsonValueKind.Object)
             {
                 continue;
             }
 
-            if (!p.TryGetProperty("IsHost", out JsonElement isHostElem) || isHostElem.ValueKind != JsonValueKind.True) // 查找房主
+            if (!p.TryGetProperty("IsHost", out JsonElement isHostElem) || isHostElem.ValueKind != JsonValueKind.True)
             {
                 continue;
             }
 
-            if (!p.TryGetProperty("PlayerId", out JsonElement idElem) || idElem.ValueKind != JsonValueKind.String) // 获取房主ID
+            if (!p.TryGetProperty("PlayerId", out JsonElement idElem) || idElem.ValueKind != JsonValueKind.String)
             {
                 continue;
             }
@@ -862,44 +900,43 @@ public sealed class MidGameJoinManager
             string? hostId = idElem.GetString();
             if (!string.IsNullOrWhiteSpace(hostId))
             {
-                lock (_lock) // 线程安全更新当前房主ID
+                lock (_lock)
                 {
                     _lastKnownHostPlayerId = hostId;
                 }
             }
 
-            return; // 找到房主后立即返回
+            return;
         }
     }
 
     /// <summary>
-    /// 处理中途加入请求（房主侧）
+    /// 处理中途加入请求（房主侧）。
     /// </summary>
-    /// <param name="root">中途加入请求事件的JSON根</param>
     private void HandleMidGameJoinRequest(JsonElement root)
     {
-        if (!NetworkIdentityTracker.GetSelfIsHost()) // 仅房主处理请求
+        if (!NetworkIdentityTracker.GetSelfIsHost())
         {
             return;
         }
 
-        string? requestId = TryGetString(root, "RequestId"); // 提取请求ID
-        string? roomId = TryGetString(root, "RoomId"); // 提取房间ID
-        string? playerName = TryGetString(root, "PlayerName"); // 提取玩家名称
-        string? clientPlayerId = TryGetString(root, "ClientPlayerId"); // 提取客户端玩家ID
+        string? requestId = TryGetString(root, "RequestId");
+        string? roomId = TryGetString(root, "RoomId");
+        string? playerName = TryGetString(root, "PlayerName");
+        string? clientPlayerId = TryGetString(root, "ClientPlayerId");
 
         if (string.IsNullOrWhiteSpace(requestId) ||
             string.IsNullOrWhiteSpace(roomId) ||
             string.IsNullOrWhiteSpace(playerName) ||
-            string.IsNullOrWhiteSpace(clientPlayerId)) // 验证必需字段
+            string.IsNullOrWhiteSpace(clientPlayerId))
         {
             _logger.LogWarning("[MidGameJoinManager] Ignore invalid MidGameJoinRequest");
             return;
         }
 
-        if (!_config.AllowMidGameJoin) // 配置禁用则拒绝
+        if (!_config.AllowMidGameJoin)
         {
-            SendDirectMessage(clientPlayerId, NetworkMessageTypes.MidGameJoinResponse, new // 发送拒绝响应
+            SendDirectMessage(clientPlayerId, NetworkMessageTypes.MidGameJoinResponse, new
             {
                 RequestId = requestId,
                 Approved = false,
@@ -908,14 +945,14 @@ public sealed class MidGameJoinManager
             return;
         }
 
-        lock (_lock) // 线程安全操作
+        lock (_lock)
         {
-            CleanupExpired_NoLock(); // 清理过期请求与令牌
+            CleanupExpired_NoLock();
 
-            int activeCount = _pendingRequests.Count(r => string.Equals(r.RoomId, roomId, StringComparison.Ordinal)); // 统计该房间的待处理请求数
-            if (activeCount >= _config.MaxJoinRequestsPerRoom) // 检查请求数量限制
+            int activeCount = _pendingRequests.Count(r => string.Equals(r.RoomId, roomId, StringComparison.Ordinal));
+            if (activeCount >= _config.MaxJoinRequestsPerRoom)
             {
-                SendDirectMessage(clientPlayerId, NetworkMessageTypes.MidGameJoinResponse, new // 发送拒绝响应
+                SendDirectMessage(clientPlayerId, NetworkMessageTypes.MidGameJoinResponse, new
                 {
                     RequestId = requestId,
                     Approved = false,
@@ -924,7 +961,7 @@ public sealed class MidGameJoinManager
                 return;
             }
 
-            _pendingRequests.Add(new GameJoinRequest // 记录待处理请求
+            _pendingRequests.Add(new GameJoinRequest
             {
                 RequestId = requestId,
                 RoomId = roomId,
@@ -936,68 +973,72 @@ public sealed class MidGameJoinManager
         }
 
         // 最小可用实现：自动批准（后续可改为 UI/投票）。
-        string selfId = NetworkIdentityTracker.GetSelfPlayerId(); // 获取自身玩家ID
+        string selfId = NetworkIdentityTracker.GetSelfPlayerId();
         if (string.IsNullOrWhiteSpace(selfId))
         {
             return;
         }
 
-        ApproveJoin(requestId, selfId); // 自动批准请求
+        ApproveJoinResult approved = ApproveJoin(requestId, selfId);
+        if (string.IsNullOrWhiteSpace(approved.JoinToken))
+        {
+            SendDirectMessage(clientPlayerId, NetworkMessageTypes.MidGameJoinResponse, new
+            {
+                RequestId = requestId,
+                Approved = false,
+                Reason = approved.ErrorMessage ?? "Join request denied"
+            });
+        }
     }
 
     /// <summary>
-    /// 处理中途加入响应（客户端侧）
+    /// 处理中途加入响应（客户端侧）。
     /// </summary>
-    /// <param name="root">中途加入响应事件的JSON根</param>
     private void HandleMidGameJoinResponse(JsonElement root)
     {
-        bool approved = TryGetBool(root, "Approved") == true; // 提取批准状态
-        string? requestId = TryGetString(root, "RequestId"); // 提取请求ID
-        if (string.IsNullOrWhiteSpace(requestId))
+        string? requestId = TryGetString(root, "RequestId");
+        bool? approved = TryGetBool(root, "Approved");
+
+        if (string.IsNullOrWhiteSpace(requestId) || approved != true)
         {
+            string? reason = TryGetString(root, "Reason");
+            _logger.LogWarning($"[MidGameJoinManager] Join denied: requestId={requestId}, reason={reason}");
             return;
         }
 
-        if (!approved) // 请求被拒绝
-        {
-            string? reason = TryGetString(root, "Reason"); // 提取拒绝原因
-            _logger.LogInfo($"[MidGameJoinManager] Join denied: requestId={requestId}, reason={reason ?? "unknown"}");
-            return;
-        }
-
-        string? joinToken = TryGetString(root, "JoinToken"); // 提取加入令牌
-        string? hostPlayerId = TryGetString(root, "HostPlayerId"); // 提取房主ID
-        string? roomId = TryGetString(root, "RoomId"); // 提取房间ID
-        long expiresAtUtcTicks = TryGetLong(root, "ExpiresAtUtcTicks") ?? 0; // 提取过期时间
+        string? joinToken = TryGetString(root, "JoinToken");
+        string? hostPlayerId = TryGetString(root, "HostPlayerId");
+        string? roomId = TryGetString(root, "RoomId");
+        long expiresAtUtcTicks = TryGetLong(root, "ExpiresAtUtcTicks") ?? 0;
 
         if (string.IsNullOrWhiteSpace(joinToken) ||
             string.IsNullOrWhiteSpace(hostPlayerId) ||
-            string.IsNullOrWhiteSpace(roomId)) // 验证必需字段
+            string.IsNullOrWhiteSpace(roomId))
         {
             _logger.LogWarning($"[MidGameJoinManager] Invalid MidGameJoinResponse: requestId={requestId}");
             return;
         }
 
-        if (!root.TryGetProperty("BootstrappedState", out JsonElement bsElem) || bsElem.ValueKind != JsonValueKind.Object) // 检查引导状态
+        if (!root.TryGetProperty("BootstrappedState", out JsonElement bsElem) || bsElem.ValueKind != JsonValueKind.Object)
         {
             _logger.LogWarning($"[MidGameJoinManager] Missing BootstrappedState: requestId={requestId}");
             return;
         }
 
-        PlayerBootstrappedState? bootstrapped = TryDeserialize<PlayerBootstrappedState>(bsElem); // 反序列化引导状态
+        PlayerBootstrappedState? bootstrapped = TryDeserialize<PlayerBootstrappedState>(bsElem);
         if (bootstrapped == null)
         {
             _logger.LogWarning($"[MidGameJoinManager] Invalid BootstrappedState: requestId={requestId}");
             return;
         }
 
-        string selfId = NetworkIdentityTracker.GetSelfPlayerId(); // 获取自身玩家ID
+        string selfId = NetworkIdentityTracker.GetSelfPlayerId();
         if (string.IsNullOrWhiteSpace(selfId))
         {
             return;
         }
 
-        ApprovedJoin approvedJoin = new() // 创建批准加入记录
+        ApprovedJoin approvedJoin = new()
         {
             RequestId = requestId,
             RoomId = roomId,
@@ -1010,7 +1051,7 @@ public sealed class MidGameJoinManager
             BootstrappedState = bootstrapped,
         };
 
-        lock (_lock) // 线程安全存储 joinToken -> 批准记录
+        lock (_lock)
         {
             _approvedJoins[joinToken] = approvedJoin;
         }
@@ -1135,7 +1176,7 @@ public sealed class MidGameJoinManager
                 return true;
             }
 
-            root = JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(payload)); // 其他类型：序列化后再解析成 JsonElement
+            root = JsonCompat.ToJsonElement(payload); // 其他类型：序列化后再解析成 JsonElement
             return true;
         }
         catch

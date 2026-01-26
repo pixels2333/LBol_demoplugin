@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
+using NetworkPlugin.Utils;
 using BepInEx.Logging;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Utils;
@@ -126,7 +127,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
         try
         {
             // 将消息对象序列化为JSON字符串
-            string json = JsonSerializer.Serialize(message);
+            string json = JsonCompat.Serialize(message);
 
             // 通过网络客户端发送消息
             _networkClient.SendRequest("ChatMessage", json);

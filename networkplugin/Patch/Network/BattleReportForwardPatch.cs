@@ -49,10 +49,25 @@ public static class BattleReportForwardPatch
 	[HarmonyTargetMethod]
 	private static MethodBase TargetMethod()
 	{
-		// 某些构建环境下 GameDirector 类型可能不在可直接引用的程序集里，
-		// 这里用字符串反射定位，避免编译期依赖。
-		return AccessTools.Method("LBoL.Presentation.GameDirector:Update")
-			   ?? AccessTools.Method("LBoL.Presentation.UI.GameDirector:Update");
+		// 这里必须返回一个非 null 的 MethodBase，否则 Harmony 会在 PatchAll 期间直接抛异常并中止所有补丁。
+		// 以源码为准：GameDirector 位于 LBoL.Presentation.Units.GameDirector，且 Update() 是 private。
+		// 用 TypeByName + DeclaredMethod，兼容 private 方法与不同构建下的程序集加载差异。
+		Type t = AccessTools.TypeByName("LBoL.Presentation.Units.GameDirector")
+		         ?? AccessTools.TypeByName("LBoL.Presentation.GameDirector")
+		         ?? AccessTools.TypeByName("LBoL.Presentation.UI.GameDirector");
+		if (t == null)
+		{
+			return null;
+		}
+
+		return AccessTools.DeclaredMethod(t, "Update");
+	}
+
+	[HarmonyPrepare]
+	private static bool Prepare()
+	{
+		// 如果目标方法不存在则跳过该补丁，避免因单个补丁失效导致整个插件 PatchAll 崩溃。
+		return TargetMethod() != null;
 	}
 
 	[HarmonyPostfix]

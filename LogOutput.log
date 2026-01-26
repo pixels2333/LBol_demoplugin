@@ -1,0 +1,2167 @@
+[Error  :   BepInEx] Unable to start Unity log writer
+[Info   :   BepInEx] Running under Unity v6000.2.9.14730471
+[Info   :   BepInEx] CLR runtime version: 4.0.30319.42000
+[Info   :   BepInEx] Supports SRE: True
+[Info   :   BepInEx] System platform: Bits64, Windows
+[Info   :   BepInEx] Loaded 1 patcher method from [BepInEx.Preloader 5.4.23.4]
+[Info   :   BepInEx] Loaded 1 patcher method from [catrice.ModLBoL 0.1.3.0]
+[Info   :   BepInEx] 2 patcher plugins loaded
+[Info   :   BepInEx] Patching [UnityEngine.CoreModule] with [BepInEx.Chainloader]
+[Info   :   ModLBoL] [ModLBoL] Loaded profile from C:\Users\Administrator\AppData\LocalLow\AliothStudio\LBoL\76561199083788102\Profiles\Default.json: Default
+[Info   :   ModLBoL] [ModLBoL] Deleted profile info file at D:\steam\steamapps\common\LBoL\Profile.txt
+[Warning:   ModLBoL] [ModLBoL] CheckDir D:\steam\steamapps\workshop\content\1140150\3483706823\BepInEx\patchers\catrice.ModLBoL.dll\..\..\..\...
+[Warning:   ModLBoL] [ModLBoL] CheckDir D:\steam\steamapps\common\LBoL\Mods.
+[Warning:   ModLBoL] [ModLBoL] Check mod at D:\steam\steamapps\workshop\content\1140150\3483706823\BepInEx\patchers\catrice.ModLBoL.dll\..\..\..\..\3483706823\modinfo.json.
+[Info   :   ModLBoL] [ModLBoL] Enabled mod found: BepInEx (BepInEx-BepInExPack-5.4.2100) at D:\steam\steamapps\workshop\content\1140150\3483706823\BepInEx\patchers\catrice.ModLBoL.dll\..\..\..\..\3483706823
+[Warning:   ModLBoL] [ModLBoL] Check mod at D:\steam\steamapps\common\LBoL\Mods\1\modinfo.json.
+[Info   :   ModLBoL] [ModLBoL] Found 1 enabled mods
+[Info   :  HarmonyX] ### Harmony id=com.catrice.ModLBoL, version=2.9.0.0, location=D:\steam\steamapps\workshop\content\1140150\3483706823\BepInEx\core\0Harmony.dll, env/clr=4.0.30319.42000, platform=Win32NT, ptrsize:runtime/env=8/Bits64, Windows
+### Started from static void catrice.ModLBoL.EntryPoint::Finish(), location D:\steam\steamapps\workshop\content\1140150\3483706823\BepInEx\patchers\catrice.ModLBoL.dll
+### At 2026-01-24 06.45.00
+[Info   :  HarmonyX] Patching static System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<BepInEx.PluginInfo>> BepInEx.Bootstrap.TypeLoader::FindPluginTypes(string directory, System.Func<Mono.Cecil.TypeDefinition, BepInEx.PluginInfo> typeSelector, System.Func<Mono.Cecil.AssemblyDefinition, bool> assemblyFilter, string cacheName) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void catrice.ModLBoL.Hooks::Postfix(System.Collections.Generic.Dictionary`2[[System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089],[System.Collections.Generic.List`1[[BepInEx.PluginInfo, BepInEx, Version=5.4.23.4, Culture=neutral, PublicKeyToken=null]], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]& __result, string directory, Func`2& typeSelector, Func`2& assemblyFilter, string cacheName)
+
+[Info   :  HarmonyX] Running ILHook manipulator on static System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<BepInEx.PluginInfo>> BepInEx.Bootstrap.TypeLoader::FindPluginTypes(string directory, System.Func<Mono.Cecil.TypeDefinition, BepInEx.PluginInfo> typeSelector, System.Func<Mono.Cecil.AssemblyDefinition, bool> assemblyFilter, string cacheName)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :   ModLBoL] [ModLBoL] Loaded com.catrice.ModLBoL
+[Message:   BepInEx] Chainloader ready
+[Message:   BepInEx] Chainloader started
+[Info   :   ModLBoL] [ModLBoL] 正在扫描子目录 D:\steam\steamapps\workshop\content\1140150\3483706823\BepInEx\patchers\catrice.ModLBoL.dll\..\..\..\..\3483706823 D:\steam\steamapps\workshop\content\1140150\3483706823
+[Info   :   ModLBoL] Defer Mod Info created.
+[Info   :   ModLBoL] [ModLBoL] Delay Mod Info started.
+[Info   :   BepInEx] 1 plugin to load
+[Info   :   BepInEx] Loading [Network Plugin 1.0.1]
+[Info   :  HarmonyX] ### Harmony id=pixels.lbol.mods.networkmod, version=2.9.0.0, location=D:\steam\steamapps\workshop\content\1140150\3483706823\BepInEx\core\0Harmony.dll, env/clr=4.0.30319.42000, platform=Win32NT, ptrsize:runtime/env=8/Bits64, Windows
+### Started from static void NetworkPlugin.PluginInfo::.cctor(), location D:\steam\steamapps\workshop\content\1140150\3483706823\BepInEx\plugins\NetworkPlugin.dll
+### At 2026-01-24 06.45.01
+[Info   :Network Plugin] Plugin NetworkPlugin is loaded!
+[Info   :Network Plugin] 配置管理器已初始化
+[Info   :Network Plugin] [ReconnectionManager] Initialized
+[Info   :Network Plugin] [MidGameJoinManager] Initialized
+[Info   :  HarmonyX] Patching LBoL.Core.DamageInfo LBoL.Core.Battle.BattleController::Damage(LBoL.Core.Units.Unit source, LBoL.Core.Units.Unit target, LBoL.Core.DamageInfo info, LBoL.Core.GameEntity actionSource) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.BattleController_Patch::Damage_Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Units.Unit source, LBoL.Core.Units.Unit target, LBoL.Core.DamageInfo info, LBoL.Core.GameEntity actionSource, LBoL.Core.DamageInfo __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on LBoL.Core.DamageInfo LBoL.Core.Battle.BattleController::Damage(LBoL.Core.Units.Unit source, LBoL.Core.Units.Unit target, LBoL.Core.DamageInfo info, LBoL.Core.GameEntity actionSource)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching LBoL.Core.StatusEffects.StatusEffectAddResult? LBoL.Core.Battle.BattleController::TryAddStatusEffect(LBoL.Core.Units.Unit target, LBoL.Core.StatusEffects.StatusEffect effect) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.BattleController_Patch::TryAddStatusEffect_Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Units.Unit target, LBoL.Core.StatusEffects.StatusEffect effect, LBoL.Core.StatusEffects.StatusEffectAddResult? __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on LBoL.Core.StatusEffects.StatusEffectAddResult? LBoL.Core.Battle.BattleController::TryAddStatusEffect(LBoL.Core.Units.Unit target, LBoL.Core.StatusEffects.StatusEffect effect)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching bool LBoL.Core.Battle.BattleController::RemoveStatusEffect(LBoL.Core.Units.Unit target, LBoL.Core.StatusEffects.StatusEffect effect) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.BattleController_Patch::RemoveStatusEffect_Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Units.Unit target, LBoL.Core.StatusEffects.StatusEffect effect, bool __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on bool LBoL.Core.Battle.BattleController::RemoveStatusEffect(LBoL.Core.Units.Unit target, LBoL.Core.StatusEffects.StatusEffect effect)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching int LBoL.Core.Battle.BattleController::Heal(LBoL.Core.Units.Unit target, int healValue) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.BattleController_Patch::Heal_Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Units.Unit target, int healValue, int __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on int LBoL.Core.Battle.BattleController::Heal(LBoL.Core.Units.Unit target, int healValue)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching LBoL.Core.DamageInfo LBoL.Core.Battle.BattleController::Damage(LBoL.Core.Units.Unit source, LBoL.Core.Units.Unit target, LBoL.Core.DamageInfo info, LBoL.Core.GameEntity actionSource) with 0 prefixes, 2 postfixes, 0 transpilers, 0 finalizers
+2 postfixes:
+* static void NetworkPlugin.Patch.BattleController_Patch::Damage_Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Units.Unit source, LBoL.Core.Units.Unit target, LBoL.Core.DamageInfo info, LBoL.Core.GameEntity actionSource, LBoL.Core.DamageInfo __result)
+* static void NetworkPlugin.Patch.DeathPatches::Damage_Postfix(LBoL.Core.Battle.BattleController __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on LBoL.Core.DamageInfo LBoL.Core.Battle.BattleController::Damage(LBoL.Core.Units.Unit source, LBoL.Core.Units.Unit target, LBoL.Core.DamageInfo info, LBoL.Core.GameEntity actionSource)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching virtual void LBoL.Core.Units.Unit::Die() with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.DeathPatches::Die_Prefix(LBoL.Core.Units.Unit __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on virtual void LBoL.Core.Units.Unit::Die()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Battle.BattleController::StartPlayerTurn() with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.DeathPatches::StartPlayerTurn_Prefix(LBoL.Core.Battle.BattleController __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Battle.BattleController::StartPlayerTurn()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Battle.BattleController::RequestUseCard(LBoL.Core.Cards.Card card, LBoL.Core.UnitSelector selector, LBoL.Base.ManaGroup mana, bool kicker) with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.DeathPatches::RequestUseCard_Prefix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Cards.Card card)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Battle.BattleController::RequestUseCard(LBoL.Core.Cards.Card card, LBoL.Core.UnitSelector selector, LBoL.Base.ManaGroup mana, bool kicker)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Battle.BattleController::RequestEndPlayerTurn() with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.DeathPatches::RequestEndPlayerTurn_Prefix(LBoL.Core.Battle.BattleController __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Battle.BattleController::RequestEndPlayerTurn()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching bool LBoL.Core.Battle.BattleController::get_BattleShouldEnd() with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.DeathPatches::BattleShouldEnd_Postfix(LBoL.Core.Battle.BattleController __instance, Boolean& __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on bool LBoL.Core.Battle.BattleController::get_BattleShouldEnd()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching bool LBoL.Core.Battle.BattleController::get_IsWaitingPlayerInput() with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.DeathPatches::IsWaitingPlayerInput_Prefix(LBoL.Core.Battle.BattleController __instance, Boolean& __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on bool LBoL.Core.Battle.BattleController::get_IsWaitingPlayerInput()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Units.Unit::set_Status(LBoL.Core.Units.UnitStatus value) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.DeathStateSyncPatch::OnUnitStatusChanged(LBoL.Core.Units.Unit __instance, LBoL.Core.Units.UnitStatus value)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Units.Unit::set_Status(LBoL.Core.Units.UnitStatus value)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Units.Unit::set_Hp(int value) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.DeathStateSyncPatch::OnPlayerHpChanged(LBoL.Core.Units.Unit __instance, int value)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Units.Unit::set_Hp(int value)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Battle.BattleController::StartBattle() with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.GameEventDeathSyncPatch::OnBattleStart(LBoL.Core.Battle.BattleController __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Battle.BattleController::StartBattle()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Battle.BattleController::Leave() with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.GameEventDeathSyncPatch::OnBattleEnd(LBoL.Core.Battle.BattleController __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Battle.BattleController::Leave()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Battle.BattleController::EndBattle() with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.GameEventDeathSyncPatch::OnBattleEndBattle(LBoL.Core.Battle.BattleController __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Battle.BattleController::EndBattle()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.UI.Panels.MainMenuPanel::RefreshProfile() with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.UI.ExitGamePatch::MainMenuPanel_RefreshProfile_Postfix(LBoL.Presentation.UI.Panels.MainMenuPanel __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.UI.Panels.MainMenuPanel::RefreshProfile()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.UI.Panels.MainMenuPanel::UI_AbandonGameClicked() with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.UI.ExitGamePatch::MainMenuPanel_UI_AbandonGameClicked_Prefix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.UI.Panels.MainMenuPanel::UI_AbandonGameClicked()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.UI.Panels.MainMenuPanel::UI_QuitGame() with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.UI.ExitGamePatch::MainMenuPanel_UI_QuitGame_Prefix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.UI.Panels.MainMenuPanel::UI_QuitGame()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.UI.Panels.SettingPanel::UI_LeaveGameRun() with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.UI.ExitGamePatch::SettingPanel_UI_LeaveGameRun_Prefix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.UI.Panels.SettingPanel::UI_LeaveGameRun()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.UI.Panels.SettingPanel::UI_Quit() with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.UI.ExitGamePatch::SettingPanel_UI_Quit_Prefix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.UI.Panels.SettingPanel::UI_Quit()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching static bool LBoL.Presentation.GameMaster::OnWantsToQuit() with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.UI.ExitGamePatch::GameMaster_OnWantsToQuit_Prefix(Boolean& __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on static bool LBoL.Presentation.GameMaster::OnWantsToQuit()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching static void LBoL.Presentation.GameMaster::QuitGame() with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.UI.ExitGamePatch::GameMaster_QuitGame_Prefix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on static void LBoL.Presentation.GameMaster::QuitGame()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.UI.Panels.MainMenuPanel::Awake() with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.UI.MainMenuMultiplayerEntryPatch::MainMenuPanel_Awake_Postfix(LBoL.Presentation.UI.Panels.MainMenuPanel __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.UI.Panels.MainMenuPanel::Awake()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.UI.Panels.MainMenuPanel::RefreshProfile() with 0 prefixes, 2 postfixes, 0 transpilers, 0 finalizers
+2 postfixes:
+* static void NetworkPlugin.Patch.UI.ExitGamePatch::MainMenuPanel_RefreshProfile_Postfix(LBoL.Presentation.UI.Panels.MainMenuPanel __instance)
+* static void NetworkPlugin.Patch.UI.MainMenuMultiplayerEntryPatch::MainMenuPanel_RefreshProfile_Postfix(LBoL.Presentation.UI.Panels.MainMenuPanel __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.UI.Panels.MainMenuPanel::RefreshProfile()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching virtual void LBoL.Presentation.UI.Panels.MainMenuPanel::OnLocaleChanged() with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.UI.MainMenuMultiplayerEntryPatch::MainMenuPanel_OnLocaleChanged_Postfix(LBoL.Presentation.UI.Panels.MainMenuPanel __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on virtual void LBoL.Presentation.UI.Panels.MainMenuPanel::OnLocaleChanged()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.UI.Panels.StartGamePanel::Awake() with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.UI.MainMenuMultiplayerEntryPatch::StartGamePanel_Awake_Postfix(LBoL.Presentation.UI.Panels.StartGamePanel __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.UI.Panels.StartGamePanel::Awake()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching virtual void LBoL.Presentation.UI.Panels.StartGamePanel::OnShowing(LBoL.Presentation.UI.Panels.StartGameData data) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.UI.MainMenuMultiplayerEntryPatch::StartGamePanel_OnShowing_Postfix(LBoL.Presentation.UI.Panels.StartGamePanel __instance, LBoL.Presentation.UI.Panels.StartGameData data)
+
+[Info   :  HarmonyX] Running ILHook manipulator on virtual void LBoL.Presentation.UI.Panels.StartGamePanel::OnShowing(LBoL.Presentation.UI.Panels.StartGameData data)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching bool LBoL.Presentation.Units.UnitView::TryPlayEffectLoop(string effectName) with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.UI.MoodSwitchRenderPatches::UnitView_TryPlayEffectLoop_Prefix(LBoL.Presentation.Units.UnitView __instance, string effectName, Boolean& __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on bool LBoL.Presentation.Units.UnitView::TryPlayEffectLoop(string effectName)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.Units.UnitView::SendEffectMessage(string effectName, string message, object args) with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.UI.MoodSwitchRenderPatches::UnitView_SendEffectMessage_Prefix(LBoL.Presentation.Units.UnitView __instance, string effectName, string message, object args)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.Units.UnitView::SendEffectMessage(string effectName, string message, object args)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.Units.UnitView::EndEffectLoop(string effectName, bool instant) with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.UI.MoodSwitchRenderPatches::UnitView_EndEffectLoop_Prefix(LBoL.Presentation.Units.UnitView __instance, string effectName, bool instant)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.Units.UnitView::EndEffectLoop(string effectName, bool instant)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.Units.GameDirector::Update() with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.UI.OtherPlayersOverlayPatch::GameDirector_Update_Postfix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.Units.GameDirector::Update()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.Units.GameDirector::MasterTick() with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.UI.OtherPlayersOverlayPatch::GameDirector_MasterTick_Postfix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.Units.GameDirector::MasterTick()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.UI.Panels.MapPanel::UpdateMapNodesStatus() with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.UI.OtherPlayersOverlayPatch::MapPanel_UpdateMapNodesStatus_Postfix(LBoL.Presentation.UI.Panels.MapPanel __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.UI.Panels.MapPanel::UpdateMapNodesStatus()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.UI.Widgets.TargetSelector::UpdateSingleEnemy() with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.UI.PlayerTargeterPatch::TargetSelector_UpdateSingleEnemy_Postfix(LBoL.Presentation.UI.Widgets.TargetSelector __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.UI.Widgets.TargetSelector::UpdateSingleEnemy()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching LBoL.Core.Units.EnemyUnit LBoL.Presentation.UI.Widgets.TargetSelector::GetPointedEnemy(UnityEngine.Vector2 screenPosition) with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.UI.PlayerTargeterPatch::TargetSelector_GetPointedEnemy_Prefix(UnityEngine.Vector2 screenPosition, LBoL.Core.Units.EnemyUnit& __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on LBoL.Core.Units.EnemyUnit LBoL.Presentation.UI.Widgets.TargetSelector::GetPointedEnemy(UnityEngine.Vector2 screenPosition)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.UI.Widgets.TargetSelector::EnableSelector(LBoL.Presentation.UI.ExtraWidgets.HandCard hand) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.UI.PlayerTargeterPatch::TargetSelector_EnableSelector_Hand_Postfix(LBoL.Presentation.UI.ExtraWidgets.HandCard hand)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.UI.Widgets.TargetSelector::EnableSelector(LBoL.Presentation.UI.ExtraWidgets.HandCard hand)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.UI.Widgets.TargetSelector::EnableSelector(LBoL.Core.Units.UltimateSkill us, UnityEngine.Vector3 fromWorldPosition) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.UI.PlayerTargeterPatch::TargetSelector_EnableSelector_Us_Postfix(LBoL.Core.Units.UltimateSkill us)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.UI.Widgets.TargetSelector::EnableSelector(LBoL.Core.Units.UltimateSkill us, UnityEngine.Vector3 fromWorldPosition)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.UI.Widgets.TargetSelector::EnableSelector(LBoL.Core.Units.Doll doll, UnityEngine.Vector3 fromWorldPosition) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.UI.PlayerTargeterPatch::TargetSelector_EnableSelector_Doll_Postfix(LBoL.Core.Units.Doll doll)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.UI.Widgets.TargetSelector::EnableSelector(LBoL.Core.Units.Doll doll, UnityEngine.Vector3 fromWorldPosition)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.UI.Widgets.TargetSelector::DisableSelector() with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.UI.PlayerTargeterPatch::TargetSelector_DisableSelector_Prefix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.UI.Widgets.TargetSelector::DisableSelector()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.Units.GameDirector::Update() with 0 prefixes, 2 postfixes, 0 transpilers, 0 finalizers
+2 postfixes:
+* static void NetworkPlugin.Patch.UI.OtherPlayersOverlayPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.UI.ShopTradeIconPatch::GameDirector_Update_Postfix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.Units.GameDirector::Update()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.Units.GameDirector::Update() with 0 prefixes, 3 postfixes, 0 transpilers, 0 finalizers
+3 postfixes:
+* static void NetworkPlugin.Patch.UI.OtherPlayersOverlayPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.UI.ShopTradeIconPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.Network.BattleReportForwardPatch::Postfix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.Units.GameDirector::Update()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching virtual void LBoL.Core.Battle.BattleActions.StartRoundAction::MainPhase() with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.Network.EnemyIntentSyncPatch::StartRoundAction_MainPhase_Prefix()
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.EnemyIntentSyncPatch::StartRoundAction_MainPhase_Postfix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on virtual void LBoL.Core.Battle.BattleActions.StartRoundAction::MainPhase()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Units.EnemyUnit::UpdateTurnMoves() with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.EnemyIntentSyncPatch::EnemyUnit_UpdateTurnMoves_Postfix(LBoL.Core.Units.EnemyUnit __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Units.EnemyUnit::UpdateTurnMoves()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.Units.GameDirector::Update() with 0 prefixes, 4 postfixes, 0 transpilers, 0 finalizers
+4 postfixes:
+* static void NetworkPlugin.Patch.UI.OtherPlayersOverlayPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.UI.ShopTradeIconPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.Network.BattleReportForwardPatch::Postfix()
+* static void NetworkPlugin.Patch.Network.MoodEffectSyncPatch::GameDirector_Update_Postfix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.Units.GameDirector::Update()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.Units.GameDirector::EnterBattle(LBoL.Core.Battle.BattleController battle) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.MoodEffectSyncPatch::GameDirector_EnterBattle_Postfix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.Units.GameDirector::EnterBattle(LBoL.Core.Battle.BattleController battle)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.Units.GameDirector::LeaveBattle(LBoL.Core.Battle.BattleController battle) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.MoodEffectSyncPatch::GameDirector_LeaveBattle_Postfix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.Units.GameDirector::LeaveBattle(LBoL.Core.Battle.BattleController battle)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching bool LBoL.Presentation.Units.UnitView::TryPlayEffectLoop(string effectName) with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.UI.MoodSwitchRenderPatches::UnitView_TryPlayEffectLoop_Prefix(LBoL.Presentation.Units.UnitView __instance, string effectName, Boolean& __result)
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.MoodEffectSyncPatch::UnitView_TryPlayEffectLoop_Postfix(LBoL.Presentation.Units.UnitView __instance, string effectName, Boolean& __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on bool LBoL.Presentation.Units.UnitView::TryPlayEffectLoop(string effectName)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.Units.UnitView::EndEffectLoop(string effectName, bool instant) with 2 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+2 prefixes:
+* static bool NetworkPlugin.Patch.UI.MoodSwitchRenderPatches::UnitView_EndEffectLoop_Prefix(LBoL.Presentation.Units.UnitView __instance, string effectName, bool instant)
+* static void NetworkPlugin.Patch.Network.MoodEffectSyncPatch::UnitView_EndEffectLoop_Prefix(LBoL.Presentation.Units.UnitView __instance, string effectName, bool instant)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.Units.UnitView::EndEffectLoop(string effectName, bool instant)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Reverse patching static System.Collections.Generic.IEnumerable<LBoL.Core.Battle.BattleAction> NetworkPlugin.Patch.Network.RemoteCardUsePatch::Card_GetActions_Original(LBoL.Core.Cards.Card __instance, LBoL.Core.UnitSelector selector, LBoL.Base.ManaGroup consumingMana, LBoL.Core.Battle.Interaction precondition, bool kicker, bool summoning, System.Collections.Generic.IList<LBoL.Core.Battle.BattleActions.DamageAction> damageActions) with System.Collections.Generic.IEnumerable<LBoL.Core.Battle.BattleAction> LBoL.Core.Cards.Card::GetActions(LBoL.Core.UnitSelector selector, LBoL.Base.ManaGroup consumingMana, LBoL.Core.Battle.Interaction precondition, bool kicker, bool summoning, System.Collections.Generic.IList<LBoL.Core.Battle.BattleActions.DamageAction> damageActions)
+
+[Info   :  HarmonyX] Patching System.Collections.Generic.IEnumerable<LBoL.Core.Battle.BattleAction> LBoL.Core.Cards.Card::GetActions(LBoL.Core.UnitSelector selector, LBoL.Base.ManaGroup consumingMana, LBoL.Core.Battle.Interaction precondition, bool kicker, bool summoning, System.Collections.Generic.IList<LBoL.Core.Battle.BattleActions.DamageAction> damageActions) with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.Network.RemoteCardUsePatch::Card_GetActions_Prefix(LBoL.Core.Cards.Card __instance, LBoL.Core.UnitSelector selector, LBoL.Base.ManaGroup consumingMana, LBoL.Core.Battle.Interaction precondition, bool kicker, bool summoning, System.Collections.Generic.IList<LBoL.Core.Battle.BattleActions.DamageAction> damageActions, System.Collections.Generic.IEnumerable`1[[LBoL.Core.Battle.BattleAction, LBoL.Core, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]& __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on System.Collections.Generic.IEnumerable<LBoL.Core.Battle.BattleAction> LBoL.Core.Cards.Card::GetActions(LBoL.Core.UnitSelector selector, LBoL.Base.ManaGroup consumingMana, LBoL.Core.Battle.Interaction precondition, bool kicker, bool summoning, System.Collections.Generic.IList<LBoL.Core.Battle.BattleActions.DamageAction> damageActions)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Battle.BattleController::RequestUseCard(LBoL.Core.Cards.Card card, LBoL.Core.UnitSelector selector, LBoL.Base.ManaGroup mana, bool kicker) with 2 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+2 prefixes:
+* static bool NetworkPlugin.Patch.DeathPatches::RequestUseCard_Prefix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Cards.Card card)
+* static bool NetworkPlugin.Patch.Network.RemoteCardUsePatch::BattleController_RequestUseCard_Prefix(LBoL.Core.Cards.Card card, LBoL.Core.UnitSelector selector)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Battle.BattleController::RequestUseCard(LBoL.Core.Cards.Card card, LBoL.Core.UnitSelector selector, LBoL.Base.ManaGroup mana, bool kicker)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching virtual void LBoL.Presentation.UI.Widgets.MapNodeWidget::OnPointerEnter(UnityEngine.EventSystems.PointerEventData eventData) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.Map.MapNodeMarkSyncPatch::MapNodeWidget_OnPointerEnter_Postfix(LBoL.Presentation.UI.Widgets.MapNodeWidget __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on virtual void LBoL.Presentation.UI.Widgets.MapNodeWidget::OnPointerEnter(UnityEngine.EventSystems.PointerEventData eventData)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching virtual void LBoL.Presentation.UI.Widgets.MapNodeWidget::OnPointerExit(UnityEngine.EventSystems.PointerEventData eventData) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.Map.MapNodeMarkSyncPatch::MapNodeWidget_OnPointerExit_Postfix(LBoL.Presentation.UI.Widgets.MapNodeWidget __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on virtual void LBoL.Presentation.UI.Widgets.MapNodeWidget::OnPointerExit(UnityEngine.EventSystems.PointerEventData eventData)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.UI.UiManager::RightClicked() with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.Map.MapNodeMarkSyncPatch::UiManager_RightClicked_Prefix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.UI.UiManager::RightClicked()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.UI.Panels.MapPanel::UpdateMapNodesStatus() with 0 prefixes, 2 postfixes, 0 transpilers, 0 finalizers
+2 postfixes:
+* static void NetworkPlugin.Patch.UI.OtherPlayersOverlayPatch::MapPanel_UpdateMapNodesStatus_Postfix(LBoL.Presentation.UI.Panels.MapPanel __instance)
+* static void NetworkPlugin.Patch.Map.MapNodeMarkSyncPatch::MapPanel_UpdateMapNodesStatus_Postfix(LBoL.Presentation.UI.Panels.MapPanel __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.UI.Panels.MapPanel::UpdateMapNodesStatus()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.UI.Panels.MapPanel::UpdateMapNodesStatus() with 0 prefixes, 3 postfixes, 0 transpilers, 0 finalizers
+3 postfixes:
+* static void NetworkPlugin.Patch.UI.OtherPlayersOverlayPatch::MapPanel_UpdateMapNodesStatus_Postfix(LBoL.Presentation.UI.Panels.MapPanel __instance)
+* static void NetworkPlugin.Patch.Map.MapNodeMarkSyncPatch::MapPanel_UpdateMapNodesStatus_Postfix(LBoL.Presentation.UI.Panels.MapPanel __instance)
+* static void NetworkPlugin.Patch.Map.MapPanelUpdateMapNodesStatusPatch::Postfix(LBoL.Presentation.UI.Panels.MapPanel __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.UI.Panels.MapPanel::UpdateMapNodesStatus()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Units.EnemyUnit::SetMaxHpInBattle(int hp, int maxHp) with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.EnemyUnits.EnemyUnitPatches::SetMaxHpInBattle(LBoL.Core.Units.EnemyUnit __instance, Int32& hp, Int32& maxHp)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Units.EnemyUnit::SetMaxHpInBattle(int hp, int maxHp)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching LBoL.Core.CancelCause LBoL.Core.Battle.BattleController::MoveCard(LBoL.Core.Cards.Card card, LBoL.Core.Cards.CardZone dstZone) with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.Network.BattleCardZoneSyncPatch+MoveCardPatch::Prefix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Cards.Card card, LBoL.Core.Cards.CardZone dstZone, NetworkPlugin.Patch.Network.BattleCardZoneSyncPatch+MoveCardPatch+MoveState& __state)
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.BattleCardZoneSyncPatch+MoveCardPatch::Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Cards.Card card, LBoL.Core.Cards.CardZone dstZone, LBoL.Core.CancelCause __result, NetworkPlugin.Patch.Network.BattleCardZoneSyncPatch+MoveCardPatch+MoveState __state)
+
+[Info   :  HarmonyX] Running ILHook manipulator on LBoL.Core.CancelCause LBoL.Core.Battle.BattleController::MoveCard(LBoL.Core.Cards.Card card, LBoL.Core.Cards.CardZone dstZone)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching LBoL.Core.CancelCause LBoL.Core.Battle.BattleController::MoveCardToDrawZone(LBoL.Core.Cards.Card card, LBoL.Core.DrawZoneTarget target) with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.Network.BattleCardZoneSyncPatch+MoveCardToDrawZonePatch::Prefix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Cards.Card card, LBoL.Core.DrawZoneTarget target, NetworkPlugin.Patch.Network.BattleCardZoneSyncPatch+MoveCardToDrawZonePatch+MoveToDrawState& __state)
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.BattleCardZoneSyncPatch+MoveCardToDrawZonePatch::Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Cards.Card card, LBoL.Core.DrawZoneTarget target, LBoL.Core.CancelCause __result, NetworkPlugin.Patch.Network.BattleCardZoneSyncPatch+MoveCardToDrawZonePatch+MoveToDrawState __state)
+
+[Info   :  HarmonyX] Running ILHook manipulator on LBoL.Core.CancelCause LBoL.Core.Battle.BattleController::MoveCardToDrawZone(LBoL.Core.Cards.Card card, LBoL.Core.DrawZoneTarget target)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching LBoL.Core.CancelCause LBoL.Core.Battle.BattleController::AddCardToDrawZone(LBoL.Core.Cards.Card card, LBoL.Core.DrawZoneTarget target) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.BattleCardZoneSyncPatch+AddCardToDrawZonePatch::Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Cards.Card card, LBoL.Core.DrawZoneTarget target, LBoL.Core.CancelCause __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on LBoL.Core.CancelCause LBoL.Core.Battle.BattleController::AddCardToDrawZone(LBoL.Core.Cards.Card card, LBoL.Core.DrawZoneTarget target)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching LBoL.Core.CancelCause LBoL.Core.Battle.BattleController::AddCardToHand(LBoL.Core.Cards.Card card, bool returning) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.BattleCardZoneSyncPatch+AddCardToHandPatch::Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Cards.Card card, LBoL.Core.CancelCause __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on LBoL.Core.CancelCause LBoL.Core.Battle.BattleController::AddCardToHand(LBoL.Core.Cards.Card card, bool returning)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching LBoL.Core.CancelCause LBoL.Core.Battle.BattleController::AddCardToDiscard(LBoL.Core.Cards.Card card) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.BattleCardZoneSyncPatch+AddCardToDiscardPatch::Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Cards.Card card, LBoL.Core.CancelCause __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on LBoL.Core.CancelCause LBoL.Core.Battle.BattleController::AddCardToDiscard(LBoL.Core.Cards.Card card)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching LBoL.Core.CancelCause LBoL.Core.Battle.BattleController::AddCardToExile(LBoL.Core.Cards.Card card) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.BattleCardZoneSyncPatch+AddCardToExilePatch::Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Cards.Card card, LBoL.Core.CancelCause __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on LBoL.Core.CancelCause LBoL.Core.Battle.BattleController::AddCardToExile(LBoL.Core.Cards.Card card)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Battle.BattleController::RemoveCard(LBoL.Core.Cards.Card card) with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.Network.BattleCardZoneSyncPatch+RemoveCardPatch::Prefix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Cards.Card card, NetworkPlugin.Patch.Network.BattleCardZoneSyncPatch+RemoveCardPatch+RemoveState& __state)
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.BattleCardZoneSyncPatch+RemoveCardPatch::Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Cards.Card card, NetworkPlugin.Patch.Network.BattleCardZoneSyncPatch+RemoveCardPatch+RemoveState __state)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Battle.BattleController::RemoveCard(LBoL.Core.Cards.Card card)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.Units.GameDirector::Update() with 0 prefixes, 5 postfixes, 0 transpilers, 0 finalizers
+5 postfixes:
+* static void NetworkPlugin.Patch.UI.OtherPlayersOverlayPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.UI.ShopTradeIconPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.Network.BattleReportForwardPatch::Postfix()
+* static void NetworkPlugin.Patch.Network.MoodEffectSyncPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.Network.DebutBonusSyncPatch+SubscribeHook::Postfix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.Units.GameDirector::Update()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.EntityLib.Adventures.Debut::RollBonus() with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.DebutBonusSyncPatch+Debut_RollBonus_Sync::Postfix(LBoL.EntityLib.Adventures.Debut __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.EntityLib.Adventures.Debut::RollBonus()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.Units.GameDirector::Update() with 0 prefixes, 6 postfixes, 0 transpilers, 0 finalizers
+6 postfixes:
+* static void NetworkPlugin.Patch.UI.OtherPlayersOverlayPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.UI.ShopTradeIconPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.Network.BattleReportForwardPatch::Postfix()
+* static void NetworkPlugin.Patch.Network.MoodEffectSyncPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.Network.DebutBonusSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.EndTurnSyncPatch+SubscribeHook::Postfix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.Units.GameDirector::Update()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Battle.BattleController::StartPlayerTurn() with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.DeathPatches::StartPlayerTurn_Prefix(LBoL.Core.Battle.BattleController __instance)
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.EndTurnSyncPatch+BattleController_StartPlayerTurn_Reset::Postfix(LBoL.Core.Battle.BattleController __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Battle.BattleController::StartPlayerTurn()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Battle.BattleController::StartBattle() with 0 prefixes, 2 postfixes, 0 transpilers, 0 finalizers
+2 postfixes:
+* static void NetworkPlugin.Patch.GameEventDeathSyncPatch::OnBattleStart(LBoL.Core.Battle.BattleController __instance)
+* static void NetworkPlugin.Patch.Network.EndTurnSyncPatch+BattleController_StartBattle_Reset::Postfix(LBoL.Core.Battle.BattleController __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Battle.BattleController::StartBattle()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Battle.BattleController::EndBattle() with 0 prefixes, 2 postfixes, 0 transpilers, 0 finalizers
+2 postfixes:
+* static void NetworkPlugin.Patch.GameEventDeathSyncPatch::OnBattleEndBattle(LBoL.Core.Battle.BattleController __instance)
+* static void NetworkPlugin.Patch.Network.EndTurnSyncPatch+BattleController_EndBattle_Reset::Postfix(LBoL.Core.Battle.BattleController __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Battle.BattleController::EndBattle()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Battle.BattleController::RequestEndPlayerTurn() with 2 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+2 prefixes:
+* static bool NetworkPlugin.Patch.DeathPatches::RequestEndPlayerTurn_Prefix(LBoL.Core.Battle.BattleController __instance)
+* static bool NetworkPlugin.Patch.Network.EndTurnSyncPatch+BattleController_RequestEndPlayerTurn_Gate::Prefix(LBoL.Core.Battle.BattleController __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Battle.BattleController::RequestEndPlayerTurn()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching virtual bool LBoL.Core.Cards.Card::get_CanUse() with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.Network.EndTurnSyncPatch+Card_CanUse_BlockAfterEnd::Prefix(Boolean& __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on virtual bool LBoL.Core.Cards.Card::get_CanUse()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching bool LBoL.Core.Units.UltimateSkill::get_Available() with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.Network.EndTurnSyncPatch+UltimateSkill_Available_BlockAfterEnd::Prefix(Boolean& __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on bool LBoL.Core.Units.UltimateSkill::get_Available()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching bool LBoL.Core.Units.Doll::get_Usable() with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.Network.EndTurnSyncPatch+Doll_Usable_BlockAfterEnd::Prefix(Boolean& __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on bool LBoL.Core.Units.Doll::get_Usable()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching bool LBoL.Presentation.UI.Panels.PlayBoard::UseUsVerify(LBoL.Core.UnitSelector selector) with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.Network.EndTurnSyncPatch+PlayBoard_UseUsVerify_BlockAfterEnd::Prefix(Boolean& __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on bool LBoL.Presentation.UI.Panels.PlayBoard::UseUsVerify(LBoL.Core.UnitSelector selector)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching bool LBoL.Presentation.UI.Panels.PlayBoard::UseDollVerify(LBoL.Core.Units.Doll doll, LBoL.Core.UnitSelector selector) with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.Network.EndTurnSyncPatch+PlayBoard_UseDollVerify_BlockAfterEnd::Prefix(Boolean& __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on bool LBoL.Presentation.UI.Panels.PlayBoard::UseDollVerify(LBoL.Core.Units.Doll doll, LBoL.Core.UnitSelector selector)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.Units.GameDirector::Update() with 0 prefixes, 7 postfixes, 0 transpilers, 0 finalizers
+7 postfixes:
+* static void NetworkPlugin.Patch.UI.OtherPlayersOverlayPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.UI.ShopTradeIconPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.Network.BattleReportForwardPatch::Postfix()
+* static void NetworkPlugin.Patch.Network.MoodEffectSyncPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.Network.DebutBonusSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.EndTurnSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.EnemySpawnSyncPatch+SubscribeHook::Postfix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.Units.GameDirector::Update()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching LBoL.Base.ManaGroup LBoL.Core.Battle.BattleController::GainMana(LBoL.Base.ManaGroup group) with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.Network.EnergySyncPatch+GainManaPatch::Prefix(LBoL.Core.Battle.BattleController __instance, LBoL.Base.ManaGroup group, LBoL.Base.ManaGroup& __state)
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.EnergySyncPatch+GainManaPatch::Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Base.ManaGroup group, LBoL.Base.ManaGroup __result, LBoL.Base.ManaGroup __state)
+
+[Info   :  HarmonyX] Running ILHook manipulator on LBoL.Base.ManaGroup LBoL.Core.Battle.BattleController::GainMana(LBoL.Base.ManaGroup group)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching LBoL.Base.ManaGroup LBoL.Core.Battle.BattleController::LoseMana(LBoL.Base.ManaGroup group) with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.Network.EnergySyncPatch+LoseManaPatch::Prefix(LBoL.Core.Battle.BattleController __instance, LBoL.Base.ManaGroup group, LBoL.Base.ManaGroup& __state)
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.EnergySyncPatch+LoseManaPatch::Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Base.ManaGroup group, LBoL.Base.ManaGroup __result, LBoL.Base.ManaGroup __state)
+
+[Info   :  HarmonyX] Running ILHook manipulator on LBoL.Base.ManaGroup LBoL.Core.Battle.BattleController::LoseMana(LBoL.Base.ManaGroup group)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Battle.BattleController::ConsumeMana(LBoL.Base.ManaGroup group) with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.Network.EnergySyncPatch+ConsumeManaPatch::Prefix(LBoL.Core.Battle.BattleController __instance, LBoL.Base.ManaGroup group, NetworkPlugin.Patch.Network.EnergySyncPatch+ConsumeManaPatch+ConsumeState& __state)
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.EnergySyncPatch+ConsumeManaPatch::Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Base.ManaGroup group, NetworkPlugin.Patch.Network.EnergySyncPatch+ConsumeManaPatch+ConsumeState __state)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Battle.BattleController::ConsumeMana(LBoL.Base.ManaGroup group)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching bool LBoL.Core.Battle.BattleController::ConvertMana(LBoL.Base.ManaGroup input, LBoL.Base.ManaGroup output, bool allowPartial, LBoL.Base.ManaGroup& resultInput, LBoL.Base.ManaGroup& resultOutput) with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.Network.EnergySyncPatch+ConvertManaPatch::Prefix(LBoL.Core.Battle.BattleController __instance, LBoL.Base.ManaGroup input, LBoL.Base.ManaGroup output, bool allowPartial, LBoL.Base.ManaGroup& __state)
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.EnergySyncPatch+ConvertManaPatch::Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Base.ManaGroup input, LBoL.Base.ManaGroup output, bool allowPartial, bool __result, LBoL.Base.ManaGroup resultInput, LBoL.Base.ManaGroup resultOutput, LBoL.Base.ManaGroup __state)
+
+[Info   :  HarmonyX] Running ILHook manipulator on bool LBoL.Core.Battle.BattleController::ConvertMana(LBoL.Base.ManaGroup input, LBoL.Base.ManaGroup output, bool allowPartial, LBoL.Base.ManaGroup& resultInput, LBoL.Base.ManaGroup& resultOutput)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching LBoL.Base.ManaGroup LBoL.Core.Battle.BattleController::GainTurnMana(LBoL.Base.ManaGroup group) with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.Network.EnergySyncPatch+GainTurnManaPatch::Prefix(LBoL.Core.Battle.BattleController __instance, LBoL.Base.ManaGroup group, LBoL.Base.ManaGroup& __state)
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.EnergySyncPatch+GainTurnManaPatch::Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Base.ManaGroup group, LBoL.Base.ManaGroup __result, LBoL.Base.ManaGroup __state)
+
+[Info   :  HarmonyX] Running ILHook manipulator on LBoL.Base.ManaGroup LBoL.Core.Battle.BattleController::GainTurnMana(LBoL.Base.ManaGroup group)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching LBoL.Base.ManaGroup LBoL.Core.Battle.BattleController::LoseTurnMana(LBoL.Base.ManaGroup group) with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.Network.EnergySyncPatch+LoseTurnManaPatch::Prefix(LBoL.Core.Battle.BattleController __instance, LBoL.Base.ManaGroup group, LBoL.Base.ManaGroup& __state)
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.EnergySyncPatch+LoseTurnManaPatch::Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Base.ManaGroup group, LBoL.Base.ManaGroup __result, LBoL.Base.ManaGroup __state)
+
+[Info   :  HarmonyX] Running ILHook manipulator on LBoL.Base.ManaGroup LBoL.Core.Battle.BattleController::LoseTurnMana(LBoL.Base.ManaGroup group)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching virtual void LBoL.Core.Exhibit::NotifyActivating() with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.ExhibitSyncPatch+Exhibit_NotifyActivating_Patch::Postfix(LBoL.Core.Exhibit __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on virtual void LBoL.Core.Exhibit::NotifyActivating()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.Units.GameDirector::Update() with 0 prefixes, 8 postfixes, 0 transpilers, 0 finalizers
+8 postfixes:
+* static void NetworkPlugin.Patch.UI.OtherPlayersOverlayPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.UI.ShopTradeIconPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.Network.BattleReportForwardPatch::Postfix()
+* static void NetworkPlugin.Patch.Network.MoodEffectSyncPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.Network.DebutBonusSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.EndTurnSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.EnemySpawnSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.GameResultSyncPatch+SubscribeHook::Postfix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.Units.GameDirector::Update()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching virtual void LBoL.Presentation.UI.Panels.GameResultPanel::OnShowing(LBoL.Presentation.UI.Panels.GameResultData payload) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.GameResultSyncPatch+GameResultPanel_OnShowing_Patch::Postfix(LBoL.Presentation.UI.Panels.GameResultData payload)
+
+[Info   :  HarmonyX] Running ILHook manipulator on virtual void LBoL.Presentation.UI.Panels.GameResultPanel::OnShowing(LBoL.Presentation.UI.Panels.GameResultData payload)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching System.ValueTuple<int, int> LBoL.Core.Battle.BattleController::CastBlockShield(LBoL.Core.Units.Unit target, float block, float shield) with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.Network.PlayerStateSyncPatch+BattleController_CastBlockShield_Sync::Prefix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Units.Unit target, ValueTuple`2& __state)
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.PlayerStateSyncPatch+BattleController_CastBlockShield_Sync::Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Units.Unit target, float block, float shield, System.ValueTuple<int, int> __state)
+
+[Info   :  HarmonyX] Running ILHook manipulator on System.ValueTuple<int, int> LBoL.Core.Battle.BattleController::CastBlockShield(LBoL.Core.Units.Unit target, float block, float shield)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching System.ValueTuple<int, int> LBoL.Core.Battle.BattleController::LoseBlockShield(LBoL.Core.Units.Unit target, float block, float shield) with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.Network.PlayerStateSyncPatch+BattleController_LoseBlockShield_Sync::Prefix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Units.Unit target, ValueTuple`2& __state)
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.PlayerStateSyncPatch+BattleController_LoseBlockShield_Sync::Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Units.Unit target, float block, float shield, System.ValueTuple<int, int> __state)
+
+[Info   :  HarmonyX] Running ILHook manipulator on System.ValueTuple<int, int> LBoL.Core.Battle.BattleController::LoseBlockShield(LBoL.Core.Units.Unit target, float block, float shield)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Units.Unit::set_MaxHp(int value) with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.Network.PlayerStateSyncPatch+Unit_SetMaxHp_Sync::Prefix(LBoL.Core.Units.Unit __instance, Int32& __state)
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.PlayerStateSyncPatch+Unit_SetMaxHp_Sync::Postfix(LBoL.Core.Units.Unit __instance, int __state)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Units.Unit::set_MaxHp(int value)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.GameRunController::GainMoney(int money, bool triggerVisual, LBoL.Core.VisualSourceData sourceData) with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.Network.PlayerStateSyncPatch+GameRun_GainMoney_Sync::Prefix(LBoL.Core.GameRunController __instance, int money, Int32& __state)
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.PlayerStateSyncPatch+GameRun_GainMoney_Sync::Postfix(LBoL.Core.GameRunController __instance, int money, int __state)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.GameRunController::GainMoney(int money, bool triggerVisual, LBoL.Core.VisualSourceData sourceData)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.GameRunController::ConsumeMoney(int cost) with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.Network.PlayerStateSyncPatch+GameRun_ConsumeMoney_Sync::Prefix(LBoL.Core.GameRunController __instance, int cost, Int32& __state)
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.PlayerStateSyncPatch+GameRun_ConsumeMoney_Sync::Postfix(LBoL.Core.GameRunController __instance, int cost, int __state)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.GameRunController::ConsumeMoney(int cost)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.GameRunController::LoseMoney(int money) with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.Network.PlayerStateSyncPatch+GameRun_LoseMoney_Sync::Prefix(LBoL.Core.GameRunController __instance, int money, Int32& __state)
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.PlayerStateSyncPatch+GameRun_LoseMoney_Sync::Postfix(LBoL.Core.GameRunController __instance, int money, int __state)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.GameRunController::LoseMoney(int money)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.GameRunController::AddDeckCards(System.Collections.Generic.IEnumerable<LBoL.Core.Cards.Card> cards, bool triggerVisual, LBoL.Core.VisualSourceData sourceData) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.PotionToolSyncPatch+AddDeckCardsPatch::Postfix(LBoL.Core.GameRunController __instance, System.Collections.Generic.IEnumerable<LBoL.Core.Cards.Card> cards, bool triggerVisual, LBoL.Core.VisualSourceData sourceData)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.GameRunController::AddDeckCards(System.Collections.Generic.IEnumerable<LBoL.Core.Cards.Card> cards, bool triggerVisual, LBoL.Core.VisualSourceData sourceData)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.GameRunController::RemoveDeckCards(System.Collections.Generic.IEnumerable<LBoL.Core.Cards.Card> cards, bool triggerVisual) with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.Network.PotionToolSyncPatch+RemoveDeckCardsPatch::Prefix(System.Collections.Generic.IEnumerable<LBoL.Core.Cards.Card> cards, LBoL.Core.Cards.Card[]& __state)
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.PotionToolSyncPatch+RemoveDeckCardsPatch::Postfix(LBoL.Core.GameRunController __instance, LBoL.Core.Cards.Card[] __state, bool triggerVisual)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.GameRunController::RemoveDeckCards(System.Collections.Generic.IEnumerable<LBoL.Core.Cards.Card> cards, bool triggerVisual)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Battle.BattleController::RecordCardUsage(LBoL.Core.Cards.Card card) with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.Network.PotionToolSyncPatch+RecordCardUsagePatch::Prefix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Cards.Card card, NetworkPlugin.Patch.Network.PotionToolSyncPatch+RecordCardUsagePatch+ToolUseState& __state)
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.PotionToolSyncPatch+RecordCardUsagePatch::Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Cards.Card card, NetworkPlugin.Patch.Network.PotionToolSyncPatch+RecordCardUsagePatch+ToolUseState __state)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Battle.BattleController::RecordCardUsage(LBoL.Core.Cards.Card card)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.Units.GameDirector::Update() with 0 prefixes, 9 postfixes, 0 transpilers, 0 finalizers
+9 postfixes:
+* static void NetworkPlugin.Patch.UI.OtherPlayersOverlayPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.UI.ShopTradeIconPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.Network.BattleReportForwardPatch::Postfix()
+* static void NetworkPlugin.Patch.Network.MoodEffectSyncPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.Network.DebutBonusSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.EndTurnSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.EnemySpawnSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.GameResultSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.RemoteCardUsePatch+SubscribeHook::Postfix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.Units.GameDirector::Update()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.GameMap::EnterNode(LBoL.Core.MapNode node, bool freeMove, bool forced) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.RoomEntrySyncPatch+GameMap_EnterNode_Patch::Postfix(LBoL.Core.GameMap __instance, LBoL.Core.MapNode node, bool freeMove, bool forced)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.GameMap::EnterNode(LBoL.Core.MapNode node, bool freeMove, bool forced)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.GameMap::EnterNode(LBoL.Core.MapNode node, bool freeMove, bool forced) with 0 prefixes, 2 postfixes, 0 transpilers, 0 finalizers
+2 postfixes:
+* static void NetworkPlugin.Patch.Network.RoomEntrySyncPatch+GameMap_EnterNode_Patch::Postfix(LBoL.Core.GameMap __instance, LBoL.Core.MapNode node, bool freeMove, bool forced)
+* static void NetworkPlugin.Patch.Network.RoomStateSyncPatch+GameMap_EnterNode_RequestRoomState::Postfix(LBoL.Core.MapNode node)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.GameMap::EnterNode(LBoL.Core.MapNode node, bool freeMove, bool forced)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Battle.BattleController::StartBattle() with 0 prefixes, 3 postfixes, 0 transpilers, 0 finalizers
+3 postfixes:
+* static void NetworkPlugin.Patch.GameEventDeathSyncPatch::OnBattleStart(LBoL.Core.Battle.BattleController __instance)
+* static void NetworkPlugin.Patch.Network.EndTurnSyncPatch+BattleController_StartBattle_Reset::Postfix(LBoL.Core.Battle.BattleController __instance)
+* static void NetworkPlugin.Patch.Network.RoomStateSyncPatch+BattleController_StartBattle_UploadAndApply::Postfix(LBoL.Core.Battle.BattleController __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Battle.BattleController::StartBattle()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Battle.BattleController::RequestEndPlayerTurn() with 2 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+2 prefixes:
+* static bool NetworkPlugin.Patch.DeathPatches::RequestEndPlayerTurn_Prefix(LBoL.Core.Battle.BattleController __instance)
+* static bool NetworkPlugin.Patch.Network.EndTurnSyncPatch+BattleController_RequestEndPlayerTurn_Gate::Prefix(LBoL.Core.Battle.BattleController __instance)
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.RoomStateSyncPatch+BattleController_EndTurn_Upload::Postfix(LBoL.Core.Battle.BattleController __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Battle.BattleController::RequestEndPlayerTurn()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Battle.BattleController::EndBattle() with 0 prefixes, 3 postfixes, 0 transpilers, 0 finalizers
+3 postfixes:
+* static void NetworkPlugin.Patch.GameEventDeathSyncPatch::OnBattleEndBattle(LBoL.Core.Battle.BattleController __instance)
+* static void NetworkPlugin.Patch.Network.EndTurnSyncPatch+BattleController_EndBattle_Reset::Postfix(LBoL.Core.Battle.BattleController __instance)
+* static void NetworkPlugin.Patch.Network.RoomStateSyncPatch+BattleController_EndBattle_UploadFinished::Postfix(LBoL.Core.Battle.BattleController __instance)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Battle.BattleController::EndBattle()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.Units.GameDirector::Update() with 0 prefixes, 10 postfixes, 0 transpilers, 0 finalizers
+10 postfixes:
+* static void NetworkPlugin.Patch.UI.OtherPlayersOverlayPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.UI.ShopTradeIconPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.Network.BattleReportForwardPatch::Postfix()
+* static void NetworkPlugin.Patch.Network.MoodEffectSyncPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.Network.DebutBonusSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.EndTurnSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.EnemySpawnSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.GameResultSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.RemoteCardUsePatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.SpawnedEnemySyncPatch+SubscribeHook::Postfix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.Units.GameDirector::Update()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Core.Units.EnemyGroup::Add(LBoL.Core.Units.EnemyUnit enemy) with 0 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 postfixes:
+* static void NetworkPlugin.Patch.Network.SpawnedEnemySyncPatch+EnemyGroup_Add_Patch::Postfix(LBoL.Core.Units.EnemyGroup __instance, LBoL.Core.Units.EnemyUnit enemy)
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Core.Units.EnemyGroup::Add(LBoL.Core.Units.EnemyUnit enemy)
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.Units.GameDirector::Update() with 0 prefixes, 11 postfixes, 0 transpilers, 0 finalizers
+11 postfixes:
+* static void NetworkPlugin.Patch.UI.OtherPlayersOverlayPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.UI.ShopTradeIconPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.Network.BattleReportForwardPatch::Postfix()
+* static void NetworkPlugin.Patch.Network.MoodEffectSyncPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.Network.DebutBonusSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.EndTurnSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.EnemySpawnSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.GameResultSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.RemoteCardUsePatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.SpawnedEnemySyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.TurnEndSnapshotReceivePatch+SubscribeHook::Postfix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.Units.GameDirector::Update()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching void LBoL.Presentation.Units.GameDirector::Update() with 0 prefixes, 12 postfixes, 0 transpilers, 0 finalizers
+12 postfixes:
+* static void NetworkPlugin.Patch.UI.OtherPlayersOverlayPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.UI.ShopTradeIconPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.Network.BattleReportForwardPatch::Postfix()
+* static void NetworkPlugin.Patch.Network.MoodEffectSyncPatch::GameDirector_Update_Postfix()
+* static void NetworkPlugin.Patch.Network.DebutBonusSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.EndTurnSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.EnemySpawnSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.GameResultSyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.RemoteCardUsePatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.SpawnedEnemySyncPatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.TurnEndSnapshotReceivePatch+SubscribeHook::Postfix()
+* static void NetworkPlugin.Patch.Network.TurnStartSnapshotReceivePatch+SubscribeHook::Postfix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on void LBoL.Presentation.Units.GameDirector::Update()
+[Info   :  HarmonyX] Writing postfixes
+[Info   :  HarmonyX] Patching int LBoL.Presentation.GameMaster::get_CurrentProfileLevel() with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.Network.UnlockEverythingForMPPatch+GameMaster_CurrentProfileLevel_Getter_Patch::Prefix(Int32& __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on int LBoL.Presentation.GameMaster::get_CurrentProfileLevel()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching int LBoL.Core.GameRunStartupParameters::get_UnlockLevel() with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool NetworkPlugin.Patch.Network.UnlockEverythingForMPPatch+GameRunStartupParameters_UnlockLevel_Getter_Patch::Prefix(Int32& __result)
+
+[Info   :  HarmonyX] Running ILHook manipulator on int LBoL.Core.GameRunStartupParameters::get_UnlockLevel()
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Patching LBoL.Core.Units.EnemyUnit LBoL.Core.Battle.BattleController::Spawn(LBoL.Core.Units.EnemyUnit spawner, Type type, int rootIndex, bool isServant) with 1 prefixes, 1 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static void NetworkPlugin.Patch.EnemyUnits.SpawnedEnemyManager+BattleController_Spawn_Patch::Prefix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Units.EnemyUnit spawner, Type type, int rootIndex, bool isServant, NetworkPlugin.Patch.EnemyUnits.SpawnedEnemyManager+RngSwapState& __state)
+1 postfixes:
+* static void NetworkPlugin.Patch.EnemyUnits.SpawnedEnemyManager+BattleController_Spawn_Patch::Postfix(LBoL.Core.Battle.BattleController __instance, LBoL.Core.Units.EnemyUnit spawner, Type type, int rootIndex, bool isServant, LBoL.Core.Units.EnemyUnit __result, NetworkPlugin.Patch.EnemyUnits.SpawnedEnemyManager+RngSwapState __state)
+
+[Info   :  HarmonyX] Running ILHook manipulator on LBoL.Core.Units.EnemyUnit LBoL.Core.Battle.BattleController::Spawn(LBoL.Core.Units.EnemyUnit spawner, Type type, int rootIndex, bool isServant)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :  HarmonyX] Writing postfixes
+[Info   :Network Plugin] [Harmony] Patch result: ok=80, failed=0
+[Info   :Network Plugin] 补丁已加载
+[Info   :Network Plugin] === 当前配置信息 ===
+[Info   :Network Plugin] 功能开关:
+[Info   :Network Plugin]   卡牌同步: True
+[Info   :Network Plugin]   法力同步: True
+[Info   :Network Plugin]   战斗同步: True
+[Info   :Network Plugin]   地图同步: True
+[Info   :Network Plugin]   存档/读档同步: False
+[Info   :Network Plugin] 性能参数:
+[Info   :Network Plugin]   最大队列大小: 100
+[Info   :Network Plugin]   缓存过期时间: 5 分钟
+[Info   :Network Plugin]   网络超时时间: 30 秒
+[Info   :Network Plugin]   最大重连尝试: 5
+[Info   :Network Plugin] 网络参数:
+[Info   :Network Plugin]   PlayerIdOverride: www123
+[Info   :Network Plugin]   服务器IP: 127.0.0.1
+[Info   :Network Plugin]   服务器端口: 7777
+[Info   :Network Plugin]   日志详细程度: 2
+[Info   :Network Plugin] ===================
+[Message:   BepInEx] Chainloader startup complete
+[Info   :   ModLBoL] [ModLBoL] 检查到 Mod 加载完成
+[Info   :  HarmonyX] Patching static void LBoL.Presentation.GameMaster::SetModInfos(System.Collections.Generic.IEnumerable<LBoL.Presentation.ModInfo> modInfos) with 1 prefixes, 0 postfixes, 0 transpilers, 0 finalizers
+1 prefixes:
+* static bool catrice.ModLBoL.AfterPluginLoaded::FakePrefix()
+
+[Info   :  HarmonyX] Running ILHook manipulator on static void LBoL.Presentation.GameMaster::SetModInfos(System.Collections.Generic.IEnumerable<LBoL.Presentation.ModInfo> modInfos)
+[Info   :  HarmonyX] Writing prefixes
+[Info   :   ModLBoL] [ModLBoL] 设置 GameMaster.Modding = True
+[Debug  :   ModLBoL] [ModLBoL] ModInfos 原为空，已创建新的列表实例。
+[Info   :   ModLBoL] [ModLBoL] 记录加载成功 1 个，失败 1 个。
+[Info   : Unity Log] RenderGraph is now enabled.
+[Error  : Unity Log] Multiple Window Exists
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（MainMenu）。
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（StartGame）。
+[Info   :Network Plugin] [ServerCore] Server started on port 7777
+[Info   :   Console] [Server] Server started on port 7777.
+[Info   :Network Plugin] [Server] Server started on port 7777.
+[Info   :   Console] [Client] Network client started successfully.
+[Info   :   Console] [Client] Attempting to connect to 127.0.0.1:7777 with key 'LBoL_Network_Plugin'...
+[Info   :   Console] [Client] Connected to server: 127.0.0.1:7777
+[Info   :   Console] [Server] Client connected: 127.0.0.1:57548
+[Info   :Network Plugin] [Server] Client connected: 127.0.0.1:57548
+[Info   :Network Plugin] [SyncManager] 网络客户端初始化成功
+[Info   :Network Plugin] [SyncManager] 同步管理器初始化完成
+[Info   :Network Plugin] [SyncManager] 网络连接已恢复，开始处理队列事件
+[Info   :   Console] [Client] Game event sent: FullStateSyncRequest
+[Info   :Network Plugin] [SyncManager] 发起完整状态同步请求
+[Info   :   Console] [Client] Game event sent: OnConnectionEstablished
+[Info   :   Console] [Client] Game event sent: PlayerJoined
+[Info   :   Console] [Server] Received game event: FullStateSyncRequest from Player_0
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Info   :   Console] [Server] Player Player (Player_0) joined the game
+[Info   :   Console] [Server] Received game event: OnConnectionEstablished from Player_0
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Received game event: Welcome
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Received game event: FullStateSyncRequest
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMapNodeEnter
+[Info   :   Console] [Client] Game event sent: RoomStateRequest
+[Info   :   Console] [Client] Game event sent: RoomStateResponse
+[Info   :   Console] [Server] Received game event: RoomStateRequest from Player_0
+[Info   :   Console] [Server] Received game event: RoomStateResponse from Player_0
+[Info   :   Console] [Server] Received game event: OnMapNodeEnter from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnDebutBonusRolled
+[Info   :   Console] [Server] Received game event: OnDebutBonusRolled from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Debug  :Network Plugin] [ReconnectionManager] Full snapshot created at 639048483918004634
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: PlayerStateUpdate
+[Info   :   Console] [Server] Unknown system message type: PlayerStateUpdate from 127.0.0.1:57548
+[Warning:Network Plugin] [Server] Unknown system message type: PlayerStateUpdate from 127.0.0.1:57548
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Request sent: UpdatePlayerLocation
+[Info   :Network Plugin] [MapSyncPatch] Player location updated: (0, 0) - Entry
+[Info   :   Console] [Client] Request sent: UpdatePlayerLocation
+[Info   :Network Plugin] [MapSyncPatch] Player location updated: (0, 0) - Entry
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMapNodeEnter
+[Info   :   Console] [Client] Game event sent: RoomStateRequest
+[Info   :   Console] [Client] Game event sent: RoomStateResponse
+[Info   :   Console] [Server] Received game event: RoomStateRequest from Player_0
+[Info   :   Console] [Server] Received game event: RoomStateResponse from Player_0
+[Info   :   Console] [Server] Received game event: OnMapNodeEnter from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Debug  :Network Plugin] [DeathStateManager] All fake death records cleared
+[Debug  :Network Plugin] [GameEventDeathSync] 战斗开始，死亡状态已重置
+[Info   :   Console] [Client] Request sent: BattleEnemyIntentChanged
+[Debug  :Network Plugin] [EnemyIntentSync] Intentions updated. Enemy=向日葵妖精 RootIndex=0 Round=1 EOT=True
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: BattleEnemyIntentChanged from Player_0
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Debug  :Network Plugin] [ReconnectionManager] Full snapshot created at 639048484217994077
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Request sent: UpdatePlayerLocation
+[Info   :Network Plugin] [MapSyncPatch] Player location updated: (1, 4) - Enemy
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Debug  :Network Plugin] [ReconnectionManager] Full snapshot created at 639048484517995726
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: BattlePlayerDamageBroadcast
+[Info   :Network Plugin] [BattlePlayerDamage] BattlePlayerDamageBroadcast Total=6.0 (HP: 6.0, Block: 0.0, Shield: 0.0). Remaining HP: 94/100
+[Info   :   Console] [Server] Received game event: BattlePlayerDamageBroadcast from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: BattlePlayerDamageBroadcast
+[Info   :Network Plugin] [BattlePlayerDamage] BattlePlayerDamageBroadcast Total=6.0 (HP: 6.0, Block: 0.0, Shield: 0.0). Remaining HP: 88/100
+[Info   :   Console] [Server] Received game event: BattlePlayerDamageBroadcast from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Request sent: BattleEnemyIntentChanged
+[Debug  :Network Plugin] [EnemyIntentSync] Intentions updated. Enemy=向日葵妖精 RootIndex=0 Round=2 EOT=True
+[Info   :   Console] [Server] Received game event: BattleEnemyIntentChanged from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: BattlePlayerDamageBroadcast
+[Info   :Network Plugin] [BattlePlayerDamage] BattlePlayerDamageBroadcast Total=7.0 (HP: 0.0, Block: 7.0, Shield: 0.0). Remaining HP: 88/100
+[Info   :   Console] [Server] Received game event: BattlePlayerDamageBroadcast from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Request sent: BattleEnemyIntentChanged
+[Debug  :Network Plugin] [EnemyIntentSync] Intentions updated. Enemy=向日葵妖精 RootIndex=0 Round=3 EOT=True
+[Info   :   Console] [Server] Received game event: BattleEnemyIntentChanged from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Debug  :Network Plugin] [ReconnectionManager] Full snapshot created at 639048484817996920
+[Info   :   Console] [Client] Game event sent: BattlePlayerDamageBroadcast
+[Info   :Network Plugin] [BattlePlayerDamage] BattlePlayerDamageBroadcast Total=8.0 (HP: 8.0, Block: 0.0, Shield: 0.0). Remaining HP: 80/100
+[Info   :   Console] [Server] Received game event: BattlePlayerDamageBroadcast from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: BattlePlayerDamageBroadcast
+[Info   :Network Plugin] [BattlePlayerDamage] BattlePlayerDamageBroadcast Total=8.0 (HP: 8.0, Block: 0.0, Shield: 0.0). Remaining HP: 72/100
+[Info   :   Console] [Server] Received game event: BattlePlayerDamageBroadcast from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Request sent: BattleEnemyIntentChanged
+[Debug  :Network Plugin] [EnemyIntentSync] Intentions updated. Enemy=向日葵妖精 RootIndex=0 Round=4 EOT=True
+[Info   :   Console] [Server] Received game event: BattleEnemyIntentChanged from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: BattlePlayerHealBroadcast
+[Info   :Network Plugin] [BattlePlayerHeal] BattlePlayerHealBroadcast Actual=3 After HP 75/100 Block 0 Shield 0
+[Info   :   Console] [Server] Received game event: BattlePlayerHealBroadcast from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Debug  :Network Plugin] [DeathStateManager] All fake death records cleared
+[Debug  :Network Plugin] [DeathStateManager] All fake death records cleared
+[Debug  :Network Plugin] [GameEventDeathSync] 战斗结束，死亡状态已清理
+[Info   :   Console] [Client] Request sent: UpdatePlayerLocation
+[Info   :Network Plugin] [MapSyncPatch] Player location updated: (1, 4) - Enemy
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: PlayerStateUpdate
+[Info   :   Console] [Server] Unknown system message type: PlayerStateUpdate from 127.0.0.1:57548
+[Warning:Network Plugin] [Server] Unknown system message type: PlayerStateUpdate from 127.0.0.1:57548
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Request sent: UpdatePlayerLocation
+[Info   :Network Plugin] [MapSyncPatch] Player location updated: (1, 4) - Enemy
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Server] Client disconnected: 127.0.0.1:57548, Reason: RemoteConnectionClose
+[Info   :Network Plugin] [Server] Client disconnected: 127.0.0.1:57548, Reason: RemoteConnectionClose
+[Info   :   Console] [Client] Client services stopped.
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（MainMenu）。
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（StartGame）。
+[Info   :   Console] [Client] Network client started successfully.
+[Info   :   Console] [Client] Attempting to connect to 127.0.0.1:7777 with key 'LBoL_Network_Plugin'...
+[Info   :   Console] [Client] Connected to server: 127.0.0.1:7777
+[Info   :   Console] [Server] Client connected: 127.0.0.1:52868
+[Info   :Network Plugin] [Server] Client connected: 127.0.0.1:52868
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :Network Plugin] [SyncManager] 网络连接已恢复，开始处理队列事件
+[Info   :   Console] [Client] Game event sent: FullStateSyncRequest
+[Info   :Network Plugin] [SyncManager] 发起完整状态同步请求
+[Info   :   Console] [Client] Game event sent: OnConnectionEstablished
+[Info   :   Console] [Client] Game event sent: PlayerJoined
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Received game event: Welcome
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Server] Received game event: FullStateSyncRequest from Player_1
+[Info   :   Console] [Server] Player Player (Player_1) joined the game
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Server] Received game event: OnConnectionEstablished from Player_1
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Debug  :Network Plugin] [ReconnectionManager] Full snapshot created at 639048485418298921
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（StartGame）。
+[Info   :   Console] [Server] Client disconnected: 127.0.0.1:52868, Reason: RemoteConnectionClose
+[Info   :Network Plugin] [Server] Client disconnected: 127.0.0.1:52868, Reason: RemoteConnectionClose
+[Info   :   Console] [Client] Client services stopped.
+[Info   :Network Plugin] [ServerCore] Server stopped
+[Info   :   Console] [Server] Server stopped.
+[Info   :Network Plugin] [Server] Server stopped.
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（StartGame）。
+[Info   :Network Plugin] [ServerCore] Server started on port 7777
+[Info   :   Console] [Server] Server started on port 7777.
+[Info   :Network Plugin] [Server] Server started on port 7777.
+[Info   :   Console] [Client] Network client started successfully.
+[Info   :   Console] [Client] Attempting to connect to 127.0.0.1:7777 with key 'LBoL_Network_Plugin'...
+[Info   :   Console] [Server] Client connected: 127.0.0.1:50440
+[Info   :Network Plugin] [Server] Client connected: 127.0.0.1:50440
+[Info   :   Console] [Client] Connected to server: 127.0.0.1:7777
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :Network Plugin] [SyncManager] 网络连接已恢复，开始处理队列事件
+[Info   :   Console] [Client] Game event sent: FullStateSyncRequest
+[Info   :Network Plugin] [SyncManager] 发起完整状态同步请求
+[Info   :   Console] [Client] Game event sent: OnConnectionEstablished
+[Info   :   Console] [Client] Game event sent: PlayerJoined
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Received game event: Welcome
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Server] Received game event: FullStateSyncRequest from Player_0
+[Info   :   Console] [Server] Player Player (Player_0) joined the game
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Server] Received game event: OnConnectionEstablished from Player_0
+[Info   :   Console] [Client] Received game event: FullStateSyncRequest
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（StartGame）。
+[Info   :   Console] [Server] Client disconnected: 127.0.0.1:50440, Reason: RemoteConnectionClose
+[Info   :Network Plugin] [Server] Client disconnected: 127.0.0.1:50440, Reason: RemoteConnectionClose
+[Info   :   Console] [Client] Client services stopped.
+[Info   :Network Plugin] [ServerCore] Server stopped
+[Info   :   Console] [Server] Server stopped.
+[Info   :Network Plugin] [Server] Server stopped.
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（StartGame）。
+[Info   :   Console] [Client] Network client started successfully.
+[Info   :   Console] [Client] Attempting to connect to 127.0.0.1:7777 with key 'LBoL_Network_Plugin'...
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（StartGame）。
+[Info   :   Console] [Client] Failed to start network client.
+[Info   :   Console] [Client] Attempting to connect to 127.0.0.1:7777 with key 'LBoL_Network_Plugin'...
+[Info   :   Console] [Client] Disconnected from server: 127.0.0.1:7777, Reason: ConnectionFailed
+[Warning:Network Plugin] [SyncManager] 网络连接丢失，切换到离线模式
+[Debug  :Network Plugin] [SyncManager] 网络不可用，跳过事件发送: ConnectionLost
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（StartGame）。
+[Info   :Network Plugin] [ServerCore] Server started on port 7777
+[Info   :   Console] [Server] Server started on port 7777.
+[Info   :Network Plugin] [Server] Server started on port 7777.
+[Info   :   Console] [Client] Failed to start network client.
+[Info   :   Console] [Client] Attempting to connect to 127.0.0.1:7777 with key 'LBoL_Network_Plugin'...
+[Info   :   Console] [Server] Client connected: 127.0.0.1:59969
+[Info   :Network Plugin] [Server] Client connected: 127.0.0.1:59969
+[Info   :   Console] [Client] Connected to server: 127.0.0.1:7777
+[Info   :Network Plugin] [SyncManager] 网络连接已恢复，开始处理队列事件
+[Info   :   Console] [Client] Game event sent: FullStateSyncRequest
+[Info   :Network Plugin] [SyncManager] 发起完整状态同步请求
+[Info   :   Console] [Client] Game event sent: OnConnectionEstablished
+[Info   :   Console] [Client] Game event sent: PlayerJoined
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Received game event: Welcome
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Server] Received game event: FullStateSyncRequest from Player_0
+[Info   :   Console] [Server] Player Player (Player_0) joined the game
+[Info   :   Console] [Server] Received game event: OnConnectionEstablished from Player_0
+[Info   :   Console] [Client] Received game event: FullStateSyncRequest
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（StartGame）。
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（MainMenu）。
+[Info   :   Console] [Server] Client disconnected: 127.0.0.1:59969, Reason: RemoteConnectionClose
+[Info   :Network Plugin] [Server] Client disconnected: 127.0.0.1:59969, Reason: RemoteConnectionClose
+[Info   :   Console] [Client] Client services stopped.
+[Info   :Network Plugin] [ServerCore] Server stopped
+[Info   :   Console] [Server] Server stopped.
+[Info   :Network Plugin] [Server] Server stopped.
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（MainMenu）。
+[Info   :   Console] [Client] Network client started successfully.
+[Info   :   Console] [Client] Attempting to connect to 127.0.0.1:7777 with key 'LBoL_Network_Plugin'...
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（StartGame）。
+[Info   :   Console] [Client] Failed to start network client.
+[Info   :   Console] [Client] Attempting to connect to 127.0.0.1:7777 with key 'LBoL_Network_Plugin'...
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（StartGame）。
+[Info   :Network Plugin] [ServerCore] Server started on port 7777
+[Info   :   Console] [Server] Server started on port 7777.
+[Info   :Network Plugin] [Server] Server started on port 7777.
+[Info   :   Console] [Client] Failed to start network client.
+[Info   :   Console] [Client] Attempting to connect to 127.0.0.1:7777 with key 'LBoL_Network_Plugin'...
+[Info   :   Console] [Server] Client connected: 127.0.0.1:54975
+[Info   :Network Plugin] [Server] Client connected: 127.0.0.1:54975
+[Info   :   Console] [Client] Connected to server: 127.0.0.1:7777
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :Network Plugin] [SyncManager] 网络连接已恢复，开始处理队列事件
+[Info   :   Console] [Client] Game event sent: FullStateSyncRequest
+[Info   :Network Plugin] [SyncManager] 发起完整状态同步请求
+[Info   :   Console] [Client] Game event sent: OnConnectionEstablished
+[Info   :   Console] [Client] Game event sent: PlayerJoined
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Received game event: Welcome
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Server] Received game event: FullStateSyncRequest from Player_0
+[Info   :   Console] [Server] Player Player (Player_0) joined the game
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Server] Received game event: OnConnectionEstablished from Player_0
+[Info   :   Console] [Client] Received game event: FullStateSyncRequest
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（StartGame）。
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（StartGame）。
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（StartGame）。
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMapNodeEnter
+[Info   :   Console] [Client] Game event sent: RoomStateRequest
+[Info   :   Console] [Client] Game event sent: RoomStateResponse
+[Info   :   Console] [Server] Received game event: RoomStateRequest from Player_0
+[Info   :   Console] [Server] Received game event: RoomStateResponse from Player_0
+[Info   :   Console] [Server] Received game event: OnMapNodeEnter from Player_0
+[Debug  :Network Plugin] [ReconnectionManager] Full snapshot created at 639048486018304099
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Server] Client disconnected: 127.0.0.1:54975, Reason: RemoteConnectionClose
+[Info   :Network Plugin] [Server] Client disconnected: 127.0.0.1:54975, Reason: RemoteConnectionClose
+[Info   :   Console] [Client] Client services stopped.
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（MainMenu）。
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（StartGame）。
+[Info   :   Console] [Client] Network client started successfully.
+[Info   :   Console] [Client] Attempting to connect to 127.0.0.1:7777 with key 'LBoL_Network_Plugin'...
+[Info   :   Console] [Server] Client connected: 127.0.0.1:54396
+[Info   :Network Plugin] [Server] Client connected: 127.0.0.1:54396
+[Info   :   Console] [Client] Connected to server: 127.0.0.1:7777
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :Network Plugin] [SyncManager] 网络连接已恢复，开始处理队列事件
+[Info   :   Console] [Client] Game event sent: FullStateSyncRequest
+[Info   :Network Plugin] [SyncManager] 发起完整状态同步请求
+[Info   :   Console] [Client] Game event sent: OnConnectionEstablished
+[Info   :   Console] [Client] Game event sent: PlayerJoined
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Received game event: Welcome
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Server] Received game event: FullStateSyncRequest from Player_1
+[Info   :   Console] [Server] Player Player (Player_1) joined the game
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Server] Received game event: OnConnectionEstablished from Player_1
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMapNodeEnter
+[Info   :   Console] [Client] Game event sent: RoomStateRequest
+[Info   :   Console] [Server] Received game event: RoomStateRequest from Player_1
+[Info   :   Console] [Server] Received game event: OnMapNodeEnter from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: PlayerStateUpdate
+[Info   :   Console] [Server] Unknown system message type: PlayerStateUpdate from 127.0.0.1:54396
+[Warning:Network Plugin] [Server] Unknown system message type: PlayerStateUpdate from 127.0.0.1:54396
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Request sent: UpdatePlayerLocation
+[Info   :Network Plugin] [MapSyncPatch] Player location updated: (0, 0) - Entry
+[Info   :   Console] [Client] Request sent: UpdatePlayerLocation
+[Info   :Network Plugin] [MapSyncPatch] Player location updated: (0, 0) - Entry
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Debug  :Network Plugin] [ReconnectionManager] Full snapshot created at 639048486318302827
+[Info   :   Console] [Client] Game event sent: OnMapNodeEnter
+[Info   :   Console] [Client] Game event sent: RoomStateRequest
+[Info   :   Console] [Server] Received game event: RoomStateRequest from Player_1
+[Info   :   Console] [Server] Received game event: OnMapNodeEnter from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Debug  :Network Plugin] [DeathStateManager] All fake death records cleared
+[Debug  :Network Plugin] [GameEventDeathSync] 战斗开始，死亡状态已重置
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Request sent: BattleEnemyIntentChanged
+[Debug  :Network Plugin] [EnemyIntentSync] Intentions updated. Enemy=红帽乌鸦 RootIndex=0 Round=1 EOT=True
+[Info   :   Console] [Client] Request sent: BattleEnemyIntentChanged
+[Debug  :Network Plugin] [EnemyIntentSync] Intentions updated. Enemy=紫帽乌鸦 RootIndex=1 Round=1 EOT=True
+[Info   :   Console] [Server] Received game event: BattleEnemyIntentChanged from Player_1
+[Info   :   Console] [Server] Received game event: BattleEnemyIntentChanged from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Debug  :Network Plugin] [ReconnectionManager] Full snapshot created at 639048486618308308
+[Info   :   Console] [Client] Game event sent: BattlePlayerDamageReport
+[Info   :Network Plugin] [BattlePlayerDamage] BattlePlayerDamageReport Total=6.0 (HP: 0.0, Block: 6.0, Shield: 0.0). Remaining HP: 100/100
+[Info   :   Console] [Server] Received game event: BattlePlayerDamageReport from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Request sent: BattleEnemyIntentChanged
+[Debug  :Network Plugin] [EnemyIntentSync] Intentions updated. Enemy=红帽乌鸦 RootIndex=0 Round=2 EOT=True
+[Info   :   Console] [Client] Request sent: BattleEnemyIntentChanged
+[Debug  :Network Plugin] [EnemyIntentSync] Intentions updated. Enemy=紫帽乌鸦 RootIndex=1 Round=2 EOT=True
+[Info   :   Console] [Server] Received game event: BattleEnemyIntentChanged from Player_1
+[Info   :   Console] [Server] Received game event: BattleEnemyIntentChanged from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Server] Host changed to Player_1
+[Info   :   Console] [Client] Received game event: HostChanged
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: BattlePlayerStatusEffectsDeltaBroadcast
+[Info   :   Console] [Client] Game event sent: BattlePlayerStatusEffectsFullBroadcast
+[Info   :   Console] [Server] Received game event: BattlePlayerStatusEffectsDeltaBroadcast from Player_1
+[Info   :   Console] [Server] Received game event: BattlePlayerStatusEffectsFullBroadcast from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: BattlePlayerHealBroadcast
+[Info   :Network Plugin] [BattlePlayerHeal] BattlePlayerHealBroadcast Actual=0 After HP 100/100 Block 0 Shield 0
+[Info   :   Console] [Server] Received game event: BattlePlayerHealBroadcast from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: BattlePlayerDamageBroadcast
+[Info   :Network Plugin] [BattlePlayerDamage] BattlePlayerDamageBroadcast Total=11.0 (HP: 1.0, Block: 10.0, Shield: 0.0). Remaining HP: 99/100
+[Info   :   Console] [Server] Received game event: BattlePlayerDamageBroadcast from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Request sent: BattleEnemyIntentChanged
+[Debug  :Network Plugin] [EnemyIntentSync] Intentions updated. Enemy=红帽乌鸦 RootIndex=0 Round=3 EOT=True
+[Info   :   Console] [Server] Received game event: BattleEnemyIntentChanged from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Request sent: BattleEnemyIntentChanged
+[Debug  :Network Plugin] [EnemyIntentSync] Intentions updated. Enemy=红帽乌鸦 RootIndex=0 Round=4 EOT=True
+[Info   :   Console] [Server] Received game event: BattleEnemyIntentChanged from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Debug  :Network Plugin] [ReconnectionManager] Full snapshot created at 639048486918309220
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: BattlePlayerHealBroadcast
+[Info   :Network Plugin] [BattlePlayerHeal] BattlePlayerHealBroadcast Actual=1 After HP 100/100 Block 0 Shield 0
+[Info   :   Console] [Server] Received game event: BattlePlayerHealBroadcast from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Debug  :Network Plugin] [DeathStateManager] All fake death records cleared
+[Debug  :Network Plugin] [DeathStateManager] All fake death records cleared
+[Debug  :Network Plugin] [GameEventDeathSync] 战斗结束，死亡状态已清理
+[Info   :   Console] [Client] Request sent: UpdatePlayerLocation
+[Info   :Network Plugin] [MapSyncPatch] Player location updated: (1, 3) - Enemy
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: PlayerStateUpdate
+[Info   :   Console] [Server] Unknown system message type: PlayerStateUpdate from 127.0.0.1:54396
+[Warning:Network Plugin] [Server] Unknown system message type: PlayerStateUpdate from 127.0.0.1:54396
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Request sent: UpdatePlayerLocation
+[Info   :Network Plugin] [MapSyncPatch] Player location updated: (1, 3) - Enemy
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMapNodeEnter
+[Info   :   Console] [Client] Game event sent: RoomStateRequest
+[Info   :   Console] [Client] Game event sent: RoomStateResponse
+[Info   :   Console] [Server] Received game event: RoomStateRequest from Player_1
+[Info   :   Console] [Server] Received game event: RoomStateResponse from Player_1
+[Info   :   Console] [Server] Received game event: OnMapNodeEnter from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Client] Request sent: UpdatePlayerLocation
+[Info   :Network Plugin] [MapSyncPatch] Player location updated: (2, 3) - Adventure
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Request sent: UpdatePlayerLocation
+[Info   :Network Plugin] [MapSyncPatch] Player location updated: (2, 3) - Adventure
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_1
+[Info   :   Console] [Server] Client disconnected: 127.0.0.1:54396, Reason: RemoteConnectionClose
+[Info   :Network Plugin] [Server] Client disconnected: 127.0.0.1:54396, Reason: RemoteConnectionClose
+[Info   :   Console] [Client] Client services stopped.
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（MainMenu）。
+[Info   :Network Plugin] [MainMenuMultiplayerEntry] 打开多人入口面板（StartGame）。
+[Info   :   Console] [Client] Network client started successfully.
+[Info   :   Console] [Client] Attempting to connect to 127.0.0.1:7777 with key 'LBoL_Network_Plugin'...
+[Info   :   Console] [Server] Client connected: 127.0.0.1:53336
+[Info   :Network Plugin] [Server] Client connected: 127.0.0.1:53336
+[Info   :   Console] [Client] Connected to server: 127.0.0.1:7777
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :Network Plugin] [SyncManager] 网络连接已恢复，开始处理队列事件
+[Info   :   Console] [Client] Game event sent: FullStateSyncRequest
+[Info   :Network Plugin] [SyncManager] 发起完整状态同步请求
+[Info   :   Console] [Client] Game event sent: OnConnectionEstablished
+[Info   :   Console] [Client] Game event sent: PlayerJoined
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Received game event: Welcome
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Server] Received game event: FullStateSyncRequest from Player_0
+[Info   :   Console] [Server] Player Player (Player_0) joined the game
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Server] Received game event: OnConnectionEstablished from Player_0
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Debug  :Network Plugin] [ReconnectionManager] Full snapshot created at 639048487218302761
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Client] Game event sent: OnMapNodeEnter
+[Info   :   Console] [Client] Game event sent: RoomStateRequest
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Server] Received game event: RoomStateRequest from Player_0
+[Info   :   Console] [Server] Received game event: OnMapNodeEnter from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: PlayerStateUpdate
+[Info   :   Console] [Server] Unknown system message type: PlayerStateUpdate from 127.0.0.1:53336
+[Warning:Network Plugin] [Server] Unknown system message type: PlayerStateUpdate from 127.0.0.1:53336
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Request sent: UpdatePlayerLocation
+[Info   :Network Plugin] [MapSyncPatch] Player location updated: (0, 0) - Entry
+[Info   :   Console] [Client] Request sent: UpdatePlayerLocation
+[Info   :Network Plugin] [MapSyncPatch] Player location updated: (0, 0) - Entry
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMapNodeEnter
+[Info   :   Console] [Client] Game event sent: RoomStateRequest
+[Info   :   Console] [Server] Received game event: RoomStateRequest from Player_0
+[Info   :   Console] [Server] Received game event: OnMapNodeEnter from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Debug  :Network Plugin] [DeathStateManager] All fake death records cleared
+[Debug  :Network Plugin] [GameEventDeathSync] 战斗开始，死亡状态已重置
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Request sent: BattleEnemyIntentChanged
+[Debug  :Network Plugin] [EnemyIntentSync] Intentions updated. Enemy=向日葵妖精 RootIndex=0 Round=1 EOT=True
+[Info   :   Console] [Server] Received game event: BattleEnemyIntentChanged from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: BattlePlayerDamageReport
+[Info   :Network Plugin] [BattlePlayerDamage] BattlePlayerDamageReport Total=6.0 (HP: 0.0, Block: 6.0, Shield: 0.0). Remaining HP: 100/100
+[Info   :   Console] [Server] Received game event: BattlePlayerDamageReport from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: BattlePlayerDamageReport
+[Info   :Network Plugin] [BattlePlayerDamage] BattlePlayerDamageReport Total=6.0 (HP: 0.0, Block: 6.0, Shield: 0.0). Remaining HP: 100/100
+[Info   :   Console] [Server] Received game event: BattlePlayerDamageReport from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Request sent: BattleEnemyIntentChanged
+[Debug  :Network Plugin] [EnemyIntentSync] Intentions updated. Enemy=向日葵妖精 RootIndex=0 Round=2 EOT=True
+[Info   :   Console] [Server] Received game event: BattleEnemyIntentChanged from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Debug  :Network Plugin] [ReconnectionManager] Full snapshot created at 639048487518305239
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: BattlePlayerDamageReport
+[Info   :Network Plugin] [BattlePlayerDamage] BattlePlayerDamageReport Total=7.0 (HP: 7.0, Block: 0.0, Shield: 0.0). Remaining HP: 93/100
+[Info   :   Console] [Server] Received game event: BattlePlayerDamageReport from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Request sent: BattleEnemyIntentChanged
+[Debug  :Network Plugin] [EnemyIntentSync] Intentions updated. Enemy=向日葵妖精 RootIndex=0 Round=3 EOT=True
+[Info   :   Console] [Server] Received game event: BattleEnemyIntentChanged from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Server] Host changed to Player_0
+[Info   :   Console] [Client] Received game event: HostChanged
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: BattlePlayerDamageBroadcast
+[Info   :Network Plugin] [BattlePlayerDamage] BattlePlayerDamageBroadcast Total=8.0 (HP: 0.0, Block: 8.0, Shield: 0.0). Remaining HP: 93/100
+[Info   :   Console] [Server] Received game event: BattlePlayerDamageBroadcast from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: BattlePlayerDamageBroadcast
+[Info   :Network Plugin] [BattlePlayerDamage] BattlePlayerDamageBroadcast Total=8.0 (HP: 6.0, Block: 2.0, Shield: 0.0). Remaining HP: 87/100
+[Info   :   Console] [Server] Received game event: BattlePlayerDamageBroadcast from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Request sent: BattleEnemyIntentChanged
+[Debug  :Network Plugin] [EnemyIntentSync] Intentions updated. Enemy=向日葵妖精 RootIndex=0 Round=4 EOT=True
+[Info   :   Console] [Server] Received game event: BattleEnemyIntentChanged from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: BattlePlayerHealBroadcast
+[Info   :Network Plugin] [BattlePlayerHeal] BattlePlayerHealBroadcast Actual=3 After HP 90/100 Block 0 Shield 0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: BattlePlayerHealBroadcast from Player_0
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Debug  :Network Plugin] [DeathStateManager] All fake death records cleared
+[Debug  :Network Plugin] [DeathStateManager] All fake death records cleared
+[Debug  :Network Plugin] [GameEventDeathSync] 战斗结束，死亡状态已清理
+[Info   :   Console] [Client] Request sent: UpdatePlayerLocation
+[Info   :Network Plugin] [MapSyncPatch] Player location updated: (1, 3) - Enemy
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: PlayerStateUpdate
+[Info   :   Console] [Server] Unknown system message type: PlayerStateUpdate from 127.0.0.1:53336
+[Warning:Network Plugin] [Server] Unknown system message type: PlayerStateUpdate from 127.0.0.1:53336
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Request sent: UpdatePlayerLocation
+[Info   :Network Plugin] [MapSyncPatch] Player location updated: (1, 3) - Enemy
+[Info   :   Console] [Client] Received game event: PlayerListUpdate
+[Warning:Network Plugin] [SyncManager] 无效的网络事件数据格式
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Client] Game event sent: OnMapNodeEnter
+[Info   :   Console] [Client] Game event sent: RoomStateRequest
+[Info   :   Console] [Client] Game event sent: RoomStateResponse
+[Info   :   Console] [Server] Received game event: RoomStateRequest from Player_0
+[Info   :   Console] [Server] Received game event: RoomStateResponse from Player_0
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Server] Received game event: OnMapNodeEnter from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Debug  :Network Plugin] [DeathStateManager] All fake death records cleared
+[Debug  :Network Plugin] [GameEventDeathSync] 战斗开始，死亡状态已重置
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Debug  :Network Plugin] [ReconnectionManager] Full snapshot created at 639048487818299642
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Request sent: BattleEnemyIntentChanged
+[Debug  :Network Plugin] [EnemyIntentSync] Intentions updated. Enemy=红帽乌鸦 RootIndex=0 Round=1 EOT=True
+[Info   :   Console] [Client] Request sent: BattleEnemyIntentChanged
+[Debug  :Network Plugin] [EnemyIntentSync] Intentions updated. Enemy=紫帽乌鸦 RootIndex=1 Round=1 EOT=True
+[Info   :   Console] [Server] Received game event: BattleEnemyIntentChanged from Player_0
+[Info   :   Console] [Server] Received game event: BattleEnemyIntentChanged from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Client] Game event sent: OnMoodEffectStateSync
+[Info   :   Console] [Server] Received game event: OnMoodEffectStateSync from Player_0
+[Info   :   Console] [Server] Client disconnected: 127.0.0.1:53336, Reason: RemoteConnectionClose
+[Info   :Network Plugin] [Server] Client disconnected: 127.0.0.1:53336, Reason: RemoteConnectionClose
+[Info   :   Console] [Client] Client services stopped.
+[Debug  :Network Plugin] [DeathStateManager] All fake death records cleared
+[Debug  :Network Plugin] [GameEventDeathSync] 战斗开始，死亡状态已重置
+[Info   :Network Plugin] Plugin has been destroyed and resources cleaned up.
+[Warning: Unity Log] <color=#ff7337><color=#0099bc><b>DOTWEEN ► </b></color> SAFE MODE ►</color> DOTween's safe mode captured 19 errors. This is usually ok (it's what safe mode is there for) but if your game is encountering issues you should set Log Behaviour to Default in DOTween Utility Panel in order to get detailed warnings when an error is captured (consider that these errors are always on the user side).
+- 1 missing target or field errors
+- 18 startup errors

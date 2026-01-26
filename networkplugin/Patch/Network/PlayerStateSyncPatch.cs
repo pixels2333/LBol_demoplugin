@@ -6,6 +6,7 @@ using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
@@ -198,7 +199,7 @@ public static class PlayerStateSyncPatch
                 }
 
                 // 发送状态变更事件。
-                Send("PlayerStateUpdate", new
+                Send(NetworkMessageTypes.OnPlayerStateUpdate, new
                 {
                     Timestamp = DateTime.Now.Ticks,
                     UpdateType = "BlockShieldGained",
@@ -293,7 +294,7 @@ public static class PlayerStateSyncPatch
                 }
 
                 // 发送状态变更事件。
-                Send("PlayerStateUpdate", new
+                Send(NetworkMessageTypes.OnPlayerStateUpdate, new
                 {
                     Timestamp = DateTime.Now.Ticks,
                     UpdateType = "BlockShieldLost",
@@ -380,7 +381,7 @@ public static class PlayerStateSyncPatch
                 }
 
                 // 发送最大生命变更事件。
-                Send("PlayerStateUpdate", new
+                Send(NetworkMessageTypes.OnPlayerStateUpdate, new
                 {
                     Timestamp = DateTime.Now.Ticks,
                     UpdateType = "MaxHpChanged",
@@ -451,7 +452,7 @@ public static class PlayerStateSyncPatch
                     return;
                 }
 
-                Send("PlayerStateUpdate", new
+                Send(NetworkMessageTypes.OnPlayerStateUpdate, new
                 {
                     Timestamp = DateTime.Now.Ticks,
                     UpdateType = "MoneyGained",
@@ -520,7 +521,7 @@ public static class PlayerStateSyncPatch
                     return;
                 }
 
-                Send("PlayerStateUpdate", new
+                Send(NetworkMessageTypes.OnPlayerStateUpdate, new
                 {
                     Timestamp = DateTime.Now.Ticks,
                     UpdateType = "MoneyConsumed",
@@ -589,7 +590,7 @@ public static class PlayerStateSyncPatch
                     return;
                 }
 
-                Send("PlayerStateUpdate", new
+                Send(NetworkMessageTypes.OnPlayerStateUpdate, new
                 {
                     Timestamp = DateTime.Now.Ticks,
                     UpdateType = "MoneyLost",

@@ -13,9 +13,36 @@ public class MapStateSnapshot
     public int MapSeed { get; set; } = 0;
 
     /// <summary>
+    /// 当前地图种子（LBoL: Stage.MapSeed，ulong）。
+    /// 旧字段 <see cref="MapSeed"/> 保留用于兼容。
+    /// </summary>
+    public ulong? MapSeedUlong { get; set; }
+
+    /// <summary>
     /// 已访问的节点
     /// </summary>
     public List<string> VisitedNodes { get; set; } = [];
+
+    /// <summary>
+    /// 每个节点的状态（nodeKey -> state）。
+    /// nodeKey 口径建议与 RoomSync 一致：Act:X:Y:StationType。
+    /// </summary>
+    public Dictionary<string, string> NodeStates { get; set; } = [];
+
+    /// <summary>
+    /// 已清理（已结算）的节点（用于追赶时跳过战斗）。
+    /// </summary>
+    public List<string> ClearedNodes { get; set; } = [];
+
+    /// <summary>
+    /// 最近一次关键提交点 ID（仅主机更新）。
+    /// </summary>
+    public string LastCheckpointId { get; set; } = "";
+
+    /// <summary>
+    /// 最近一次关键提交点时间（UTC ticks，仅主机更新）。
+    /// </summary>
+    public long LastCheckpointAtUtcTicks { get; set; } = 0;
 
     /// <summary>
     /// 当前位置

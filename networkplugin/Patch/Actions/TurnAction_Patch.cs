@@ -12,6 +12,8 @@ using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Reconnection;
+using NetworkPlugin.Utils;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.Snapshot;
 using NetworkPlugin.Utils;
@@ -164,7 +166,7 @@ public class TurnAction_Patch
             );
 
             // 序列化并发送回合开始事件。
-            string json = JsonSerializer.Serialize(turnData);
+            string json = JsonCompat.Serialize(turnData);
 
             networkClient.SendRequest(NetworkMessageTypes.OnTurnStart, json);
 
@@ -314,7 +316,7 @@ public class TurnAction_Patch
             );
 
             // 序列化并发送回合结束事件。
-            string json = JsonSerializer.Serialize(turnEndData);
+            string json = JsonCompat.Serialize(turnEndData);
             networkClient.SendRequest(NetworkMessageTypes.OnTurnEnd, json);
 
             Plugin.Logger?.LogInfo("[TurnSync] 玩家回合结束已同步");
@@ -483,6 +485,20 @@ public class TurnAction_Patch
                 BattleId = battleId,
                 BattleState = battleState,
             };
+
+            try
+            {
+                // Host-only: record a key checkpoint for mid-game join / reconnection.
+                var reconnection = serviceProvider.GetService<ReconnectionManager>();
+                string nodeKey = run?.CurrentMap?.VisitingNode != null
+                    ? $"{run.CurrentMap.VisitingNode.Act}:{run.CurrentMap.VisitingNode.X}:{run.CurrentMap.VisitingNode.Y}:{run.CurrentMap.VisitingNode.StationType}"
+                    : null;
+                reconnection?.MarkMapCheckpoint("battle_end", nodeKey);
+            }
+            catch
+            {
+                // ignored
+            }
 
             networkClient.SendGameEventData(NetworkMessageTypes.OnBattleEnd, payload);
             Plugin.Logger?.LogInfo($"[TurnSync] 战斗结束已同步: {battleId}");

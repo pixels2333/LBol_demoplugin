@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections;
-using System.Text.Json;
 using System.Threading;
 using HarmonyLib;
 using LBoL.Base;
@@ -13,8 +12,10 @@ using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Patch.UI;
+using NetworkPlugin.Utils;
 using UnityEngine;
 using LBoL.Core;
+using Newtonsoft.Json.Linq;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -71,11 +72,6 @@ public static class MoodEffectSyncPatch
     private static int _suppressBroadcastDepth;
 
     /// <summary>
-    /// 下一次状态广播的时间戳
-    /// </summary>
-    private static float _nextStateBroadcastAt;
-
-    /// <summary>
     /// 上一帧是否在战斗中
     /// </summary>
     private static bool _wasInBattle;
@@ -89,6 +85,17 @@ public static class MoodEffectSyncPatch
     /// 按玩家ID缓存的待处理心情状态
     /// </summary>
     private static readonly Dictionary<string, string> _pendingMoodByPlayerId = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// 最近一次成功解析的远端心情状态（按玩家ID）。
+    /// 用于远端 UnitView 被销毁/重建后，仍可在本地重新应用心情循环。
+    /// </summary>
+    private static readonly Dictionary<string, string> _lastKnownMoodByPlayerId = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// 已应用到远端视图上的最后一次心情状态（按玩家ID），用于避免重复调用 TryPlay/EndEffectLoop。
+    /// </summary>
+    private static readonly Dictionary<string, string> _lastAppliedMoodByPlayerId = new(StringComparer.OrdinalIgnoreCase);
 
     #endregion
 
@@ -140,24 +147,23 @@ public static class MoodEffectSyncPatch
 
             EnsureSubscribed(client);
 
-            // 将缓冲的心情状态应用到刚刚创建的视图上
+            // 将缓冲/记录的心情状态应用到现有的远端视图上。
+            // 注意：这只做“本地视图修复”，不做任何定时网络广播。
             ApplyPendingMoodToExistingViews();
 
-            // 定期状态广播（帮助晚加入的玩家/重新创建的远程视图快速获取当前心情）
             bool inBattle = Singleton<GameDirector>.Instance?.PlayerUnitView != null;
-            if (inBattle && Time.time >= _nextStateBroadcastAt)
+            if (!inBattle && _wasInBattle)
             {
-                _nextStateBroadcastAt = Time.time + 1.0f;
-                BroadcastMoodStateSync();
-            }
-            else if (!inBattle && _wasInBattle)
-            {
-                // 离开战斗：重置状态，以便下一场战斗可以立即重新同步
+                // 离开战斗：清理本地缓存，避免跨战斗污染。
                 _lastBroadcastedEffectName = null;
-                _nextStateBroadcastAt = 0f;
                 lock (_pendingMoodByPlayerId)
                 {
                     _pendingMoodByPlayerId.Clear();
+                }
+                lock (_lastKnownMoodByPlayerId)
+                {
+                    _lastKnownMoodByPlayerId.Clear();
+                    _lastAppliedMoodByPlayerId.Clear();
                 }
             }
 
@@ -178,10 +184,9 @@ public static class MoodEffectSyncPatch
     {
         try
         {
-            // 进入战斗后强制状态广播，以便其他客户端可以立即渲染当前心情
-            _nextStateBroadcastAt = 0f;
+            // 进入战斗时：如当前已经有心情循环，则同步一次。
             _lastBroadcastedEffectName = null;
-            BroadcastMoodStateSync();
+            BroadcastMoodStateSync(force: true);
         }
         catch
         {
@@ -198,10 +203,14 @@ public static class MoodEffectSyncPatch
     {
         _wasInBattle = false;
         _lastBroadcastedEffectName = null;
-        _nextStateBroadcastAt = 0f;
         lock (_pendingMoodByPlayerId)
         {
             _pendingMoodByPlayerId.Clear();
+        }
+        lock (_lastKnownMoodByPlayerId)
+        {
+            _lastKnownMoodByPlayerId.Clear();
+            _lastAppliedMoodByPlayerId.Clear();
         }
     }
 
@@ -244,6 +253,11 @@ public static class MoodEffectSyncPatch
                 SenderName = selfName,
                 EffectName = effectName
             });
+
+            // 需求：不做定时轮询；当心情变化时发送一次“当前心情状态”。
+            BroadcastMoodStateSync(force: false);
+
+            Plugin.Logger?.LogDebug($"[MoodEffectSync] 已广播心情开始: playerId={selfId}, effect={effectName}");
         }
         catch
         {
@@ -291,6 +305,11 @@ public static class MoodEffectSyncPatch
                 EffectName = effectName,
                 Instant = instant
             });
+
+            // 需求：心情变化时发送同步事件（结束也算变化）。
+            BroadcastMoodStateSync(force: true);
+
+            Plugin.Logger?.LogDebug($"[MoodEffectSync] 已广播心情结束: playerId={selfId}, effect={effectName}, instant={instant}");
         }
         catch
         {
@@ -367,9 +386,8 @@ public static class MoodEffectSyncPatch
         // 重新连接时，重新广播当前心情状态（如果有），以便其他客户端可以立即渲染
         try
         {
-            _nextStateBroadcastAt = 0f;
             _lastBroadcastedEffectName = null;
-            BroadcastMoodStateSync();
+            BroadcastMoodStateSync(force: true);
         }
         catch
         {
@@ -393,7 +411,7 @@ public static class MoodEffectSyncPatch
 
         try
         {
-            if (!TryGetJsonElement(payload, out JsonElement root) || root.ValueKind != JsonValueKind.Object)
+            if (!TryGetPayloadObject(payload, out JObject root))
             {
                 return;
             }
@@ -420,6 +438,11 @@ public static class MoodEffectSyncPatch
                 if (!IsMoodEffect(current))
                 {
                     current = null;
+                }
+
+                lock (_lastKnownMoodByPlayerId)
+                {
+                    _lastKnownMoodByPlayerId[senderId] = current;
                 }
 
                 if (OtherPlayersOverlayPatch.TryGetRemoteCharacterUnitView(senderId, out UnitView view) && view != null)
@@ -450,6 +473,11 @@ public static class MoodEffectSyncPatch
                     _pendingMoodByPlayerId[senderId] = eventType == NetworkMessageTypes.OnMoodEffectLoopStarted ? effectName : null;
                 }
 
+                lock (_lastKnownMoodByPlayerId)
+                {
+                    _lastKnownMoodByPlayerId[senderId] = eventType == NetworkMessageTypes.OnMoodEffectLoopStarted ? effectName : null;
+                }
+
                 return;
             }
 
@@ -458,11 +486,19 @@ public static class MoodEffectSyncPatch
                 if (eventType == NetworkMessageTypes.OnMoodEffectLoopStarted)
                 {
                     ApplyMoodStateToView(effectView, effectName);
+                    lock (_lastKnownMoodByPlayerId)
+                    {
+                        _lastKnownMoodByPlayerId[senderId] = effectName;
+                    }
                 }
                 else
                 {
                     bool instant = GetBool(root, "Instant");
                     effectView.EndEffectLoop(effectName, instant);
+                    lock (_lastKnownMoodByPlayerId)
+                    {
+                        _lastKnownMoodByPlayerId[senderId] = null;
+                    }
                 }
             }
         }
@@ -486,10 +522,26 @@ public static class MoodEffectSyncPatch
         {
             if (_pendingMoodByPlayerId.Count == 0)
             {
-                return;
+                // 仍然尝试从 lastKnown 表中恢复（处理“远端视图重建后没有再来事件”的情况）。
+                snapshot = null;
             }
+            else
+            {
+                snapshot = new Dictionary<string, string>(_pendingMoodByPlayerId, StringComparer.OrdinalIgnoreCase);
+            }
+        }
 
-            snapshot = new Dictionary<string, string>(_pendingMoodByPlayerId, StringComparer.OrdinalIgnoreCase);
+        if (snapshot == null)
+        {
+            lock (_lastKnownMoodByPlayerId)
+            {
+                if (_lastKnownMoodByPlayerId.Count == 0)
+                {
+                    return;
+                }
+
+                snapshot = new Dictionary<string, string>(_lastKnownMoodByPlayerId, StringComparer.OrdinalIgnoreCase);
+            }
         }
 
         foreach (KeyValuePair<string, string> kv in snapshot)
@@ -499,11 +551,21 @@ public static class MoodEffectSyncPatch
                 continue;
             }
 
-            ApplyMoodStateToView(view, kv.Value);
-
-            lock (_pendingMoodByPlayerId)
+            // 去重：避免每帧重复对同一远端玩家调用 TryPlay/EndEffectLoop。
+            bool shouldApply;
+            lock (_lastKnownMoodByPlayerId)
             {
-                _pendingMoodByPlayerId.Remove(kv.Key);
+                _lastAppliedMoodByPlayerId.TryGetValue(kv.Key, out string lastApplied);
+                shouldApply = !string.Equals(lastApplied, kv.Value, StringComparison.OrdinalIgnoreCase);
+                if (shouldApply)
+                {
+                    _lastAppliedMoodByPlayerId[kv.Key] = kv.Value;
+                }
+            }
+
+            if (shouldApply)
+            {
+                ApplyMoodStateToView(view, kv.Value);
             }
         }
     }
@@ -512,6 +574,15 @@ public static class MoodEffectSyncPatch
     /// 广播当前心情状态同步
     /// </summary>
     private static void BroadcastMoodStateSync()
+    {
+        BroadcastMoodStateSync(force: false);
+    }
+
+    /// <summary>
+    /// 广播当前心情状态同步。
+    /// force=true 时无视去重/限流（用于重连/入战等关键时刻）。
+    /// </summary>
+    private static void BroadcastMoodStateSync(bool force)
     {
         INetworkClient client = TryGetClient();
         if (client == null || !client.IsConnected)
@@ -529,6 +600,16 @@ public static class MoodEffectSyncPatch
             return;
         }
 
+        // 去重：只有状态变化（或 force）才发送，避免刷屏。
+        if (!force)
+        {
+            bool sameState = string.Equals(effectName, _lastBroadcastedEffectName, StringComparison.OrdinalIgnoreCase);
+            if (sameState)
+            {
+                return;
+            }
+        }
+
         client.SendGameEventData(NetworkMessageTypes.OnMoodEffectStateSync, new
         {
             SenderPlayerId = selfId,
@@ -537,6 +618,8 @@ public static class MoodEffectSyncPatch
         });
 
         _lastBroadcastedEffectName = effectName;
+
+        Plugin.Logger?.LogDebug($"[MoodEffectSync] 已广播心情状态: playerId={selfId}, current={effectName ?? "<none>"}, force={force}");
     }
 
     #endregion
@@ -666,68 +749,99 @@ public static class MoodEffectSyncPatch
         }
     }
 
-    /// <summary>
-    /// 尝试将负载转换为JsonElement
-    /// </summary>
-    /// <param name="payload">事件负载</param>
-    /// <param name="element">输出的JsonElement</param>
-    /// <returns>转换是否成功</returns>
-    private static bool TryGetJsonElement(object payload, out JsonElement element)
+    private static bool TryGetPayloadObject(object payload, out JObject root)
     {
-        if (payload is JsonElement je)
+        root = null;
+
+        try
         {
-            element = je;
+            if (payload is JObject jo)
+            {
+                root = jo;
+                return true;
+            }
+
+            if (payload is string s)
+            {
+                if (string.IsNullOrWhiteSpace(s))
+                {
+                    return false;
+                }
+
+                root = JObject.Parse(s);
+                return true;
+            }
+
+            // 最后兜底：把 payload 先序列化为 JSON 再解析。
+            root = JObject.Parse(JsonCompat.Serialize(payload));
             return true;
         }
-
-        element = default;
-        return false;
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogWarning($"[MoodEffectSync] 解析 payload 失败: type={payload?.GetType().FullName}, err={ex.Message}");
+            root = null;
+            return false;
+        }
     }
 
-    /// <summary>
-    /// 从JsonElement获取字符串属性值
-    /// </summary>
-    /// <param name="elem">JSON元素</param>
-    /// <param name="property">属性名</param>
-    /// <returns>属性值字符串，如果获取失败则返回null</returns>
-    private static string GetString(JsonElement elem, string property)
+    private static string GetString(JObject root, string property)
     {
-        if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
+        if (root == null || string.IsNullOrWhiteSpace(property))
         {
             return null;
         }
 
-        return p.ValueKind switch
+        try
         {
-            JsonValueKind.String => p.GetString(),
-            JsonValueKind.Number => p.GetRawText(),
-            JsonValueKind.True => "true",
-            JsonValueKind.False => "false",
-            _ => null,
-        };
+            if (!root.TryGetValue(property, StringComparison.OrdinalIgnoreCase, out JToken token) || token == null)
+            {
+                return null;
+            }
+
+            if (token.Type == JTokenType.String)
+            {
+                return token.Value<string>();
+            }
+
+            if (token.Type == JTokenType.Boolean)
+            {
+                return token.Value<bool>() ? "true" : "false";
+            }
+
+            if (token.Type == JTokenType.Integer || token.Type == JTokenType.Float)
+            {
+                return token.ToString();
+            }
+
+            return token.ToString();
+        }
+        catch
+        {
+            return null;
+        }
     }
 
-    /// <summary>
-    /// 从JsonElement获取布尔属性值
-    /// </summary>
-    /// <param name="elem">JSON元素</param>
-    /// <param name="property">属性名</param>
-    /// <returns>属性值布尔值</returns>
-    private static bool GetBool(JsonElement elem, string property)
+    private static bool GetBool(JObject root, string property)
     {
-        if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
+        try
+        {
+            string s = GetString(root, property);
+            if (string.IsNullOrWhiteSpace(s))
+            {
+                return false;
+            }
+
+            if (bool.TryParse(s, out bool b))
+            {
+                return b;
+            }
+
+            return int.TryParse(s, out int i) && i != 0;
+        }
+        catch
         {
             return false;
         }
-
-        return p.ValueKind switch
-        {
-            JsonValueKind.True => true,
-            JsonValueKind.False => false,
-            JsonValueKind.Number => p.TryGetInt32(out int v) && v != 0,
-            JsonValueKind.String => bool.TryParse(p.GetString(), out bool b) && b,
-            _ => false,
-        };
     }
 
     #endregion

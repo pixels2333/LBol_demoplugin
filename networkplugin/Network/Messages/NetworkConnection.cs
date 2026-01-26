@@ -9,6 +9,7 @@ using System.Text.Json;
 using LiteNetLib;
 using LiteNetLib.Utils;
 using NetworkPlugin.Network.Room;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Network.Messages;
 
@@ -93,7 +94,7 @@ public class NetworkConnection
         {
             null => string.Empty,           // 空负载
             string s => s,                  // 已经是字符串
-            _ => JsonSerializer.Serialize(message.Payload), // 序列化对象
+            _ => JsonCompat.Serialize(message.Payload), // 序列化对象
         };
 
         // 使用自定义发送委托（如果提供）

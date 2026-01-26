@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using NetworkPlugin.Configuration;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.Room;
+using NetworkPlugin.Utils;
 using NetworkPlugin.Network.Server.Core;
 using NetworkPlugin.Network.Utils;
 
@@ -1111,7 +1112,7 @@ public class RelayServer : BaseGameServer
             // 注意：如果 payload 本身就是 JSON 字符串，这里再次 Serialize 会把它当作普通字符串加引号。
             // 目前客户端侧一般用 JsonSerializer 再解析一次，因此保持“总是 JSON 字符串”更一致。
             writer.Put(message.Type);
-            writer.Put(JsonSerializer.Serialize(message.Payload));
+            writer.Put(JsonCompat.Serialize(message.Payload));
 
             // 发送：具体是否可靠/有序由 deliveryMethod 决定。
             peer.Send(writer, deliveryMethod);
@@ -1390,8 +1391,8 @@ public class RelayServer : BaseGameServer
             }
 
             // 合并字段：使用字典承载，避免匿名对象反射复杂度。
-            string json = payload is string s ? s : JsonSerializer.Serialize(payload);
-            var dict = JsonSerializer.Deserialize<Dictionary<string, object>>(json) ?? new Dictionary<string, object>();
+            string json = payload is string s ? s : JsonCompat.Serialize(payload);
+            var dict = JsonCompat.Deserialize<Dictionary<string, object>>(json) ?? new Dictionary<string, object>();
             dict["RoomId"] = roomId;
             return dict;
         }
@@ -1504,12 +1505,7 @@ public class RelayServer : BaseGameServer
             // - JsonElement：直接使用
             // - string：视为 JSON 文本
             // - 其它对象：先 Serialize 再 Deserialize 成 JsonElement
-            return payload switch
-            {
-                JsonElement je => je,
-                string json => JsonSerializer.Deserialize<JsonElement>(json),
-                _ => JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(payload))
-            };
+            return JsonCompat.ToJsonElement(payload);
         }
         catch
         {

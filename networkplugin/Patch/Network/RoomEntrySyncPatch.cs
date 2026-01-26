@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
+using NetworkPlugin.Network.Reconnection;
 using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
@@ -31,6 +32,12 @@ public static class RoomEntrySyncPatch
                     return;
                 }
 
+                // Ignore forced EnterNode (e.g., RestorePath) to avoid checkpoint noise.
+                if (forced)
+                {
+                    return;
+                }
+
                 var client = ServiceProvider?.GetService<INetworkClient>();
                 if (client == null || !client.IsConnected)
                 {
@@ -38,15 +45,31 @@ public static class RoomEntrySyncPatch
                 }
 
                 NetworkIdentityTracker.EnsureSubscribed(client);
+                if (!NetworkIdentityTracker.GetSelfIsHost())
+                {
+                    return;
+                }
+
                 string playerId = NetworkIdentityTracker.GetSelfPlayerId();
                 if (string.IsNullOrWhiteSpace(playerId))
                 {
                     return;
                 }
 
+                try
+                {
+                    var reconnection = ServiceProvider?.GetService<ReconnectionManager>();
+                    string nodeKey = $"{node.Act}:{node.X}:{node.Y}:{node.StationType}";
+                    reconnection?.MarkMapCheckpoint("enter_node", nodeKey);
+                }
+                catch
+                {
+                    // ignored
+                }
+
                 client.SendGameEventData(NetworkMessageTypes.OnMapNodeEnter, new
                 {
-                    Timestamp = DateTime.Now.Ticks,
+                    Timestamp = DateTime.UtcNow.Ticks,
                     PlayerId = playerId,
                     Node = new
                     {

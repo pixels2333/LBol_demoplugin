@@ -1,3 +1,5 @@
+using LBoL.Core;
+using LBoL.Core.Stations;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -91,6 +93,21 @@ public sealed class ReconnectionManager : IDisposable
     /// 周期快照定时器：定期构建完整状态快照（主要用于主机侧）。
     /// </summary>
     private readonly Timer _snapshotTimer;
+
+    /// <summary>
+    /// 地图关键提交点序号（仅主机递增）。
+    /// </summary>
+    private long _mapCheckpointSequence;
+
+    /// <summary>
+    /// 最近一次地图关键提交点 ID（仅主机更新）。
+    /// </summary>
+    private string _lastMapCheckpointId = string.Empty;
+
+    /// <summary>
+    /// 最近一次地图关键提交点时间（UTC ticks，仅主机更新）。
+    /// </summary>
+    private long _lastMapCheckpointAtUtcTicks;
 
     #endregion
 
@@ -235,6 +252,10 @@ public sealed class ReconnectionManager : IDisposable
                 {
                     snapshot.EventIndex = _eventHistory.Keys[_eventHistory.Count - 1];
                 }
+
+                // 关键提交点只读：避免周期快照影响 checkpoint 语义。
+                snapshot.MapState.LastCheckpointId = _lastMapCheckpointId;
+                snapshot.MapState.LastCheckpointAtUtcTicks = _lastMapCheckpointAtUtcTicks;
             }
 
             INetworkManager? manager = _serviceProvider.GetService<INetworkManager>();
@@ -252,7 +273,25 @@ public sealed class ReconnectionManager : IDisposable
             }
 
             // 轻量补充：标记游戏是否已开始（可用于客户端判断是否需要 UI/流程恢复）
-            snapshot.GameState.GameStarted = GameStateUtils.GetCurrentGameRun() != null;
+            GameRunController? run = GameStateUtils.GetCurrentGameRun();
+            snapshot.GameState.GameStarted = run != null;
+
+            if (run != null)
+            {
+                try
+                {
+                    snapshot.GameState.RootSeed = run.RootSeed;
+                    snapshot.GameState.UISeed = run.UISeed;
+                    snapshot.GameState.StageIndex = run.CurrentStage?.Index;
+                    snapshot.MapState.MapSeedUlong = run.CurrentStage?.MapSeed;
+                }
+                catch
+                {
+                    // ignored
+                }
+
+                TryFillMapStateFromRun(run, snapshot.MapState);
+            }
 
             // 地图位置：尽量从自身玩家快照中提取
             PlayerStateSnapshot? firstPlayer = snapshot.PlayerStates.FirstOrDefault();
@@ -272,6 +311,182 @@ public sealed class ReconnectionManager : IDisposable
 
         LogDebug($"[ReconnectionManager] Full snapshot created at {snapshot.Timestamp}");
         return snapshot;
+    }
+
+    /// <summary>
+    /// 标记地图关键提交点（仅主机更新）。
+    /// </summary>
+    /// <param name="reason">提交点原因（用于日志诊断）。</param>
+    /// <param name="nodeKey">可选：相关节点 key（Act:X:Y:StationType）。</param>
+    public void MarkMapCheckpoint(string reason, string? nodeKey = null)
+    {
+        try
+        {
+            if (!NetworkIdentityTracker.GetSelfIsHost())
+            {
+                return;
+            }
+
+            long now = DateTime.UtcNow.Ticks;
+            long seq = Interlocked.Increment(ref _mapCheckpointSequence);
+            string safeReason = string.IsNullOrWhiteSpace(reason) ? "checkpoint" : reason;
+            string id = $"cp{seq:00000000}:{safeReason}";
+
+            lock (_syncLock)
+            {
+                _lastMapCheckpointId = id;
+                _lastMapCheckpointAtUtcTicks = now;
+            }
+
+            LogDebug($"[ReconnectionManager] Map checkpoint: id={id}, at={now}, reason={safeReason}, nodeKey={nodeKey ?? "<null>"}");
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"[ReconnectionManager] MarkMapCheckpoint degraded: {ex.Message}");
+        }
+    }
+
+    private static string BuildNodeKey(MapNode node)
+    {
+        if (node == null)
+        {
+            return string.Empty;
+        }
+
+        string stationType = node.StationType.ToString();
+        return $"{node.Act}:{node.X}:{node.Y}:{stationType}";
+    }
+
+    private static LocationSnapshot BuildLocationSnapshot(MapNode node)
+    {
+        if (node == null)
+        {
+            return new LocationSnapshot();
+        }
+
+        return new LocationSnapshot
+        {
+            X = node.X,
+            Y = node.Y,
+            NodeId = BuildNodeKey(node),
+            NodeType = node.StationType.ToString(),
+            IsBranch = node.FollowerList != null && node.FollowerList.Count > 1,
+            VisitTime = 0,
+        };
+    }
+
+    private void TryFillMapStateFromRun(GameRunController run, MapStateSnapshot mapState)
+    {
+        try
+        {
+            if (run == null || mapState == null)
+            {
+                return;
+            }
+
+            GameMap map = run.CurrentMap;
+            if (map == null)
+            {
+                return;
+            }
+
+            // Current location: prefer the game map visiting node (more reliable than player X/Y).
+            if (map.VisitingNode != null)
+            {
+                mapState.CurrentLocation = BuildLocationSnapshot(map.VisitingNode);
+            }
+
+            // Path history: preserves execution order for catch-up.
+            try
+            {
+                IReadOnlyList<MapNode> path = map.Path;
+                mapState.PathHistory = path
+                    .Where(n => n != null)
+                    .Select(BuildLocationSnapshot)
+                    .ToList();
+            }
+            catch
+            {
+                // ignored
+            }
+
+            // Node states: host extracts the whole map node status table.
+            try
+            {
+                Dictionary<string, string> nodeStates = new(StringComparer.Ordinal);
+                foreach (MapNode node in map.AllNodes)
+                {
+                    if (node == null)
+                    {
+                        continue;
+                    }
+
+                    string key = BuildNodeKey(node);
+                    if (string.IsNullOrWhiteSpace(key))
+                    {
+                        continue;
+                    }
+
+                    nodeStates[key] = node.Status.ToString();
+                }
+
+                mapState.NodeStates = nodeStates;
+            }
+            catch
+            {
+                // ignored
+            }
+
+            // Back-compat: keep VisitedNodes aligned with path.
+            try
+            {
+                mapState.VisitedNodes = mapState.PathHistory
+                    .Select(p => p?.NodeId)
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToList();
+            }
+            catch
+            {
+                // ignored
+            }
+
+            // Cleared nodes: all nodes in the path except the current visiting node unless current station is finished.
+            try
+            {
+                HashSet<string> cleared = new(StringComparer.Ordinal);
+
+                IReadOnlyList<MapNode> path = map.Path;
+                int cut = Math.Max(0, path.Count - 1);
+                for (int i = 0; i < cut; i++)
+                {
+                    string key = BuildNodeKey(path[i]);
+                    if (!string.IsNullOrWhiteSpace(key))
+                    {
+                        cleared.Add(key);
+                    }
+                }
+
+                if (run.CurrentStation != null && run.CurrentStation.Status == StationStatus.Finished && map.VisitingNode != null)
+                {
+                    string cur = BuildNodeKey(map.VisitingNode);
+                    if (!string.IsNullOrWhiteSpace(cur))
+                    {
+                        cleared.Add(cur);
+                    }
+                }
+
+                mapState.ClearedNodes = cleared.ToList();
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+        catch
+        {
+            // ignored
+        }
     }
 
     /// <summary>

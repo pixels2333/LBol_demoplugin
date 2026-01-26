@@ -9,6 +9,7 @@ using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -99,7 +100,7 @@ public static class EnemyIntentSyncPatch
                 Intentions = BuildIntentionsSnapshot(__instance.Intentions),
             };
 
-            string json = JsonSerializer.Serialize(payload);
+            string json = JsonCompat.Serialize(payload);
 
             // 用 Battle* 前缀走 GameEvent 通道，避免被 NetworkClient/Server 当作“未知系统消息”丢弃。
             networkClient.SendRequest("BattleEnemyIntentChanged", json);

@@ -8,6 +8,7 @@ using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -236,7 +237,7 @@ public static class GameResultSyncPatch
             };
 
             // 走 GameEvent 通道（Server 会广播给除发送方之外的所有客户端）。
-            client.SendRequest(GameResultEventType, JsonSerializer.Serialize(payload));
+            client.SendRequest(GameResultEventType, JsonCompat.Serialize(payload));
             Plugin.Logger?.LogInfo($"[GameResultSync] Broadcast game result: {resultType}");
         }
         catch (Exception ex)

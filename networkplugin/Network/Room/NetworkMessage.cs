@@ -1,6 +1,7 @@
 // 房间消息模型：用于 Relay/房间广播的消息封装，兼容 Payload 为对象或 JSON 字符串两种形态。
 using System;
 using System.Text.Json;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Network.Room;
 
@@ -26,15 +27,15 @@ public class NetworkMessage
 
             if (Payload is string json)
             {
-                return JsonSerializer.Deserialize<T>(json);
+                return JsonCompat.Deserialize<T>(json);
             }
 
             if (Payload is JsonElement element)
             {
-                return JsonSerializer.Deserialize<T>(element.GetRawText());
+                return JsonCompat.Deserialize<T>(element.GetRawText());
             }
 
-            return JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(Payload));
+            return JsonCompat.Deserialize<T>(JsonCompat.Serialize(Payload));
         }
         catch
         {

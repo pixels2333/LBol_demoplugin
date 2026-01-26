@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Utils;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.Snapshot;
 using NetworkPlugin.Utils;
@@ -508,7 +509,7 @@ public static class RoomSyncManager
 
         try
         {
-            string json = JsonSerializer.Serialize(payload);
+            string json = JsonCompat.Serialize(payload);
             root = JsonDocument.Parse(json).RootElement;
             return true;
         }

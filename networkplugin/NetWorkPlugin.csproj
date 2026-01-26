@@ -6,7 +6,11 @@
     <Version>1.0.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
-    <!-- <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies> -->
+    <!--
+      Ensure all NuGet/runtime dependencies are copied next to NetworkPlugin.dll.
+      BepInEx will fail to instantiate the plugin if required assemblies are missing.
+    -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <RestoreAdditionalProjectSources>
       https://api.nuget.org/v3/index.json;
       https://nuget.bepinex.dev/v3/index.json;
@@ -23,6 +27,7 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.AutoActivation" Version="9.9.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -38,7 +43,7 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="..\lib\*.dll">
-      <Private>false</Private>
+      <Private>true</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>

@@ -8,6 +8,7 @@ using HarmonyLib;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Utils;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.RoomSync;
 using NetworkPlugin.Utils;
@@ -32,6 +33,18 @@ public class SaveLoadSyncPatch
     /// </summary>
     private static IServiceProvider serviceProvider => ModService.ServiceProvider;
 
+    private static bool IsEnabled()
+    {
+        try
+        {
+            return Plugin.ConfigManager?.EnableSaveLoadSync?.Value == true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     /// <summary>
     /// 按玩家缓存最近一次同步的快照。
     /// </summary>
@@ -41,6 +54,61 @@ public class SaveLoadSyncPatch
     /// 同步锁，保护快照缓存。
     /// </summary>
     private static readonly object _syncLock = new();
+
+    private static bool IsPatchable(MethodInfo method)
+    {
+        // Harmony detour 需要 IL 方法体；abstract / extern / runtime 特殊方法会在运行时抛 "Method has no body"。
+        if (method == null)
+        {
+            return false;
+        }
+
+        if (method.IsAbstract)
+        {
+            return false;
+        }
+
+        if (method.IsGenericMethodDefinition)
+        {
+            return false;
+        }
+
+        if (method.ContainsGenericParameters)
+        {
+            return false;
+        }
+
+        if (method.GetMethodBody() == null)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static IEnumerable<Assembly> EnumerateGameAssemblies()
+    {
+        // 只扫描 LBoL 自身程序集，避免误命中 Unity/MonoMod/Harmony 等第三方或动态程序集。
+        foreach (Assembly asm in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            string name = null;
+            try
+            {
+                name = asm.GetName().Name;
+            }
+            catch
+            {
+                // ignored
+            }
+
+            if (string.IsNullOrWhiteSpace(name) || !name.StartsWith("LBoL", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            yield return asm;
+        }
+    }
 
     #endregion
 
@@ -59,6 +127,11 @@ public class SaveLoadSyncPatch
         [HarmonyTargetMethods]
         private static IEnumerable<MethodBase> TargetMethods()
         {
+            if (!IsEnabled())
+            {
+                return Array.Empty<MethodBase>();
+            }
+
             string[] methodNames =
             [
                 "SaveGame",
@@ -69,7 +142,7 @@ public class SaveLoadSyncPatch
 
             List<MethodBase> methods = [];
 
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            foreach (var assembly in EnumerateGameAssemblies())
             {
                 try
                 {
@@ -77,6 +150,11 @@ public class SaveLoadSyncPatch
                     {
                         foreach (var method in type.GetMethods())
                         {
+                            if (!IsPatchable(method))
+                            {
+                                continue;
+                            }
+
                             bool nameMatch = methodNames.Any(name => method.Name.Contains(name));
                             bool paramMatch = method.ReturnType == typeof(void)
                                              && method.GetParameters().Any(p => p.ParameterType.Name.Contains("Save"));
@@ -97,6 +175,13 @@ public class SaveLoadSyncPatch
             return methods;
         }
 
+        [HarmonyPrepare]
+        private static bool Prepare()
+        {
+            // 避免因为扫描不到目标或目标不可 patch 导致 PatchAll 崩溃。
+            return TargetMethods().Any();
+        }
+
         /// <summary>
         /// 保存前置：记录保存类型与保存前快照。
         /// </summary>
@@ -109,6 +194,11 @@ public class SaveLoadSyncPatch
             __state = new SaveSyncState();
             try
             {
+                if (!IsEnabled())
+                {
+                    return;
+                }
+
                 __state.SaveStartTime = DateTime.Now;
                 __state.SaveType = DetermineSaveType(__instance, __args);
                 __state.PlayerId = GetCurrentPlayerId();
@@ -133,6 +223,11 @@ public class SaveLoadSyncPatch
         {
             try
             {
+                if (!IsEnabled())
+                {
+                    return;
+                }
+
                 if (serviceProvider == null)
                 {
                     return;
@@ -209,6 +304,11 @@ public class SaveLoadSyncPatch
         [HarmonyTargetMethods]
         private static IEnumerable<MethodBase> TargetMethods()
         {
+            if (!IsEnabled())
+            {
+                return Array.Empty<MethodBase>();
+            }
+
             string[] methodNames =
             [
                 "LoadGame",
@@ -219,7 +319,7 @@ public class SaveLoadSyncPatch
 
             List<MethodBase> methods = [];
 
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            foreach (var assembly in EnumerateGameAssemblies())
             {
                 try
                 {
@@ -227,6 +327,11 @@ public class SaveLoadSyncPatch
                     {
                         foreach (var method in type.GetMethods())
                         {
+                            if (!IsPatchable(method))
+                            {
+                                continue;
+                            }
+
                             bool nameMatch = methodNames.Any(name => method.Name.Contains(name));
                             bool paramMatch = method.ReturnType != typeof(void)
                                              && method.GetParameters().Any(p => p.ParameterType.Name.Contains("Save"));
@@ -247,6 +352,12 @@ public class SaveLoadSyncPatch
             return methods;
         }
 
+        [HarmonyPrepare]
+        private static bool Prepare()
+        {
+            return TargetMethods().Any();
+        }
+
         /// <summary>
         /// 加载前置：记录加载类型与加载前快照。
         /// </summary>
@@ -259,6 +370,11 @@ public class SaveLoadSyncPatch
             __state = new LoadSyncState();
             try
             {
+                if (!IsEnabled())
+                {
+                    return;
+                }
+
                 __state.LoadStartTime = DateTime.Now;
                 __state.LoadType = DetermineLoadType(__args);
                 __state.PlayerId = GetCurrentPlayerId();
@@ -284,6 +400,11 @@ public class SaveLoadSyncPatch
         {
             try
             {
+                if (!IsEnabled())
+                {
+                    return;
+                }
+
                 if (serviceProvider == null)
                 {
                     return;
@@ -348,6 +469,11 @@ public class SaveLoadSyncPatch
         [HarmonyTargetMethods]
         private static IEnumerable<MethodBase> TargetMethods()
         {
+            if (!IsEnabled())
+            {
+                return Array.Empty<MethodBase>();
+            }
+
             string[] methodNames =
             [
                 "QuickSave",
@@ -357,7 +483,7 @@ public class SaveLoadSyncPatch
 
             List<MethodBase> methods = [];
 
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            foreach (var assembly in EnumerateGameAssemblies())
             {
                 try
                 {
@@ -365,6 +491,11 @@ public class SaveLoadSyncPatch
                     {
                         foreach (var method in type.GetMethods())
                         {
+                            if (!IsPatchable(method))
+                            {
+                                continue;
+                            }
+
                             if (methodNames.Any(name => method.Name.Contains(name)))
                             {
                                 methods.Add(method);
@@ -381,6 +512,12 @@ public class SaveLoadSyncPatch
             return methods;
         }
 
+        [HarmonyPrepare]
+        private static bool Prepare()
+        {
+            return TargetMethods().Any();
+        }
+
         /// <summary>
         /// 快速保存后置：主机按冷却时间节流后广播快照。
         /// </summary>
@@ -391,6 +528,11 @@ public class SaveLoadSyncPatch
         {
             try
             {
+                if (!IsEnabled())
+                {
+                    return;
+                }
+
                 var now = DateTime.Now;
                 if (now - _lastQuickSave < QUICK_SAVE_COOLDOWN)
                 {
@@ -595,7 +737,7 @@ public class SaveLoadSyncPatch
             }
             else
             {
-                networkClient?.SendRequest(eventType, JsonSerializer.Serialize(eventData));
+                networkClient?.SendRequest(eventType, JsonCompat.Serialize(eventData));
             }
         }
         catch (Exception ex)

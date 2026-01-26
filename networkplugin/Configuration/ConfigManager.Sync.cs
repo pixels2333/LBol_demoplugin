@@ -55,6 +55,12 @@ public partial class ConfigManager
     /// </summary>
     public ConfigEntry<float> StateCacheExpiryMinutes { get; private set; }
 
+    /// <summary>
+    /// 存档/读档同步开关
+    /// 默认关闭：避免在主菜单或未选择存档阶段触发扫描与日志，干扰启动流程。
+    /// </summary>
+    public ConfigEntry<bool> EnableSaveLoadSync { get; private set; }
+
     #endregion
 
     /// <summary>
@@ -98,6 +104,13 @@ public partial class ConfigManager
             "控制增益、减益、特殊效果等状态效果的同步"
         );
 
+        EnableSaveLoadSync = configFile.Bind(
+            "Sync.Toggles",
+            "EnableSaveLoadSync",
+            false,
+            "控制存档/读档流程的同步（建议在确认已进入并选择存档后再启用）"
+        );
+
         // 在Sync.Performance区域下绑定同步性能参数
         MaxQueueSize = configFile.Bind(
             "Sync.Performance",
@@ -127,6 +140,7 @@ public partial class ConfigManager
             EnableManaSync = EnableManaSync?.Value ?? true,
             EnableBattleSync = EnableBattleSync?.Value ?? true,
             EnableMapSync = EnableMapSync?.Value ?? true,
+            // SyncConfiguration 里暂未声明该字段；这里保持兼容，patch 层自己读取 EnableSaveLoadSync。
             MaxQueueSize = MaxQueueSize?.Value ?? 100,
             StateCacheExpiry = TimeSpan.FromMinutes(StateCacheExpiryMinutes?.Value ?? 5.0f)
         };

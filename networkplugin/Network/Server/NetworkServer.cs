@@ -14,6 +14,7 @@ using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.Server.Core;
 
 namespace NetworkPlugin.Network.Server;
+using NetworkPlugin.Utils;
 
 /// <summary>
 /// LiteNetLib网络服务器类
@@ -122,8 +123,9 @@ public class NetworkServer : BaseGameServer
     {
         _core.PeerConnected += peer =>
         {
-            Console.WriteLine($"[Server] Client connected: {peer.EndPoint}");
-            _logger?.LogInfo($"[Server] Client connected: {peer.EndPoint}");
+            Console.WriteLine($"[服务器] 客户端已连接: {peer.EndPoint}");
+            _logger?.LogInfo($"[服务器] 客户端已连接: {peer.EndPoint}");
+            Plugin.Logger?.LogInfo($"[服务器] 客户端已连接: {peer.EndPoint}");
 
             string playerId = $"Player_{peer.Id}";
             bool isHost = _sessionsByPlayerId.Values.All(s => !s.IsHost);
@@ -152,8 +154,9 @@ public class NetworkServer : BaseGameServer
 
         _core.PeerDisconnected += (peer, disconnectInfo) =>
         {
-            Console.WriteLine($"[Server] Client disconnected: {peer.EndPoint}, Reason: {disconnectInfo.Reason}");
-            _logger?.LogInfo($"[Server] Client disconnected: {peer.EndPoint}, Reason: {disconnectInfo.Reason}");
+            Console.WriteLine($"[服务器] 客户端已断开: {peer.EndPoint}, 原因: {disconnectInfo.Reason}");
+            _logger?.LogInfo($"[服务器] 客户端已断开: {peer.EndPoint}, 原因: {disconnectInfo.Reason}");
+            Plugin.Logger?.LogInfo($"[服务器] 客户端已断开: {peer.EndPoint}, 原因: {disconnectInfo.Reason}");
 
             if (!_playerIdByPeerId.TryGetValue(peer.Id, out string playerId))
             {
@@ -205,21 +208,24 @@ public class NetworkServer : BaseGameServer
                 if (request.Data.GetString(_connectionKey.Length) == _connectionKey)
                 {
                     request.AcceptIfKey(_connectionKey);
-                    Console.WriteLine($"[Server] Accepted connection from {request.RemoteEndPoint}");
-                    _logger?.LogInfo($"[Server] Accepted connection from {request.RemoteEndPoint}");
+                    Console.WriteLine($"[服务器] 已接受连接: {request.RemoteEndPoint}");
+                    _logger?.LogInfo($"[服务器] 已接受连接: {request.RemoteEndPoint}");
+                    Plugin.Logger?.LogInfo($"[服务器] 已接受连接: {request.RemoteEndPoint}");
                 }
                 else
                 {
                     request.Reject();
-                    Console.WriteLine($"[Server] Rejected connection from {request.RemoteEndPoint} due to invalid key.");
-                    _logger?.LogWarning($"[Server] Rejected connection from {request.RemoteEndPoint} due to invalid key.");
+                    Console.WriteLine($"[服务器] 已拒绝连接（密钥无效）: {request.RemoteEndPoint}");
+                    _logger?.LogWarning($"[服务器] 已拒绝连接（密钥无效）: {request.RemoteEndPoint}");
+                    Plugin.Logger?.LogWarning($"[服务器] 已拒绝连接（密钥无效）: {request.RemoteEndPoint}");
                 }
             }
             else
             {
                 request.Reject();
-                Console.WriteLine($"[Server] Rejected connection from {request.RemoteEndPoint}: Max connections reached.");
-                _logger?.LogWarning($"[Server] Rejected connection from {request.RemoteEndPoint}: Max connections reached.");
+                Console.WriteLine($"[服务器] 已拒绝连接（达到最大连接数）: {request.RemoteEndPoint}");
+                _logger?.LogWarning($"[服务器] 已拒绝连接（达到最大连接数）: {request.RemoteEndPoint}");
+                Plugin.Logger?.LogWarning($"[服务器] 已拒绝连接（达到最大连接数）: {request.RemoteEndPoint}");
             }
         };
 
@@ -766,7 +772,7 @@ public class NetworkServer : BaseGameServer
     /// <param name="excludePeerId">要排除的Peer ID</param>
     private void BroadcastGameEvent(string eventType, object eventData, int excludePeerId)
     {
-        string json = JsonSerializer.Serialize(eventData);
+        string json = JsonCompat.Serialize(eventData);
 
         foreach (var session in SessionsByPeer.Values)
         {
@@ -820,7 +826,7 @@ public class NetworkServer : BaseGameServer
     {
         try
         {
-            string json = JsonSerializer.Serialize(data);
+            string json = JsonCompat.Serialize(data);
             NetDataWriter writer = new NetDataWriter();
             writer.Put(messageType);
             writer.Put(json);

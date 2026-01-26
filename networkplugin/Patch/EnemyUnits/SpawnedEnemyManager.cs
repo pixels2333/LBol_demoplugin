@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.EnemyUnits;
 
@@ -178,7 +179,7 @@ public static class SpawnedEnemyManager
 
                 if (SuppressBroadcastDepth <= 0)
                 {
-                    client.SendRequest(NetworkMessageTypes.EnemySpawned, JsonSerializer.Serialize(spawnEvent));
+                    client.SendRequest(NetworkMessageTypes.EnemySpawned, JsonCompat.Serialize(spawnEvent));
                     Plugin.Logger?.LogInfo($"[SpawnedEnemyManager] Enemy spawned: {__result.Name} (Type={__result.GetType().Name}, RootIndex={__result.RootIndex})");
                 }
             }

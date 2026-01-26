@@ -138,10 +138,12 @@ public static class ExitGamePatch
         {
             // 尝试停止网络客户端（无论是 Host 还是 Client）。
             TryGetNetworkClient()?.Stop();
+
+            Plugin.Logger?.LogInfo("[退出/返回主菜单] 已断开联机连接");
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[ExitGamePatch] Stop network client failed: {ex.Message}");
+            Plugin.Logger?.LogError($"[退出/返回主菜单] 停止网络客户端失败: {ex.Message}");
         }
 
         try
@@ -161,7 +163,7 @@ public static class ExitGamePatch
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[ExitGamePatch] Clear players failed: {ex.Message}");
+            Plugin.Logger?.LogError($"[退出/返回主菜单] 清理玩家列表失败: {ex.Message}");
         }
     }
 
@@ -181,17 +183,19 @@ public static class ExitGamePatch
             // 如果当前有正在进行的 GameRun，则通过游戏逻辑退出游戏局。
             if (Singleton<GameMaster>.Instance?.CurrentGameRun != null)
             {
+                Plugin.Logger?.LogInfo("[退出/返回主菜单] 当前在游戏局内，开始退出并返回主菜单");
                 GameMaster.LeaveGameRun();
             }
             else
             {
                 // 不在局内时，刷新主菜单档案信息，保证显示为最新状态。
+                Plugin.Logger?.LogInfo("[退出/返回主菜单] 当前不在游戏局内，刷新主菜单档案信息");
                 UiManager.GetPanel<MainMenuPanel>()?.RefreshProfile();
             }
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[ExitGamePatch] Return to main menu failed: {ex.Message}");
+            Plugin.Logger?.LogError($"[退出/返回主菜单] 返回主菜单失败: {ex.Message}");
         }
     }
 
@@ -231,7 +235,7 @@ public static class ExitGamePatch
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[ExitGamePatch] Show quit dialog failed: {ex.Message}");
+            Plugin.Logger?.LogError($"[退出/返回主菜单] 显示退出确认弹窗失败: {ex.Message}");
         }
     }
 
@@ -254,7 +258,7 @@ public static class ExitGamePatch
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[ExitGamePatch] Show abandon blocked dialog failed: {ex.Message}");
+            Plugin.Logger?.LogError($"[退出/返回主菜单] 显示弃档拦截弹窗失败: {ex.Message}");
         }
     }
 
@@ -285,7 +289,7 @@ public static class ExitGamePatch
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[ExitGamePatch] RefreshProfile patch failed: {ex.Message}");
+            Plugin.Logger?.LogError($"[退出/返回主菜单] RefreshProfile 补丁失败: {ex.Message}");
         }
     }
 

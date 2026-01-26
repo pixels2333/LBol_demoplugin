@@ -37,6 +37,27 @@
 - 商店入口：`networkplugin/Patch/UI/ShopTradeIconPatch.cs`。
 - 两者通过 `networkplugin/Patch/UI/TradeUiMessages.cs` 统一“未连接/配置禁用/缺少 TradePanel 实例”等提示。
 
+#### 主菜单多人入口（多人游戏）
+
+目的：在主菜单（新游戏/继续/设置同一层级）提供默认可见的“多人游戏”入口，并进入插件提供的联机方式选择 UI。
+
+实现：`networkplugin/Patch/UI/MainMenuMultiplayerEntryPatch.cs`
+
+- 注入点：
+  - `MainMenuPanel.Awake` Postfix
+  - `MainMenuPanel.RefreshProfile` Postfix
+- 按钮创建：克隆主菜单现有按钮作为模板，并插入到按钮组中。
+- 模板按钮定位（分层降级）：
+  1) 优先读取 `MainMenuPanel` 的 `newGameButton` 字段
+  2) 反射扫描 `MainMenuPanel` 的所有 `Button` 字段
+  3) 从面板子节点扫描 `Button` + `TextMeshProUGUI` 作为候选兜底
+- 点击行为：打开遮罩式“多人游戏”面板（非 `MessageDialog`），提供三个按钮：
+  - 做房主：启动本机服务器并连接
+  - 加入房主：弹出加入确认并连接配置的服务器地址
+  - 返回：关闭面板
+
+说明：主菜单结构变动时，若模板定位失败会输出 warning 日志但不会导致主菜单崩溃。
+
 ### 远端队友作为出牌目标（单体目标）
 - 通过 `RemotePlayerProxyEnemy : EnemyUnit` 兼容 `UnitSelector.SelectedEnemy` 的类型约束。
 - 发送端在 `Card.GetActions` 处拦截：不本地结算，改为发送 `OnRemoteCardUse`。

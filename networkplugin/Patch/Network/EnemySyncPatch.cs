@@ -10,6 +10,7 @@ using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -95,7 +96,7 @@ public class EnemySyncPatch
                 HpDifference = hp - oldHp,
             });
 
-            string json = JsonSerializer.Serialize(enemyData);
+            string json = JsonCompat.Serialize(enemyData);
             networkClient.SendRequest("EnemyStateUpdate", json);
 
             Plugin.Logger?.LogInfo($"[EnemySync] 敌人 {__instance.Name} HP: {oldHp} -> {hp}");
@@ -164,7 +165,7 @@ public class EnemySyncPatch
                 BlockDifference = block - oldBlock,
             });
 
-            string json = JsonSerializer.Serialize(enemyData);
+            string json = JsonCompat.Serialize(enemyData);
             networkClient.SendRequest("EnemyStateUpdate", json);
 
             Plugin.Logger?.LogDebug($"[EnemySync] 敌人 {__instance.Name} Block: {oldBlock} -> {block}");
@@ -233,7 +234,7 @@ public class EnemySyncPatch
                 ShieldDifference = shield - oldShield,
             });
 
-            string json = JsonSerializer.Serialize(enemyData);
+            string json = JsonCompat.Serialize(enemyData);
             networkClient.SendRequest("EnemyStateUpdate", json);
 
             Plugin.Logger?.LogDebug($"[EnemySync] 敌人 {__instance.Name} Shield: {oldShield} -> {shield}");
@@ -284,7 +285,7 @@ public class EnemySyncPatch
                 StatusEffectCount = statusEffects.Count,
             });
 
-            string json = JsonSerializer.Serialize(enemyData);
+            string json = JsonCompat.Serialize(enemyData);
             networkClient.SendRequest("EnemyStateUpdate", json);
 
             Plugin.Logger?.LogInfo($"[EnemySync] 敌人 {enemy.Name} 状态效果已更新，数量: {statusEffects.Count}");
@@ -331,7 +332,7 @@ public class EnemySyncPatch
                 StatusEffectCount = statusEffects.Count,
             });
 
-            string json = JsonSerializer.Serialize(enemyData);
+            string json = JsonCompat.Serialize(enemyData);
             networkClient.SendRequest("EnemyStateUpdate", json);
 
             Plugin.Logger?.LogInfo($"[EnemySync] 敌人 {enemy.Name} 状态效果移除后剩余: {statusEffects.Count}");
@@ -381,7 +382,7 @@ public class EnemySyncPatch
                 Intention = intentionData,
             });
 
-            string json = JsonSerializer.Serialize(enemyData);
+            string json = JsonCompat.Serialize(enemyData);
             networkClient.SendRequest("EnemyStateUpdate", json);
 
             Plugin.Logger?.LogDebug($"[EnemySync] 敌人 {enemy.Name} 意图已更新: {intentionData.Type}");
@@ -431,7 +432,7 @@ public class EnemySyncPatch
                 enemy.IsAlive,
             });
 
-            string json = JsonSerializer.Serialize(enemyData);
+            string json = JsonCompat.Serialize(enemyData);
             networkClient.SendRequest("EnemyStateUpdate", json);
 
             Plugin.Logger?.LogInfo($"[EnemySync] 敌人 {enemy.Name} 已死亡");

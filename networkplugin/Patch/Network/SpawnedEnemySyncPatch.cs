@@ -8,6 +8,7 @@ using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -313,7 +314,7 @@ public static class SpawnedEnemySyncPatch
                         SpawnId = spawnId,
                     };
 
-                    networkClient.SendRequest("BattleEnemySpawned", JsonSerializer.Serialize(payload));
+                    networkClient.SendRequest("BattleEnemySpawned", JsonCompat.Serialize(payload));
                     Plugin.Logger?.LogDebug($"[SpawnedEnemySync] Host spawned enemy. Enemy={enemy.Name} Index={GetEnemyIndex(enemy)} RootIndex={enemy.RootIndex} SpawnId={spawnId}");
                     return;
                 }

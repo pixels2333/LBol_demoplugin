@@ -6,6 +6,7 @@ using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Utils;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.NetworkPlayer;
 using NetworkPlugin.Network.Snapshot;
@@ -217,7 +218,7 @@ public static class TurnEndSnapshotReceivePatch
             else
             {
                 // Dictionary/anonymous object fallback
-                string json = JsonSerializer.Serialize(payload);
+                string json = JsonCompat.Serialize(payload);
                 root = JsonSerializer.Deserialize<JsonElement>(json);
             }
 

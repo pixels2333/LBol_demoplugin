@@ -146,15 +146,15 @@ public class ChatUI : MonoBehaviour
 
             if (payload is JsonElement je)
             {
-                return JsonSerializer.Deserialize<ChatMessage>(je.GetRawText());
+                return JsonCompat.Deserialize<ChatMessage>(je.GetRawText());
             }
 
             if (payload is string s)
             {
-                return JsonSerializer.Deserialize<ChatMessage>(s);
+                return JsonCompat.Deserialize<ChatMessage>(s);
             }
 
-            return JsonSerializer.Deserialize<ChatMessage>(JsonSerializer.Serialize(payload));
+                return JsonCompat.Deserialize<ChatMessage>(JsonCompat.Serialize(payload));
         }
         catch
         {
@@ -206,7 +206,7 @@ public class ChatUI : MonoBehaviour
 
         try
         {
-            _networkClient.SendRequest(NetworkMessageTypes.ChatMessage, System.Text.Json.JsonSerializer.Serialize(chatMessage));
+            _networkClient.SendRequest(NetworkMessageTypes.ChatMessage, JsonCompat.Serialize(chatMessage));
             AddMessageToChat(chatMessage);
         }
         catch (Exception ex)

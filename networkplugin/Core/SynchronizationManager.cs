@@ -232,9 +232,9 @@ public class SynchronizationManager : ISynchronizationManager
         try
         {
             // 验证数据格式是否正确
-            if (eventData is not Dictionary<string, object> eventDict || !eventDict.ContainsKey("EventType"))
+            if (!TryNormalizeNetworkEvent(eventData, out Dictionary<string, object> eventDict))
             {
-                Plugin.Logger?.LogWarning("[SyncManager] 无效的网络事件数据格式");
+                Plugin.Logger?.LogWarning($"[SyncManager] 无效的网络事件数据格式: type={eventData.GetType().FullName}, head200={DescribePayloadHead200(eventData)}");
                 return;
             }
 
@@ -258,6 +258,102 @@ public class SynchronizationManager : ISynchronizationManager
         {
             // 捕获并记录处理异常，不影响网络通信的继续进行
             Plugin.Logger?.LogError($"[SyncManager] 网络事件处理异常: {ex.Message}");
+        }
+    }
+
+    private static bool TryNormalizeNetworkEvent(object eventData, out Dictionary<string, object> eventDict)
+    {
+        eventDict = null;
+
+        try
+        {
+            // 1) 已经是期望结构
+            if (eventData is Dictionary<string, object> dict)
+            {
+                if (dict.ContainsKey("EventType"))
+                {
+                    eventDict = dict;
+                    return true;
+                }
+
+                return false;
+            }
+
+            // 2) 兼容匿名对象/DTO：{ EventType, Payload, Timestamp }
+            var t = eventData.GetType();
+            var pEventType = t.GetProperty("EventType");
+            if (pEventType == null)
+            {
+                return false;
+            }
+
+            object et = pEventType.GetValue(eventData, null);
+            if (et == null)
+            {
+                return false;
+            }
+
+            var d = new Dictionary<string, object>(StringComparer.Ordinal);
+            d["EventType"] = et;
+
+            var pPayload = t.GetProperty("Payload");
+            if (pPayload != null)
+            {
+                d["Payload"] = pPayload.GetValue(eventData, null);
+            }
+
+            var pTimestamp = t.GetProperty("Timestamp");
+            if (pTimestamp != null)
+            {
+                d["Timestamp"] = pTimestamp.GetValue(eventData, null);
+            }
+
+            eventDict = d;
+            return true;
+        }
+        catch
+        {
+            eventDict = null;
+            return false;
+        }
+    }
+
+    private static string DescribePayloadHead200(object maybeEvent)
+    {
+        if (maybeEvent == null)
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            // 优先提取 Payload 字段，避免把整个 wrapper 序列化出来。
+            var t = maybeEvent.GetType();
+            var pPayload = t.GetProperty("Payload");
+            object payload = pPayload != null ? pPayload.GetValue(maybeEvent, null) : maybeEvent;
+
+            string s = payload switch
+            {
+                null => string.Empty,
+                string str => str,
+                _ => JsonCompat.Serialize(payload)
+            };
+
+            s = (s ?? string.Empty).Replace("\r", " ").Replace("\n", " ");
+            return s.Length > 200 ? s.Substring(0, 200) : s;
+        }
+        catch
+        {
+            try
+            {
+                string fallback = maybeEvent.ToString() ?? string.Empty;
+                fallback = fallback.Replace("\r", " ").Replace("\n", " ");
+                return fallback.Length > 200 ? fallback.Substring(0, 200) : fallback;
+            }
+            catch
+            {
+                return string.Empty;
+            }
         }
     }
 

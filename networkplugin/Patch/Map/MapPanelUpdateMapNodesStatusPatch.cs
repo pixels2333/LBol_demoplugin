@@ -6,6 +6,8 @@ using LBoL.Presentation.UI.Panels;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.MidGameJoin;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Map;
 
@@ -30,6 +32,16 @@ public class MapPanelUpdateMapNodesStatusPatch
             {
                 Plugin.Logger?.LogWarning("[MapSyncPatch] serviceProvider is null");
                 return;
+            }
+
+            // 追赶：若中途加入/重连已收到 FullSnapshot，则在地图 UI 刷新时尽力对齐节点状态。
+            try
+            {
+                serviceProvider.GetService<MapCatchUpOrchestrator>()?.TryApplyPendingToCurrentRun();
+            }
+            catch
+            {
+                // ignored
             }
 
             var networkClient = serviceProvider.GetService<INetworkClient>();
@@ -70,7 +82,7 @@ public class MapPanelUpdateMapNodesStatusPatch
                 Stage = visitingNode.Act
             };
 
-            string json = JsonSerializer.Serialize(locationData);
+            string json = JsonCompat.Serialize(locationData);
             networkClient.SendRequest("UpdatePlayerLocation", json);
 
             Plugin.Logger?.LogInfo($"[MapSyncPatch] Player location updated: ({locationData.LocationX}, {locationData.LocationY}) - {locationData.LocationName}");

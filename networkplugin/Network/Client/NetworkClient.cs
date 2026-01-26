@@ -1,6 +1,6 @@
 using System;
+using System.Collections.Generic;
 using System.Net;
-using System.Text.Json;
 using System.Threading;
 using LiteNetLib;
 using LiteNetLib.Utils;
@@ -65,6 +65,9 @@ public class NetworkClient : INetworkClient
     private readonly object _reconnectLock = new();
     private Timer _reconnectTimer;
 
+    private readonly object _payloadPreviewLock = new();
+    private readonly HashSet<string> _payloadPreviewLogged = new(StringComparer.Ordinal);
+
     public NetworkClient(ConfigManager configManager)
         : this(configManager?.RelayServerConnectionKey?.Value ?? "LBoL_Network_Plugin", null, null)
     {
@@ -93,11 +96,13 @@ public class NetworkClient : INetworkClient
         // 启动网络管理器，如果失败则抛出异常
         if (_netManager.Start())
         {
-            Console.WriteLine("[Client] Network client started successfully.");
+            Console.WriteLine("[客户端] 网络客户端已启动。");
+            Plugin.Logger?.LogInfo("[客户端] 网络客户端已启动。");
         }
         else
         {
-            Console.WriteLine("[Client] Failed to start network client.");
+            Console.WriteLine("[客户端] 网络客户端启动失败。");
+            Plugin.Logger?.LogError("[客户端] 网络客户端启动失败。");
             throw new Exception("Failed to start NetworkClient");
         }
     }
@@ -133,7 +138,8 @@ public class NetworkClient : INetworkClient
     {
         _listener.PeerConnectedEvent += peer =>
         {
-            Console.WriteLine($"[Client] Connected to server: {peer.EndPoint}");
+            Console.WriteLine($"[客户端] 已连接到服务器: {peer.EndPoint}");
+            Plugin.Logger?.LogInfo($"[客户端] 已连接到服务器: {peer.EndPoint}");
             _serverPeer = peer;
             StopAutoReconnectTimer_NoThrow();
 
@@ -148,7 +154,8 @@ public class NetworkClient : INetworkClient
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Client] Error notifying sync manager: {ex.Message}");
+                Console.WriteLine($"[客户端] 通知同步管理器失败: {ex.Message}");
+                Plugin.Logger?.LogWarning($"[客户端] 通知同步管理器失败: {ex.Message}");
             }
 
             // 获取当前玩家信息并发送加入事件
@@ -195,7 +202,8 @@ public class NetworkClient : INetworkClient
 
         _listener.PeerDisconnectedEvent += (peer, disconnectInfo) =>
         {
-            Console.WriteLine($"[Client] Disconnected from server: {peer.EndPoint}, Reason: {disconnectInfo.Reason}");
+            Console.WriteLine($"[客户端] 已从服务器断开: {peer.EndPoint}, 原因: {disconnectInfo.Reason}");
+            Plugin.Logger?.LogWarning($"[客户端] 已从服务器断开: {peer.EndPoint}, 原因: {disconnectInfo.Reason}");
             _serverPeer = null;
 
             // 触发断开连接事件通知
@@ -209,13 +217,15 @@ public class NetworkClient : INetworkClient
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Client] Error notifying sync manager: {ex.Message}");
+                Console.WriteLine($"[客户端] 通知同步管理器失败: {ex.Message}");
+                Plugin.Logger?.LogWarning($"[客户端] 通知同步管理器失败: {ex.Message}");
             }
 
             // 检查是否启用自动重连功能
             if (_autoReconnectEnabled)
             {
-                Console.WriteLine($"[Client] Auto-reconnect enabled, will retry in {_retryInterval}ms");
+                Console.WriteLine($"[客户端] 已启用自动重连，将在 {_retryInterval}ms 后重试");
+                Plugin.Logger?.LogInfo($"[客户端] 已启用自动重连，将在 {_retryInterval}ms 后重试");
                 StartAutoReconnectTimer_NoThrow();
             }
         };
@@ -240,12 +250,14 @@ public class NetworkClient : INetworkClient
                 }
                 else
                 {
-                    Console.WriteLine($"[Client] Unknown message type: {messageType} from {fromPeer.EndPoint}");
+                    Console.WriteLine($"[客户端] 未知消息类型: {messageType}，来自 {fromPeer.EndPoint}");
+                    Plugin.Logger?.LogWarning($"[客户端] 未知消息类型: {messageType}，来自 {fromPeer.EndPoint}");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Client] Error processing data from {fromPeer.EndPoint}: {ex.Message}");
+                Console.WriteLine($"[客户端] 处理来自 {fromPeer.EndPoint} 的数据失败: {ex.Message}");
+                Plugin.Logger?.LogError($"[客户端] 处理来自 {fromPeer.EndPoint} 的数据失败: {ex.Message}");
             }
             finally
             {
@@ -323,9 +335,14 @@ public class NetworkClient : INetworkClient
         {
             // 读取并解析 JSON 格式的事件数据
             string jsonPayload = dataReader.GetString();
-            object eventData = JsonSerializer.Deserialize<object>(jsonPayload);
+            // 保持为 JSON 字符串：下游大多通过 JsonElement/string 路径解析，避免反序列化成不兼容的对象形状。
+            object eventData = jsonPayload;
 
-            Console.WriteLine($"[Client] Received game event: {eventType}");
+            LogPayloadPreviewOnce(eventType, jsonPayload);
+
+            Console.WriteLine($"[客户端] 收到游戏事件: {eventType}");
+            // 高频：仅 Debug，避免刷屏。
+            Plugin.Logger?.LogDebug($"[客户端] 收到游戏事件: {eventType}");
 
             // 触发游戏事件接收事件
             OnGameEventReceived?.Invoke(eventType, eventData);
@@ -340,7 +357,42 @@ public class NetworkClient : INetworkClient
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[Client] Error handling game event: {ex.Message}");
+            Console.WriteLine($"[客户端] 处理游戏事件失败: {ex.Message}");
+            Plugin.Logger?.LogError($"[客户端] 处理游戏事件失败: {ex.Message}");
+        }
+    }
+
+    private void LogPayloadPreviewOnce(string eventType, string jsonPayload)
+    {
+        if (string.IsNullOrWhiteSpace(eventType))
+        {
+            eventType = "<unknown>";
+        }
+
+        lock (_payloadPreviewLock)
+        {
+            if (!_payloadPreviewLogged.Add(eventType))
+            {
+                return;
+            }
+        }
+
+        string preview = jsonPayload ?? string.Empty;
+        preview = preview.Replace("\r", " ").Replace("\n", " ");
+        if (preview.Length > 200)
+        {
+            preview = preview.Substring(0, 200);
+        }
+
+        // 只打一次：用于定位“无效的网络事件数据格式”根因。
+        Console.WriteLine($"[Client] Payload preview: event={eventType}, type=string, head200={preview}");
+        try
+        {
+            Plugin.Logger?.LogInfo($"[Client] Payload preview: event={eventType}, type=string, head200={preview}");
+        }
+        catch
+        {
+            // ignored
         }
     }
 
@@ -354,7 +406,8 @@ public class NetworkClient : INetworkClient
     {
         _lastConnectHost = host;
         _lastConnectPort = port;
-        Console.WriteLine($"[Client] Attempting to connect to {host}:{port} with key '{_connectionKey}'...");
+        Console.WriteLine($"[客户端] 正在连接服务器 {host}:{port}（密钥: {_connectionKey}）...");
+        Plugin.Logger?.LogInfo($"[客户端] 正在连接服务器 {host}:{port}（密钥: {_connectionKey}）...");
         NetDataWriter connectData = new();
         // 将连接密钥写入数据包，用于服务器身份验证
         connectData.Put(_connectionKey);
@@ -491,14 +544,15 @@ public class NetworkClient : INetworkClient
         // 检查是否已连接到服务器
         if (!IsConnected)
         {
-            Console.WriteLine($"[Client] Not connected to server. Cannot send game event: {eventType}");
+            Console.WriteLine($"[客户端] 未连接到服务器，无法发送事件: {eventType}");
+            Plugin.Logger?.LogWarning($"[客户端] 未连接到服务器，无法发送事件: {eventType}");
             return;
         }
 
         try
         {
             // 序列化事件数据为 JSON 格式
-            string json = JsonSerializer.Serialize(eventData);
+            string json = JsonCompat.Serialize(eventData);
             NetDataWriter writer = new();
             // 写入事件类型标识
             writer.Put(eventType);
@@ -507,11 +561,13 @@ public class NetworkClient : INetworkClient
 
             // 使用可靠有序的方式发送数据
             _serverPeer.Send(writer, DeliveryMethod.ReliableOrdered);
-            Console.WriteLine($"[Client] Game event sent: {eventType}");
+            Console.WriteLine($"[客户端] 已发送游戏事件: {eventType}");
+            Plugin.Logger?.LogDebug($"[客户端] 已发送游戏事件: {eventType}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[Client] Error sending game event {eventType}: {ex.Message}");
+            Console.WriteLine($"[客户端] 发送游戏事件失败: {eventType}, 错误: {ex.Message}");
+            Plugin.Logger?.LogError($"[客户端] 发送游戏事件失败: {eventType}, 错误: {ex.Message}");
         }
     }
 
@@ -549,7 +605,7 @@ public class NetworkClient : INetworkClient
             else
             {
                 // 复杂对象使用 JSON 序列化
-                string json = JsonSerializer.Serialize(requestData);
+                string json = JsonCompat.Serialize(requestData);
                 writer.Put(json);
             }
 

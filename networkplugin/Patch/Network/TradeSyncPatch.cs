@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Utils;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Utils;
 
@@ -781,7 +782,7 @@ public static class TradeSyncPatch
     {
         try
         {
-            string json = JsonSerializer.Serialize(payload);
+            string json = JsonCompat.Serialize(payload);
             JsonElement root = JsonDocument.Parse(json).RootElement;
             HandleStateUpdate(root);
         }
@@ -1057,7 +1058,7 @@ public static class TradeSyncPatch
             // Host 侧 SendToHost 会把匿名对象直接回灌到本地处理，这里补一层序列化以便解析。
             if (payload != null)
             {
-                string json = JsonSerializer.Serialize(payload);
+                string json = JsonCompat.Serialize(payload);
                 root = JsonDocument.Parse(json).RootElement;
                 return true;
             }

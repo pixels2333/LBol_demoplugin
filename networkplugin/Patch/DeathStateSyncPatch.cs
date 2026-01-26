@@ -34,15 +34,17 @@ public class DeathStateSyncPatch
     /// <summary>
     /// 玩家状态（<see cref="Unit.Status"/>）变化后置：在进入死亡/恢复存活时，更新假死/复活记录。
     /// </summary>
-    /// <param name="__instance">玩家单位实例。</param>
+    /// <param name="__instance">单位实例（实际只处理 PlayerUnit）。</param>
     /// <param name="value">被设置的新状态值（Harmony 注入）。</param>
-    [HarmonyPatch(typeof(PlayerUnit), "Status", MethodType.Setter)]
+    // 注意：Status 属性定义在 Unit 上，而不是 PlayerUnit。
+    // 如果错误地 patch PlayerUnit.Status，会导致 PatchAll 期间崩溃（original method 为空）。
+    [HarmonyPatch(typeof(Unit), "Status", MethodType.Setter)]
     [HarmonyPostfix]
-    public static void OnPlayerStatusChanged(PlayerUnit __instance, ref UnitStatus value)
+    public static void OnUnitStatusChanged(Unit __instance, UnitStatus value)
     {
         try
         {
-            if (__instance == null)
+            if (__instance is not PlayerUnit player)
             {
                 return;
             }
@@ -54,22 +56,22 @@ public class DeathStateSyncPatch
             }
 
             // 进入死亡状态：记录假死（由 AllowRealDeath 控制是否真死）。
-            if (value == UnitStatus.Dead && __instance.IsDead)
+            if (value == UnitStatus.Dead && player.IsDead)
             {
-                DeathManagementService.NotifyFakeDeath(__instance);
-                Plugin.Logger?.LogDebug($"[DeathStateSync] 玩家 {__instance.Id} 死亡状态已记录");
+                DeathManagementService.NotifyFakeDeath(player);
+                Plugin.Logger?.LogDebug($"[DeathStateSync] 玩家 {player.Id} 死亡状态已记录");
             }
 
             // 恢复为存活：记录复活。
-            if (value == UnitStatus.Alive && !__instance.IsDead)
+            if (value == UnitStatus.Alive && !player.IsDead)
             {
-                DeathManagementService.NotifyResurrection(__instance);
-                Plugin.Logger?.LogDebug($"[DeathStateSync] 玩家 {__instance.Id} 复活状态已记录");
+                DeathManagementService.NotifyResurrection(player);
+                Plugin.Logger?.LogDebug($"[DeathStateSync] 玩家 {player.Id} 复活状态已记录");
             }
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[DeathStateSync] OnPlayerStatusChanged 异常: {ex.Message}");
+            Plugin.Logger?.LogError($"[DeathStateSync] OnUnitStatusChanged 异常: {ex.Message}");
         }
     }
 
@@ -138,7 +140,9 @@ public class GameEventDeathSyncPatch
     /// 战斗开始后置：清空上一场战斗的假死记录，并重置“允许真死”标记。
     /// </summary>
     /// <param name="__instance">战斗控制器实例。</param>
-    [HarmonyPatch(typeof(BattleController), "Start")]
+    // LBoL.Core.Battle.BattleController 并不是 Unity MonoBehaviour，没有 Start()。
+    // 正确的战斗开始入口是 StartBattle()，否则会导致 PatchAll 期间 original method 为空并崩溃。
+    [HarmonyPatch(typeof(BattleController), "StartBattle")]
     [HarmonyPostfix]
     public static void OnBattleStart(BattleController __instance)
     {
@@ -159,7 +163,8 @@ public class GameEventDeathSyncPatch
     /// 战斗结束后置：清空假死记录。
     /// </summary>
     /// <param name="__instance">战斗控制器实例。</param>
-    [HarmonyPatch(typeof(BattleController), "Destroy")]
+    // BattleController 同样没有 Destroy()。这里改为 patch Leave()，它负责单位/卡牌离场与战斗统计收尾。
+    [HarmonyPatch(typeof(BattleController), "Leave")]
     [HarmonyPostfix]
     public static void OnBattleEnd(BattleController __instance)
     {
@@ -171,6 +176,24 @@ public class GameEventDeathSyncPatch
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[GameEventDeathSync] OnBattleEnd 异常: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 战斗结束后置（兜底）：如果流程走到 EndBattle()，同样清理假死记录。
+    /// </summary>
+    /// <param name="__instance">战斗控制器实例。</param>
+    [HarmonyPatch(typeof(BattleController), "EndBattle")]
+    [HarmonyPostfix]
+    public static void OnBattleEndBattle(BattleController __instance)
+    {
+        try
+        {
+            DeathManagementService.Instance.ClearAllFakeDead();
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[GameEventDeathSync] OnBattleEndBattle 异常: {ex.Message}");
         }
     }
 

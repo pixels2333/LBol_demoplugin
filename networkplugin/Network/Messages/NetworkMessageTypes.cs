@@ -161,6 +161,13 @@ namespace NetworkPlugin.Network.Messages
         public const string OnMoodEffectLoopEnded = "OnMoodEffectLoopEnded";
         public const string OnMoodEffectStateSync = "OnMoodEffectStateSync";
 
+        // === 玩家状态同步消息 ===
+
+        /// <summary>
+        /// 玩家状态更新（按游戏事件广播/转发；必须以 On 开头以避免被服务端按 SystemMessage 处理）。
+        /// </summary>
+        public const string OnPlayerStateUpdate = "OnPlayerStateUpdate";
+
         // === Battle* (Host 权威广播 / Client 上报) ===
 
         /// <summary>

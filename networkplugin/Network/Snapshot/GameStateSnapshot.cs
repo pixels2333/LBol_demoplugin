@@ -51,6 +51,22 @@ public class GameStateSnapshot
     public int GameSeed { get; set; } = 0;
 
     /// <summary>
+    /// 主种子（LBoL: GameRunController.RootSeed）。
+    /// 用于中途加入/重连时对齐确定性生成（地图/随机池等）。
+    /// </summary>
+    public ulong? RootSeed { get; set; }
+
+    /// <summary>
+    /// UI 种子（LBoL: GameRunController.UISeed）。
+    /// </summary>
+    public ulong? UISeed { get; set; }
+
+    /// <summary>
+    /// 当前关卡索引（LBoL: GameRunSaveData.StageIndex / GameRunController.CurrentStage.Index）。
+    /// </summary>
+    public int? StageIndex { get; set; }
+
+    /// <summary>
     /// 房间ID
     /// </summary>
     public string RoomId { get; set; } = "unknown";

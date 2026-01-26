@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
@@ -129,8 +130,11 @@ public class Plugin : BaseUnityPlugin
         // 设置GameObject在场景切换时不被销毁，确保插件持久运行
         DontDestroyOnLoad(gameObject);
 
-        // 应用所有Harmony补丁，修改游戏行为以支持联机功能
-        harmony.PatchAll();
+        // 应用所有 Harmony 补丁。
+        // 注意：部分反射扫描类补丁可能会误命中“无方法体(abstract/extern)”的方法，
+        // Harmony 在 detour 时会抛出 BadImageFormatException("Method has no body") 并导致插件启动失败。
+        // 这里按类型逐个 Patch，单个补丁失败不会拖垮整个插件。
+        ApplyHarmonyPatchesSafely(harmony);
         Logger.LogInfo("补丁已加载");
 
         // 输出当前配置信息到日志
@@ -162,6 +166,9 @@ public class Plugin : BaseUnityPlugin
         // 中途加入：按“可用优先”先跑通 DirectMessage 协作闭环。
         services.AddSingleton(new MidGameJoinConfig());
         services.AddSingleton<MidGameJoinManager>();
+
+        // 客户端追赶：接收 FullSnapshot 后在本地地图界面尽力对齐节点状态。
+        services.AddSingleton(sp => new MapCatchUpOrchestrator(Logger));
     }
 
     /// <summary>
@@ -191,6 +198,34 @@ public class Plugin : BaseUnityPlugin
         Logger?.LogInfo("Plugin has been destroyed and resources cleaned up.");
     }
 
+    private void ApplyHarmonyPatchesSafely(Harmony harmony)
+    {
+        int ok = 0;
+        int failed = 0;
+
+        foreach (Type type in Assembly.GetExecutingAssembly().GetTypes())
+        {
+            // 只处理显式标注 [HarmonyPatch] 的类型，避免扫到普通类。
+            if (!Attribute.IsDefined(type, typeof(HarmonyPatch), inherit: true))
+            {
+                continue;
+            }
+
+            try
+            {
+                harmony.CreateClassProcessor(type).Patch();
+                ok++;
+            }
+            catch (Exception ex)
+            {
+                failed++;
+                Logger?.LogError($"[Harmony] Failed to patch {type.FullName}: {ex}");
+            }
+        }
+
+        Logger?.LogInfo($"[Harmony] Patch result: ok={ok}, failed={failed}");
+    }
+
     /// <summary>
     /// 输出当前配置信息到日志，用于调试和验证配置加载
     /// </summary>
@@ -202,6 +237,7 @@ public class Plugin : BaseUnityPlugin
         Logger.LogInfo($"  法力同步: {ConfigManager.EnableManaSync.Value}");
         Logger.LogInfo($"  战斗同步: {ConfigManager.EnableBattleSync.Value}");
         Logger.LogInfo($"  地图同步: {ConfigManager.EnableMapSync.Value}");
+        Logger.LogInfo($"  存档/读档同步: {ConfigManager.EnableSaveLoadSync.Value}");
         Logger.LogInfo($"性能参数:");
         Logger.LogInfo($"  最大队列大小: {ConfigManager.MaxQueueSize.Value}");
         Logger.LogInfo($"  缓存过期时间: {ConfigManager.StateCacheExpiryMinutes.Value} 分钟");

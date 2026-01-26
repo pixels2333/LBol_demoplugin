@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Utils;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.UI.Panels;
 using NetworkPlugin.Utils;
@@ -202,7 +203,7 @@ public class DeathPatches
                 Timestamp = DateTime.UtcNow.Ticks,
             };
 
-            string json = JsonSerializer.Serialize(deathData);
+            string json = JsonCompat.Serialize(deathData);
             NetworkClient.SendRequest(NetworkMessageTypes.OnPlayerDeathStatusChanged, json);
 
             // 重要：服务端广播会排除发送方，因此本地也同步更新登记册，避免 Host 无法校验“复活 Host”请求。
@@ -282,7 +283,7 @@ public class DeathPatches
                 Timestamp = DateTime.UtcNow.Ticks,
             };
 
-            string json = JsonSerializer.Serialize(resurrectionData);
+            string json = JsonCompat.Serialize(resurrectionData);
             NetworkClient.SendRequest(NetworkMessageTypes.OnPlayerResurrected, json);
 
             if (!string.IsNullOrWhiteSpace(playerId))

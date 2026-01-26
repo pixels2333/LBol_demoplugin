@@ -36,13 +36,16 @@ public class EnemyUnitPatches
     /// 在多人游戏中，根据当前玩家数量调整敌方单位的血量
     /// 这样可以平衡游戏难度，确保多人游戏时的挑战性
     /// </summary>
-    /// <param name="_instance">敌方单位实例</param>
+    /// <param name="__instance">敌方单位实例</param>
     /// <param name="hp">当前血量</param>
     /// <param name="maxHp">最大血量</param>
-    /// <returns>返回false跳过原始方法执行</returns>
+    /// <remarks>
+    /// Harmony 注入实例参数必须命名为 __instance；如果写成 _instance，Harmony 会把它当作“原方法参数名”，
+    /// 导致在 PatchAll 阶段报错：Parameter "_instance" not found。
+    /// </remarks>
     [HarmonyPatch(typeof(EnemyUnit), "SetMaxHpInBattle")]
-    [HarmonyPostfix]
-    public static bool SetMaxHpInBattle(EnemyUnit _instance, int hp, int maxHp)
+    [HarmonyPrefix]
+    public static void SetMaxHpInBattle(EnemyUnit __instance, ref int hp, ref int maxHp)
     {
         try
         {
@@ -50,7 +53,7 @@ public class EnemyUnitPatches
             if (networkManager == null)
             {
                 Plugin.Logger?.LogWarning("[EnemyUnitPatches] NetworkManager is null, skipping HP adjustment");
-                return true; // 允许原始方法执行
+                return; // 允许原始方法执行
             }
 
             // 获取当前玩家数量作为调整系数（并叠加配置中的倍率）
@@ -58,26 +61,19 @@ public class EnemyUnitPatches
             float multiplier = Plugin.ConfigManager?.GetEnemyHpMultiplier(playerCount) ?? playerCount;
             multiplier = Math.Max(1.0f, multiplier);
 
-            // 计算调整后的血量
-            int modifiedHp = (int)Math.Round(hp * multiplier);
-            int modifiedMaxHp = (int)Math.Round(maxHp * multiplier);
+            // 直接改写入参，让原方法用调整后的数值执行。
+            int originalMaxHp = maxHp;
+            hp = (int)Math.Round(hp * multiplier);
+            maxHp = (int)Math.Round(maxHp * multiplier);
+            if (hp < 1) hp = 1;
+            if (maxHp < 1) maxHp = 1;
 
-            // 使用Traverse调用基类的SetMaxHp方法
-            // 这是一种反射技术，用于调用被Harmony补丁覆盖的原始方法
-            Type baseType = typeof(Unit);
-
-            Traverse.CreateWithType(baseType.FullName)
-                    .Method("SetMaxHp", modifiedHp, modifiedMaxHp)
-                    .GetValue(_instance);
-
-            Plugin.Logger?.LogInfo($"[EnemyUnitPatches] Adjusted enemy HP: {maxHp} -> {modifiedMaxHp} (x{multiplier:0.##} for {playerCount} players)");
-
-            return false; // 跳过原始方法执行，因为我们已经手动调用了基类方法
+            Plugin.Logger?.LogInfo($"[EnemyUnitPatches] Adjusted enemy HP: {originalMaxHp} -> {maxHp} (x{multiplier:0.##} for {playerCount} players)");
         }
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[EnemyUnitPatches] Error adjusting enemy HP: {ex.Message}");
-            return true; // 出错时允许原始方法执行
+            // 出错时保持入参不变，让原始方法照常执行。
         }
     }
 

@@ -5,6 +5,7 @@ using LBoL.Core;
 using LBoL.Core.Units;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Utils;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Network.NetworkPlayer;
 
@@ -325,7 +326,7 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
             // 与 MapPanelUpdateMapNodesStatusPatch 约定的系统消息一致：UpdatePlayerLocation
             _client.SendRequest(
                 "UpdatePlayerLocation",
-                JsonSerializer.Serialize(
+                JsonCompat.Serialize(
                     new
                     {
                         LocationX = visitingnode.X,
