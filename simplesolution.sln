@@ -5,7 +5,7 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "debugtools", "debugtools\debugtools.csproj", "{9F303A13-5D15-4788-BA9C-38466F79C65D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "networkplugin", "networkplugin\networkplugin.csproj", "{A9E205B8-876D-4E45-A583-DAC7893551A6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "networkplugin", "networkplugin\NetWorkPlugin.csproj", "{A9E205B8-876D-4E45-A583-DAC7893551A6}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "lbol", "lbol", "{43633E00-8084-F35B-9491-70078C8A554D}"
 EndProject
