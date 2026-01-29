@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Concurrent;
 using System.Reflection;
+using System.Threading;
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
@@ -11,6 +13,7 @@ using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.MidGameJoin;
 using NetworkPlugin.Network.NetworkPlayer;
 using NetworkPlugin.Network.Reconnection;
+using UnityEngine;
 
 namespace NetworkPlugin;
 
@@ -32,6 +35,21 @@ public class Plugin : BaseUnityPlugin
     /// 通过BepInEx框架提供的日志服务，支持不同级别的日志输出
     /// </summary>
     internal static new ManualLogSource Logger;
+
+    // Simple main-thread dispatcher so background networking work can safely update UI.
+    private static readonly ConcurrentQueue<Action> _mainThreadActions = new();
+
+    internal static int MainThreadId { get; private set; }
+
+    internal static void RunOnMainThread(Action action)
+    {
+        if (action == null)
+        {
+            return;
+        }
+
+        _mainThreadActions.Enqueue(action);
+    }
 
     /// <summary>
     /// 网络玩家实例，管理玩家的网络连接和状态同步
@@ -57,6 +75,8 @@ public class Plugin : BaseUnityPlugin
     /// </summary>
     private static readonly Harmony harmony = PluginInfo.harmony;
 
+    private float _lastCatchUpPumpAtRealtime;
+
     /// <summary>
     /// 插件唤醒方法，在插件加载时自动调用
     /// 负责初始化所有系统组件、注册服务配置、设置网络环境
@@ -66,6 +86,7 @@ public class Plugin : BaseUnityPlugin
     {
         // 插件启动逻辑开始
         Logger = base.Logger;
+        MainThreadId = Thread.CurrentThread.ManagedThreadId;
         Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
 
         // 初始化配置管理器，使用BepInEx原生的配置系统
@@ -178,8 +199,47 @@ public class Plugin : BaseUnityPlugin
     /// </summary>
     void Update()
     {
-        // 可以在这里或任何其他地方使用注入的服务
-        // service?.AnotherMethod();
+        // 1) Flush main-thread callbacks scheduled by background work.
+        try
+        {
+            while (_mainThreadActions.TryDequeue(out Action a))
+            {
+                try
+                {
+                    a?.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogWarning($"[MainThread] Callback degraded: {ex.Message}");
+                }
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        // 2) Periodically pump mid-game catch-up (works even when MapPanel is never opened).
+        try
+        {
+            if (serviceProvider == null)
+            {
+                return;
+            }
+
+            float now = Time.realtimeSinceStartup;
+            if (now - _lastCatchUpPumpAtRealtime < 0.25f)
+            {
+                return;
+            }
+
+            _lastCatchUpPumpAtRealtime = now;
+            serviceProvider.GetService<MapCatchUpOrchestrator>()?.PumpMainThread();
+        }
+        catch
+        {
+            // ignored
+        }
     }
 
     /// <summary>
@@ -237,7 +297,23 @@ public class Plugin : BaseUnityPlugin
         Logger.LogInfo($"  法力同步: {ConfigManager.EnableManaSync.Value}");
         Logger.LogInfo($"  战斗同步: {ConfigManager.EnableBattleSync.Value}");
         Logger.LogInfo($"  地图同步: {ConfigManager.EnableMapSync.Value}");
-        Logger.LogInfo($"  存档/读档同步: {ConfigManager.EnableSaveLoadSync.Value}");
+        if (ConfigManager.EnableSaveLoadSync.Value)
+        {
+            // Enforce the inrun-map-progress-sync decision: never transmit save bytes.
+            Logger.LogWarning("  存档/读档同步: true (Deprecated) -> 已强制关闭：联机不再同步存档 bytes。将使用 FullSnapshot+checkpoint 追赶。");
+            try
+            {
+                ConfigManager.EnableSaveLoadSync.Value = false;
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+        else
+        {
+            Logger.LogInfo("  存档/读档同步: false (Deprecated)");
+        }
         Logger.LogInfo($"性能参数:");
         Logger.LogInfo($"  最大队列大小: {ConfigManager.MaxQueueSize.Value}");
         Logger.LogInfo($"  缓存过期时间: {ConfigManager.StateCacheExpiryMinutes.Value} 分钟");

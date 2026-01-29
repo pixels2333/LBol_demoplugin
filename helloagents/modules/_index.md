@@ -11,6 +11,7 @@
 | networkplugin | 联机同步与 UI/补丁主模块 | 🚧 | [networkplugin.md](./networkplugin.md) |
 | networkplayer | 玩家模型/DTO/兼容层 | ✅ | [networkplayer.md](./networkplayer.md) |
 | protocol | 网络事件/载荷/数据模型 | ✅ | [protocol.md](./protocol.md) |
+| inrun-map-progress-sync | 局内地图进度同步（中途加入/重连追赶） | 🚧 | [inrun-map-progress-sync.md](./inrun-map-progress-sync.md) |
 
 ## 模块依赖关系
 

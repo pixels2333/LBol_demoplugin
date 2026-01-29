@@ -109,17 +109,13 @@
 
 #### 2. ✅ 保存/加载游戏同步 ✨
 **重要性**: ⭐⭐⭐⭐ (游戏体验连续性)
-**状态**: ✅ 已完成
-**代码位置**: `networkplugin\Patch\Network\SaveLoadSyncPatch.cs`
-**完成度**: 100%
+**状态**: ⚠️ 已废弃（不再传输存档 bytes）
+**代码位置**: (已移除/不创建) `networkplugin\\Patch\\Network\\SaveLoadSyncPatch.cs`
+**完成度**: 0%（按新方案无需实现）
 
-**已完成功能**:
-- [✅] 游戏保存同步 (主机权威)
-- [✅] 游戏加载同步 (客户端同步)
-- [✅] 快速保存同步 (节流机制)
-- [✅] 存档同步管理器 (请求/响应)
-- [✅] 主机存档分发
-- [✅] 客户端存档接收
+**说明**:
+- 为降低版本兼容/安全风险：联机不再同步 `GameRunSaveData` 存档 bytes。
+- “重连继续”使用：客户端本地 `RestoreGameRun`（读取本机存档） + 向房主请求 `FullStateSnapshot`（seeds + MapState + checkpoint）进行追赶。
 
 ---
 
@@ -154,16 +150,8 @@
 - [✅] 重连功能集成
 
 ---
-**依赖**: 主机权威
-**代码位置**: `networkplugin\Patch\Network\SaveLoadSyncPatch.cs` (需要创建)
-**完成度**: 0%
-
-**任务清单**:
-- [ ] 创建SaveLoadSyncPatch.cs
-- [ ] Patch游戏保存操作
-- [ ] Patch游戏加载操作
-- [ ] 实现存档状态同步
-- [ ] 测试多人存档兼容性
+**替代方案**:
+- MidGameJoin/Reconnection: `FullStateSyncRequest/Response` + `MapCheckpointSyncPatch` + `MapCatchUpOrchestrator`。
 
 ---
 

@@ -556,7 +556,8 @@ public class BattleController_Patch
                     {
                         effect.DebugName,
                         Type = effect.GetType().Name,
-                        effect.Level,
+                        HasLevel = SafeGetStatusEffectHasLevel(effect),
+                        Level = SafeGetStatusEffectLevelOrNull(effect),
                     },
                 Added = added,
                 Removed = removed,
@@ -587,6 +588,35 @@ public class BattleController_Patch
             };
 
             SendBattleEvent(client, fullEventType, fullPayload);
+        }
+    }
+
+    private static bool SafeGetStatusEffectHasLevel(StatusEffect effect)
+    {
+        try
+        {
+            return effect != null && effect.HasLevel;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static int? SafeGetStatusEffectLevelOrNull(StatusEffect effect)
+    {
+        try
+        {
+            if (effect == null || !effect.HasLevel)
+            {
+                return null;
+            }
+
+            return effect.Level;
+        }
+        catch
+        {
+            return null;
         }
     }
 

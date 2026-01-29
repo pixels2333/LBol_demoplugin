@@ -1155,6 +1155,16 @@ public class RelayServer : BaseGameServer
     /// <returns>是游戏事件返回 true，否则 false。</returns>
     private static bool IsGameEvent(string messageType)
     {
+        // Some multiplayer events don't follow the common prefixes (On/Mana/Gap/Battle).
+        // They remember game-state changes and must be forwarded to the room.
+        if (string.Equals(messageType, NetworkMessageTypes.EndTurnRequest, StringComparison.Ordinal) ||
+            string.Equals(messageType, NetworkMessageTypes.EndTurnStatus, StringComparison.Ordinal) ||
+            string.Equals(messageType, NetworkMessageTypes.EndTurnConfirm, StringComparison.Ordinal) ||
+            string.Equals(messageType, NetworkMessageTypes.CardStateChanged, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
         // 约定：多数同步事件以固定前缀命名（On*/Battle*/Mana*/Gap*）。
         // 特殊类型：聊天与状态同步请求/响应也视作游戏事件，走房间广播/转发通道。
         return messageType.StartsWith("On", StringComparison.Ordinal) ||

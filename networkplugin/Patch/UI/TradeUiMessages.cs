@@ -47,14 +47,14 @@ internal static class TradeUiMessages
         var config = TryGetConfig();
         if (config?.AllowTrading?.Value != true)
         {
-            reason = "Trading is disabled in config.";
+            reason = "交易功能已在配置中禁用。";
             return false;
         }
 
         var client = TryGetNetworkClient();
         if (client == null || !client.IsConnected)
         {
-            reason = "Trading is not available (not connected).";
+            reason = "交易不可用（未连接到服务器）。";
             return false;
         }
 

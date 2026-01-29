@@ -41,11 +41,18 @@ public static class RoomStateSyncPatch
     private static class GameMap_EnterNode_RequestRoomState
     {
         [HarmonyPostfix]
-        public static void Postfix(MapNode node)
+        public static void Postfix(MapNode node, bool freeMove, bool forced)
         {
             try
             {
                 if (node == null)
+                {
+                    return;
+                }
+
+                // Catch-up / restore paths may call EnterNode with forced=true.
+                // Ignore those to avoid spamming RoomStateRequest.
+                if (forced)
                 {
                     return;
                 }

@@ -225,8 +225,8 @@ public class GapOptionsPanel_Patch
                     Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 处理交易选项");
 
                     if (!TradeUiMessages.IsTradeEnabledAndConnected(out string reason))
-                    {
-                        TradeUiMessages.ShowTopMessage(reason ?? "Trading is not available.");
+                        {
+                            TradeUiMessages.ShowTopMessage(reason ?? "交易不可用。");
                         Traverse.Create(__instance).Method("SelectedAndHide").GetValue();
                         return false;
                     }

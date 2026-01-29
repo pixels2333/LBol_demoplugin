@@ -48,6 +48,14 @@ public static class EndTurnSyncPatch
     private static string _lastConfirmedBattleId;
     private static int _lastConfirmedRound = -1;
 
+    // Confirm may arrive while the battle is still resolving animations and not yet waiting for input.
+    // If we only try once, we can permanently stall with the UI gated.
+    private static string _pendingProceedBattleId;
+    private static int _pendingProceedRound = -1;
+    private static long _pendingProceedStartUtcTicks;
+    private static int _pendingProceedAttempts;
+    private const int PendingProceedTimeoutMs = 2500;
+
     public static bool LocalEndedTurn
     {
         get
@@ -84,6 +92,9 @@ public static class EndTurnSyncPatch
             }
 
             EnsureSubscribed(client);
+
+            // Drive any deferred end-turn proceed attempts on the main thread.
+            PumpPendingProceed_NoThrow();
         }
     }
 
@@ -141,6 +152,10 @@ public static class EndTurnSyncPatch
             _lastConfirmedBattleId = null;
             _lastConfirmedRound = -1;
         }
+
+        // If we disconnected while the local gate was holding the UI, release it.
+        ForceEnableEndTurnButton();
+        RefreshAllCardsEdge();
     }
 
     private static void OnGameEventReceived(string eventType, object payload)
@@ -379,12 +394,150 @@ public static class EndTurnSyncPatch
         BattleController battle = TryGetCurrentBattle();
         if (battle == null || !battle.IsWaitingPlayerInput)
         {
+            // Defer: battle/UI not ready to accept RequestEndPlayerTurn yet.
+            SchedulePendingProceed_NoThrow(battleId, round, battle == null ? "battle_null" : "not_waiting_input");
             return;
         }
 
         try
         {
             battle.RequestEndPlayerTurn();
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static void SchedulePendingProceed_NoThrow(string battleId, int round, string reason)
+    {
+        try
+        {
+            bool changed = false;
+            lock (_syncLock)
+            {
+                if (!string.Equals(_pendingProceedBattleId, battleId, StringComparison.Ordinal) || _pendingProceedRound != round)
+                {
+                    changed = true;
+                    _pendingProceedBattleId = battleId;
+                    _pendingProceedRound = round;
+                    _pendingProceedStartUtcTicks = DateTime.UtcNow.Ticks;
+                    _pendingProceedAttempts = 0;
+                }
+            }
+
+            if (changed)
+            {
+                Plugin.Logger?.LogDebug($"[EndTurnSync] Proceed deferred ({reason}): battleId={battleId}, round={round}");
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static void ClearPendingProceed_NoThrow()
+    {
+        try
+        {
+            lock (_syncLock)
+            {
+                _pendingProceedBattleId = null;
+                _pendingProceedRound = -1;
+                _pendingProceedStartUtcTicks = 0;
+                _pendingProceedAttempts = 0;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static void PumpPendingProceed_NoThrow()
+    {
+        try
+        {
+            string battleId;
+            int round;
+            long startUtcTicks;
+            int attempts;
+            bool canProceed;
+
+            lock (_syncLock)
+            {
+                battleId = _pendingProceedBattleId;
+                round = _pendingProceedRound;
+                startUtcTicks = _pendingProceedStartUtcTicks;
+                attempts = _pendingProceedAttempts;
+                canProceed = _localEndedTurn &&
+                             _allowEndTurn &&
+                             string.Equals(_pendingBattleId, battleId, StringComparison.Ordinal) &&
+                             _pendingRound == round;
+            }
+
+            if (!canProceed || string.IsNullOrWhiteSpace(battleId) || round < 0)
+            {
+                if (string.IsNullOrWhiteSpace(battleId) && round < 0)
+                {
+                    return;
+                }
+
+                // Stale pending proceed (e.g., turn already advanced or gate released).
+                ClearPendingProceed_NoThrow();
+                return;
+            }
+
+            double elapsedMs = 0;
+            if (startUtcTicks > 0)
+            {
+                elapsedMs = new TimeSpan(DateTime.UtcNow.Ticks - startUtcTicks).TotalMilliseconds;
+            }
+
+            if (elapsedMs > PendingProceedTimeoutMs || attempts > 300)
+            {
+                Plugin.Logger?.LogWarning($"[EndTurnSync] Proceed timeout: battleId={battleId}, round={round}, elapsedMs={(int)elapsedMs}");
+                ClearPendingProceed_NoThrow();
+
+                // Release local gate to avoid permanent soft-lock; user can retry.
+                lock (_syncLock)
+                {
+                    _allowEndTurn = false;
+                    _localEndedTurn = false;
+                    _pendingBattleId = null;
+                    _pendingRound = -1;
+                }
+
+                ForceEnableEndTurnButton();
+                RefreshAllCardsEdge();
+                return;
+            }
+
+            lock (_syncLock)
+            {
+                _pendingProceedAttempts++;
+            }
+
+            BattleController battle = TryGetCurrentBattle();
+            if (battle == null || !battle.IsWaitingPlayerInput)
+            {
+                return;
+            }
+
+            // If we're already on a different battle/round, don't force anything.
+            string currentBattleId = GetBattleId(battle);
+            int currentRound = battle.RoundCounter;
+            if (!string.Equals(currentBattleId, battleId, StringComparison.Ordinal) || currentRound != round)
+            {
+                ClearPendingProceed_NoThrow();
+                return;
+            }
+
+            battle.RequestEndPlayerTurn();
+
+            // Gate will clear _allowEndTurn/_localEndedTurn; clear deferred marker too.
+            ClearPendingProceed_NoThrow();
         }
         catch
         {
@@ -577,6 +730,28 @@ public static class EndTurnSyncPatch
         }
     }
 
+    private static void ForceEnableEndTurnButton()
+    {
+        try
+        {
+            var playBoard = UiManager.GetPanel<PlayBoard>();
+            if (playBoard == null)
+            {
+                return;
+            }
+
+            var endTurnButton = Traverse.Create(playBoard).Field("endTurnButton").GetValue<UnityEngine.UI.Button>();
+            if (endTurnButton != null)
+            {
+                endTurnButton.interactable = true;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
     private static bool ShouldSync(BattleController battle)
         => battle != null && battle.Player != null && battle.Player == GameStateUtils.GetCurrentPlayer();
 
@@ -603,6 +778,8 @@ public static class EndTurnSyncPatch
                     _lastConfirmedBattleId = null;
                     _lastConfirmedRound = -1;
                 }
+
+                ForceEnableEndTurnButton();
             }
             catch
             {

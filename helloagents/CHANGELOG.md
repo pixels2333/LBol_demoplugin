@@ -4,6 +4,22 @@
 
 ## [Unreleased]
 
+### Fixed
+- **[networkplugin]**: 修复服务器端 GameEvent 分类遗漏导致的回合结束卡死：将 `EndTurnRequest/EndTurnStatus/EndTurnConfirm` 与 `CardStateChanged` 归类为 GameEvent，避免被当作未知系统消息丢弃（影响 Host/Relay）。
+- **[networkplugin]**: 修复客户端点击结束回合后掉线与按钮卡死：补齐 `EndTurn*`/`CardStateChanged` 的 GameEvent 分类；在 `PollEvents()` 中周期发送 `Heartbeat` 保活；断线时强制恢复 EndTurn 按钮可点击。
+- **[networkplugin]**: 修复部分场景下结束回合后意外断线回主菜单：`GameMaster.QuitGame` 在联机中可能被内部流程触发；改为拦截并忽略该调用（仅记录告警+调用栈），避免误触发“断开联机并返回主菜单”。
+- **[networkplugin]**: 修复结束回合“偶发不推进”的软锁：确认到达时战斗可能尚未进入 `IsWaitingPlayerInput`（动画/结算中），原逻辑只尝试一次导致永远不放行；改为主线程上短暂延迟重试并设置超时兜底（避免永久锁手）。
+- **[networkplugin]**: 改善商店交易入口布局：将“交易”按钮插入到商店底部按钮条中，位于“卡牌服务”与“关闭商店”之间，并对相邻按钮做缩放以避免遮挡。
+- **[networkplugin]**: 修复状态效果同步日志刷错：部分状态效果 `HasLevel=false`，读取 `StatusEffect.Level` 会抛 `has no level`；改为仅在 `HasLevel` 时读取并将 Level 作为可空字段输出。
+- **[networkplugin]**: 避免网络事件缓冲区因同一 tick 重复 key 导致的异常（SortedList duplicate key）。
+- **[networkplugin]**: 修复 CardStateChanged 负载序列化失败（ManaGroup 自引用）——卡牌快照改为发送 `CostText`。
+- **[networkplugin]**: 限流/去重高频同步事件：`UpdatePlayerLocation` 与 `OnMoodEffectStateSync`，减少刷屏与重复发送。
+- **[networkplugin]**: 为 `FullStateSyncRequest` 增加 2 秒节流并附带 `RequestId`，降低重连路径重复请求。
+
+### 变更
+- **[networkplugin]**: 网络日志中文化与参数化：发送/接收日志附带 payload 指纹（FNV-1a 64）与关键字段摘要，便于区分“同一事件重复发送”与“不同事件”。
+- **[networkplugin]**: 脱敏敏感字段：`joinToken` 不再出现在日志中（仅记录“已脱敏”）。
+
 ### 变更
 - 局内地图进度同步（inrun-map-progress-sync）：移除 HostSaveTransfer 存档分片传输链路，改为 FullStateSnapshot 聚焦 seeds + MapState（主机权威）。
 	- `networkplugin/Network/Messages/NetworkMessageTypes.cs`: 删除 `OnHostSaveTransferStart/Chunk/End`。
@@ -21,6 +37,29 @@
 	- `networkplugin/Network/MidGameJoin/MapCatchUpOrchestrator.cs`: 暂存 FullSnapshot 并在本地 GameRun/地图 UI 就绪后尽力对齐节点状态与路径。
 	- `networkplugin/Network/MidGameJoin/MidGameJoinManager.cs`: 收到 FullSnapshot 后写入追赶执行器。
 	- `networkplugin/Patch/Map/MapPanelUpdateMapNodesStatusPatch.cs`: 在 MapPanel 刷新时 opportunistic apply pending MapState。
+	- `networkplugin/Network/MidGameJoin/MapCatchUpOrchestrator.cs`: 追赶执行改为“可分帧会话 + 预算推进”，避免一次性应用导致 UI 卡顿；应用完成后仍保持 room-state 主动请求逻辑。
+	- `networkplugin/Patch/Map/MapPanelUpdateMapNodesStatusPatch.cs`: 增加 `MapPanel.Update` 每帧小预算驱动，并在 `UpdateMapNodesStatus` 中使用更合理的预算，提升追赶收敛速度。
+
+- 局内地图进度同步（inrun-map-progress-sync）：Joiner 开局锁定与 stage 对齐。
+	- `networkplugin/Patch/MidGameJoin/JoinerStartGameLockPatch.cs`: Patch `GameMaster.StartGame`，joiner 选角但强制锁定主机 `seed/difficulty/puzzles/mode/stages/debutAdventureType`。
+	- `networkplugin/Patch/MidGameJoin/JoinerStageIndexAlignPatch.cs`: Patch `GameRunController.EnterNextStage`，首次进入 stage 前设置 `_stageIndex = hostStageIndex - 1`，加速 `MapSeedUlong` 对齐。
+
+- 局内地图进度同步（inrun-map-progress-sync）：断线重连（回主菜单）最小闭环。
+	- `networkplugin/Patch/UI/MainMenuMultiplayerEntryPatch.cs`: Join 时检测本地可继续存档，支持“连接成功后本地 Restore → 向房主追赶 FullSnapshot”。
+	- `networkplugin/Network/MidGameJoin/MidGameJoinManager.cs`: 新增 `BeginReconnectAndCatchUp(...)` 与 `TryGetApprovedJoinTokenByRequestId(...)`，避免 UI 线程同步等待。
+	- `networkplugin/Plugin.cs`: 增加主线程调度队列（`RunOnMainThread`）与定期 catch-up pump，确保后台线程回调/弹窗安全并提升“不开地图也能追赶”的可靠性。
+	- `networkplugin/Network/MidGameJoin/MapCatchUpOrchestrator.cs`: 增加 `PumpMainThread()`；SetPendingSnapshot 变为纯数据写入；MapState 应用成功后主动请求当前 `RoomStateSnapshot`（避免 catch-up 绕开 EnterNode 导致房间状态缺失）。
+	- `networkplugin/Patch/Map/MapPanelUpdateMapNodesStatusPatch.cs`: 调整为 Prefix 先 apply pending map state，确保本次地图刷新直接展示对齐结果。
+	- `networkplugin/Patch/Network/RoomStateSyncPatch.cs`: 忽略 `forced` 的 `GameMap.EnterNode`（用于路径重建/追赶），避免重建路径时刷 `RoomStateRequest`。
+	- `networkplugin/Network/MidGameJoin/MapCatchUpOrchestrator.cs`: 追赶时按 `PathHistory` 逐节点调用 `GameMap.EnterNode(forced=true)` 重建 `_path`，使地图内部 bookkeeping 更一致（4.4 方向）。
+
+- 局内地图进度同步（inrun-map-progress-sync）：战斗意图追赶补齐（Host 权威 + 客户端落地）。
+	- `networkplugin/Patch/Network/EnemyIntentSyncPatch.cs`: 限定为 Host 才广播 `BattleEnemyIntentChanged`；并在 `PlayerJoined/Welcome/PlayerListUpdate` 时限频重发“当前战斗所有敌人的意图”，加速 join/reconnect 的 UI 追赶。
+	- `networkplugin/Patch/Network/EnemyIntentReceivePatch.cs`: 客户端接收 `BattleEnemyIntentChanged`，按 SpawnId/RootIndex+Id 定位 EnemyUnit，重建 `EnemyUnit.Intentions` 并触发 `NotifyIntentionsChanged()` 以刷新意图 UI。
+
+- 局内地图进度同步（inrun-map-progress-sync）：补齐最小可运行验收材料。
+	- `helloagents/plan/202601251728_inrun-map-progress-sync/verify.md`: 手工验收清单（中途加入/战斗意图/回主菜单重连）。
+	- `debugtools/VerifyInrunMapProgressSync.cs`: 轻量级仓库不变量校验（无 SaveLoadSyncPatch、无 HostSaveTransfer 常量）。
 
 ### 新增
 - 交易同步：新增 `TradeSyncPatch`（Host 权威裁决 + 广播）与 `TradePanel` 联机接入，支持两端报价/确认/取消与完成后各自卡组落地（模型A）；并提供 `OnTradeSnapshotRequest` 用于重连/中途加入的会话状态恢复。

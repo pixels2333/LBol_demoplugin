@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace NetworkPlugin.Network.Snapshot;
 
 /// <summary>
@@ -65,6 +67,40 @@ public class GameStateSnapshot
     /// 当前关卡索引（LBoL: GameRunSaveData.StageIndex / GameRunController.CurrentStage.Index）。
     /// </summary>
     public int? StageIndex { get; set; }
+
+    // --- Host start config (for mid-game join) ---
+    // Joiner can choose character, but must start a run using the host's difficulty/seed/stages
+    // so that Stage.MapSeed and MapSeedUlong align deterministically.
+
+    /// <summary>
+    /// 主机难度（LBoL: GameRunController.Difficulty）。
+    /// </summary>
+    public int? Difficulty { get; set; }
+
+    /// <summary>
+    /// 主机谜题标记（LBoL: GameRunController.Puzzles）。
+    /// </summary>
+    public int? Puzzles { get; set; }
+
+    /// <summary>
+    /// 主机游戏模式（LBoL: GameRunController.Mode）。
+    /// </summary>
+    public int? GameMode { get; set; }
+
+    /// <summary>
+    /// 主机是否显示随机结果（LBoL: GameRunController.ShowRandomResult）。
+    /// </summary>
+    public bool? ShowRandomResult { get; set; }
+
+    /// <summary>
+    /// 主机的关卡类型列表（按顺序）。值为 Stage.GetType().Name。
+    /// </summary>
+    public List<string> StageTypeNames { get; set; } = [];
+
+    /// <summary>
+    /// Stage0 的 DebutAdventureType 名称（Type.Name），用于构造一致的开局流程。
+    /// </summary>
+    public string? DebutAdventureTypeName { get; set; }
 
     /// <summary>
     /// 房间ID

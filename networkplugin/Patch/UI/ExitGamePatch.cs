@@ -24,6 +24,8 @@ namespace NetworkPlugin.Patch.UI;
 [HarmonyPatch]
 public static class ExitGamePatch
 {
+    private static int _quitGameInterceptCount;
+
     #region 依赖注入服务访问
 
     /// <summary>
@@ -403,8 +405,28 @@ public static class ExitGamePatch
         if (!IsMultiplayerConnected())
             return true;
 
-        // 联机中拦截原生退出流程，改为先断开联机再回主菜单。
-        DisconnectAndReturnToMainMenu();
+        // In multiplayer, QuitGame should come from our explicit UI flows (which already run
+        // DisconnectAndReturnToMainMenu). If the game calls QuitGame internally (or due to an
+        // unrelated event), redirecting it here can cause surprising disconnects (e.g. right after EndTurn).
+        // Prefer to ignore and log a diagnostic to help track the caller.
+        int count = ++_quitGameInterceptCount;
+        Plugin.Logger?.LogWarning(
+            $"[退出/返回主菜单] 拦截到 GameMaster.QuitGame 调用（第{count}次）。为避免误断线/误退回主菜单，本次已忽略。"
+        );
+
+        // Stack trace is useful to identify the unexpected call site; keep it bounded.
+        if (count <= 3)
+        {
+            try
+            {
+                Plugin.Logger?.LogWarning($"[退出/返回主菜单] QuitGame 调用栈:\n{Environment.StackTrace}");
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
         return false;
     }
 

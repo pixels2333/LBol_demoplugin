@@ -1,6 +1,15 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using System.Reflection;
 using System.Text.Json.Nodes;
+
+// Minimal repo invariants check for inrun-map-progress-sync.
+// Keep it opt-in to avoid interfering with existing debugtools usage.
+if (args.Length > 0 && string.Equals(args[0], "verify-inrun", StringComparison.OrdinalIgnoreCase))
+{
+    string root = args.Length > 1 ? args[1] : Environment.CurrentDirectory;
+    return debugtools.VerifyInrunMapProgressSync.Run(root);
+}
+
 String apath = @"F:\thunderbolt mods\TouhouLostBranchOfLegend\profiles\Default\BepInEx\plugins\koishi514\MyFirstPlugin\Resource\reimu\reimu.json";
 String rpath = "../MyFirstPlugin/Resource/reimu/reimu.json";
 
@@ -40,3 +49,5 @@ static bool AtlasFileExists(string atlasPath)
         return false;
     }
 }
+
+return 0;

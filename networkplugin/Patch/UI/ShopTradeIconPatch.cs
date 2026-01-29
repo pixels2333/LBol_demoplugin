@@ -30,6 +30,8 @@ public static class ShopTradeIconPatch
         public GameObject Root;
         public Button Button;
         public TextMeshProUGUI Label;
+        public Button CardServiceButton;
+        public Button ReturnButton;
     }
 
     private static TradeButtonUi _ui;
@@ -136,7 +138,149 @@ public static class ShopTradeIconPatch
 
         CleanupUi();
 
-        Transform parent = TryGetShopPanelRoot(shopPanel) ?? shopPanel.transform;
+        // Prefer inserting into the same button bar container as Card Service and Return.
+        // This keeps the UI consistent and avoids the "floating" look.
+        if (!TryGetShopButtons(shopPanel, out Button cardServiceButton, out Button returnButton))
+        {
+            Transform fallbackParent = TryGetShopPanelRoot(shopPanel) ?? shopPanel.transform;
+            BuildFloatingButton(shopPanel, fallbackParent);
+            return;
+        }
+
+        Transform barParent = cardServiceButton.transform.parent;
+        if (barParent == null)
+        {
+            Transform fallbackParent = TryGetShopPanelRoot(shopPanel) ?? shopPanel.transform;
+            BuildFloatingButton(shopPanel, fallbackParent);
+            return;
+        }
+
+        _defaultFont ??= FindDefaultFont(barParent);
+
+        // Clone Card Service button as a visual template so the new control looks native.
+        var root = UnityEngine.Object.Instantiate(cardServiceButton.gameObject, barParent, false);
+        root.name = "NetworkPlugin_ShopTradeButton";
+        var rect = root.GetComponent<RectTransform>() ?? root.AddComponent<RectTransform>();
+
+        var button = root.GetComponent<Button>() ?? root.AddComponent<Button>();
+        // Clear any copied click handlers (including persistent ones) and set our own.
+        button.onClick = new Button.ButtonClickedEvent();
+        button.onClick.AddListener(() => OnTradeButtonClicked(shopPanel));
+
+        // Update label text if present.
+        var label = root.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (label != null)
+        {
+            label.text = "交易";
+            if (_defaultFont != null)
+            {
+                label.font = _defaultFont;
+            }
+        }
+
+        // Try to update icon if the template has an Image child.
+        try
+        {
+            var imgs = root.GetComponentsInChildren<Image>(true);
+            Sprite tradeSprite = TryLoadTradeSprite();
+            if (tradeSprite != null && imgs != null)
+            {
+                foreach (var img in imgs)
+                {
+                    if (img != null && img.gameObject.name.IndexOf("icon", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        img.sprite = tradeSprite;
+                        img.preserveAspect = true;
+                        break;
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        // Place between Card Service and Return.
+        int returnIndex = returnButton.transform.GetSiblingIndex();
+        rect.SetSiblingIndex(Math.Max(0, returnIndex));
+
+        // Make room: shrink and nudge the two neighboring buttons.
+        ApplyCompactButtonStyle_NoThrow(cardServiceButton);
+        ApplyCompactButtonStyle_NoThrow(returnButton);
+        ApplyCompactButtonStyle_NoThrow(button);
+
+        _ui = new TradeButtonUi
+        {
+            ShopPanel = shopPanel,
+            Root = root,
+            Button = button,
+            Label = label,
+            CardServiceButton = cardServiceButton,
+            ReturnButton = returnButton
+        };
+    }
+
+    private static bool TryGetShopButtons(ShopPanel shopPanel, out Button cardServiceButton, out Button returnButton)
+    {
+        cardServiceButton = null;
+        returnButton = null;
+
+        if (shopPanel == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            cardServiceButton = Traverse.Create(shopPanel).Field("cardServiceButton").GetValue<Button>();
+        }
+        catch
+        {
+            cardServiceButton = null;
+        }
+
+        try
+        {
+            returnButton = Traverse.Create(shopPanel).Field("returnButton").GetValue<Button>();
+        }
+        catch
+        {
+            returnButton = null;
+        }
+
+        return cardServiceButton != null && returnButton != null;
+    }
+
+    private static void ApplyCompactButtonStyle_NoThrow(Button button)
+    {
+        try
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            var rt = button.GetComponent<RectTransform>();
+            if (rt == null)
+            {
+                return;
+            }
+
+            // Uniform scale down; keeps anchors/layout intact while making room.
+            rt.localScale = new Vector3(0.85f, 0.85f, 1f);
+
+            // Slight horizontal nudge so the group feels centered after scaling.
+            rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, rt.anchoredPosition.y);
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static void BuildFloatingButton(ShopPanel shopPanel, Transform parent)
+    {
         _defaultFont ??= FindDefaultFont(parent);
 
         var root = new GameObject("NetworkPlugin_ShopTradeButton");
@@ -180,7 +324,7 @@ public static class ShopTradeIconPatch
         labelRect.offsetMax = new Vector2(-10f, 0f);
 
         var label = labelGo.AddComponent<TextMeshProUGUI>();
-        label.text = "TRADE";
+        label.text = "交易";
         label.fontSize = 26f;
         label.alignment = TextAlignmentOptions.MidlineLeft;
         label.color = Color.white;
@@ -287,7 +431,7 @@ public static class ShopTradeIconPatch
         {
             if (!TradeUiMessages.IsTradeEnabledAndConnected(out string reason))
             {
-                TradeUiMessages.ShowTopMessage(reason ?? "Trading is not available.");
+                TradeUiMessages.ShowTopMessage(reason ?? "交易不可用。");
                 return;
             }
 

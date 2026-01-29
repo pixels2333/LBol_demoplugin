@@ -74,6 +74,9 @@ public sealed class MidGameJoinManager
     private readonly Dictionary<string, IssuedJoinToken> _issuedJoinTokens = [];
     private readonly Dictionary<string, PendingFullSyncRequest> _pendingFullSyncRequests = [];
 
+    // Client-side: remember the last approval so UI can proceed without blocking the main thread.
+    private readonly Dictionary<string, string> _approvedByRequestId = [];
+
     /// <summary>
     /// 用于线程安全
     /// </summary>
@@ -165,29 +168,29 @@ public sealed class MidGameJoinManager
         {
             if (!_config.AllowMidGameJoin) // 配置禁用则直接拒绝
             {
-                return JoinRequestResult.Denied("Mid-game joining is disabled");
+                return JoinRequestResult.Denied("已禁用中途加入");
             }
 
             if (string.IsNullOrWhiteSpace(roomId)) // roomId 为空则拒绝
             {
-                return JoinRequestResult.Denied("Missing roomId");
+                return JoinRequestResult.Denied("缺少 roomId");
             }
 
             if (string.IsNullOrWhiteSpace(playerName)) // playerName 为空则拒绝
             {
-                return JoinRequestResult.Denied("Missing playerName");
+                return JoinRequestResult.Denied("缺少 playerName");
             }
 
             INetworkClient? client = _client ?? _serviceProvider.GetService<INetworkClient>();
             if (client?.IsConnected != true) // 未连接则拒绝
             {
-                return JoinRequestResult.Denied("Not connected");
+                return JoinRequestResult.Denied("未连接到服务器");
             }
 
             string selfId = NetworkIdentityTracker.GetSelfPlayerId(); // 获取自身玩家ID
             if (string.IsNullOrWhiteSpace(selfId))
             {
-                return JoinRequestResult.Denied("Missing self playerId (wait for Welcome/PlayerListUpdate)");
+                return JoinRequestResult.Denied("缺少自身 playerId（请等待 Welcome/PlayerListUpdate）");
             }
 
             string? hostId;
@@ -198,7 +201,14 @@ public sealed class MidGameJoinManager
 
             if (string.IsNullOrWhiteSpace(hostId)) // 未获取到房主则拒绝
             {
-                return JoinRequestResult.Denied("Host not found (join room first and wait for PlayerListUpdate)");
+                return JoinRequestResult.Denied("未找到房主（请先加入房间并等待 PlayerListUpdate）");
+            }
+
+            // If the host is actually self, we're already the host.
+            // Mid-game join is a host->joiner flow and doesn't apply here.
+            if (string.Equals(hostId, selfId, StringComparison.Ordinal))
+            {
+                return JoinRequestResult.Denied("你已是房主");
             }
 
             string requestId = GenerateRequestId(); // 生成唯一请求ID
@@ -340,19 +350,19 @@ public sealed class MidGameJoinManager
         {
             if (string.IsNullOrWhiteSpace(joinToken)) // joinToken 为空则失败
             {
-                return JoinExecutionResult.Failed("Missing joinToken");
+                return JoinExecutionResult.Failed("缺少 joinToken");
             }
 
             INetworkClient? client = _client ?? _serviceProvider.GetService<INetworkClient>();
             if (client?.IsConnected != true) // 未连接则无法执行加入
             {
-                return JoinExecutionResult.Failed("Not connected");
+                return JoinExecutionResult.Failed("未连接到服务器");
             }
 
             string selfId = NetworkIdentityTracker.GetSelfPlayerId(); // 获取自身玩家ID
             if (string.IsNullOrWhiteSpace(selfId))
             {
-                return JoinExecutionResult.Failed("Missing self playerId");
+                return JoinExecutionResult.Failed("缺少自身 playerId");
             }
 
             ApprovedJoin approvedJoin;
@@ -360,18 +370,18 @@ public sealed class MidGameJoinManager
             {
                 if (!_approvedJoins.TryGetValue(joinToken, out approvedJoin!)) // 查找批准的加入请求
                 {
-                    return JoinExecutionResult.Failed("Invalid joinToken (not approved or already consumed)");
+                    return JoinExecutionResult.Failed("joinToken 无效（未批准或已被消耗）");
                 }
 
                 if (DateTime.UtcNow.Ticks > approvedJoin.ExpiresAt) // 过期则清理并失败
                 {
                     _approvedJoins.Remove(joinToken); // 清理过期令牌
-                    return JoinExecutionResult.Failed("JoinToken expired");
+                    return JoinExecutionResult.Failed("joinToken 已过期");
                 }
 
                 if (!string.Equals(approvedJoin.ClientPlayerId, selfId, StringComparison.Ordinal)) // 验证令牌归属当前玩家
                 {
-                    return JoinExecutionResult.Failed("JoinToken does not belong to this player");
+                    return JoinExecutionResult.Failed("joinToken 不属于当前玩家");
                 }
             }
 
@@ -386,7 +396,7 @@ public sealed class MidGameJoinManager
 
             if (!string.IsNullOrWhiteSpace(error)) // 同步失败直接返回错误
             {
-                return JoinExecutionResult.Failed("Failed to sync full state: " + error);
+                return JoinExecutionResult.Failed("完整状态同步失败: " + error);
             }
 
             if (snapshot != null) // 根据快照刷新进度与事件索引
@@ -424,6 +434,125 @@ public sealed class MidGameJoinManager
         {
             _logger.LogError($"[MidGameJoinManager] Error executing join: {ex.Message}");
             return JoinExecutionResult.Failed($"Error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Client-side helper: returns the last known host player id (from PlayerListUpdate).
+    /// </summary>
+    public string? GetLastKnownHostPlayerId()
+    {
+        lock (_lock)
+        {
+            return _lastKnownHostPlayerId;
+        }
+    }
+
+    /// <summary>
+    /// Client-side helper: returns an approved join token for a given request id, if any.
+    /// When <paramref name="consume"/> is true, the mapping is removed.
+    /// </summary>
+    public bool TryGetApprovedJoinTokenByRequestId(string requestId, out string joinToken, bool consume = false)
+    {
+        joinToken = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(requestId))
+        {
+            return false;
+        }
+
+        lock (_lock)
+        {
+            if (!_approvedByRequestId.TryGetValue(requestId, out joinToken) || string.IsNullOrWhiteSpace(joinToken))
+            {
+                joinToken = string.Empty;
+                return false;
+            }
+
+            if (consume)
+            {
+                _approvedByRequestId.Remove(requestId);
+            }
+
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Non-blocking mid-game reconnect entry:
+    /// - restore local run (caller does this)
+    /// - request join (DirectMessage)
+    /// - wait approval (poll)
+    /// - execute join (calls ExecuteJoin on a background thread)
+    ///
+    /// Note: ExecuteJoin is currently synchronous and blocks up to 10 seconds.
+    /// We offload it to a background thread to avoid freezing Unity UI.
+    /// </summary>
+    public void BeginReconnectAndCatchUp(
+        string roomId,
+        string playerName,
+        Action<string>? onStatus,
+        Action<JoinExecutionResult>? onCompleted,
+        int timeoutSeconds = 20)
+    {
+        try
+        {
+            INetworkClient? client = _client ?? _serviceProvider.GetService<INetworkClient>();
+            if (client?.IsConnected != true)
+            {
+                Plugin.RunOnMainThread(() => onCompleted?.Invoke(JoinExecutionResult.Failed("未连接到服务器")));
+                return;
+            }
+
+            // Step 1: request join
+            JoinRequestResult req = RequestJoin(roomId, playerName);
+            if (req == null || string.IsNullOrWhiteSpace(req.RequestId))
+            {
+                Plugin.RunOnMainThread(() => onCompleted?.Invoke(JoinExecutionResult.Failed(req?.ErrorMessage ?? "加入请求失败")));
+                return;
+            }
+
+            string requestId = req.RequestId;
+            Plugin.RunOnMainThread(() => onStatus?.Invoke($"已发送加入请求 (requestId={requestId})"));
+
+            // Step 2: wait approval + execute join without blocking UI
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try
+                {
+                    long start = DateTime.UtcNow.Ticks;
+                    long timeoutTicks = TimeSpan.FromSeconds(Math.Max(1, timeoutSeconds)).Ticks;
+
+                    string token = string.Empty;
+                    while (DateTime.UtcNow.Ticks - start < timeoutTicks)
+                    {
+                        if (TryGetApprovedJoinTokenByRequestId(requestId, out token, consume: true) && !string.IsNullOrWhiteSpace(token))
+                        {
+                            break;
+                        }
+
+                        Thread.Sleep(50);
+                    }
+
+                    if (string.IsNullOrWhiteSpace(token))
+                    {
+                        Plugin.RunOnMainThread(() => onCompleted?.Invoke(JoinExecutionResult.Failed("加入审批超时")));
+                        return;
+                    }
+
+                    Plugin.RunOnMainThread(() => onStatus?.Invoke("加入已批准，正在同步..."));
+                    JoinExecutionResult result = ExecuteJoin(token);
+                    Plugin.RunOnMainThread(() => onCompleted?.Invoke(result));
+                }
+                catch (Exception ex)
+                {
+                    Plugin.RunOnMainThread(() => onCompleted?.Invoke(JoinExecutionResult.Failed("重连失败: " + ex.Message)));
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Plugin.RunOnMainThread(() => onCompleted?.Invoke(JoinExecutionResult.Failed("重连失败: " + ex.Message)));
         }
     }
 
@@ -663,7 +792,7 @@ public sealed class MidGameJoinManager
         INetworkClient? client = _client ?? _serviceProvider.GetService<INetworkClient>(); // 获取网络客户端
         if (client?.IsConnected != true) // 检查连接状态
         {
-            _logger.LogWarning($"[MidGameJoinManager] DirectMessage dropped (not connected): type={innerType}");
+            _logger.LogWarning($"[MidGameJoinManager] DirectMessage 已丢弃（未连接）: type={innerType}");
             return;
         }
 
@@ -772,7 +901,7 @@ public sealed class MidGameJoinManager
 
             if (!string.IsNullOrWhiteSpace(roomId) && !string.Equals(issued.RoomId, roomId, StringComparison.Ordinal)) // 验证房间ID匹配
             {
-                reason = "JoinToken room mismatch";
+                reason = "JoinToken 房间不匹配";
                 return false;
             }
 
@@ -802,7 +931,7 @@ public sealed class MidGameJoinManager
 
             foreach (PendingFullSyncRequest pending in _pendingFullSyncRequests.Values) // 通知所有待处理请求
             {
-                pending.ErrorMessage = "Disconnected";
+                pending.ErrorMessage = "连接已断开";
                 pending.WaitHandle.Set(); // 设置等待句柄以唤醒等待线程
             }
 
@@ -832,7 +961,7 @@ public sealed class MidGameJoinManager
                     }
                 }
 
-                Plugin.Logger?.LogWarning($"[MidGameJoin] Ignore event with invalid payload: type={eventType}, payloadType={payloadType}, head200={head}");
+                Plugin.Logger?.LogWarning($"[MidGameJoin] 忽略无效载荷事件: type={eventType}, payloadType={payloadType}, head200={head}");
             }
             catch
             {
@@ -1054,9 +1183,15 @@ public sealed class MidGameJoinManager
         lock (_lock)
         {
             _approvedJoins[joinToken] = approvedJoin;
+
+            // Also index by request id so UI/coroutines can progress without needing the token upfront.
+            if (!string.IsNullOrWhiteSpace(requestId))
+            {
+                _approvedByRequestId[requestId] = joinToken;
+            }
         }
 
-        _logger.LogInfo($"[MidGameJoinManager] Join approved: joinToken={joinToken}, host={hostPlayerId}");
+        _logger.LogInfo($"[MidGameJoinManager] Join approved: joinToken=<已脱敏>, host={hostPlayerId}");
     }
 
     /// <summary>

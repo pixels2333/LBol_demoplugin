@@ -72,6 +72,9 @@ public class SynchronizationManager : ISynchronizationManager
 
     private readonly SortedList<long, NetworkEventBuffer> _remoteEventBuffer = [];
 
+    // SortedList does not allow duplicate keys; network bursts can share the same tick.
+    private readonly object _remoteEventBufferLock = new();
+
     /// <summary>
     /// 本地状态缓存字典
     /// 存储最近的游戏状态快照，用于避免重复同步和状态验证
@@ -114,6 +117,9 @@ public class SynchronizationManager : ISynchronizationManager
     /// 用于同步频率控制和性能监控
     /// </summary>
     private DateTime _lastSyncTime = DateTime.MinValue;
+
+    // 节流：避免重连等路径在短时间内重复发起 FullStateSyncRequest。
+    private long _lastFullSyncRequestAtTicks;
 
     #endregion
 
@@ -238,18 +244,36 @@ public class SynchronizationManager : ISynchronizationManager
                 return;
             }
 
-            // 提取时间戳，如果不存在则使用当前时间
+            // 提取时间戳，如果不存在则使用当前时间。
             long timestamp = eventDict.ContainsKey("Timestamp")
                 ? Convert.ToInt64(eventDict["Timestamp"])
                 : DateTime.Now.Ticks;
 
-            // 创建网络事件缓冲区并添加到排序缓冲区
-            NetworkEventBuffer eventBuffer = new(timestamp, eventDict);
-            _remoteEventBuffer.Add(timestamp, eventBuffer);
+            // SortedList 不允许重复 key；同一 tick 内收到多条消息时会触发“same key already added”。
+            // 这里在锁内为 timestamp 找到一个可用的“下一刻”，保持总体顺序。
+            long key = timestamp;
+            lock (_remoteEventBufferLock)
+            {
+                while (_remoteEventBuffer.ContainsKey(key))
+                {
+                    if (key == long.MaxValue)
+                    {
+                        // 极端情况下避免溢出：回退到“当前时间”，并继续探测空位。
+                        key = DateTime.Now.Ticks;
+                        continue;
+                    }
+
+                    key++;
+                }
+
+                // 创建网络事件缓冲区并添加到排序缓冲区
+                NetworkEventBuffer eventBuffer = new(key, eventDict);
+                _remoteEventBuffer.Add(key, eventBuffer);
+            }
 
             // 记录事件接收的调试信息
             string eventType = eventDict["EventType"].ToString();
-            Plugin.Logger?.LogDebug($"[SyncManager] 接收到网络事件: {eventType}, 时间戳: {timestamp}");
+            Plugin.Logger?.LogDebug($"[SyncManager] 接收到网络事件: {eventType}, 时间戳: {key}");
 
             // 处理缓冲区中的事件（按时间戳顺序）
             ProcessBufferedEvents();
@@ -373,7 +397,13 @@ public class SynchronizationManager : ISynchronizationManager
             // 按时间戳顺序处理所有等待处理的事件
             List<long> timestampsToRemove = [];
 
-            foreach (var kvp in _remoteEventBuffer)
+            List<KeyValuePair<long, NetworkEventBuffer>> snapshot;
+            lock (_remoteEventBufferLock)
+            {
+                snapshot = _remoteEventBuffer.ToList();
+            }
+
+            foreach (var kvp in snapshot)
             {
                 long timestamp = kvp.Key;
                 NetworkEventBuffer eventBuffer = kvp.Value;
@@ -420,9 +450,12 @@ public class SynchronizationManager : ISynchronizationManager
             }
 
             // 移除已处理或丢弃的事件
-            foreach (long timestamp in timestampsToRemove)
+            lock (_remoteEventBufferLock)
             {
-                _remoteEventBuffer.Remove(timestamp);
+                foreach (long timestamp in timestampsToRemove)
+                {
+                    _remoteEventBuffer.Remove(timestamp);
+                }
             }
         }
         catch (Exception ex)
@@ -513,7 +546,13 @@ public class SynchronizationManager : ISynchronizationManager
         {
             List<long> timestampsToRemove = [];
 
-            foreach (var kvp in _remoteEventBuffer)
+            List<KeyValuePair<long, NetworkEventBuffer>> snapshot;
+            lock (_remoteEventBufferLock)
+            {
+                snapshot = _remoteEventBuffer.ToList();
+            }
+
+            foreach (var kvp in snapshot)
             {
                 long timestamp = kvp.Key;
                 var eventBuffer = kvp.Value;
@@ -528,9 +567,12 @@ public class SynchronizationManager : ISynchronizationManager
             }
 
             // 移除超时事件
-            foreach (long timestamp in timestampsToRemove)
+            lock (_remoteEventBufferLock)
             {
-                _remoteEventBuffer.Remove(timestamp);
+                foreach (long timestamp in timestampsToRemove)
+                {
+                    _remoteEventBuffer.Remove(timestamp);
+                }
             }
         }
         catch (Exception ex)
@@ -559,10 +601,13 @@ public class SynchronizationManager : ISynchronizationManager
             }
 
             // 统计各状态的事件数量
-            foreach (var kvp in _remoteEventBuffer)
+            lock (_remoteEventBufferLock)
             {
-                var status = kvp.Value.Status;
-                statusCounts[status]++;
+                foreach (var kvp in _remoteEventBuffer)
+                {
+                    var status = kvp.Value.Status;
+                    statusCounts[status]++;
+                }
             }
 
             // 计算时间戳范围
@@ -571,15 +616,29 @@ public class SynchronizationManager : ISynchronizationManager
 
             if (_remoteEventBuffer.Count > 0)
             {
-                oldestTimestamp = _remoteEventBuffer.Keys[0];
-                newestTimestamp = _remoteEventBuffer.Keys[_remoteEventBuffer.Count - 1];
+                lock (_remoteEventBufferLock)
+                {
+                    if (_remoteEventBuffer.Count > 0)
+                    {
+                        oldestTimestamp = _remoteEventBuffer.Keys[0];
+                        newestTimestamp = _remoteEventBuffer.Keys[_remoteEventBuffer.Count - 1];
+                    }
+                }
+            }
+
+            int total;
+            int cap;
+            lock (_remoteEventBufferLock)
+            {
+                total = _remoteEventBuffer.Count;
+                cap = _remoteEventBuffer.Capacity;
             }
 
             return new
             {
                 // 缓冲区基本信息
-                TotalEvents = _remoteEventBuffer.Count,
-                BufferSize = _remoteEventBuffer.Capacity,
+                TotalEvents = total,
+                BufferSize = cap,
 
                 // 状态分布统计
                 StatusDistribution = statusCounts.ToDictionary(kvp => kvp.Key.ToString(), kvp => kvp.Value),
@@ -701,11 +760,25 @@ public class SynchronizationManager : ISynchronizationManager
                 return;
             }
 
+            // 连接恢复/重连路径可能在短时间内重复触发；这里做一次轻量节流，避免刷屏。
+            long nowTicks = DateTime.UtcNow.Ticks;
+            long minIntervalTicks = TimeSpan.FromSeconds(2).Ticks;
+            if (_lastFullSyncRequestAtTicks > 0 &&
+                (nowTicks - _lastFullSyncRequestAtTicks) >= 0 &&
+                (nowTicks - _lastFullSyncRequestAtTicks) < minIntervalTicks)
+            {
+                Plugin.Logger?.LogDebug("[SyncManager] FullStateSyncRequest 节流：距离上次请求过近，已跳过");
+                return;
+            }
+
+            _lastFullSyncRequestAtTicks = nowTicks;
+
             // 创建完整状态同步请求数据
             var syncRequestData = new Dictionary<string, object>
             {
                 ["RequestType"] = "FullSync",                       // 请求类型标识
-                ["RequestReason"] = "ManualRequest"                   // 请求原因描述
+                ["RequestReason"] = "ManualRequest",                  // 请求原因描述
+                ["RequestId"] = nowTicks                               // 便于日志对账（短时间内可区分即可）
             };
             string playerId = GameStateUtils.GetCurrentPlayerId();
 
@@ -717,7 +790,7 @@ public class SynchronizationManager : ISynchronizationManager
             _lastSyncTime = DateTime.Now;
 
             // 记录完整同步请求日志
-            Plugin.Logger?.LogInfo("[SyncManager] 发起完整状态同步请求");
+            Plugin.Logger?.LogInfo($"[SyncManager] 发起完整状态同步请求: playerId={playerId}, requestId={nowTicks}");
         }
         catch (Exception ex)
         {

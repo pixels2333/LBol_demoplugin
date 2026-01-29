@@ -17,10 +17,50 @@ namespace NetworkPlugin.Patch.Map;
 [HarmonyPatch]
 public class MapPanelUpdateMapNodesStatusPatch
 {
-    private static IServiceProvider serviceProvider = ModService.ServiceProvider;
+    private static readonly object _locationSendLock = new();
+    private static bool _wasConnected;
+    private static ulong _lastSentFp;
+    private static long _lastSentAtTicks;
+
+    /// <summary>
+    /// MapPanel 每帧更新：以小预算推进追赶，避免在 UpdateMapNodesStatus 中集中做大量工作导致卡顿。
+    /// </summary>
+    [HarmonyPatch(typeof(MapPanel), "Update")]
+    [HarmonyPostfix]
+    public static void MapPanel_Update_Postfix(MapPanel __instance)
+    {
+        try
+        {
+            IServiceProvider sp = ModService.ServiceProvider;
+            sp?.GetService<MapCatchUpOrchestrator>()?.TryApplyPendingToCurrentRun(pathStepsBudget: 1, nodeStatesBudget: 10);
+        }
+        catch
+        {
+            // ignored
+        }
+    }
 
     /// <summary>
     /// 当地图节点状态更新时同步玩家位置
+    /// </summary>
+    [HarmonyPatch(typeof(MapPanel), "UpdateMapNodesStatus")]
+    [HarmonyPrefix]
+    public static void Prefix(MapPanel __instance)
+    {
+        try
+        {
+            // Apply pending catch-up *before* the UI reads node statuses.
+            IServiceProvider sp = ModService.ServiceProvider;
+            sp?.GetService<MapCatchUpOrchestrator>()?.TryApplyPendingToCurrentRun(pathStepsBudget: 2, nodeStatesBudget: 60);
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    /// <summary>
+    /// 当地图节点状态更新后同步玩家位置
     /// </summary>
     [HarmonyPatch(typeof(MapPanel), "UpdateMapNodesStatus")]
     [HarmonyPostfix]
@@ -28,23 +68,14 @@ public class MapPanelUpdateMapNodesStatusPatch
     {
         try
         {
-            if (serviceProvider == null)
+            IServiceProvider sp = ModService.ServiceProvider;
+            if (sp == null)
             {
                 Plugin.Logger?.LogWarning("[MapSyncPatch] serviceProvider is null");
                 return;
             }
 
-            // 追赶：若中途加入/重连已收到 FullSnapshot，则在地图 UI 刷新时尽力对齐节点状态。
-            try
-            {
-                serviceProvider.GetService<MapCatchUpOrchestrator>()?.TryApplyPendingToCurrentRun();
-            }
-            catch
-            {
-                // ignored
-            }
-
-            var networkClient = serviceProvider.GetService<INetworkClient>();
+            var networkClient = sp.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
             {
                 Plugin.Logger?.LogDebug("[MapSyncPatch] Network client not available");
@@ -83,9 +114,54 @@ public class MapPanelUpdateMapNodesStatusPatch
             };
 
             string json = JsonCompat.Serialize(locationData);
-            networkClient.SendRequest("UpdatePlayerLocation", json);
 
-            Plugin.Logger?.LogInfo($"[MapSyncPatch] Player location updated: ({locationData.LocationX}, {locationData.LocationY}) - {locationData.LocationName}");
+            // 去重/限流：UpdateMapNodesStatus 可能在短时间内被频繁调用；
+            // 只在位置 payload 变化或超过一定时间后才发送，避免刷屏并减少网络流量。
+            bool shouldSend;
+            bool isReconnectFirstSend = false;
+            long nowTicks = DateTime.UtcNow.Ticks;
+            ulong fp = NetLogHelper.ComputeFnv1a64(json);
+            lock (_locationSendLock)
+            {
+                bool connected = networkClient.IsConnected;
+                if (connected && !_wasConnected)
+                {
+                    // 刚刚从断线恢复：允许立刻发送一次当前位置。
+                    _lastSentFp = 0;
+                    _lastSentAtTicks = 0;
+                    isReconnectFirstSend = true;
+                }
+
+                _wasConnected = connected;
+
+                long minIntervalTicks = TimeSpan.FromMilliseconds(250).Ticks;
+                long refreshIntervalTicks = TimeSpan.FromSeconds(5).Ticks;
+
+                bool samePayload = fp == _lastSentFp;
+                bool tooSoon = (nowTicks - _lastSentAtTicks) >= 0 && (nowTicks - _lastSentAtTicks) < minIntervalTicks;
+                bool needsRefresh = (nowTicks - _lastSentAtTicks) >= refreshIntervalTicks;
+
+                shouldSend = (!samePayload) || needsRefresh || isReconnectFirstSend;
+                if (samePayload && tooSoon)
+                {
+                    shouldSend = false;
+                }
+
+                if (shouldSend)
+                {
+                    _lastSentFp = fp;
+                    _lastSentAtTicks = nowTicks;
+                }
+            }
+
+            if (!shouldSend)
+            {
+                return;
+            }
+
+            networkClient.SendRequest("UpdatePlayerLocation", json);
+            string summary = NetLogHelper.BuildSummary("UpdatePlayerLocation", json);
+            Plugin.Logger?.LogInfo($"[MapSyncPatch] 已发送位置同步: ({locationData.LocationX}, {locationData.LocationY}) - {locationData.LocationName} ({summary})");
         }
         catch (Exception ex)
         {

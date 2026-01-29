@@ -24,7 +24,7 @@ namespace NetworkPlugin.Utils
                     return _cachedGameMaster;
                 }
 
-                _cachedGameMaster = Object.FindObjectOfType<GameMaster>();
+                _cachedGameMaster = UnityEngine.Object.FindObjectOfType<GameMaster>();
                 return _cachedGameMaster;
             }
             catch

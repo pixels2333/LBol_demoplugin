@@ -284,6 +284,36 @@ public sealed class ReconnectionManager : IDisposable
                     snapshot.GameState.UISeed = run.UISeed;
                     snapshot.GameState.StageIndex = run.CurrentStage?.Index;
                     snapshot.MapState.MapSeedUlong = run.CurrentStage?.MapSeed;
+
+                    // Host start config: allow joiner to choose character, but lock run-level settings
+                    // so Stage.MapSeed chain matches the host.
+                    snapshot.GameState.Difficulty = (int)run.Difficulty;
+                    snapshot.GameState.Puzzles = (int)run.Puzzles;
+                    snapshot.GameState.GameMode = (int)run.Mode;
+                    snapshot.GameState.ShowRandomResult = run.ShowRandomResult;
+
+                    try
+                    {
+                        snapshot.GameState.StageTypeNames = run.Stages
+                            .Where(s => s != null)
+                            .Select(s => s.GetType().Name)
+                            .ToList();
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
+
+                    try
+                    {
+                        snapshot.GameState.DebutAdventureTypeName = run.Stages != null && run.Stages.Count > 0
+                            ? run.Stages[0]?.DebutAdventureType?.Name
+                            : null;
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
                 }
                 catch
                 {
@@ -755,10 +785,10 @@ public sealed class ReconnectionManager : IDisposable
             if (DateTime.UtcNow - disconnectAt > TimeSpan.FromMinutes(_config.MaxReconnectionMinutes))
             {
                 RemovePlayerSnapshot(playerId);
-                return ReconnectionResult.Failed("Reconnection timeout");
+                return ReconnectionResult.Failed("重连超时");
             }
 
-            LogInformation($"[ReconnectionManager] Reconnection approved for player {playerId}");
+            LogInformation($"[ReconnectionManager] 已批准玩家重连: playerId={playerId}");
 
             // 注意：恢复包发送、事件触发顺序保持“先发恢复数据，再通知已重连”，
             // 避免订阅者收到重连事件时客户端尚未拿到必要数据。
@@ -786,14 +816,14 @@ public sealed class ReconnectionManager : IDisposable
             INetworkClient? client = _client ?? _serviceProvider.GetService<INetworkClient>();
             if (client == null || !client.IsConnected)
             {
-                LogWarning($"[ReconnectionManager] Skip sending reconnection snapshot: client not connected (target={playerId}).");
+                LogWarning($"[ReconnectionManager] 跳过发送重连恢复包：客户端未连接 (target={playerId})");
                 return;
             }
 
             // 主机权威：只有主机才有资格生成并发送完整恢复数据（避免多个客户端各自生成导致不一致）。
             if (!NetworkIdentityTracker.GetSelfIsHost())
             {
-                LogDebug($"[ReconnectionManager] Skip sending reconnection snapshot: not host (target={playerId}).");
+                LogDebug($"[ReconnectionManager] 跳过发送重连恢复包：当前不是房主 (target={playerId})");
                 return;
             }
 
@@ -815,7 +845,7 @@ public sealed class ReconnectionManager : IDisposable
                 ServerTime = DateTime.UtcNow.Ticks
             });
 
-            LogInformation($"[ReconnectionManager] Sent reconnection snapshot to player {playerId}");
+            LogInformation($"[ReconnectionManager] 已发送重连恢复包: target={playerId}");
         }
         catch (Exception ex)
         {
@@ -871,7 +901,7 @@ public sealed class ReconnectionManager : IDisposable
 
         RemovePlayerSnapshot(playerId);
         ReconnectionTimeout?.Invoke(playerId);
-        LogInformation($"[ReconnectionManager] Reconnection timeout for player {playerId}");
+        LogInformation($"[ReconnectionManager] 玩家重连超时: playerId={playerId}");
     }
 
     /// <summary>

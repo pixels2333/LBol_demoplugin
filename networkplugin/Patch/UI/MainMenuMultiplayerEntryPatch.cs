@@ -1518,6 +1518,35 @@ public static class MainMenuMultiplayerEntryPatch
             port = 7777;
         }
 
+        // If there is a local save, offer a reconnection flow:
+        // 1) connect
+        // 2) restore local save
+        // 3) request host full snapshot and catch up (mid-game join)
+        GameRunSaveData save = null;
+        try
+        {
+            save = Singleton<GameMaster>.Instance?.GameRunSaveData;
+        }
+        catch
+        {
+            save = null;
+        }
+
+        if (save != null && Singleton<GameMaster>.Instance?.CurrentGameRun == null)
+        {
+            UiManager.GetDialog<MessageDialog>().Show(
+                new MessageContent
+                {
+                    Text = $"检测到本地可继续的存档。\n\n将作为客户端加入服务器：{ip}:{port}\n\n确认：重连并继续存档（本地恢复 + 向房主追赶）\n取消：只连接（不恢复存档）",
+                    Icon = MessageIcon.Warning,
+                    Buttons = DialogButtons.ConfirmCancel,
+                    OnConfirm = () => TryConnectToServerAndRestoreAndCatchUp(ip, port, save),
+                    OnCancel = () => TryConnectToServer(ip, port),
+                }
+            );
+            return;
+        }
+
         UiManager.GetDialog<MessageDialog>().Show(
             new MessageContent
             {
@@ -1713,6 +1742,243 @@ public static class MainMenuMultiplayerEntryPatch
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] 连接失败: {ex.Message}");
+        }
+    }
+
+    private static void TryConnectToServerAndRestoreAndCatchUp(string host, int port, GameRunSaveData save)
+    {
+        if (save == null)
+        {
+            TryConnectToServer(host, port);
+            return;
+        }
+
+        TryConnectToServer(host, port);
+
+        try
+        {
+            Singleton<GameMaster>.Instance.StartCoroutine(CoWaitForConnectedThenRestoreThenCatchUp(save));
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static IEnumerator CoWaitForConnectedThenRestoreThenCatchUp(GameRunSaveData save)
+    {
+        INetworkClient client = TryGetNetworkClient();
+
+        float start = Time.realtimeSinceStartup;
+        const float timeoutSeconds = 10f;
+
+        while (Time.realtimeSinceStartup - start < timeoutSeconds)
+        {
+            bool connected = false;
+            try
+            {
+                connected = client != null && client.IsConnected;
+            }
+            catch
+            {
+                connected = false;
+            }
+
+            if (connected)
+            {
+                break;
+            }
+
+            yield return null;
+        }
+
+        bool ok = false;
+        try
+        {
+            ok = client != null && client.IsConnected;
+        }
+        catch
+        {
+            ok = false;
+        }
+
+        if (!ok)
+        {
+            UiManager.GetDialog<MessageDialog>().Show(
+                new MessageContent
+                {
+                    Text = "联机连接超时，无法重连继续存档。\n\n请检查网络模块状态。",
+                    Icon = MessageIcon.Warning,
+                    Buttons = DialogButtons.Confirm,
+                }
+            );
+            yield break;
+        }
+
+        // Wait for handshake (Welcome/PlayerListUpdate) so MidGameJoin has selfId/hostId.
+        // This avoids RequestJoin failing immediately after a fresh connect.
+        NetworkPlugin.Network.MidGameJoin.MidGameJoinManager mgrHandshake = null;
+        try
+        {
+            mgrHandshake = ServiceProvider?.GetService<NetworkPlugin.Network.MidGameJoin.MidGameJoinManager>();
+        }
+        catch
+        {
+            mgrHandshake = null;
+        }
+
+        float hsStart = Time.realtimeSinceStartup;
+        const float hsTimeoutSeconds = 6f;
+        while (Time.realtimeSinceStartup - hsStart < hsTimeoutSeconds)
+        {
+            string selfId = string.Empty;
+            string hostId = string.Empty;
+            try
+            {
+                selfId = NetworkPlugin.Utils.NetworkIdentityTracker.GetSelfPlayerId() ?? string.Empty;
+                hostId = mgrHandshake?.GetLastKnownHostPlayerId() ?? string.Empty;
+            }
+            catch
+            {
+                // ignored
+            }
+
+            if (!string.IsNullOrWhiteSpace(selfId) && !string.IsNullOrWhiteSpace(hostId))
+            {
+                break;
+            }
+
+            yield return null;
+        }
+
+        // 1) Restore local save (main thread)
+        try
+        {
+            Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 联机已连接，开始本地恢复存档。");
+            GameMaster.RestoreGameRun(save);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] 本地恢复存档失败: {ex.Message}");
+            UiManager.GetDialog<MessageDialog>().Show(
+                new MessageContent
+                {
+                    Text = "本地恢复存档失败，请检查日志。",
+                    Icon = MessageIcon.Warning,
+                    Buttons = DialogButtons.Confirm,
+                }
+            );
+            yield break;
+        }
+
+        // Wait until the restored run is created so catch-up won't mistakenly prompt StartGamePanel.
+        float runStart = Time.realtimeSinceStartup;
+        const float runTimeoutSeconds = 8f;
+        while (Time.realtimeSinceStartup - runStart < runTimeoutSeconds)
+        {
+            bool hasRun = false;
+            try
+            {
+                hasRun = NetworkPlugin.Utils.GameStateUtils.GetCurrentGameRun() != null;
+            }
+            catch
+            {
+                hasRun = false;
+            }
+
+            if (hasRun)
+            {
+                break;
+            }
+
+            yield return null;
+        }
+
+        // 2) Ask host for FullSnapshot and catch up.
+        // RoomId is currently not exposed in the UI; use a deterministic placeholder.
+        // Host/joiner must share the same string.
+        // Also wait for hostId to become available (PlayerListUpdate) before sending the join request.
+        yield return null;
+        yield return null;
+
+        var mgr2 = ServiceProvider?.GetService<NetworkPlugin.Network.MidGameJoin.MidGameJoinManager>();
+        if (mgr2 == null)
+        {
+            yield break;
+        }
+
+        float joinGateStart = Time.realtimeSinceStartup;
+        const float joinGateTimeoutSeconds = 10f;
+        while (Time.realtimeSinceStartup - joinGateStart < joinGateTimeoutSeconds)
+        {
+            string selfId = string.Empty;
+            string hostId = string.Empty;
+            try
+            {
+                selfId = NetworkPlugin.Utils.NetworkIdentityTracker.GetSelfPlayerId() ?? string.Empty;
+                hostId = mgr2.GetLastKnownHostPlayerId() ?? string.Empty;
+            }
+            catch
+            {
+                // ignored
+            }
+
+            if (!string.IsNullOrWhiteSpace(selfId) && !string.IsNullOrWhiteSpace(hostId))
+            {
+                break;
+            }
+
+            yield return null;
+        }
+
+        try
+        {
+
+            string playerName = "joiner";
+            try
+            {
+                playerName = Singleton<GameMaster>.Instance?.CurrentProfile?.Name ?? playerName;
+            }
+            catch
+            {
+                // ignored
+            }
+
+            const string roomId = "default";
+
+            mgr2.BeginReconnectAndCatchUp(
+                roomId,
+                playerName,
+                onStatus: s => Plugin.Logger?.LogInfo("[Reconnect] " + s),
+                onCompleted: r =>
+                {
+                    try
+                    {
+                        if (r?.IsSuccess == true)
+                        {
+                            Plugin.Logger?.LogInfo("[Reconnect] Catch-up completed.");
+                            return;
+                        }
+
+                        string err = r?.ErrorMessage ?? "Unknown error";
+                        Plugin.Logger?.LogWarning("[Reconnect] Catch-up failed: " + err);
+                        UiManager.GetDialog<MessageDialog>().Show(new MessageContent
+                        {
+                            Text = "追赶同步失败：\n" + err,
+                            Icon = MessageIcon.Warning,
+                            Buttons = DialogButtons.Confirm,
+                        });
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
+                },
+                timeoutSeconds: 20);
+        }
+        catch
+        {
+            // ignored
         }
     }
 

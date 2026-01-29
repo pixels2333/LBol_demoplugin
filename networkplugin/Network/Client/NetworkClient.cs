@@ -25,6 +25,9 @@ public class NetworkClient : INetworkClient
     private NetPeer _serverPeer;
     private string _connectionKey;
 
+    private DateTime _lastHeartbeatSentUtc = DateTime.MinValue;
+    private int _heartbeatIntervalMs = 5_000;
+
     private INetworkManager _networkManager;
     private INetworkPlayer _networkPlayer;
     private INetworkPlayer _fallbackSelf;
@@ -59,7 +62,8 @@ public class NetworkClient : INetworkClient
     /// </summary>
     private bool _autoReconnectEnabled = false;
     private int _retryInterval = 5000;
-    private int _connectionTimeout = 5000;
+    // Keep consistent with server defaults (30s). Too small here causes "end turn -> idle -> disconnect".
+    private int _connectionTimeout = 30_000;
     private string _lastConnectHost;
     private int _lastConnectPort;
     private readonly object _reconnectLock = new();
@@ -71,6 +75,22 @@ public class NetworkClient : INetworkClient
     public NetworkClient(ConfigManager configManager)
         : this(configManager?.RelayServerConnectionKey?.Value ?? "LBoL_Network_Plugin", null, null)
     {
+        try
+        {
+            if (configManager != null)
+            {
+                // Align client disconnect timeout with server-side timeout config.
+                _connectionTimeout = Math.Max(5_000, configManager.NetworkTimeoutSeconds.Value * 1000);
+                _netManager.DisconnectTimeout = _connectionTimeout;
+
+                // Send heartbeat more frequently than timeout; keep it modest to avoid log spam.
+                _heartbeatIntervalMs = Math.Max(1_000, Math.Min(10_000, _connectionTimeout / 3));
+            }
+        }
+        catch
+        {
+            // ignored
+        }
     }
 
     /// <summary>
@@ -141,6 +161,7 @@ public class NetworkClient : INetworkClient
             Console.WriteLine($"[客户端] 已连接到服务器: {peer.EndPoint}");
             Plugin.Logger?.LogInfo($"[客户端] 已连接到服务器: {peer.EndPoint}");
             _serverPeer = peer;
+            _lastHeartbeatSentUtc = DateTime.UtcNow;
             StopAutoReconnectTimer_NoThrow();
 
             // 触发连接事件通知
@@ -205,6 +226,7 @@ public class NetworkClient : INetworkClient
             Console.WriteLine($"[客户端] 已从服务器断开: {peer.EndPoint}, 原因: {disconnectInfo.Reason}");
             Plugin.Logger?.LogWarning($"[客户端] 已从服务器断开: {peer.EndPoint}, 原因: {disconnectInfo.Reason}");
             _serverPeer = null;
+            _lastHeartbeatSentUtc = DateTime.MinValue;
 
             // 触发断开连接事件通知
             OnDisconnected?.Invoke(peer.EndPoint.ToString(), disconnectInfo.Reason.ToString());
@@ -243,6 +265,11 @@ public class NetworkClient : INetworkClient
                     // 处理游戏同步事件
                     HandleGameEvent(messageType, dataReader);
                 }
+                else if (string.Equals(messageType, NetworkMessageTypes.HeartbeatResponse, StringComparison.Ordinal))
+                {
+                    // Consume payload to avoid leaving unread bytes in the reader.
+                    _ = dataReader.GetString();
+                }
                 else if (messageType.EndsWith("GetSelf_RESPONSE"))
                 {
                     // 处理系统响应消息
@@ -275,6 +302,15 @@ public class NetworkClient : INetworkClient
     /// <returns>如果是游戏事件返回 true，否则返回 false</returns>
     private bool IsGameEvent(string messageType)
     {
+        // Some multiplayer events don't follow the common prefixes and must still go through the GameEvent bus.
+        if (messageType == NetworkMessageTypes.EndTurnRequest ||
+            messageType == NetworkMessageTypes.EndTurnStatus ||
+            messageType == NetworkMessageTypes.EndTurnConfirm ||
+            messageType == NetworkMessageTypes.CardStateChanged)
+        {
+            return true;
+        }
+
         return messageType.StartsWith("On") ||
                messageType.StartsWith("Mana") ||
                messageType.StartsWith("Gap") ||
@@ -319,7 +355,7 @@ public class NetworkClient : INetworkClient
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[Client] Error injecting local game event {eventType}: {ex.Message}");
+            Console.WriteLine($"[客户端] 注入本地游戏事件失败: type={eventType}, err={ex.Message}");
         }
     }
 
@@ -377,18 +413,12 @@ public class NetworkClient : INetworkClient
             }
         }
 
-        string preview = jsonPayload ?? string.Empty;
-        preview = preview.Replace("\r", " ").Replace("\n", " ");
-        if (preview.Length > 200)
-        {
-            preview = preview.Substring(0, 200);
-        }
-
         // 只打一次：用于定位“无效的网络事件数据格式”根因。
-        Console.WriteLine($"[Client] Payload preview: event={eventType}, type=string, head200={preview}");
+        string summary = NetLogHelper.BuildSummary(eventType, jsonPayload);
+        Console.WriteLine($"[客户端] Payload 预览(仅一次): event={eventType}, {summary}");
         try
         {
-            Plugin.Logger?.LogInfo($"[Client] Payload preview: event={eventType}, type=string, head200={preview}");
+            Plugin.Logger?.LogInfo($"[客户端] Payload 预览(仅一次): event={eventType}, {summary}");
         }
         catch
         {
@@ -406,8 +436,8 @@ public class NetworkClient : INetworkClient
     {
         _lastConnectHost = host;
         _lastConnectPort = port;
-        Console.WriteLine($"[客户端] 正在连接服务器 {host}:{port}（密钥: {_connectionKey}）...");
-        Plugin.Logger?.LogInfo($"[客户端] 正在连接服务器 {host}:{port}（密钥: {_connectionKey}）...");
+        Console.WriteLine($"[客户端] 正在连接服务器 {host}:{port}（密钥: <已隐藏>）...");
+        Plugin.Logger?.LogInfo($"[客户端] 正在连接服务器 {host}:{port}（密钥: <已隐藏>）...");
         NetDataWriter connectData = new();
         // 将连接密钥写入数据包，用于服务器身份验证
         connectData.Put(_connectionKey);
@@ -423,6 +453,36 @@ public class NetworkClient : INetworkClient
     {
         // 轮询所有待处理的网络事件，保持网络通信畅通
         _netManager.PollEvents();
+
+        // Heartbeat is required for server-side session keepalive; send it on the main thread.
+        SendHeartbeatIfNeeded_NoThrow();
+    }
+
+    private void SendHeartbeatIfNeeded_NoThrow()
+    {
+        try
+        {
+            if (!IsConnected || _serverPeer == null)
+            {
+                return;
+            }
+
+            DateTime now = DateTime.UtcNow;
+            if (_lastHeartbeatSentUtc != DateTime.MinValue &&
+                (now - _lastHeartbeatSentUtc).TotalMilliseconds < _heartbeatIntervalMs)
+            {
+                return;
+            }
+
+            NetDataWriter writer = new();
+            writer.Put(NetworkMessageTypes.Heartbeat);
+            _serverPeer.Send(writer, DeliveryMethod.Unreliable);
+            _lastHeartbeatSentUtc = now;
+        }
+        catch
+        {
+            // ignored
+        }
     }
 
     /// <summary>
@@ -435,7 +495,7 @@ public class NetworkClient : INetworkClient
         // 停止网络管理器，断开所有连接
         _netManager.Stop();
         _serverPeer = null;
-        Console.WriteLine("[Client] Client services stopped.");
+        Console.WriteLine("[客户端] 网络客户端服务已停止。");
     }
 
     private void StartAutoReconnectTimer_NoThrow()
@@ -449,7 +509,7 @@ public class NetworkClient : INetworkClient
 
             if (string.IsNullOrWhiteSpace(_lastConnectHost) || _lastConnectPort <= 0)
             {
-                Console.WriteLine("[Client] Auto-reconnect skipped: missing last endpoint");
+                Console.WriteLine("[客户端] 自动重连跳过：缺少上次连接的地址信息");
                 return;
             }
 
@@ -465,19 +525,19 @@ public class NetworkClient : INetworkClient
                             return;
                         }
 
-                        Console.WriteLine($"[Client] Auto-reconnect attempting: {_lastConnectHost}:{_lastConnectPort}");
+                        Console.WriteLine($"[客户端] 自动重连尝试：{_lastConnectHost}:{_lastConnectPort}");
                         ConnectToServer(_lastConnectHost, _lastConnectPort);
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"[Client] Auto-reconnect error: {ex.Message}");
+                        Console.WriteLine($"[客户端] 自动重连异常: {ex.Message}");
                     }
                 }, null, _retryInterval, _retryInterval);
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[Client] Failed to start auto-reconnect timer: {ex.Message}");
+            Console.WriteLine($"[客户端] 启动自动重连计时器失败: {ex.Message}");
         }
     }
 
@@ -561,8 +621,9 @@ public class NetworkClient : INetworkClient
 
             // 使用可靠有序的方式发送数据
             _serverPeer.Send(writer, DeliveryMethod.ReliableOrdered);
-            Console.WriteLine($"[客户端] 已发送游戏事件: {eventType}");
-            Plugin.Logger?.LogDebug($"[客户端] 已发送游戏事件: {eventType}");
+            string summary = NetLogHelper.BuildSummary(eventType, json);
+            Console.WriteLine($"[客户端] 已发送游戏事件: {eventType} ({summary})");
+            Plugin.Logger?.LogDebug($"[客户端] 已发送游戏事件: {eventType} ({summary})");
         }
         catch (Exception ex)
         {
@@ -587,6 +648,8 @@ public class NetworkClient : INetworkClient
             // 写入请求头标识
             writer.Put(requestHeader);
 
+            string payloadForLog = null;
+
             // 根据数据类型选择序列化方式
             if (typeof(T).IsPrimitive || typeof(T) == typeof(string))
             {
@@ -601,21 +664,38 @@ public class NetworkClient : INetworkClient
                     case bool b: writer.Put(b); break;
                     default: throw new NotSupportedException($"Type {typeof(T)} is not supported by NetDataWriter.Put");
                 }
+
+                try
+                {
+                    payloadForLog = requestData?.ToString();
+                }
+                catch
+                {
+                    payloadForLog = string.Empty;
+                }
             }
             else
             {
                 // 复杂对象使用 JSON 序列化
                 string json = JsonCompat.Serialize(requestData);
                 writer.Put(json);
+                payloadForLog = json;
             }
 
             // 发送请求到服务器
             _serverPeer.Send(writer, DeliveryMethod.ReliableOrdered);
-            Console.WriteLine($"[Client] Request sent: {requestHeader}");
+            if (payloadForLog == null)
+            {
+                payloadForLog = string.Empty;
+            }
+
+            string summary = NetLogHelper.BuildSummary(requestHeader, payloadForLog);
+            Console.WriteLine($"[客户端] 已发送请求: {requestHeader} ({summary})");
+            Plugin.Logger?.LogDebug($"[客户端] 已发送请求: {requestHeader} ({summary})");
         }
         else
         {
-            Console.WriteLine("[Client] Not connected to server. Cannot send request.");
+            Console.WriteLine("[客户端] 未连接到服务器，无法发送请求。");
         }
     }
 
@@ -631,18 +711,18 @@ public class NetworkClient : INetworkClient
         {
             // 读取响应头标识
             string responseHeader = dataReader.GetString();
-            Console.WriteLine($"[Client] Received response: Type = '{responseHeader}' from {fromPeer.EndPoint}");
+            Console.WriteLine($"[客户端] 收到响应: type='{responseHeader}', from={fromPeer.EndPoint}");
 
             // 读取响应数据内容
             string responseData = dataReader.GetString();
-            Console.WriteLine($"[Client] Message: {responseData}");
+            Console.WriteLine($"[客户端] 响应消息: {responseData}");
 
             // 触发响应接收事件
             OnResponseReceived?.Invoke(responseHeader, responseData);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[Client] Error handling response: {ex.Message}");
+            Console.WriteLine($"[客户端] 处理响应失败: {ex.Message}");
         }
     }
 
@@ -686,7 +766,7 @@ public class NetworkClient : INetworkClient
         {
             _netManager.DisconnectTimeout = timeoutMs;
         }
-        Console.WriteLine($"[Client] Connection timeout set to {timeoutMs}ms");
+        Console.WriteLine($"[客户端] 连接超时已设置为 {timeoutMs}ms");
     }
 
     /// <summary>
@@ -701,7 +781,7 @@ public class NetworkClient : INetworkClient
         _autoReconnectEnabled = enabled;
         // 设置重试间隔时间
         _retryInterval = retryInterval;
-        Console.WriteLine($"[Client] Auto-reconnect {(enabled ? "enabled" : "disabled")}, retry interval: {retryInterval}ms");
+        Console.WriteLine($"[客户端] 自动重连{(enabled ? "已启用" : "已禁用")}, 重试间隔: {retryInterval}ms");
     }
 
 

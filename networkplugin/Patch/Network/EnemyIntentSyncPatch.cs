@@ -3,12 +3,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using HarmonyLib;
+using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Intentions;
 using LBoL.Core.Units;
+using LBoL.Presentation.UI;
+using LBoL.Presentation.UI.Panels;
+using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
@@ -33,6 +38,14 @@ public static class EnemyIntentSyncPatch
     /// </summary>
     private static bool _generatingRoundStartIntentions;
 
+    private static bool _subscribed;
+    private static INetworkClient _subscribedClient;
+    private static readonly Action<string, object> _onGameEventReceived = OnGameEventReceived;
+    private static readonly Action<bool> _onConnectionStateChanged = OnConnectionStateChanged;
+
+    // When a player joins/reconnects mid-battle, proactively rebroadcast current intentions.
+    private static long _lastJoinBroadcastTicks;
+
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
     private static INetworkClient TryGetNetworkClient()
@@ -45,6 +58,90 @@ public static class EnemyIntentSyncPatch
         {
             return null;
         }
+    }
+
+    [HarmonyPatch(typeof(GameDirector), "Update")]
+    private static class SubscribeHook
+    {
+        [HarmonyPostfix]
+        public static void Postfix()
+        {
+            INetworkClient client = TryGetNetworkClient();
+            if (client == null)
+            {
+                return;
+            }
+
+            EnsureSubscribed(client);
+            NetworkIdentityTracker.EnsureSubscribed(client);
+        }
+    }
+
+    private static void EnsureSubscribed(INetworkClient client)
+    {
+        if (_subscribed && ReferenceEquals(_subscribedClient, client))
+        {
+            return;
+        }
+
+        try
+        {
+            if (_subscribedClient != null)
+            {
+                _subscribedClient.OnGameEventReceived -= _onGameEventReceived;
+                _subscribedClient.OnConnectionStateChanged -= _onConnectionStateChanged;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        try
+        {
+            client.OnGameEventReceived += _onGameEventReceived;
+            client.OnConnectionStateChanged += _onConnectionStateChanged;
+            _subscribedClient = client;
+            _subscribed = true;
+        }
+        catch
+        {
+            _subscribedClient = null;
+            _subscribed = false;
+        }
+    }
+
+    private static void OnConnectionStateChanged(bool connected)
+    {
+        if (connected)
+        {
+            return;
+        }
+
+        _lastJoinBroadcastTicks = 0;
+    }
+
+    private static void OnGameEventReceived(string eventType, object payload)
+    {
+        // Host-only: when a player joins/reconnects, rebroadcast current battle intentions to speed up catch-up.
+        if (!string.Equals(eventType, NetworkMessageTypes.PlayerJoined, StringComparison.Ordinal) &&
+            !string.Equals(eventType, NetworkMessageTypes.Welcome, StringComparison.Ordinal) &&
+            !string.Equals(eventType, NetworkMessageTypes.PlayerListUpdate, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        if (!NetworkIdentityTracker.GetSelfIsHost())
+        {
+            return;
+        }
+
+        if (!ShouldBroadcastAgain(ref _lastJoinBroadcastTicks, TimeSpan.FromSeconds(1)))
+        {
+            return;
+        }
+
+        TryBroadcastCurrentBattleIntentions();
     }
 
     [HarmonyPatch(typeof(StartRoundAction), "MainPhase")]
@@ -83,6 +180,13 @@ public static class EnemyIntentSyncPatch
                 return;
             }
 
+            // Host-authoritative: only host broadcasts intentions.
+            NetworkIdentityTracker.EnsureSubscribed(networkClient);
+            if (!NetworkIdentityTracker.GetSelfIsHost())
+            {
+                return;
+            }
+
             object payload = new
             {
                 Timestamp = DateTime.Now.Ticks,
@@ -112,6 +216,88 @@ public static class EnemyIntentSyncPatch
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[EnemyIntentSync] Error syncing enemy intentions: {ex.Message}");
+        }
+    }
+
+    private static bool ShouldBroadcastAgain(ref long lastTicks, TimeSpan cooldown)
+    {
+        long now = DateTime.Now.Ticks;
+        long prev = lastTicks;
+        if (prev != 0 && now - prev < cooldown.Ticks)
+        {
+            return false;
+        }
+
+        lastTicks = now;
+        return true;
+    }
+
+    private static BattleController TryGetCurrentBattle()
+    {
+        try
+        {
+            var playBoard = UiManager.GetPanel<PlayBoard>();
+            if (playBoard == null)
+            {
+                return null;
+            }
+
+            return Traverse.Create(playBoard).Property("Battle").GetValue<BattleController>();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void TryBroadcastCurrentBattleIntentions()
+    {
+        try
+        {
+            INetworkClient client = TryGetNetworkClient();
+            if (client == null || !client.IsConnected)
+            {
+                return;
+            }
+
+            BattleController battle = TryGetCurrentBattle();
+            if (battle?.EnemyGroup == null)
+            {
+                return;
+            }
+
+            foreach (EnemyUnit enemy in battle.EnemyGroup.Alives)
+            {
+                if (enemy == null)
+                {
+                    continue;
+                }
+
+                object payload = new
+                {
+                    Timestamp = DateTime.Now.Ticks,
+                    EnemyGroupId = battle.EnemyGroup.Id,
+                    Round = battle.RoundCounter,
+                    GeneratingEotIntents = _generatingRoundStartIntentions,
+                    Enemy = new
+                    {
+                        enemy.RootIndex,
+                        enemy.Id,
+                        SpawnId = SpawnedEnemySyncPatch.TryGetSpawnId(enemy, out string spawnId) ? spawnId : null,
+                        enemy.Name,
+                        enemy.ModelName,
+                    },
+                    Intentions = BuildIntentionsSnapshot(enemy.Intentions),
+                };
+
+                client.SendRequest("BattleEnemyIntentChanged", JsonCompat.Serialize(payload));
+            }
+
+            Plugin.Logger?.LogDebug("[EnemyIntentSync] Broadcasted current battle intentions for join/reconnect.");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[EnemyIntentSync] Failed to broadcast current battle intentions: {ex.Message}");
         }
     }
 

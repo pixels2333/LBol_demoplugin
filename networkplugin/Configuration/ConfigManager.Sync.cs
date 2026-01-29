@@ -57,7 +57,11 @@ public partial class ConfigManager
 
     /// <summary>
     /// 存档/读档同步开关
-    /// 默认关闭：避免在主菜单或未选择存档阶段触发扫描与日志，干扰启动流程。
+    /// 默认关闭：该功能已被 inrun-map-progress-sync 的 FullSnapshot+checkpoint 方案取代。
+    ///
+    /// 说明：
+    /// - 联机不再传输 GameRunSaveData bytes（高风险、版本兼容性差）。
+    /// - “回主菜单重连继续”仍允许本机执行 RestoreGameRun（读取本地存档），随后向房主追赶 FullSnapshot。
     /// </summary>
     public ConfigEntry<bool> EnableSaveLoadSync { get; private set; }
 
@@ -108,7 +112,7 @@ public partial class ConfigManager
             "Sync.Toggles",
             "EnableSaveLoadSync",
             false,
-            "控制存档/读档流程的同步（建议在确认已进入并选择存档后再启用）"
+            "(Deprecated) 旧版存档同步已废弃：联机不再传输存档 bytes。仅保留本地 Restore + FullSnapshot 追赶。"
         );
 
         // 在Sync.Performance区域下绑定同步性能参数

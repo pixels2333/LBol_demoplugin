@@ -57,18 +57,32 @@ public static class BattleCardZoneSyncPatch
     /// <param name="card">需要拍快照的卡牌实例。</param>
     /// <returns>匿名对象，包含卡牌标识、实例 ID、基础信息以及所在区域等。</returns>
     private static object BuildCardSnapshot(Card card)
-        => new
+    {
+        // 注意：不要把 ManaGroup/Cost 直接塞进网络 payload。
+        // ManaGroup 内部存在自引用（Corrected 等），Newtonsoft 默认会抛 Self referencing loop。
+        string costText = null;
+        try
         {
-            CardId = card?.Id ?? "null",              // 卡牌配置 ID（静态配置表中的 Id）
-            InstanceId = card?.InstanceId ?? -1,       // 实例 ID，用于区分同名不同实例
-            CardName = card?.Name ?? "null",          // 当前显示名称（含语言与增幅等变更）
-            CardType = card?.GetType().Name ?? "null",// 运行时派生类型，用于远端做类型映射
-            IsUpgraded = card?.IsUpgraded ?? false,    // 是否为强化版
-            Cost = card != null ? card.Cost : default, // 当前费用（已考虑各种 Buff/Debuff）
-            Zone = card?.Zone.ToString() ?? "Unknown",// 当前所在区域（手牌/牌库/弃牌等）
-            IsEthereal = card?.IsEthereal ?? false,    // 是否回合结束自动消失
-            IsAutoExile = card?.IsAutoExile ?? false,  // 使用后是否自动放逐
+            costText = card != null ? card.Cost.ToString() : null;
+        }
+        catch
+        {
+            costText = null;
+        }
+
+        return new
+        {
+            CardId = card?.Id ?? "null",               // 卡牌配置 ID（静态配置表中的 Id）
+            InstanceId = card?.InstanceId ?? -1,        // 实例 ID，用于区分同名不同实例
+            CardName = card?.Name ?? "null",           // 当前显示名称（含语言与增幅等变更）
+            CardType = card?.GetType().Name ?? "null", // 运行时派生类型，用于远端做类型映射
+            IsUpgraded = card?.IsUpgraded ?? false,     // 是否为强化版
+            CostText = costText,                        // 仅用于调试/显示，避免自引用对象图
+            Zone = card?.Zone.ToString() ?? "Unknown", // 当前所在区域（手牌/牌库/弃牌等）
+            IsEthereal = card?.IsEthereal ?? false,     // 是否回合结束自动消失
+            IsAutoExile = card?.IsAutoExile ?? false,   // 使用后是否自动放逐
         };
+    }
 
     /// <summary>
     /// 判断当前战斗是否需要进行网络同步。

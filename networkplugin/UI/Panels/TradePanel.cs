@@ -750,7 +750,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             INetworkClient client = ModService.ServiceProvider.GetService<INetworkClient>();
             if (client == null || !client.IsConnected)
             {
-                TryShowTopMessage("Trading is only available in network mode.");
+                TryShowTopMessage("交易仅在联机模式下可用。");
                 return false;
             }
 

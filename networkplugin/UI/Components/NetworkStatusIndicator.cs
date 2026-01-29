@@ -312,7 +312,7 @@ public class NetworkStatusIndicator : MonoBehaviour
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[NetworkStatusIndicator] Reconnect failed: {ex.Message}");
+            Plugin.Logger?.LogError($"[NetworkStatusIndicator] 重连失败: {ex.Message}");
             AddSystemLog("重连失败，请检查网络设置");
         }
     } // 处理重连按钮点击，尝试重新连接网络并记录状态

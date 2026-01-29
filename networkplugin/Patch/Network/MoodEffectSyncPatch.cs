@@ -80,6 +80,8 @@ public static class MoodEffectSyncPatch
     /// 最后广播的特效名称
     /// </summary>
     private static string _lastBroadcastedEffectName;
+    private static long _lastBroadcastedAtTicks;
+    private static ulong _lastBroadcastedFp;
 
     /// <summary>
     /// 按玩家ID缓存的待处理心情状态
@@ -590,7 +592,8 @@ public static class MoodEffectSyncPatch
             return;
         }
 
-        TryGetLocalActiveMoodEffectName(out string effectName);
+        bool hasEffect = TryGetLocalActiveMoodEffectName(out string effectName);
+        string normalized = NormalizeEffectName(effectName, hasEffect);
 
         // 避免重复广播相同状态；TryPlayEffectLoop在接收端是幂等的，
         // 但我们保持低流量
@@ -600,10 +603,20 @@ public static class MoodEffectSyncPatch
             return;
         }
 
+        // 二级限流：即使 force=true，也避免在极短时间内重复发送相同 payload。
+        // 这能显著降低重连/入战等路径抖动导致的刷屏。
+        long nowTicks = DateTime.UtcNow.Ticks;
+        ulong fp = NetLogHelper.ComputeFnv1a64($"{selfId}|{normalized}");
+        long minIntervalTicks = force ? TimeSpan.FromMilliseconds(300).Ticks : TimeSpan.FromMilliseconds(150).Ticks;
+        if (fp == _lastBroadcastedFp && (nowTicks - _lastBroadcastedAtTicks) >= 0 && (nowTicks - _lastBroadcastedAtTicks) < minIntervalTicks)
+        {
+            return;
+        }
+
         // 去重：只有状态变化（或 force）才发送，避免刷屏。
         if (!force)
         {
-            bool sameState = string.Equals(effectName, _lastBroadcastedEffectName, StringComparison.OrdinalIgnoreCase);
+            bool sameState = string.Equals(normalized, _lastBroadcastedEffectName, StringComparison.OrdinalIgnoreCase);
             if (sameState)
             {
                 return;
@@ -614,12 +627,32 @@ public static class MoodEffectSyncPatch
         {
             SenderPlayerId = selfId,
             SenderName = selfName,
-            CurrentEffectName = effectName
+            CurrentEffectName = normalized
         });
 
-        _lastBroadcastedEffectName = effectName;
+        _lastBroadcastedEffectName = normalized;
+        _lastBroadcastedAtTicks = nowTicks;
+        _lastBroadcastedFp = fp;
 
-        Plugin.Logger?.LogDebug($"[MoodEffectSync] 已广播心情状态: playerId={selfId}, current={effectName ?? "<none>"}, force={force}");
+        string json = JsonCompat.Serialize(new { SenderPlayerId = selfId, SenderName = selfName, CurrentEffectName = normalized });
+        string summary = NetLogHelper.BuildSummary(NetworkMessageTypes.OnMoodEffectStateSync, json);
+        Plugin.Logger?.LogDebug($"[MoodEffectSync] 已广播心情状态: playerId={selfId}, current={normalized}, force={force} ({summary})");
+    }
+
+    private static string NormalizeEffectName(string effectName, bool hasEffect)
+    {
+        if (!hasEffect)
+        {
+            // 未检测到心情特效时，统一为 <none>，避免 null/空字符串导致“变化”误判。
+            return "<none>";
+        }
+
+        if (string.IsNullOrWhiteSpace(effectName))
+        {
+            return "<none>";
+        }
+
+        return effectName.Trim();
     }
 
     #endregion
