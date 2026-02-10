@@ -13,8 +13,10 @@ using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.UI.Widgets;
 using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
+using NetworkPlugin.Configuration;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Utils;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -39,6 +41,172 @@ public static class OtherPlayersOverlayPatch
 
     /// <summary>获取依赖注入容器</summary>
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
+
+    private static ConfigManager TryGetConfig()
+    {
+        try
+        {
+            return ServiceProvider?.GetService<ConfigManager>();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static bool ShouldInjectTradeDebugPlayers()
+    {
+        try
+        {
+            return TryGetConfig()?.DebugFakePlayersForTrade?.Value == true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsVirtualAiDefaultEnabled()
+    {
+        try
+        {
+            var cfg = TryGetConfig();
+            return cfg?.DebugVirtualPlayerAiDefault?.Value == true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void EnsureVirtualAiDefaultPlayer_NoThrow()
+    {
+        try
+        {
+            if (!IsVirtualAiDefaultEnabled())
+            {
+                // Best-effort cleanup when disabled.
+                lock (_syncLock)
+                {
+                    _players.Remove("aidefault");
+                }
+                return;
+            }
+
+            // CharacterId should match the local player so rendering works even if you picked the same character.
+            string characterId = GetFallbackCharacterId();
+            string name = "AI Default";
+
+            // Follow current visiting node when possible.
+            int stage = -1;
+            int x = -1;
+            int y = -1;
+            string locName = null;
+            try
+            {
+                var run = GameStateUtils.GetCurrentGameRun();
+                var node = run?.CurrentMap?.VisitingNode;
+                if (node != null)
+                {
+                    stage = node.Act;
+                    x = node.X;
+                    y = node.Y;
+                    locName = node.StationType.ToString();
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            // If we couldn't read node, fall back to self snapshot if present.
+            if (x < 0 || y < 0)
+            {
+                if (TryGetSelfLocation(out int selfStage, out int selfX, out int selfY, out string selfLocName))
+                {
+                    stage = selfStage;
+                    x = selfX;
+                    y = selfY;
+                    locName = selfLocName;
+                }
+            }
+
+            // Trade partner picker filters by a "shop-like" location name. In vanilla LBoL the merchant node is
+            // StationType.Trade, so when we cannot detect the current node we still default to a trade-like name.
+            if (string.IsNullOrWhiteSpace(locName))
+            {
+                locName = "Trade";
+            }
+
+            lock (_syncLock)
+            {
+                if (!_players.TryGetValue("aidefault", out PlayerSummary p) || p == null)
+                {
+                    p = new PlayerSummary { PlayerId = "aidefault" };
+                    _players["aidefault"] = p;
+                }
+
+                p.PlayerName = name;
+                p.IsConnected = true;
+                p.IsHost = false;
+                p.CharacterId = characterId;
+                p.Stage = stage;
+                p.LocationX = x;
+                p.LocationY = y;
+                p.LocationName = locName;
+                p.LastUpdateTime = Time.unscaledTime;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static void InjectTradeDebugPlayersDetailed(List<(string PlayerId, string PlayerName, bool IsConnected, bool IsHost, int Stage, int LocationX, int LocationY, string LocationName, string CharacterId)> list)
+    {
+        if (list == null)
+        {
+            return;
+        }
+
+        // Offline UI testing: make partner picker believe other players are in a shop-like location.
+        // If we know our own location, align to it so TradePanel's "same node" filter path can be tested.
+        int stage = -1;
+        int x = -1;
+        int y = -1;
+        string loc = "Shop";
+        if (TryGetSelfLocation(out int selfStage, out int selfX, out int selfY, out string selfLocName))
+        {
+            stage = selfStage;
+            x = selfX;
+            y = selfY;
+            // Prefer the real visiting node type if available, but keep shop-like fallback so it shows in partner picker.
+            if (!string.IsNullOrWhiteSpace(selfLocName))
+            {
+                loc = selfLocName;
+            }
+        }
+        string characterId = GetFallbackCharacterId();
+
+        if (list.All(p => !string.Equals(p.PlayerId, "aidefault", StringComparison.Ordinal)))
+        {
+            list.Add(("aidefault", "AI Default", true, false, stage, x, y, loc, characterId));
+        }
+    }
+
+    private static void InjectTradeDebugPlayers(List<(string PlayerId, string PlayerName, bool IsConnected, bool IsHost)> list)
+    {
+        if (list == null)
+        {
+            return;
+        }
+
+        if (list.All(p => !string.Equals(p.PlayerId, "aidefault", StringComparison.Ordinal)))
+        {
+            list.Add(("aidefault", "AI Default", true, false));
+        }
+    }
 
     /// <summary>用于同步访问玩家列表的锁</summary>
     private static readonly object _syncLock = new();
@@ -103,9 +271,18 @@ public static class OtherPlayersOverlayPatch
             INetworkClient client = TryGetNetworkClient();
             if (client == null)
             {
-                // 没有网络客户端时隐藏 UI 并直接返回
+                // 没有网络客户端时：若启用虚拟玩家，则仍允许远程渲染；否则按原逻辑隐藏。
+                EnsureVirtualAiDefaultPlayer_NoThrow();
+                if (!IsVirtualAiDefaultEnabled())
+                {
+                    HideUi();
+                    HideRemoteCharacters();
+                    return;
+                }
+
                 HideUi();
-                HideRemoteCharacters();
+                EnsureRemoteCharacters();
+                UpdateRemoteCharactersLayout();
                 return;
             }
 
@@ -125,8 +302,17 @@ public static class OtherPlayersOverlayPatch
             // 如果当前网络未连接，则不显示 Overlay
             if (!client.IsConnected)
             {
+                EnsureVirtualAiDefaultPlayer_NoThrow();
+                if (!IsVirtualAiDefaultEnabled())
+                {
+                    HideUi();
+                    HideRemoteCharacters();
+                    return;
+                }
+
                 HideUi();
-                HideRemoteCharacters();
+                EnsureRemoteCharacters();
+                UpdateRemoteCharactersLayout();
                 return;
             }
 
@@ -145,6 +331,7 @@ public static class OtherPlayersOverlayPatch
             RefreshUi();
 
             // 渲染远程玩家“角色实体”（战斗场景）
+            EnsureVirtualAiDefaultPlayer_NoThrow();
             EnsureRemoteCharacters();
             UpdateRemoteCharactersLayout();
         }
@@ -534,6 +721,7 @@ public static class OtherPlayersOverlayPatch
         bg.raycastTarget = false;  // 不阻挡射线检测
 
         // 创建标题文本（"联机玩家（其他玩家信息框）"）
+        // 右上角需要放翻页按钮：这里为按钮预留宽度，避免标题文本区域与按钮区域重叠。
         TextMeshProUGUI title = CreateTmpText(root.transform, "Title", "联机玩家（其他玩家信息框）", 20);
         title.alignment = TextAlignmentOptions.TopLeft;
         RectTransform titleRect = title.GetComponent<RectTransform>();
@@ -541,7 +729,8 @@ public static class OtherPlayersOverlayPatch
         titleRect.anchorMax = new Vector2(1f, 1f);  // 右上角
         titleRect.pivot = new Vector2(0.5f, 1f);   // 中上
         titleRect.anchoredPosition = new Vector2(0f, -10f);  // 距上边10像素
-        titleRect.sizeDelta = new Vector2(-20f, 30f);  // 留出左右各10像素的空白
+        // 左右各 10px + 右侧额外 80px（两枚 24px 按钮 + 间距）。
+        titleRect.sizeDelta = new Vector2(-(20f + 80f), 30f);
 
         // 创建上一页按钮（"<"）
         Button leftButton = CreatePageButton(root.transform, "PrevPage", "<");
@@ -549,7 +738,7 @@ public static class OtherPlayersOverlayPatch
         leftRect.anchorMin = new Vector2(1f, 1f);
         leftRect.anchorMax = new Vector2(1f, 1f);
         leftRect.pivot = new Vector2(1f, 1f);
-        leftRect.anchoredPosition = new Vector2(-66f, -10f);  // 距右边66像素
+        leftRect.anchoredPosition = new Vector2(-64f, -10f);  // 距右边64像素
         leftRect.sizeDelta = new Vector2(24f, 24f);
         // 绑定点击事件：页码减1，并确保不小于0
         leftButton.onClick.AddListener(() =>
@@ -566,7 +755,7 @@ public static class OtherPlayersOverlayPatch
         rightRect.anchorMin = new Vector2(1f, 1f);
         rightRect.anchorMax = new Vector2(1f, 1f);
         rightRect.pivot = new Vector2(1f, 1f);
-        rightRect.anchoredPosition = new Vector2(-36f, -10f);  // 距右边36像素（在"<"按钮的右侧）
+        rightRect.anchoredPosition = new Vector2(-34f, -10f);  // 在"<"按钮右侧
         rightRect.sizeDelta = new Vector2(24f, 24f);
         // 绑定点击事件：页码加1，并调整到有效范围
         rightButton.onClick.AddListener(() =>
@@ -1017,6 +1206,10 @@ public static class OtherPlayersOverlayPatch
     {
         try
         {
+            // TradePanel and other UI may query snapshots before GameDirector.Update has a chance to run.
+            // Ensure the virtual debug player (aidefault) is present/removed based on config.
+            EnsureVirtualAiDefaultPlayer_NoThrow();
+
             lock (_syncLock)
             {
                 var list = _players.Values
@@ -1026,6 +1219,11 @@ public static class OtherPlayersOverlayPatch
                     .ThenBy(p => p.PlayerName, StringComparer.OrdinalIgnoreCase)
                     .Select(p => (p.PlayerId, p.PlayerName, p.IsConnected, p.IsHost))
                     .ToList();
+
+                if (ShouldInjectTradeDebugPlayers())
+                {
+                    InjectTradeDebugPlayers(list);
+                }
 
                 // Ensure self exists in the snapshot even if PlayerList doesn't include it for some reason.
                 if (!string.IsNullOrWhiteSpace(_selfPlayerId) && list.All(p => p.PlayerId != _selfPlayerId))
@@ -1040,6 +1238,88 @@ public static class OtherPlayersOverlayPatch
         {
             return new List<(string PlayerId, string PlayerName, bool IsConnected, bool IsHost)>();
         }
+    }
+
+    // Detailed snapshot for UI that needs location-based filtering (e.g. trade partner picker in shop).
+    // Still returns ValueTuples to avoid leaking the private PlayerSummary type.
+    internal static List<(string PlayerId, string PlayerName, bool IsConnected, bool IsHost, int Stage, int LocationX, int LocationY, string LocationName, string CharacterId)> SnapshotPlayersDetailed()
+    {
+        try
+        {
+            // Partner picker uses this snapshot; make sure aidefault is included when enabled even offline.
+            EnsureVirtualAiDefaultPlayer_NoThrow();
+
+            lock (_syncLock)
+            {
+                var list = _players.Values
+                    .Where(p => p != null && !string.IsNullOrWhiteSpace(p.PlayerId))
+                    .OrderByDescending(p => p.IsHost)
+                    .ThenByDescending(p => p.IsConnected)
+                    .ThenBy(p => p.PlayerName, StringComparer.OrdinalIgnoreCase)
+                    .Select(p => (
+                        p.PlayerId,
+                        p.PlayerName,
+                        p.IsConnected,
+                        p.IsHost,
+                        p.Stage,
+                        p.LocationX,
+                        p.LocationY,
+                        p.LocationName,
+                        p.CharacterId))
+                    .ToList();
+
+                if (ShouldInjectTradeDebugPlayers())
+                {
+                    InjectTradeDebugPlayersDetailed(list);
+                }
+
+                // Ensure self exists in the snapshot even if PlayerList doesn't include it for some reason.
+                if (!string.IsNullOrWhiteSpace(_selfPlayerId) && list.All(p => p.PlayerId != _selfPlayerId))
+                {
+                    list.Insert(0, (_selfPlayerId, _selfPlayerId, true, false, -1, -1, -1, null, null));
+                }
+
+                return list;
+            }
+        }
+        catch
+        {
+            return new List<(string PlayerId, string PlayerName, bool IsConnected, bool IsHost, int Stage, int LocationX, int LocationY, string LocationName, string CharacterId)>();
+        }
+    }
+
+    internal static bool TryGetSelfLocation(out int stage, out int locationX, out int locationY, out string locationName)
+    {
+        stage = -1;
+        locationX = -1;
+        locationY = -1;
+        locationName = null;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_selfPlayerId))
+            {
+                return false;
+            }
+
+            lock (_syncLock)
+            {
+                if (_players.TryGetValue(_selfPlayerId, out PlayerSummary p) && p != null)
+                {
+                    stage = p.Stage;
+                    locationX = p.LocationX;
+                    locationY = p.LocationY;
+                    locationName = p.LocationName;
+                    return true;
+                }
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        return false;
     }
 
     internal static bool TryGetPointedRemotePlayer(Vector2 screenPosition, out string playerId, out string playerName)
@@ -1267,7 +1547,8 @@ public static class OtherPlayersOverlayPatch
         try
         {
             PlayerUnit local = Singleton<GameDirector>.Instance.PlayerUnitView?.Unit as PlayerUnit;
-            return local?.ModelName ?? local?.Id ?? "Koishi";
+            // Prefer stable character id (e.g. "Koishi") so Library.TryCreatePlayerUnit works reliably.
+            return local?.Id ?? local?.ModelName ?? "Koishi";
         }
         catch
         {
@@ -1311,10 +1592,14 @@ public static class OtherPlayersOverlayPatch
         }
 
         INetworkClient client = TryGetNetworkClient();
+        EnsureVirtualAiDefaultPlayer_NoThrow();
         if (client == null || !client.IsConnected)
         {
-            HideAllMapIcons();
-            return;
+            if (!IsVirtualAiDefaultEnabled())
+            {
+                HideAllMapIcons();
+                return;
+            }
         }
 
         MapNodeWidget[,] widgets;

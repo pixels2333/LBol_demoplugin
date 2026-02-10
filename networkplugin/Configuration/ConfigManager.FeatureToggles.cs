@@ -55,6 +55,18 @@ public partial class ConfigManager
     /// </summary>
     public ConfigEntry<bool> AllowRevival { get; private set; }
 
+    /// <summary>
+    /// 调试：为交易面板提供虚拟玩家（无需真实联机）。
+    /// 仅用于本地验证 TradePanel 的“选择交易对象”列表与后续 UI 流程。
+    /// </summary>
+    public ConfigEntry<bool> DebugFakePlayersForTrade { get; private set; }
+
+    /// <summary>
+    /// 调试：在游戏内生成一个虚拟玩家（PlayerId=aidefault），并按“远程玩家”方式渲染（地图图标/战斗角色）。
+    /// 该虚拟玩家会尽力与本地玩家保持同一节点，并在战斗中镜像本地玩家的出牌动画。
+    /// </summary>
+    public ConfigEntry<bool> DebugVirtualPlayerAiDefault { get; private set; }
+
     #endregion
 
     /// <summary>
@@ -110,6 +122,20 @@ public partial class ConfigManager
             "AllowRevival",
             true,
             "控制玩家之间的复活功能"
+        );
+
+        DebugFakePlayersForTrade = configFile.Bind(
+            "General.Toggles",
+            "DebugFakePlayersForTrade",
+            false,
+            "调试：为交易面板注入虚拟玩家（无需真实联机），用于测试交易 UI 的伙伴选择列表"
+        );
+
+        DebugVirtualPlayerAiDefault = configFile.Bind(
+            "General.Toggles",
+            "DebugVirtualPlayerAiDefault",
+            false,
+            "调试：生成虚拟远程玩家(aidefault)，用于离线测试远程玩家渲染与交易面板"
         );
     }
 }

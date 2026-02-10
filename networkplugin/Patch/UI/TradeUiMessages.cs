@@ -79,5 +79,5 @@ internal static class TradeUiMessages
     }
 
     public static void ShowTradePanelMissing()
-        => ShowTopMessage("Trade UI is not available: TradePanel instance not found (missing prefab/scene UI).");
+        => ShowTopMessage("交易界面不可用：未找到 TradePanel 实例（缺少 Prefab/场景 UI）。");
 }

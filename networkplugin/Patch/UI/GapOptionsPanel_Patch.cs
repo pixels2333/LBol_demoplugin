@@ -231,7 +231,7 @@ public class GapOptionsPanel_Patch
                         return false;
                     }
 
-                    TradePanel tradePanel = GetOrCreateTradePanel();
+                    TradePanel tradePanel = GetOrCreateTradePanel(__instance != null ? __instance.transform.parent : null);
                     if (tradePanel != null)
                     {
                         Traverse.Create(__instance).Method("StartCoroutine").GetValue(tradePanel.ShowTradeAsync(new TradePayload()));
@@ -387,7 +387,7 @@ public class GapOptionsPanel_Patch
     /// <summary>
     /// 获取或创建交易面板
     /// </summary>
-    private static TradePanel GetOrCreateTradePanel()
+    private static TradePanel GetOrCreateTradePanel(Transform parent)
     {
         try
         {
@@ -410,10 +410,15 @@ public class GapOptionsPanel_Patch
                 // ignored
             }
 
-            // 没有 prefab/实例时不要裸创建：TradePanel 依赖序列化字段（按钮/槽位/文本），直接 AddComponent 会导致空引用。
-            Plugin.Logger?.LogWarning("[GapOptionsPanel_Patch] TradePanel UI instance not found (no prefab). Skipping creation.");
-            TradeUiMessages.ShowTradePanelMissing();
+            // 没有 prefab/实例时：用运行时工厂克隆游戏 UI 模板创建（避免 AddComponent 裸创建导致空引用）。
+            panel = NetworkPlugin.UI.Panels.TradePanelRuntimeFactory.GetOrCreate(parent);
+            if (panel != null)
+            {
+                return panel;
+            }
 
+            Plugin.Logger?.LogWarning("[GapOptionsPanel_Patch] TradePanel UI instance not found and runtime factory failed.");
+            TradeUiMessages.ShowTradePanelMissing();
             return null;
         }
         catch (Exception ex)
@@ -435,9 +440,8 @@ public class GapOptionsPanel_Patch
             if (panel != null)
                 return panel;
 
-            // 如果没有找到，创建新的面板
-            var resurrectPanelGO = new GameObject("ResurrectPanel");
-            return resurrectPanelGO.AddComponent<ResurrectPanel>();
+            // 不要在这里创建交易面板；复活面板也不应裸创建，保持与现有逻辑一致。
+            return null;
         }
         catch (Exception ex)
         {

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using HarmonyLib;
 using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Panels;
@@ -24,6 +25,13 @@ public static class ShopTradeIconPatch
 {
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
+    private enum TradeUiUpdateState
+    {
+        NoShopPanel,
+        Hidden,
+        Visible
+    }
+
     private sealed class TradeButtonUi
     {
         public ShopPanel ShopPanel;
@@ -32,12 +40,75 @@ public static class ShopTradeIconPatch
         public TextMeshProUGUI Label;
         public Button CardServiceButton;
         public Button ReturnButton;
+
+        // Cache original anchor positions so our adjustments don't accumulate.
+        public bool HasOriginalPositions;
+        public Vector2 CardServiceOriginalAnchoredPosition;
+        public Vector2 ReturnOriginalAnchoredPosition;
     }
 
     private static TradeButtonUi _ui;
     private static TMP_FontAsset _defaultFont;
     private static Sprite _whiteSprite;
     private static Texture2D _whiteTexture;
+
+    private static ShopPanel _cachedShopPanel;
+
+    // Throttle spammy logs since this patch runs every frame via GameDirector.Update.
+    private static TradeUiUpdateState _lastState;
+    private static bool _hasLastState;
+    private static float _nextStateLogTime;
+    private static string _lastStateLogKey;
+
+    private static float _nextShopPanelFindTime;
+
+    [HarmonyPatch(typeof(ShopPanel), "OnShown")]
+    [HarmonyPostfix]
+    private static void ShopPanel_OnShown_Postfix(ShopPanel __instance)
+    {
+        try
+        {
+            if (__instance == null)
+            {
+                return;
+            }
+
+            _cachedShopPanel = __instance;
+            _hasLastState = false; // reset state throttle per-open
+            LogStateThrottled(TradeUiUpdateState.Visible, "[ShopTradeIcon] ShopPanel 已显示：开始刷新交易按钮", 0.0f);
+            UpdateTradeButtonUi(__instance);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[ShopTradeIcon] ShopPanel.OnShown 处理失败：{ex.Message}\n{ex.StackTrace}");
+        }
+    }
+
+    [HarmonyPatch(typeof(ShopPanel), "OnHiding")]
+    [HarmonyPostfix]
+    private static void ShopPanel_OnHiding_Postfix(ShopPanel __instance)
+    {
+        try
+        {
+            if (_ui?.Root != null)
+            {
+                // Shop is closing; destroy the injected UI to avoid leaking objects.
+                CleanupUi();
+            }
+
+            if (ReferenceEquals(_cachedShopPanel, __instance))
+            {
+                _cachedShopPanel = null;
+            }
+
+            _hasLastState = false;
+            LogStateThrottled(TradeUiUpdateState.Hidden, "[ShopTradeIcon] ShopPanel 开始隐藏：已清理交易按钮", 0.0f);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[ShopTradeIcon] ShopPanel.OnHiding 处理失败：{ex.Message}\n{ex.StackTrace}");
+        }
+    }
 
     private static INetworkClient TryGetNetworkClient()
     {
@@ -71,19 +142,95 @@ public static class ShopTradeIconPatch
     private static bool TryGetShopPanel(out ShopPanel shopPanel)
     {
         shopPanel = null;
-        if (!UiManager.IsInitialized)
-        {
-            return false;
-        }
 
+        // Prefer reusing a cached instance if it's still alive.
         try
         {
-            shopPanel = UiManager.GetPanel<ShopPanel>();
-            return shopPanel != null;
+            if (_cachedShopPanel != null && _cachedShopPanel.gameObject != null)
+            {
+                shopPanel = _cachedShopPanel;
+                return true;
+            }
         }
         catch
         {
-            return false;
+            _cachedShopPanel = null;
+        }
+
+        // Fast path: use UiManager when available.
+        try
+        {
+            shopPanel = UiManager.GetPanel<ShopPanel>();
+        }
+        catch
+        {
+            shopPanel = null;
+        }
+
+        // Fallback: Unity lookup (throttled) in case UiManager returns null.
+        if (shopPanel == null)
+        {
+            float now = Time.unscaledTime;
+            if (now >= _nextShopPanelFindTime)
+            {
+                _nextShopPanelFindTime = now + 1.0f;
+                try
+                {
+                    shopPanel = UnityEngine.Object.FindObjectOfType<ShopPanel>(true);
+                }
+                catch
+                {
+                    shopPanel = null;
+                }
+
+                if (shopPanel == null)
+                {
+                    try
+                    {
+                        var all = Resources.FindObjectsOfTypeAll<ShopPanel>();
+                        if (all != null && all.Length > 0)
+                        {
+                            shopPanel = all[0];
+                        }
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
+                }
+            }
+        }
+
+        if (shopPanel != null)
+        {
+            _cachedShopPanel = shopPanel;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static void LogStateThrottled(TradeUiUpdateState state, string message, float intervalSeconds = 2.0f)
+    {
+        try
+        {
+            float now = Time.unscaledTime;
+            string key = state + ":" + message;
+            bool stateChanged = !_hasLastState || state != _lastState;
+            bool keyChanged = _lastStateLogKey != key;
+
+            if (stateChanged || keyChanged || now >= _nextStateLogTime)
+            {
+                Plugin.Logger?.LogInfo(message);
+                _lastState = state;
+                _hasLastState = true;
+                _lastStateLogKey = key;
+                _nextStateLogTime = now + intervalSeconds;
+            }
+        }
+        catch
+        {
+            // ignored
         }
     }
 
@@ -103,29 +250,52 @@ public static class ShopTradeIconPatch
     {
         try
         {
-            UpdateTradeButtonUi();
+            // Lightweight watchdog: only when shop is currently visible.
+            var shopPanel = _cachedShopPanel;
+            if (shopPanel == null)
+            {
+                return;
+            }
+
+            if (!shopPanel.IsVisible)
+            {
+                return;
+            }
+
+            UpdateTradeButtonUi(shopPanel);
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[ShopTradeIcon] Update failed: {ex.Message}");
+            Plugin.Logger?.LogError($"[ShopTradeIcon] 更新失败：{ex.Message}\n{ex.StackTrace}");
         }
     }
 
-    private static void UpdateTradeButtonUi()
+    private static void UpdateTradeButtonUi(ShopPanel shopPanel)
     {
-        if (!TryGetShopPanel(out ShopPanel shopPanel))
+        if (shopPanel == null || !shopPanel.IsVisible)
         {
             SetUiVisible(false);
             return;
         }
 
-        if (!ShouldShow(shopPanel))
+        bool shouldShow = IsTradeEnabledAndConnected();
+        if (!shouldShow)
         {
             SetUiVisible(false);
             return;
         }
 
-        EnsureUi(shopPanel);
+        // Avoid doing heavy work every frame.
+        if (_ui == null || _ui.Root == null || _ui.ShopPanel != shopPanel)
+        {
+            EnsureUi(shopPanel);
+        }
+        
+        if (_ui != null && _ui.Root != null)
+        {
+            _ui.Root.SetActive(true);
+        }
+
         SetUiVisible(true);
     }
 
@@ -138,61 +308,46 @@ public static class ShopTradeIconPatch
 
         CleanupUi();
 
-        // Prefer inserting into the same button bar container as Card Service and Return.
-        // This keeps the UI consistent and avoids the "floating" look.
-        if (!TryGetShopButtons(shopPanel, out Button cardServiceButton, out Button returnButton))
+        bool gotButtons = TryGetShopButtons(shopPanel, out Button cardServiceButton, out Button returnButton);
+        if (!gotButtons)
         {
-            Transform fallbackParent = TryGetShopPanelRoot(shopPanel) ?? shopPanel.transform;
-            BuildFloatingButton(shopPanel, fallbackParent);
+            Plugin.Logger?.LogWarning("[ShopTradeIcon] 无法找到商店按钮，无法在中间插入。");
             return;
         }
 
-        Transform barParent = cardServiceButton.transform.parent;
+        // 需求：只复制“卡牌服务”按钮本体，不要把其父容器里可能存在的“移除/升级”等子控件一起克隆出来。
+        // 因此这里直接克隆 cardServiceButton 的 GameObject，并插入到与其相同的父容器下。
+        var barParent = cardServiceButton.transform.parent;
         if (barParent == null)
         {
-            Transform fallbackParent = TryGetShopPanelRoot(shopPanel) ?? shopPanel.transform;
-            BuildFloatingButton(shopPanel, fallbackParent);
+            Plugin.Logger?.LogWarning("[ShopTradeIcon] cardServiceButton 没有父节点，无法插入交易按钮。");
             return;
         }
 
         _defaultFont ??= FindDefaultFont(barParent);
 
-        // Clone Card Service button as a visual template so the new control looks native.
         var root = UnityEngine.Object.Instantiate(cardServiceButton.gameObject, barParent, false);
         root.name = "NetworkPlugin_ShopTradeButton";
-        var rect = root.GetComponent<RectTransform>() ?? root.AddComponent<RectTransform>();
+        root.SetActive(true);
 
-        var button = root.GetComponent<Button>() ?? root.AddComponent<Button>();
-        // Clear any copied click handlers (including persistent ones) and set our own.
-        button.onClick = new Button.ButtonClickedEvent();
-        button.onClick.AddListener(() => OnTradeButtonClicked(shopPanel));
+        var rect = root.GetComponent<RectTransform>();
 
-        // Update label text if present.
-        var label = root.GetComponentInChildren<TextMeshProUGUI>(true);
-        if (label != null)
-        {
-            label.text = "交易";
-            if (_defaultFont != null)
-            {
-                label.font = _defaultFont;
-            }
-        }
-
-        // Try to update icon if the template has an Image child.
+        // 克隆自按钮容器时，可能会把 Tooltip 相关组件也一并带过来。
+        // 交易按钮不需要沿用原按钮的 Tooltip；并且某些 TooltipSource.Title 依赖外部数据，克隆后可能为 null，导致 NRE。
+        // 这里直接禁用这些组件，避免悬浮时报错。
         try
         {
-            var imgs = root.GetComponentsInChildren<Image>(true);
-            Sprite tradeSprite = TryLoadTradeSprite();
-            if (tradeSprite != null && imgs != null)
+            foreach (var behaviour in root.GetComponentsInChildren<Behaviour>(true))
             {
-                foreach (var img in imgs)
+                if (behaviour == null)
                 {
-                    if (img != null && img.gameObject.name.IndexOf("icon", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        img.sprite = tradeSprite;
-                        img.preserveAspect = true;
-                        break;
-                    }
+                    continue;
+                }
+
+                var typeName = behaviour.GetType().Name;
+                if (typeName.IndexOf("Tooltip", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    behaviour.enabled = false;
                 }
             }
         }
@@ -201,14 +356,130 @@ public static class ShopTradeIconPatch
             // ignored
         }
 
-        // Place between Card Service and Return.
-        int returnIndex = returnButton.transform.GetSiblingIndex();
-        rect.SetSiblingIndex(Math.Max(0, returnIndex));
+        // 2. 获取按钮并绑定点击事件。
+        var button = root.GetComponent<Button>();
+        if (button == null)
+        {
+            Plugin.Logger?.LogWarning("[ShopTradeIcon] 未找到交易按钮的主 Button，放弃插入。 ");
+            UnityEngine.Object.Destroy(root);
+            return;
+        }
 
-        // Make room: shrink and nudge the two neighboring buttons.
-        ApplyCompactButtonStyle_NoThrow(cardServiceButton);
-        ApplyCompactButtonStyle_NoThrow(returnButton);
-        ApplyCompactButtonStyle_NoThrow(button);
+        button.interactable = true;
+        button.enabled = true;
+        button.onClick = new Button.ButtonClickedEvent();
+        button.onClick.AddListener(() =>
+        {
+            Plugin.Logger?.LogInfo("[ShopTradeIcon] 点击交易按钮");
+            OnTradeButtonClicked(shopPanel);
+        });
+
+        // 3. 设置文本为“交易”，并继承“卡牌服务”按钮的文本样式以保持一致。
+        var sourceLabel = cardServiceButton.GetComponentInChildren<TextMeshProUGUI>(true);
+        string sourceLabelText = sourceLabel != null ? sourceLabel.text : null;
+
+        TextMeshProUGUI label = null;
+        var allLabels = root.GetComponentsInChildren<TextMeshProUGUI>(true);
+        if (allLabels != null && allLabels.Length > 0)
+        {
+            // 优先改掉“原始卡牌服务文字”，避免抓到其它说明文本。
+            if (!string.IsNullOrEmpty(sourceLabelText))
+            {
+                label = allLabels.FirstOrDefault(t => t != null && t.text == sourceLabelText);
+            }
+
+            // 兜底：取第一个
+            label ??= allLabels.FirstOrDefault(t => t != null);
+
+            // 把所有等于源按钮文案的 TMP 一并替换，确保不会出现两个“卡牌服务”。
+            if (!string.IsNullOrEmpty(sourceLabelText))
+            {
+                foreach (var t in allLabels)
+                {
+                    if (t != null && t.text == sourceLabelText)
+                    {
+                        t.text = "交易";
+                    }
+                }
+            }
+            else if (label != null)
+            {
+                label.text = "交易";
+            }
+        }
+
+        if (label != null && sourceLabel != null)
+        {
+            // 复制风格关键字段，确保与另外两个按钮一致
+            label.font = sourceLabel.font;
+            label.fontSize = sourceLabel.fontSize;
+            label.fontStyle = sourceLabel.fontStyle;
+            label.alignment = sourceLabel.alignment;
+            label.characterSpacing = sourceLabel.characterSpacing;
+            label.wordSpacing = sourceLabel.wordSpacing;
+            label.lineSpacing = sourceLabel.lineSpacing;
+            label.enableAutoSizing = sourceLabel.enableAutoSizing;
+            label.color = sourceLabel.color;
+        }
+
+        if (label != null && _defaultFont != null)
+        {
+            label.font = _defaultFont;
+        }
+
+        // 4. 放置位置：水平排列在右下角一栏
+        var leftRect = cardServiceButton.GetComponent<RectTransform>();
+        var midRect = root.GetComponent<RectTransform>();
+        var rightRect = returnButton.GetComponent<RectTransform>();
+
+        // Capture original positions once per shop panel so offsets don't stack.
+        Vector2 leftOriginal = leftRect != null ? leftRect.anchoredPosition : Vector2.zero;
+        Vector2 rightOriginal = rightRect != null ? rightRect.anchoredPosition : Vector2.zero;
+        if (_ui != null && _ui.ShopPanel == shopPanel && _ui.HasOriginalPositions)
+        {
+            leftOriginal = _ui.CardServiceOriginalAnchoredPosition;
+            rightOriginal = _ui.ReturnOriginalAnchoredPosition;
+        }
+
+        if (leftRect != null && midRect != null && rightRect != null)
+        {
+
+            // 统一应用紧凑样式（缩放）以确保三个按钮能放下
+            ApplyCompactButtonStyle_NoThrow(cardServiceButton);
+            ApplyCompactButtonStyle_NoThrow(button);
+            ApplyCompactButtonStyle_NoThrow(returnButton);
+
+            // 强制设置缩放为 0.85f
+            cardServiceButton.transform.localScale = new Vector3(0.85f, 0.85f, 1f);
+            root.transform.localScale = new Vector3(0.85f, 0.85f, 1f);
+            returnButton.transform.localScale = new Vector3(0.85f, 0.85f, 1f);
+
+            // 水平排列布局
+            // 交易与卡牌服务整体左移 30；关闭商店横向向右移动 30，同时纵向与另外两个保持一致。
+            float spacing = 265f;
+            var basePos = leftOriginal + new Vector2(-30f, 0f);
+            leftRect.anchoredPosition = basePos;
+            midRect.anchoredPosition = basePos + new Vector2(spacing, 0f);
+            rightRect.anchoredPosition = new Vector2(rightOriginal.x + 30f, basePos.y);
+            
+            Plugin.Logger?.LogInfo($"[ShopTradeIcon] 布局更新：水平排列 [卡牌服务] -> [交易] -> [返回]");
+        }
+
+        // 5. 确保克隆的图标（如果有）也被正确处理
+        // 原始按钮通常有一个大的 Image 组件作为装饰图标
+        try
+        {
+            // 查找并调整克隆按钮中的图标位置，确保它相对于按钮中心正确
+            foreach (Transform child in root.transform)
+            {
+                if (child.name.IndexOf("icon", StringComparison.OrdinalIgnoreCase) >= 0 || 
+                    child.GetComponent<Image>() != null)
+                {
+                    child.gameObject.SetActive(true);
+                }
+            }
+        }
+        catch { }
 
         _ui = new TradeButtonUi
         {
@@ -217,8 +488,14 @@ public static class ShopTradeIconPatch
             Button = button,
             Label = label,
             CardServiceButton = cardServiceButton,
-            ReturnButton = returnButton
+            ReturnButton = returnButton,
+
+            HasOriginalPositions = true,
+            CardServiceOriginalAnchoredPosition = leftOriginal,
+            ReturnOriginalAnchoredPosition = rightOriginal
         };
+
+        Plugin.Logger?.LogInfo($"[ShopTradeIcon] 按钮已成功插入并水平排列。");
     }
 
     private static bool TryGetShopButtons(ShopPanel shopPanel, out Button cardServiceButton, out Button returnButton)
@@ -444,6 +721,18 @@ public static class ShopTradeIconPatch
             catch
             {
                 tradePanel = null;
+            }
+
+            // If there is no prefab-wired instance, build a minimal panel by cloning in-game UI templates.
+            if (tradePanel == null)
+            {
+                Transform parent = null;
+                if (shopPanel != null && shopPanel.transform != null)
+                {
+                    parent = shopPanel.transform.parent != null ? shopPanel.transform.parent : shopPanel.transform;
+                }
+
+                tradePanel = NetworkPlugin.UI.Panels.TradePanelRuntimeFactory.GetOrCreate(parent);
             }
 
             if (tradePanel != null)

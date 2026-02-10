@@ -35,6 +35,12 @@ public class TradeSlotWidget : CommonButtonWidget
 	private System.Action<Card> _onRemoveCard;
 	private Image _bgImage;
 
+	internal void BindRuntime(TextMeshProUGUI runtimeCardNameText)
+	{
+		// Runtime-created slots won't have prefab-wired references.
+		cardNameText = runtimeCardNameText;
+	}
+
 	public void SetCard(Card card, System.Action<Card> removeCallback = null)
 	{
 		_currentCard = card;

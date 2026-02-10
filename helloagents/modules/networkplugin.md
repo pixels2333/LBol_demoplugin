@@ -18,6 +18,10 @@
 - Host 权威会话：`networkplugin/Patch/Network/TradeSyncPatch.cs` 维护 `TradeSessionState` 并广播。
 - Client UI：`networkplugin/UI/Panels/TradePanel.cs` 仅联机可用，完成后仅对本地 `GameRun` 落地。
 
+#### TradePanel partner picker（选择交易对象）
+- 交易对象选择弹层在运行时克隆游戏内 `UI/Dialogs/MessageDialog` 作为窗口框架，并复用 `UI/Panels/HistoryPanel` 的 `ScrollRect + RecordRow` 构建列表。
+- 部分环境下 UI 指针事件可能无法到达行模板（RaycastTarget/层级/输入系统差异）；因此提供额外的“点击捕获器”辅助路径：每帧通过 Unity InputSystem `Mouse`（并兼容 legacy `UnityEngine.Input`）检测左键点击，再用 RectTransform 命中测试遍历候选项内全部 `Graphic` 以解析点击到的玩家。
+
 #### v2 状态机与握手
 - `Open`：双方可以修改报价；每次 OfferUpdate 会重置双方确认。
 - `Preparing`：双方进行本地严格校验（卡实例存在、金币足够、展品存在且可交易），并通过 PrepareResult 上报；失败时回到 `Open` 允许修改后重试。

@@ -4,12 +4,19 @@
 
 ## [Unreleased]
 
+### Docs
+- **[helloagents]**: 更新方案包 `plan/202602071900_trade-partner-picker-centered-ui`：聚焦 TradePanel 内 partner picker，使用游戏 UI 资源并以居中窗口弹层展示玩家列表。
+
 ### Fixed
 - **[networkplugin]**: 修复服务器端 GameEvent 分类遗漏导致的回合结束卡死：将 `EndTurnRequest/EndTurnStatus/EndTurnConfirm` 与 `CardStateChanged` 归类为 GameEvent，避免被当作未知系统消息丢弃（影响 Host/Relay）。
 - **[networkplugin]**: 修复客户端点击结束回合后掉线与按钮卡死：补齐 `EndTurn*`/`CardStateChanged` 的 GameEvent 分类；在 `PollEvents()` 中周期发送 `Heartbeat` 保活；断线时强制恢复 EndTurn 按钮可点击。
 - **[networkplugin]**: 修复部分场景下结束回合后意外断线回主菜单：`GameMaster.QuitGame` 在联机中可能被内部流程触发；改为拦截并忽略该调用（仅记录告警+调用栈），避免误触发“断开联机并返回主菜单”。
 - **[networkplugin]**: 修复结束回合“偶发不推进”的软锁：确认到达时战斗可能尚未进入 `IsWaitingPlayerInput`（动画/结算中），原逻辑只尝试一次导致永远不放行；改为主线程上短暂延迟重试并设置超时兜底（避免永久锁手）。
 - **[networkplugin]**: 改善商店交易入口布局：将“交易”按钮插入到商店底部按钮条中，位于“卡牌服务”与“关闭商店”之间，并对相邻按钮做缩放以避免遮挡。
+- **[networkplugin]**: 交易面板改为运行时克隆游戏 UI 模板创建（背景/按钮/TMP），并移除 `AddComponent<TradePanel>` 的裸创建回退，避免序列化字段缺失导致空引用。
+- **[networkplugin]**: TradePanel partner picker 弹层改为克隆 `UI/Dialogs/MessageDialog` 作为遮罩/窗口框架（替换运行时纯色遮罩与 Outline 边框），列表仍使用 CommonButtonWidget 行样式以保持风格统一。
+- **[networkplugin]**: TradePanel partner picker 禁用 fallback/兜底策略：列表滚动区与行模板直接复用 `UI/Panels/HistoryPanel` 的 `ScrollRect + RecordRow`，空列表提示复用 `MessageDialog` 的 subText，确保可见控件均为游戏 UI 资源。
+- **[networkplugin]**: 修复 TradePanel partner picker 候选“点不了”：点击检测改为优先使用 Unity InputSystem 的 `Mouse`（兼容禁用 legacy `UnityEngine.Input` 的环境），并在命中判定中遍历候选项全部 `Graphic`，避免根 Rect 为 0 导致无法选中。
 - **[networkplugin]**: 修复状态效果同步日志刷错：部分状态效果 `HasLevel=false`，读取 `StatusEffect.Level` 会抛 `has no level`；改为仅在 `HasLevel` 时读取并将 Level 作为可空字段输出。
 - **[networkplugin]**: 避免网络事件缓冲区因同一 tick 重复 key 导致的异常（SortedList duplicate key）。
 - **[networkplugin]**: 修复 CardStateChanged 负载序列化失败（ManaGroup 自引用）——卡牌快照改为发送 `CostText`。
