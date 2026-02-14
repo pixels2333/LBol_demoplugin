@@ -8,6 +8,10 @@
     <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
     <FileAlignment>512</FileAlignment>
     <TargetFramework>net40</TargetFramework>
+        <!-- The sources in this repo include some .NET Standard helpers (Range/Index) that
+          are not available on net40. We compile net40 by defining a constant and
+          excluding those helpers with preprocessor directives. -->
+        <DefineConstants>NET40</DefineConstants>
   </PropertyGroup>
   <PropertyGroup>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>

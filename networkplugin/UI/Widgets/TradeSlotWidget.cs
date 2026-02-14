@@ -1,7 +1,14 @@
+using System;
+using LBoL.Core;
 using LBoL.Core.Cards;
+using LBoL.Presentation;
+using LBoL.Presentation.InputSystemExtend;
+using LBoL.Presentation.UI;
+using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.UI.Widgets;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace NetworkPlugin.UI.Widgets;
@@ -12,9 +19,16 @@ namespace NetworkPlugin.UI.Widgets;
 /// 继承 CommonButtonWidget 以获得游戏标准的按钮行为
 /// </summary>
 public class TradeSlotWidget : CommonButtonWidget
+	, ICardTooltipSource
+	, IPointerEnterHandler
+	, IPointerExitHandler
+	, IPointerClickHandler
 {
 	[SerializeField]
 	private Image cardIcon;
+
+	[SerializeField]
+	private RawImage cardImage;
 
 	[SerializeField]
 	private TextMeshProUGUI cardNameText;
@@ -32,13 +46,143 @@ public class TradeSlotWidget : CommonButtonWidget
 	private Color normalColor = new Color(0.2f, 0.2f, 0.2f, 0.8f);
 
 	private Card _currentCard;
-	private System.Action<Card> _onRemoveCard;
+	private Action<Card> _onRemoveCard;
 	private Image _bgImage;
+	private bool _capturedButtonStyle;
+	private Selectable.Transition _originalTransition;
+	private ColorBlock _originalColors;
+	private int _tooltipId;
 
-	internal void BindRuntime(TextMeshProUGUI runtimeCardNameText)
+	private static readonly TooltipPosition[] DefaultTooltipPositions = new TooltipPosition[]
+	{
+		new TooltipPosition(TooltipDirection.Left, TooltipAlignment.Max),
+		new TooltipPosition(TooltipDirection.Left, TooltipAlignment.Min),
+		new TooltipPosition(TooltipDirection.Right, TooltipAlignment.Max),
+		new TooltipPosition(TooltipDirection.Top, TooltipAlignment.Center),
+		new TooltipPosition(TooltipDirection.Bottom, TooltipAlignment.Center)
+	};
+
+	public Card Card => _currentCard;
+	public RectTransform RectTransform => transform as RectTransform;
+	public TooltipPosition[] TooltipPositions => DefaultTooltipPositions;
+
+	internal void BindRuntime(TextMeshProUGUI runtimeCardNameText, RawImage runtimeCardImage = null)
 	{
 		// Runtime-created slots won't have prefab-wired references.
 		cardNameText = runtimeCardNameText;
+		cardImage = runtimeCardImage;
+	}
+
+	private Image ResolveBackgroundImage()
+	{
+		if (_bgImage != null)
+		{
+			return _bgImage;
+		}
+
+		try
+		{
+			if (button != null && button.targetGraphic is Image img)
+			{
+				_bgImage = img;
+				return _bgImage;
+			}
+		}
+		catch
+		{
+			// ignored
+		}
+
+		_bgImage = GetComponent<Image>();
+		return _bgImage;
+	}
+
+	private void CaptureButtonStyleOnce()
+	{
+		if (_capturedButtonStyle)
+		{
+			return;
+		}
+
+		try
+		{
+			if (button != null)
+			{
+				_originalTransition = button.transition;
+				_originalColors = button.colors;
+				_capturedButtonStyle = true;
+			}
+		}
+		catch
+		{
+			// ignored
+		}
+	}
+
+	private void ApplyEmptyVisual()
+	{
+		try
+		{
+			var bg = ResolveBackgroundImage();
+			if (bg != null)
+			{
+				// Disable rendering & raycast surface completely when empty.
+				bg.enabled = false;
+				bg.raycastTarget = false;
+				var c = bg.color;
+				c.a = 0f;
+				bg.color = c;
+			}
+		}
+		catch
+		{
+			// ignored
+		}
+
+		try
+		{
+			if (button != null)
+			{
+				CaptureButtonStyleOnce();
+				button.transition = Selectable.Transition.None;
+			}
+		}
+		catch
+		{
+			// ignored
+		}
+	}
+
+	private void ApplyFilledVisual()
+	{
+		try
+		{
+			var bg = ResolveBackgroundImage();
+			if (bg != null)
+			{
+				bg.enabled = true;
+				bg.raycastTarget = true;
+				// Alpha/tint is handled by SetSelected().
+			}
+		}
+		catch
+		{
+			// ignored
+		}
+
+		try
+		{
+			if (button != null)
+			{
+				CaptureButtonStyleOnce();
+				button.transition = _originalTransition;
+				button.colors = _originalColors;
+			}
+		}
+		catch
+		{
+			// ignored
+		}
 	}
 
 	public void SetCard(Card card, System.Action<Card> removeCallback = null)
@@ -54,13 +198,18 @@ public class TradeSlotWidget : CommonButtonWidget
 
                 if (card != null)
                 {
-                        if (cardNameText != null)
+						if (cardNameText != null)
                         {
                                 cardNameText.text = card.Name;
                         }
 
-			// 隐藏卡牌图标（因为 Image 组件不直接支持卡牌的 Sprite）
+			// Use the game's own card textures if available.
+			TrySetCardImage(card);
+
+			// Hide icon placeholder when using textures.
 			cardIcon?.gameObject.SetActive(false);
+
+			ApplyFilledVisual();
 
 			// 启用按钮交互
 			if (button != null)
@@ -80,6 +229,62 @@ public class TradeSlotWidget : CommonButtonWidget
 		}
 	}
 
+	private void TrySetCardImage(Card card)
+	{
+		try
+		{
+			if (cardImage == null)
+			{
+				return;
+			}
+
+			if (card == null)
+			{
+				cardImage.texture = null;
+				cardImage.gameObject.SetActive(false);
+				return;
+			}
+
+			string preferredCardIllustrator = GameMaster.GetPreferredCardIllustrator(card);
+			string imageId;
+			if (!string.IsNullOrWhiteSpace(card.Config?.UpgradeImageId) && card.IsUpgraded)
+			{
+				imageId = card.Config.UpgradeImageId;
+			}
+			else
+			{
+				imageId = string.IsNullOrWhiteSpace(card.Config?.ImageId) ? card.Id : card.Config.ImageId;
+			}
+
+			// Mirror vanilla RecordCardCell: TryGetCardImage(imageId + preferredIllustrator)
+			Texture tex = ResourcesHelper.TryGetCardImage(imageId + preferredCardIllustrator);
+			if (tex == null)
+			{
+				tex = ResourcesHelper.TryGetCardImage(imageId);
+			}
+
+			cardImage.texture = tex;
+			cardImage.color = Color.white;
+			cardImage.raycastTarget = false;
+			cardImage.gameObject.SetActive(tex != null);
+		}
+		catch
+		{
+			try
+			{
+				if (cardImage != null)
+				{
+					cardImage.texture = null;
+					cardImage.gameObject.SetActive(false);
+				}
+			}
+			catch
+			{
+				// ignored
+			}
+		}
+	}
+
 	public void ClearSlot()
 	{
                 _currentCard = null;
@@ -90,6 +295,18 @@ public class TradeSlotWidget : CommonButtonWidget
                         cardNameText.text = "";
                 }
                 cardIcon?.gameObject.SetActive(false);
+				try
+				{
+					if (cardImage != null)
+					{
+						cardImage.texture = null;
+						cardImage.gameObject.SetActive(false);
+					}
+				}
+				catch
+				{
+					// ignored
+				}
 
 		if (button != null)
 		{
@@ -99,10 +316,90 @@ public class TradeSlotWidget : CommonButtonWidget
 		}
 
 		SetSelected(false);
+		ApplyEmptyVisual();
 
 		if (lockedOverlay != null)
 		{
 			lockedOverlay.SetActive(false);
+		}
+	}
+
+	public override void OnPointerEnter(PointerEventData eventData)
+	{
+		base.OnPointerEnter(eventData);
+		try
+		{
+			if (_currentCard == null || !UiManager.IsInitialized)
+			{
+				return;
+			}
+
+			_tooltipId = TooltipsLayer.ShowCard(this, true);
+			UiManager.HoveringRightClickInteractionElements = true;
+		}
+		catch
+		{
+			// ignored
+		}
+	}
+
+	public override void OnPointerExit(PointerEventData eventData)
+	{
+		base.OnPointerExit(eventData);
+		try
+		{
+			TooltipsLayer.Hide(_tooltipId);
+			_tooltipId = 0;
+			UiManager.HoveringRightClickInteractionElements = false;
+		}
+		catch
+		{
+			// ignored
+		}
+	}
+
+	private void OnDisable()
+	{
+		try
+		{
+			TooltipsLayer.Hide(_tooltipId);
+			_tooltipId = 0;
+		}
+		catch
+		{
+			// ignored
+		}
+	}
+
+	public override void OnPointerClick(PointerEventData eventData)
+	{
+		base.OnPointerClick(eventData);
+		try
+		{
+			if (eventData == null || eventData.button != PointerEventData.InputButton.Right)
+			{
+				return;
+			}
+
+			if (_currentCard == null || !UiManager.IsInitialized)
+			{
+				return;
+			}
+
+			CardDetailPanel panel = UiManager.GetPanel<CardDetailPanel>();
+			if (panel == null)
+			{
+				return;
+			}
+
+			string topPanel = Singleton<GamepadNavigationManager>.Instance.GetTopPanel();
+			GameObject currentSelected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+			panel.Show(new CardDetailPayload(RectTransform, _currentCard, false));
+			GamepadNavigationManager.SetOverrideOrigin(currentSelected, topPanel);
+		}
+		catch
+		{
+			// ignored
 		}
 	}
 
@@ -121,14 +418,30 @@ public class TradeSlotWidget : CommonButtonWidget
 
 	public void SetSelected(bool selected)
 	{
-		if (_bgImage == null)
+		var bg = ResolveBackgroundImage();
+		if (bg != null)
 		{
-			_bgImage = GetComponent<Image>();
-		}
+			if (_currentCard == null)
+			{
+				// Empty slot should not show any button body.
+				var empty = bg.color;
+				empty.a = 0f;
+				bg.color = empty;
+				return;
+			}
 
-		if (_bgImage != null)
-		{
-			_bgImage.color = selected ? selectedColor : normalColor;
+			// Preserve vanilla button visuals (sprite/material) by not tinting it into a flat rectangle.
+			// Only adjust alpha, and only fall back to tint when there's no sprite (runtime placeholder).
+			if (bg.sprite != null)
+			{
+				var c = bg.color;
+				c.a = selected ? 0.95f : 0.75f;
+				bg.color = c;
+			}
+			else
+			{
+				bg.color = selected ? selectedColor : normalColor;
+			}
 		}
 
 		if (selectedBorder != null)

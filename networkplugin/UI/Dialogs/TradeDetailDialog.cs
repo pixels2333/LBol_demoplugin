@@ -6,6 +6,7 @@ using LBoL.Core;
 using LBoL.Core.Cards;
 using LBoL.Presentation;
 using LBoL.Presentation.UI;
+using LBoL.Presentation.UI.Dialogs;
 using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.UI.Widgets;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,6 +47,9 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
     private RectTransform _panelRoot;
     private CommonButtonWidget _buttonTemplate;
     private TextMeshProUGUI _textTemplate;
+    private GameObject _rowTemplate;
+    private RecordCardCell _cardCellTemplate;
+    private ExhibitWidget _exhibitTemplate;
 
     // Header
     private TextMeshProUGUI _titleText;
@@ -54,6 +58,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
     // Local offer controls
     private TextMeshProUGUI _localCardsTitle;
     private Transform _localCardsList;
+    private Transform _localExhibitsList;
     private TextMeshProUGUI _localMoneyText;
     private TextMeshProUGUI _localExhibitsText;
 
@@ -65,6 +70,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
     // Remote offer display
     private TextMeshProUGUI _remoteCardsTitle;
     private Transform _remoteCardsList;
+    private Transform _remoteExhibitsList;
     private TextMeshProUGUI _remoteMoneyText;
     private TextMeshProUGUI _remoteExhibitsText;
 
@@ -81,6 +87,9 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
     private bool _isApplyingState;
     private int _maxSlots = 5;
     private bool _completionApplied;
+    private bool _cancelRequested;
+    private bool _actionHandlerPushed;
+    private long _lastReturnToTradePanelTimestamp;
     private long _lastPreparingHandledTimestamp;
     private TradeSyncPatch.TradeStatus? _lastStatus;
 
@@ -93,10 +102,19 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
     private GameObject _cardPickerRoot;
     private GameObject _exhibitPickerRoot;
 
-    internal void BindRuntime(CommonButtonWidget buttonTemplate, TextMeshProUGUI textTemplate, RectTransform panelRoot)
+    internal void BindRuntime(
+        CommonButtonWidget buttonTemplate,
+        TextMeshProUGUI textTemplate,
+        GameObject rowTemplate,
+        RecordCardCell cardCellTemplate,
+        ExhibitWidget exhibitTemplate,
+        RectTransform panelRoot)
     {
         _buttonTemplate = buttonTemplate;
         _textTemplate = textTemplate;
+        _rowTemplate = rowTemplate;
+        _cardCellTemplate = cardCellTemplate;
+        _exhibitTemplate = exhibitTemplate;
         _panelRoot = panelRoot;
     }
 
@@ -114,6 +132,8 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
     protected override void OnShowing(TradeDetailPayload payload)
     {
         _payload = payload;
+        _cancelRequested = false;
+        _actionHandlerPushed = false;
 
         if (!TryEnsureNetworkConnected())
         {
@@ -139,6 +159,21 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         ResetLocalOffer();
         EnsureSubscribed();
 
+        _canvasGroup.interactable = true;
+
+        try
+        {
+            if (UiManager.IsInitialized)
+            {
+                UiManager.PushActionHandler(this);
+                _actionHandlerPushed = true;
+            }
+        }
+        catch
+        {
+            _actionHandlerPushed = false;
+        }
+
         // Start session and request a snapshot so we can render both sides.
         TradeSyncPatch.RequestStartTrade(_tradeId, _selfId, _partnerId, _maxSlots);
         TradeSyncPatch.RequestSnapshot(_tradeId, _selfId);
@@ -151,24 +186,89 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
         RefreshLocalUi();
         RefreshRemoteUi(TradeSyncPatch.GetLastKnown(_tradeId));
-
-        _canvasGroup.interactable = true;
-        UiManager.PushActionHandler(this);
     }
 
     protected override void OnHiding()
     {
         _canvasGroup.interactable = false;
-        UiManager.PopActionHandler(this);
+
+        if (_actionHandlerPushed)
+        {
+            try
+            {
+                if (UiManager.IsInitialized)
+                {
+                    UiManager.PopActionHandler(this);
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+            finally
+            {
+                _actionHandlerPushed = false;
+            }
+        }
+
+        // If the dialog is dismissed without an explicit cancel/complete, request cancel to avoid
+        // leaving a server-side session dangling.
+        if (!_completionApplied
+            && !_cancelRequested
+            && !string.IsNullOrWhiteSpace(_tradeId)
+            && !string.IsNullOrWhiteSpace(_selfId)
+            && _lastStatus != TradeSyncPatch.TradeStatus.Canceled
+            && _lastStatus != TradeSyncPatch.TradeStatus.Completed)
+        {
+            try
+            {
+                _cancelRequested = true;
+                TradeSyncPatch.RequestCancel(_tradeId, _selfId);
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+
         TryUnsubscribe();
 
         // Hide pickers if open.
         try { if (_cardPickerRoot != null) _cardPickerRoot.SetActive(false); } catch { }
         try { if (_exhibitPickerRoot != null) _exhibitPickerRoot.SetActive(false); } catch { }
+
+        ScheduleReturnToTradePanel();
+    }
+
+    public void OnConfirm()
+    {
+        OnConfirmClick();
     }
 
     public void OnCancel()
     {
+        // If a picker overlay is open, close it first (do not cancel the whole trade).
+        try
+        {
+            if (_cardPickerRoot != null && _cardPickerRoot.activeSelf)
+            {
+                _cardPickerRoot.SetActive(false);
+                _canvasGroup.interactable = true;
+                return;
+            }
+
+            if (_exhibitPickerRoot != null && _exhibitPickerRoot.activeSelf)
+            {
+                _exhibitPickerRoot.SetActive(false);
+                _canvasGroup.interactable = true;
+                return;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
         // Back/escape closes the dialog and requests cancel.
         if (_completionApplied)
         {
@@ -178,6 +278,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
         try
         {
+            _cancelRequested = true;
             TradeSyncPatch.RequestCancel(_tradeId, _selfId);
         }
         catch
@@ -245,6 +346,149 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
         TradeSyncPatch.OnTradeStateUpdated -= OnTradeStateUpdated;
         _subscribed = false;
+    }
+
+    private void ScheduleReturnToTradePanel()
+    {
+        // User choice: after the dialog closes (cancel or completed), return to TradePanel and show partner picker.
+        // Schedule to avoid input stack / layout conflicts during dialog OnHiding.
+        try
+        {
+            // Throttle to prevent rapid open/close loops (e.g., ESC spam).
+            long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            if (_lastReturnToTradePanelTimestamp > 0 && now - _lastReturnToTradePanelTimestamp < 450)
+            {
+                return;
+            }
+            _lastReturnToTradePanelTimestamp = now;
+
+            // Only return when still connected; otherwise this can cause a noisy loop of "trade not available".
+            try
+            {
+                var client = ModService.ServiceProvider.GetService<INetworkClient>();
+                if (client == null || !client.IsConnected)
+                {
+                    return;
+                }
+            }
+            catch
+            {
+                return;
+            }
+
+            UniTask.Void(async () =>
+            {
+                try
+                {
+                    await UniTask.NextFrame();
+                }
+                catch
+                {
+                    // ignored
+                }
+
+                try
+                {
+                    if (!UiManager.IsInitialized)
+                    {
+                        return;
+                    }
+
+                    // Only allow returning to TradePanel while in Shop or Gap UI contexts.
+                    if (!TryGetReturnContextParent(out Transform contextParent))
+                    {
+                        return;
+                    }
+
+                    TradePanel panel = null;
+                    try
+                    {
+panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
+                    }
+                    catch
+                    {
+                        panel = null;
+                    }
+
+                    if (panel == null)
+                    {
+                        panel = TradePanelRuntimeFactory.GetOrCreate(contextParent);
+                    }
+                    else
+                    {
+                        // Re-parent existing panel to the desired context (best effort).
+                        try
+                        {
+                            if (contextParent != null)
+                            {
+                                panel.transform.SetParent(contextParent, false);
+                            }
+                        }
+                        catch
+                        {
+                            // ignored
+                        }
+                    }
+
+                    if (panel != null)
+                    {
+                        panel.Show(new TradePayload());
+                    }
+                }
+                catch
+                {
+                    // ignored
+                }
+            });
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static bool TryGetReturnContextParent(out Transform parent)
+    {
+        parent = null;
+        try
+        {
+            // Prefer shop context.
+            try
+            {
+                var shop = UiManager.GetPanel<ShopPanel>();
+                if (shop != null && shop.IsVisible && shop.transform != null)
+                {
+                    parent = shop.transform.parent != null ? shop.transform.parent : shop.transform;
+                    return parent != null;
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            // Fallback to gap context.
+            try
+            {
+                var gap = UiManager.GetPanel<GapOptionsPanel>();
+                if (gap != null && gap.IsVisible && gap.transform != null)
+                {
+                    parent = gap.transform.parent != null ? gap.transform.parent : gap.transform;
+                    return parent != null;
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            return false;
+        }
+        catch
+        {
+            parent = null;
+            return false;
+        }
     }
 
     private void OnTradeStateUpdated(TradeSyncPatch.TradeSessionState state)
@@ -721,6 +965,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             _localExhibitsText.text = $"遗物: {_localExhibitIds.Count}";
 
             RebuildCardList(_localCardsList, _localCards, isLocal: true);
+            RebuildExhibitList(_localExhibitsList, _localExhibitIds.ToList(), isLocal: true);
         }
         catch
         {
@@ -736,41 +981,22 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             {
                 _remoteMoneyText.text = "金币: 0";
                 _remoteExhibitsText.text = "遗物: 0";
-                RebuildCardList(_remoteCardsList, new List<string>(), isLocal: false);
+                RebuildCardList(_remoteCardsList, (List<TradeSyncPatch.CardRef>)null, isLocal: false);
+                RebuildExhibitList(_remoteExhibitsList, (List<string>)null, isLocal: false);
                 return;
             }
 
             bool localIsA = string.Equals(state.PlayerAId, _selfId, StringComparison.Ordinal);
 
             int theirMoney = localIsA ? state.MoneyB : state.MoneyA;
-            int theirEx = localIsA ? (state.ExhibitsB?.Count ?? 0) : (state.ExhibitsA?.Count ?? 0);
+            List<TradeSyncPatch.ExhibitRef> theirEx = localIsA ? state.ExhibitsB : state.ExhibitsA;
 
             _remoteMoneyText.text = $"金币: {Mathf.Max(0, theirMoney)}";
-            _remoteExhibitsText.text = $"遗物: {Mathf.Max(0, theirEx)}";
+            _remoteExhibitsText.text = $"遗物: {theirEx?.Count ?? 0}";
 
             var theirCards = localIsA ? state.OfferB : state.OfferA;
-            var names = new List<string>();
-            if (theirCards != null)
-            {
-                foreach (var c in theirCards)
-                {
-                    if (c == null)
-                    {
-                        continue;
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(c.CardName))
-                    {
-                        names.Add(c.CardName);
-                    }
-                    else if (!string.IsNullOrWhiteSpace(c.CardId))
-                    {
-                        names.Add(c.CardId);
-                    }
-                }
-            }
-
-            RebuildCardList(_remoteCardsList, names, isLocal: false);
+            RebuildCardList(_remoteCardsList, theirCards, isLocal: false);
+            RebuildExhibitList(_remoteExhibitsList, theirEx, isLocal: false);
         }
         catch
         {
@@ -778,88 +1004,167 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         }
     }
 
+    private void RebuildExhibitList(Transform listRoot, List<string> exhibitIds, bool isLocal)
+    {
+        if (listRoot == null) return;
+        foreach (Transform c in listRoot) Destroy(c.gameObject);
+
+        if (exhibitIds == null || exhibitIds.Count == 0) return;
+
+        foreach (var exId in exhibitIds)
+        {
+            if (string.IsNullOrEmpty(exId)) continue;
+            
+            var label = exId;
+
+            var row = CloneListItem(listRoot, $"Ex_{exId}", label, false);
+            if (isLocal)
+            {
+                row.button.onClick.AddListener(() =>
+                {
+                    AudioManager.Button(0);
+                    _localExhibitIds.Remove(exId);
+                    RefreshLocalUi();
+                    TrySendOfferUpdate();
+                });
+            }
+            else
+            {
+                row.button.interactable = false;
+            }
+        }
+    }
+
+    private void RebuildExhibitList(Transform listRoot, List<TradeSyncPatch.ExhibitRef> exhibits, bool isLocal)
+    {
+        if (listRoot == null) return;
+        foreach (Transform c in listRoot) Destroy(c.gameObject);
+
+        if (exhibits == null || exhibits.Count == 0) return;
+
+        foreach (var ex in exhibits)
+        {
+            var exId = ex != null ? ex.ExhibitId : null;
+            if (string.IsNullOrEmpty(exId)) continue;
+
+            var row = CloneListItem(listRoot, $"Ex_{exId}", exId, false);
+            row.button.interactable = false;
+        }
+    }
+
     private void EnsureUi()
     {
         if (_panelRoot == null)
         {
-            // Fallback for scene-created dialog.
             var panel = transform.Find("Panel") as RectTransform;
             _panelRoot = panel != null ? panel : GetComponent<RectTransform>();
         }
 
-        // Use best-effort templates.
-        if (_textTemplate == null)
-        {
-            try { _textTemplate = GetComponentInChildren<TextMeshProUGUI>(true); } catch { _textTemplate = null; }
-        }
+        var bg = _panelRoot.GetComponent<Image>();
+        if (bg == null) bg = _panelRoot.gameObject.AddComponent<Image>();
+        bg.color = new Color(0.04f, 0.04f, 0.04f, 0.85f); 
 
-        // Header
         _titleText = CloneText(_panelRoot, "Title", 30, TextAlignmentOptions.Center);
         SetRect(_titleText.rectTransform, 0.06f, 0.90f, 0.94f, 0.98f);
 
         _statusText = CloneText(_panelRoot, "Status", 18, TextAlignmentOptions.Center);
         SetRect(_statusText.rectTransform, 0.06f, 0.85f, 0.94f, 0.90f);
 
-        // Local side
-        _localCardsTitle = CloneText(_panelRoot, "LocalTitle", 20, TextAlignmentOptions.Left);
+        // --- Left Side (Local) ---
+        _localCardsTitle = CloneText(_panelRoot, "LocalTitle", 22, TextAlignmentOptions.Left);
         _localCardsTitle.text = "我的报价";
         SetRect(_localCardsTitle.rectTransform, 0.06f, 0.80f, 0.46f, 0.85f);
 
-        _remoteCardsTitle = CloneText(_panelRoot, "RemoteTitle", 20, TextAlignmentOptions.Left);
-        _remoteCardsTitle.text = "对方报价";
-        SetRect(_remoteCardsTitle.rectTransform, 0.54f, 0.80f, 0.94f, 0.85f);
+        _localCardsList = CreateScrollList(_panelRoot, "LocalCards", 0.06f, 0.55f, 0.46f, 0.78f);
+        AddListBackground(_localCardsList);
 
-        _localCardsList = CreateScrollList(_panelRoot, "LocalCards", 0.06f, 0.36f, 0.46f, 0.78f);
-        _remoteCardsList = CreateScrollList(_panelRoot, "RemoteCards", 0.54f, 0.36f, 0.94f, 0.78f);
+        _localExhibitsList = CreateScrollList(_panelRoot, "LocalExhibits", 0.06f, 0.35f, 0.46f, 0.53f);
+        AddListBackground(_localExhibitsList);
 
-        _localMoneyText = CloneText(_panelRoot, "LocalMoney", 18, TextAlignmentOptions.Left);
-        SetRect(_localMoneyText.rectTransform, 0.06f, 0.30f, 0.30f, 0.35f);
-
-        _localExhibitsText = CloneText(_panelRoot, "LocalEx", 18, TextAlignmentOptions.Left);
-        SetRect(_localExhibitsText.rectTransform, 0.30f, 0.30f, 0.46f, 0.35f);
-
-        _remoteMoneyText = CloneText(_panelRoot, "RemoteMoney", 18, TextAlignmentOptions.Left);
-        SetRect(_remoteMoneyText.rectTransform, 0.54f, 0.30f, 0.78f, 0.35f);
-
-        _remoteExhibitsText = CloneText(_panelRoot, "RemoteEx", 18, TextAlignmentOptions.Left);
-        SetRect(_remoteExhibitsText.rectTransform, 0.78f, 0.30f, 0.94f, 0.35f);
-
-        // Controls
-        _addCardButton = CloneButton(_panelRoot, "AddCard", "添加卡牌");
-        SetRect(_addCardButton.GetComponent<RectTransform>(), 0.06f, 0.24f, 0.22f, 0.29f);
+        // Controls moved near items
+        _addCardButton = CloneButton(_panelRoot, "AddCard", "+ 卡牌");
+        SetRect(_addCardButton.GetComponent<RectTransform>(), 0.06f, 0.28f, 0.18f, 0.33f);
         _addCardButton.button.onClick.RemoveAllListeners();
         _addCardButton.button.onClick.AddListener(new UnityAction(ShowCardPicker));
 
-        _editExhibitButton = CloneButton(_panelRoot, "EditEx", "选择遗物");
-        SetRect(_editExhibitButton.GetComponent<RectTransform>(), 0.24f, 0.24f, 0.40f, 0.29f);
+        _editExhibitButton = CloneButton(_panelRoot, "EditEx", "+ 遗物");
+        SetRect(_editExhibitButton.GetComponent<RectTransform>(), 0.19f, 0.28f, 0.31f, 0.33f);
         _editExhibitButton.button.onClick.RemoveAllListeners();
         _editExhibitButton.button.onClick.AddListener(new UnityAction(ShowExhibitPicker));
 
-        _moneyMinusButton = CloneButton(_panelRoot, "MoneyMinus", "-1");
-        SetRect(_moneyMinusButton.GetComponent<RectTransform>(), 0.42f, 0.24f, 0.46f, 0.29f);
+        _localMoneyText = CloneText(_panelRoot, "LocalMoney", 18, TextAlignmentOptions.Left);
+        SetRect(_localMoneyText.rectTransform, 0.06f, 0.23f, 0.22f, 0.27f);
+
+        _moneyMinusButton = CloneButton(_panelRoot, "MoneyMinus", "-");
+        SetRect(_moneyMinusButton.GetComponent<RectTransform>(), 0.22f, 0.23f, 0.26f, 0.27f);
         _moneyMinusButton.button.onClick.RemoveAllListeners();
-        _moneyMinusButton.button.onClick.AddListener(new UnityAction(() => ChangeMoney(-1)));
+        _moneyMinusButton.button.onClick.AddListener(new UnityAction(() => ChangeMoney(-10)));
 
-        _moneyPlusButton = CloneButton(_panelRoot, "MoneyPlus", "+1");
-        SetRect(_moneyPlusButton.GetComponent<RectTransform>(), 0.47f, 0.24f, 0.51f, 0.29f);
+        _moneyPlusButton = CloneButton(_panelRoot, "MoneyPlus", "+");
+        SetRect(_moneyPlusButton.GetComponent<RectTransform>(), 0.27f, 0.23f, 0.31f, 0.27f);
         _moneyPlusButton.button.onClick.RemoveAllListeners();
-        _moneyPlusButton.button.onClick.AddListener(new UnityAction(() => ChangeMoney(+1)));
+        _moneyPlusButton.button.onClick.AddListener(new UnityAction(() => ChangeMoney(+10)));
 
-        // Footer
-        _confirmButton = CloneButton(_panelRoot, "Confirm", "确认");
-        SetRect(_confirmButton.GetComponent<RectTransform>(), 0.28f, 0.08f, 0.46f, 0.16f);
+        _localExhibitsText = CloneText(_panelRoot, "LocalEx", 18, TextAlignmentOptions.Left);
+        SetRect(_localExhibitsText.rectTransform, 0.34f, 0.23f, 0.46f, 0.27f);
+
+
+        // --- Right Side (Remote) ---
+        _remoteCardsTitle = CloneText(_panelRoot, "RemoteTitle", 22, TextAlignmentOptions.Left);
+        _remoteCardsTitle.text = "对方报价";
+        SetRect(_remoteCardsTitle.rectTransform, 0.54f, 0.80f, 0.94f, 0.85f);
+
+        _remoteCardsList = CreateScrollList(_panelRoot, "RemoteCards", 0.54f, 0.55f, 0.94f, 0.78f);
+        AddListBackground(_remoteCardsList);
+
+        _remoteExhibitsList = CreateScrollList(_panelRoot, "RemoteExhibits", 0.54f, 0.35f, 0.94f, 0.53f);
+        AddListBackground(_remoteExhibitsList);
+
+        _remoteMoneyText = CloneText(_panelRoot, "RemoteMoney", 18, TextAlignmentOptions.Left);
+        SetRect(_remoteMoneyText.rectTransform, 0.54f, 0.23f, 0.78f, 0.27f);
+
+        _remoteExhibitsText = CloneText(_panelRoot, "RemoteEx", 18, TextAlignmentOptions.Left);
+        SetRect(_remoteExhibitsText.rectTransform, 0.78f, 0.23f, 0.94f, 0.27f);
+
+        // --- Bottom Controls ---
+        _confirmButton = CloneButton(_panelRoot, "Confirm", "确认交易");
+        SetRect(_confirmButton.GetComponent<RectTransform>(), 0.32f, 0.08f, 0.48f, 0.16f);
         _confirmButton.button.onClick.RemoveAllListeners();
-        _confirmButton.button.onClick.AddListener(new UnityAction(OnConfirm));
+        _confirmButton.button.onClick.AddListener(new UnityAction(OnConfirmClick));
 
-        _cancelButton = CloneButton(_panelRoot, "Cancel", "取消");
-        SetRect(_cancelButton.GetComponent<RectTransform>(), 0.54f, 0.08f, 0.72f, 0.16f);
+        _cancelButton = CloneButton(_panelRoot, "Cancel", "取消交易");
+        SetRect(_cancelButton.GetComponent<RectTransform>(), 0.52f, 0.08f, 0.68f, 0.16f);
         _cancelButton.button.onClick.RemoveAllListeners();
         _cancelButton.button.onClick.AddListener(new UnityAction(OnCancelClick));
 
         DisableTooltipBehaviours(gameObject);
     }
 
-    private void OnConfirm()
+    private void AddListBackground(Transform listRoot)
+    {
+        if (listRoot == null || listRoot.parent == null) return;
+        var parent = listRoot.parent;
+        
+        // Find or create a background object behind the scroll rect.
+        var bgName = "ListBg_" + listRoot.name;
+        var bgTransform = parent.Find(bgName);
+        if (bgTransform == null)
+        {
+            var go = new GameObject(bgName);
+            go.transform.SetParent(parent, false);
+            go.transform.SetAsFirstSibling();
+            var rt = go.AddComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2(-4, -4);
+            rt.offsetMax = new Vector2(4, 4);
+            
+            var img = go.AddComponent<Image>();
+            img.color = new Color(0f, 0f, 0f, 0.35f); // Simple semi-transparent dark box
+        }
+    }
+
+    private void OnConfirmClick()
     {
         try
         {
@@ -875,6 +1180,9 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
                 return;
             }
 
+            // Play confirm sound
+            try { AudioManager.Button(0); } catch { }
+
             TradeSyncPatch.RequestConfirm(_tradeId, _selfId);
             _statusText.text = "已确认，等待对方...";
         }
@@ -886,22 +1194,8 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
     private void OnCancelClick()
     {
-        if (_completionApplied)
-        {
-            Hide();
-            return;
-        }
-
-        try
-        {
-            TradeSyncPatch.RequestCancel(_tradeId, _selfId);
-        }
-        catch
-        {
-            // ignored
-        }
-
-        Hide();
+        try { AudioManager.Button(0); } catch { }
+        OnCancel();
     }
 
     private void ChangeMoney(int delta)
@@ -914,9 +1208,14 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         int current = 0;
         try { current = CurrentGameRun?.Money ?? 0; } catch { current = 0; }
 
-        _localMoney = Mathf.Clamp(_localMoney + delta, 0, Mathf.Min(MaxMoneyOffer, current));
-        RefreshLocalUi();
-        TrySendOfferUpdate();
+        int next = Mathf.Clamp(_localMoney + delta, 0, Mathf.Min(MaxMoneyOffer, current));
+        if (next != _localMoney)
+        {
+            try { AudioManager.Button(0); } catch { }
+            _localMoney = next;
+            RefreshLocalUi();
+            TrySendOfferUpdate();
+        }
     }
 
     private void ShowCardPicker()
@@ -926,6 +1225,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             return;
         }
 
+        try { AudioManager.Card(3); } catch { }
         EnsureCardPicker();
         RebuildCardPicker();
         _cardPickerRoot.SetActive(true);
@@ -939,6 +1239,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             return;
         }
 
+        try { AudioManager.Card(3); } catch { }
         EnsureExhibitPicker();
         RebuildExhibitPicker();
         _exhibitPickerRoot.SetActive(true);
@@ -967,48 +1268,316 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
     private GameObject CreateFullOverlay(string name, string titleText)
     {
-        var root = new GameObject(name);
-        root.transform.SetParent(transform, false);
-        root.SetActive(false);
-
-        var rt = root.AddComponent<RectTransform>();
-        rt.anchorMin = Vector2.zero;
-        rt.anchorMax = Vector2.one;
-        rt.offsetMin = Vector2.zero;
-        rt.offsetMax = Vector2.zero;
-
-        var bg = root.AddComponent<Image>();
-        bg.color = new Color(0f, 0f, 0f, 0.65f);
-        bg.raycastTarget = true;
-
-        var title = CloneText(rt, "Title", 26, TextAlignmentOptions.Center);
-        title.text = titleText;
-        SetRect(title.rectTransform, 0.10f, 0.88f, 0.90f, 0.97f);
-
-        var list = CreateScrollList(rt, "List", 0.10f, 0.18f, 0.90f, 0.86f);
-        var tag = list.gameObject.AddComponent<PickerListTag>();
-
-        var cancel = CloneButton(rt, "Cancel", "取消");
-        SetRect(cancel.GetComponent<RectTransform>(), 0.25f, 0.06f, 0.45f, 0.14f);
-        cancel.button.onClick.RemoveAllListeners();
-        cancel.button.onClick.AddListener(new UnityAction(() =>
+        // Prefer in-game MessageDialog prefab for consistent visuals.
+        try
         {
+            var root = new GameObject(name);
+            root.transform.SetParent(transform, false);
             root.SetActive(false);
-            _canvasGroup.interactable = true;
-        }));
 
-        var ok = CloneButton(rt, "OK", "确定");
-        SetRect(ok.GetComponent<RectTransform>(), 0.55f, 0.06f, 0.75f, 0.14f);
-        ok.button.onClick.RemoveAllListeners();
-        ok.button.onClick.AddListener(new UnityAction(() =>
+            var rt = root.AddComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+
+            // Transparent blocker so clicks don't pass through even if prefab mask fails.
+            var blocker = root.AddComponent<Image>();
+            blocker.color = new Color(0f, 0f, 0f, 0f);
+            blocker.raycastTarget = true;
+
+            var prefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
+            if (prefab == null)
+            {
+                return CreateFullOverlayFallback(root, rt, titleText);
+            }
+
+            var frame = Instantiate(prefab, root.transform, false);
+            frame.name = "Frame";
+            frame.SetActive(true);
+
+            var frameRt = frame.GetComponent<RectTransform>();
+            if (frameRt != null)
+            {
+                frameRt.anchorMin = new Vector2(0.06f, 0.06f);
+                frameRt.anchorMax = new Vector2(0.94f, 0.94f);
+                frameRt.offsetMin = Vector2.zero;
+                frameRt.offsetMax = Vector2.zero;
+            }
+
+            var dialog = frame.GetComponentInChildren<MessageDialog>(true);
+            if (dialog == null)
+            {
+                return CreateFullOverlayFallback(root, rt, titleText);
+            }
+
+            var mainText = GetDialogField<TextMeshProUGUI>(dialog, "mainText");
+            var subText = GetDialogField<TextMeshProUGUI>(dialog, "subText");
+            var singleConfirm = GetDialogField<Button>(dialog, "singleConfirmButton");
+            var confirm = GetDialogField<Button>(dialog, "confirmButton");
+            var cancel = GetDialogField<Button>(dialog, "cancelButton");
+
+            HideDialogButton(singleConfirm);
+
+            if (mainText != null)
+            {
+                mainText.gameObject.SetActive(true);
+                mainText.text = titleText;
+                mainText.alignment = TextAlignmentOptions.Center;
+                mainText.raycastTarget = false;
+                var c = mainText.color;
+                c.a = 1f;
+                mainText.color = c;
+            }
+
+            // Keep subText alive but invisible so prefab layout remains stable.
+            RectTransform panelRect = null;
+            RectTransform subTextRect = subText != null ? subText.rectTransform : null;
+            try
+            {
+                if (subText != null)
+                {
+                    subText.gameObject.SetActive(true);
+                    subText.text = string.Empty;
+                    subText.raycastTarget = false;
+                    var c = subText.color;
+                    c.a = 0f;
+                    subText.color = c;
+                }
+
+                panelRect = TryFindCommonAncestorRect(mainText != null ? mainText.rectTransform : null,
+                    cancel != null ? cancel.GetComponent<RectTransform>() : null)
+                    ?? (frameRt != null ? frameRt : frame.GetComponent<RectTransform>());
+            }
+            catch
+            {
+                panelRect = frameRt != null ? frameRt : frame.GetComponent<RectTransform>();
+                subTextRect = null;
+            }
+
+            if (panelRect == null)
+            {
+                panelRect = rt;
+            }
+
+            // Place list in the center region.
+            var list = CreateScrollList(panelRect, "List", 0.10f, 0.18f, 0.90f, 0.86f);
+            _ = list.gameObject.AddComponent<PickerListTag>();
+
+            if (cancel != null)
+            {
+                cancel.onClick.RemoveAllListeners();
+                cancel.gameObject.SetActive(true);
+                SetButtonLabel(cancel, "取消");
+                cancel.onClick.AddListener(() =>
+                {
+                    try
+                    {
+                        root.SetActive(false);
+                        _canvasGroup.interactable = true;
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
+                });
+            }
+
+            if (confirm != null)
+            {
+                confirm.onClick.RemoveAllListeners();
+                confirm.gameObject.SetActive(true);
+                SetButtonLabel(confirm, "确定");
+                confirm.onClick.AddListener(() =>
+                {
+                    try
+                    {
+                        root.SetActive(false);
+                        _canvasGroup.interactable = true;
+                        RefreshLocalUi();
+                        TrySendOfferUpdate();
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
+                });
+            }
+
+            // Ensure list is not above buttons.
+            try
+            {
+                if (cancel != null)
+                {
+                    cancel.transform.SetAsLastSibling();
+                }
+                if (confirm != null)
+                {
+                    confirm.transform.SetAsLastSibling();
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            dialog.enabled = false;
+            return root;
+        }
+        catch
         {
+            // Fallback to previous runtime overlay if anything goes wrong.
+            var root = new GameObject(name);
+            root.transform.SetParent(transform, false);
             root.SetActive(false);
-            _canvasGroup.interactable = true;
-            RefreshLocalUi();
-            TrySendOfferUpdate();
-        }));
+            var rt = root.AddComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+            return CreateFullOverlayFallback(root, rt, titleText);
+        }
+    }
+
+    private GameObject CreateFullOverlayFallback(GameObject root, RectTransform rt, string titleText)
+    {
+        try
+        {
+            var bg = root.AddComponent<Image>();
+            bg.color = new Color(0.05f, 0.05f, 0.05f, 0.95f);
+            bg.raycastTarget = true;
+
+            var title = CloneText(rt, "Title", 26, TextAlignmentOptions.Center);
+            title.text = titleText;
+            SetRect(title.rectTransform, 0.10f, 0.88f, 0.90f, 0.97f);
+
+            var list = CreateScrollList(rt, "List", 0.10f, 0.18f, 0.90f, 0.86f);
+            _ = list.gameObject.AddComponent<PickerListTag>();
+
+            var cancel = CloneButton(rt, "Cancel", "取消");
+            SetRect(cancel.GetComponent<RectTransform>(), 0.25f, 0.06f, 0.45f, 0.14f);
+            cancel.button.onClick.RemoveAllListeners();
+            cancel.button.onClick.AddListener(new UnityAction(() =>
+            {
+                root.SetActive(false);
+                _canvasGroup.interactable = true;
+            }));
+
+            var ok = CloneButton(rt, "OK", "确定");
+            SetRect(ok.GetComponent<RectTransform>(), 0.55f, 0.06f, 0.75f, 0.14f);
+            ok.button.onClick.RemoveAllListeners();
+            ok.button.onClick.AddListener(new UnityAction(() =>
+            {
+                root.SetActive(false);
+                _canvasGroup.interactable = true;
+                RefreshLocalUi();
+                TrySendOfferUpdate();
+            }));
+        }
+        catch
+        {
+            // ignored
+        }
 
         return root;
+    }
+
+    private static void HideDialogButton(Button b)
+    {
+        try
+        {
+            if (b == null)
+            {
+                return;
+            }
+
+            b.onClick.RemoveAllListeners();
+            b.gameObject.SetActive(false);
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static T GetDialogField<T>(MessageDialog dialog, string fieldName) where T : class
+    {
+        try
+        {
+            if (dialog == null || string.IsNullOrWhiteSpace(fieldName))
+            {
+                return null;
+            }
+
+            var fi = typeof(MessageDialog).GetField(fieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            if (fi == null)
+            {
+                return null;
+            }
+
+            return fi.GetValue(dialog) as T;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void SetButtonLabel(Button button, string label)
+    {
+        try
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            var tmp = button.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (tmp != null)
+            {
+                tmp.text = label;
+                tmp.alignment = TextAlignmentOptions.Center;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static RectTransform TryFindCommonAncestorRect(RectTransform a, RectTransform b)
+    {
+        try
+        {
+            if (a == null || b == null)
+            {
+                return null;
+            }
+
+            var ancestors = new HashSet<Transform>();
+            Transform t = a;
+            while (t != null)
+            {
+                ancestors.Add(t);
+                t = t.parent;
+            }
+
+            Transform u = b;
+            while (u != null)
+            {
+                if (ancestors.Contains(u))
+                {
+                    return u as RectTransform;
+                }
+                u = u.parent;
+            }
+
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private sealed class PickerListTag : MonoBehaviour
@@ -1029,6 +1598,18 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         }
 
         var container = tag.transform;
+        
+        // Use Grid Layout for cards to match game library feel
+        var vlg = container.GetComponent<VerticalLayoutGroup>();
+        if (vlg != null) DestroyImmediate(vlg);
+        
+        var glg = container.GetComponent<GridLayoutGroup>();
+        if (glg == null) glg = container.gameObject.AddComponent<GridLayoutGroup>();
+        glg.cellSize = new Vector2(160, 100);
+        glg.spacing = new Vector2(10, 10);
+        glg.padding = new RectOffset(10, 10, 10, 10);
+        glg.childAlignment = TextAnchor.UpperLeft;
+
         foreach (Transform c in container)
         {
             Destroy(c.gameObject);
@@ -1056,19 +1637,42 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
                 continue;
             }
 
-            var row = CloneButton(container, $"Card_{card.InstanceId}", card.Name);
-            row.button.onClick.RemoveAllListeners();
-            row.button.onClick.AddListener(new UnityAction(() =>
+            if (_cardCellTemplate != null)
             {
-                if (_localCards.Count >= _maxSlots)
-                {
-                    return;
-                }
+                var cell = Instantiate(_cardCellTemplate, container, false);
+                cell.gameObject.SetActive(true);
+                cell.Card = card;
+                cell.SetNum(1);
 
-                _localCards.Add(card);
-                RefreshLocalUi();
-                TrySendOfferUpdate();
-            }));
+                var btn = cell.gameObject.GetComponent<Button>();
+                if (btn == null) btn = cell.gameObject.AddComponent<Button>();
+                btn.onClick.RemoveAllListeners();
+                btn.onClick.AddListener(new UnityAction(() =>
+                {
+                    if (_localCards.Count >= _maxSlots)
+                    {
+                        return;
+                    }
+
+                    AudioManager.Card(3); // Card click sound
+                    _localCards.Add(card);
+                    RebuildCardPicker(); // Refresh to remove from list
+                }));
+            }
+            else
+            {
+                var row = CloneListItem(container, $"Card_{card.InstanceId}", card.Name, false);
+                row.button.onClick.AddListener(new UnityAction(() =>
+                {
+                    if (_localCards.Count >= _maxSlots)
+                    {
+                        return;
+                    }
+
+                    _localCards.Add(card);
+                    RebuildCardPicker();
+                }));
+            }
         }
 
         if (deck.Count == 0)
@@ -1092,6 +1696,18 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         }
 
         var container = tag.transform;
+        
+        // Use Grid Layout for exhibits
+        var vlg = container.GetComponent<VerticalLayoutGroup>();
+        if (vlg != null) DestroyImmediate(vlg);
+        
+        var glg = container.GetComponent<GridLayoutGroup>();
+        if (glg == null) glg = container.gameObject.AddComponent<GridLayoutGroup>();
+        glg.cellSize = new Vector2(100, 100); // Exhibits are square
+        glg.spacing = new Vector2(20, 20);
+        glg.padding = new RectOffset(20, 20, 20, 20);
+        glg.childAlignment = TextAnchor.UpperLeft;
+
         foreach (Transform c in container)
         {
             Destroy(c.gameObject);
@@ -1127,43 +1743,57 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
                 continue;
             }
 
-            var row = CloneButton(container, $"Ex_{ex.Id}", ex.Name);
-            var isOn = _localExhibitIds.Contains(ex.Id);
-            TintRow(row.gameObject, isOn);
-
-            row.button.onClick.RemoveAllListeners();
-            row.button.onClick.AddListener(new UnityAction(() =>
+            if (_exhibitTemplate != null)
             {
-                if (_localExhibitIds.Contains(ex.Id))
+                var widget = Instantiate(_exhibitTemplate, container, false);
+                widget.gameObject.SetActive(true);
+                widget.Exhibit = ex;
+                widget.ShowCounter = false;
+
+                var isOn = _localExhibitIds.Contains(ex.Id);
+                var img = widget.MainImage;
+                if (img != null)
                 {
-                    _localExhibitIds.Remove(ex.Id);
-                    TintRow(row.gameObject, false);
-                }
-                else
-                {
-                    _localExhibitIds.Add(ex.Id);
-                    TintRow(row.gameObject, true);
+                    img.color = isOn ? new Color(0.4f, 1f, 0.4f, 1f) : Color.white;
                 }
 
-                RefreshLocalUi();
-                TrySendOfferUpdate();
-            }));
-        }
-    }
-
-    private void TintRow(GameObject row, bool selected)
-    {
-        try
-        {
-            var img = row != null ? row.GetComponent<Image>() : null;
-            if (img != null)
-            {
-                img.color = selected ? new Color(0.4f, 0.8f, 0.4f, 0.18f) : new Color(1f, 1f, 1f, 0.10f);
+                var btn = widget.gameObject.GetComponent<Button>();
+                if (btn == null) btn = widget.gameObject.AddComponent<Button>();
+                btn.onClick.RemoveAllListeners();
+                btn.onClick.AddListener(new UnityAction(() =>
+                {
+                    AudioManager.Button(2);
+                    if (_localExhibitIds.Contains(ex.Id))
+                    {
+                        _localExhibitIds.Remove(ex.Id);
+                    }
+                    else
+                    {
+                        _localExhibitIds.Add(ex.Id);
+                    }
+                    RebuildExhibitPicker();
+                }));
             }
-        }
-        catch
-        {
-            // ignored
+            else
+            {
+                var isOn = _localExhibitIds.Contains(ex.Id);
+                var row = CloneListItem(container, $"Ex_{ex.Id}", ex.Name, isOn);
+                row.button.onClick.AddListener(new UnityAction(() =>
+                {
+                    if (_localExhibitIds.Contains(ex.Id))
+                    {
+                        _localExhibitIds.Remove(ex.Id);
+                    }
+                    else
+                    {
+                        _localExhibitIds.Add(ex.Id);
+                    }
+
+                    RefreshLocalUi();
+                    TrySendOfferUpdate();
+                    RebuildExhibitPicker();
+                }));
+            }
         }
     }
 
@@ -1202,15 +1832,8 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
     private void RebuildCardList(Transform listRoot, List<Card> cards, bool isLocal)
     {
-        if (listRoot == null)
-        {
-            return;
-        }
-
-        foreach (Transform c in listRoot)
-        {
-            Destroy(c.gameObject);
-        }
+        if (listRoot == null) return;
+        foreach (Transform c in listRoot) Destroy(c.gameObject);
 
         if (cards == null || cards.Count == 0)
         {
@@ -1221,21 +1844,18 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
         foreach (var card in cards)
         {
-            if (card == null)
-            {
-                continue;
-            }
-
-            var row = CloneButton(listRoot, $"Card_{card.InstanceId}", card.Name);
+            if (card == null) continue;
+            var label = card.Name + (card.IsUpgraded ? "+" : "");
+            var row = CloneListItem(listRoot, $"Card_{card.InstanceId}", label, false);
             if (isLocal)
             {
-                row.button.onClick.RemoveAllListeners();
-                row.button.onClick.AddListener(new UnityAction(() =>
+                row.button.onClick.AddListener(() =>
                 {
+                    AudioManager.Button(0);
                     _localCards.Remove(card);
                     RefreshLocalUi();
                     TrySendOfferUpdate();
-                }));
+                });
             }
             else
             {
@@ -1244,56 +1864,75 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         }
     }
 
-    private void RebuildCardList(Transform listRoot, List<string> names, bool isLocal)
+    private void RebuildCardList(Transform listRoot, List<TradeSyncPatch.CardRef> cardRefs, bool isLocal)
     {
-        if (listRoot == null)
-        {
-            return;
-        }
+        if (listRoot == null) return;
+        foreach (Transform c in listRoot) Destroy(c.gameObject);
 
-        foreach (Transform c in listRoot)
-        {
-            Destroy(c.gameObject);
-        }
-
-        if (names == null || names.Count == 0)
+        if (cardRefs == null || cardRefs.Count == 0)
         {
             var empty = CloneText(listRoot as RectTransform, "Empty", 18, TextAlignmentOptions.Center);
             empty.text = "(无)";
             return;
         }
 
-        int i = 0;
-        foreach (var n in names)
+        foreach (var cardRef in cardRefs)
         {
-            var row = CloneButton(listRoot, $"Remote_{i++}", n);
+            if (cardRef == null) continue;
+            var label = cardRef.CardName + (cardRef.IsUpgraded ? "+" : "");
+            var row = CloneListItem(listRoot, $"RemoteCard_{cardRef.InstanceId}", label, false);
             row.button.interactable = false;
         }
+    }
+
+    private CommonButtonWidget CloneListItem(Transform parent, string name, string label, bool isActive = false)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        
+        var rt = go.AddComponent<RectTransform>();
+        rt.sizeDelta = new Vector2(0f, 44f); 
+
+        var img = go.AddComponent<Image>();
+        img.color = isActive ? new Color(0.12f, 0.36f, 0.12f, 0.7f) : new Color(0.1f, 0.1f, 0.1f, 0.5f);
+        
+        var text = CloneText(rt, "Label", 18, TextAlignmentOptions.Left);
+        text.text = label;
+        SetRect(text.rectTransform, 0.05f, 0f, 0.85f, 1f);
+
+        var status = CloneText(rt, "Status", 16, TextAlignmentOptions.Right);
+        status.text = isActive ? "●" : ""; // Symbolic indicator
+        SetRect(status.rectTransform, 0.85f, 0f, 0.95f, 1f);
+
+        var btn = go.AddComponent<Button>();
+        btn.targetGraphic = img;
+        var cbw = go.AddComponent<CommonButtonWidget>();
+        cbw.button = btn;
+        
+        DisableTooltipBehaviours(go);
+        return cbw;
     }
 
     private CommonButtonWidget CloneButton(Transform parent, string name, string label)
     {
         CommonButtonWidget w = null;
-
         try
         {
             if (_buttonTemplate != null)
             {
+                // Ensure we clone the TEMPLATE, not the active instance if it's already modified.
                 w = UnityEngine.Object.Instantiate(_buttonTemplate, parent, false);
                 w.name = name;
             }
         }
-        catch
-        {
-            w = null;
-        }
+        catch { w = null; }
 
         if (w == null)
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
             var img = go.AddComponent<Image>();
-            img.color = new Color(1f, 1f, 1f, 0.10f);
+            img.color = new Color(0.15f, 0.15f, 0.15f, 0.8f);
             var btn = go.AddComponent<Button>();
             btn.targetGraphic = img;
             w = go.AddComponent<CommonButtonWidget>();
@@ -1302,25 +1941,34 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
         try
         {
-            var tmp = w.GetComponentInChildren<TextMeshProUGUI>(true);
-            if (tmp == null)
+            SetButtonText(w, label);
+            var traverse = HarmonyLib.Traverse.Create(w);
+            if (label.Contains("取消") || label.Contains("Cancel") || label.Contains("Back"))
             {
-                tmp = CloneText(w.transform as RectTransform, "Label", 18, TextAlignmentOptions.Center);
-                SetRect(tmp.rectTransform, 0f, 0f, 1f, 1f);
+                traverse.Field("buttonBehavior").SetValue(1); // Close behavior
             }
-
-            tmp.text = label;
-            tmp.alignment = TextAlignmentOptions.Center;
+            else
+            {
+                traverse.Field("buttonBehavior").SetValue(0); // Normal/Open behavior
+            }
         }
-        catch
-        {
-            // ignored
-        }
+        catch { }
 
-        DisableExtraButtons(w);
         DisableTooltipBehaviours(w.gameObject);
-
         return w;
+    }
+
+    private void SetButtonText(CommonButtonWidget button, string label)
+    {
+        if (button == null) return;
+        var tmp = button.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (tmp == null)
+        {
+            tmp = CloneText(button.transform as RectTransform, "Label", 18, TextAlignmentOptions.Center);
+            SetRect(tmp.rectTransform, 0f, 0f, 1f, 1f);
+        }
+        tmp.text = label;
+        tmp.alignment = TextAlignmentOptions.Center;
     }
 
     private TextMeshProUGUI CloneText(RectTransform parent, string name, int fontSize, TextAlignmentOptions align)
@@ -1356,6 +2004,13 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
     private Transform CreateScrollList(RectTransform parent, string name, float minX, float minY, float maxX, float maxY)
     {
+        // Prefer an in-game authored scroll view (HistoryPanel) so visuals match vanilla.
+        if (TryCreateInGameScrollList(parent, name, minX, minY, maxX, maxY, out Transform content))
+        {
+            return content;
+        }
+
+        // Fallback: lightweight runtime scroll list.
         var root = new GameObject(name);
         root.transform.SetParent(parent, false);
 
@@ -1368,27 +2023,27 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         SetRect(vpRt, 0f, 0f, 1f, 1f);
 
         var vpImg = viewport.AddComponent<Image>();
-        vpImg.color = new Color(0f, 0f, 0f, 0.10f);
+        vpImg.color = new Color(0f, 0f, 0f, 0.25f);
 
         var mask = viewport.AddComponent<Mask>();
         mask.showMaskGraphic = false;
 
-        var content = new GameObject("Content");
-        content.transform.SetParent(viewport.transform, false);
-        var cRt = content.AddComponent<RectTransform>();
+        var contentGo = new GameObject("Content");
+        contentGo.transform.SetParent(viewport.transform, false);
+        var cRt = contentGo.AddComponent<RectTransform>();
         cRt.anchorMin = new Vector2(0f, 1f);
         cRt.anchorMax = new Vector2(1f, 1f);
         cRt.pivot = new Vector2(0.5f, 1f);
         cRt.anchoredPosition = Vector2.zero;
         cRt.sizeDelta = new Vector2(0f, 0f);
 
-        var vlg = content.AddComponent<VerticalLayoutGroup>();
+        var vlg = contentGo.AddComponent<VerticalLayoutGroup>();
         vlg.childForceExpandHeight = false;
         vlg.childForceExpandWidth = true;
         vlg.spacing = 6f;
         vlg.padding = new RectOffset(8, 8, 8, 8);
 
-        var fitter = content.AddComponent<ContentSizeFitter>();
+        var fitter = contentGo.AddComponent<ContentSizeFitter>();
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
         var scroll = root.AddComponent<ScrollRect>();
@@ -1398,7 +2053,207 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         scroll.vertical = true;
         scroll.movementType = ScrollRect.MovementType.Clamped;
 
-        return content.transform;
+        return contentGo.transform;
+    }
+
+    private bool TryCreateInGameScrollList(
+        RectTransform parent,
+        string name,
+        float minX,
+        float minY,
+        float maxX,
+        float maxY,
+        out Transform content)
+    {
+        content = null;
+        GameObject historyInstance = null;
+
+        try
+        {
+            var historyPrefab = Resources.Load<GameObject>("UI/Panels/HistoryPanel");
+            if (historyPrefab == null)
+            {
+                return false;
+            }
+
+            historyInstance = Instantiate(historyPrefab);
+            historyInstance.SetActive(false);
+
+            ScrollRect listScrollRect = null;
+            try
+            {
+                var historyPanel = historyInstance.GetComponentInChildren<HistoryPanel>(true);
+                if (historyPanel != null)
+                {
+                    listScrollRect = GetPrivateFieldValue<ScrollRect>(historyPanel, "listScrollRect");
+                }
+            }
+            catch
+            {
+                listScrollRect = null;
+            }
+
+            if (listScrollRect == null)
+            {
+                // Heuristic: pick a ScrollRect whose content contains a RecordRow template.
+                foreach (var sr in historyInstance.GetComponentsInChildren<ScrollRect>(true))
+                {
+                    if (sr == null || sr.content == null)
+                    {
+                        continue;
+                    }
+
+                    var rr = sr.content.GetComponentInChildren<RecordRow>(true);
+                    if (rr == null)
+                    {
+                        continue;
+                    }
+
+                    listScrollRect = sr;
+                    break;
+                }
+            }
+
+            if (listScrollRect == null)
+            {
+                return false;
+            }
+
+            // Detach the ScrollRect (we only need its visuals: viewport/mask/scrollbars).
+            var scrollGo = listScrollRect.gameObject;
+            scrollGo.name = name;
+            listScrollRect.transform.SetParent(parent, false);
+            listScrollRect.gameObject.SetActive(true);
+
+            var scrollRt = listScrollRect.GetComponent<RectTransform>();
+            if (scrollRt != null)
+            {
+                SetRect(scrollRt, minX, minY, maxX, maxY);
+            }
+
+            // Replace content with a simple vertical layout that we own.
+            var oldContent = listScrollRect.content;
+            if (oldContent != null)
+            {
+                try
+                {
+                    oldContent.gameObject.SetActive(false);
+                }
+                catch
+                {
+                    // ignored
+                }
+            }
+
+            if (listScrollRect.viewport == null)
+            {
+                // Try to recover viewport.
+                try
+                {
+                    var mask = listScrollRect.GetComponentInChildren<Mask>(true);
+                    if (mask != null)
+                    {
+                        listScrollRect.viewport = mask.GetComponent<RectTransform>();
+                    }
+                }
+                catch
+                {
+                    // ignored
+                }
+            }
+
+            var viewport = listScrollRect.viewport != null ? listScrollRect.viewport : scrollRt;
+            if (viewport == null)
+            {
+                return false;
+            }
+
+            var contentGo = new GameObject("Content");
+            contentGo.transform.SetParent(viewport, false);
+
+            var cRt = contentGo.AddComponent<RectTransform>();
+            cRt.anchorMin = new Vector2(0f, 1f);
+            cRt.anchorMax = new Vector2(1f, 1f);
+            cRt.pivot = new Vector2(0.5f, 1f);
+            cRt.anchoredPosition = Vector2.zero;
+            cRt.sizeDelta = new Vector2(0f, 0f);
+
+            var vlg = contentGo.AddComponent<VerticalLayoutGroup>();
+            vlg.childForceExpandHeight = false;
+            vlg.childForceExpandWidth = true;
+            vlg.spacing = 6f;
+            vlg.padding = new RectOffset(8, 8, 8, 8);
+
+            var fitter = contentGo.AddComponent<ContentSizeFitter>();
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            listScrollRect.content = cRt;
+            listScrollRect.horizontal = false;
+            listScrollRect.vertical = true;
+            listScrollRect.movementType = ScrollRect.MovementType.Clamped;
+
+            // Destroy the rest of the instantiated HistoryPanel (we already detached ScrollRect).
+            try
+            {
+                if (historyInstance != null)
+                {
+                    Destroy(historyInstance);
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            content = contentGo.transform;
+            return true;
+        }
+        catch
+        {
+            try
+            {
+                if (historyInstance != null)
+                {
+                    Destroy(historyInstance);
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            content = null;
+            return false;
+        }
+    }
+
+    private static T GetPrivateFieldValue<T>(object target, string fieldName) where T : class
+    {
+        try
+        {
+            if (target == null || string.IsNullOrWhiteSpace(fieldName))
+            {
+                return null;
+            }
+
+            var t = target.GetType();
+            while (t != null)
+            {
+                var fi = t.GetField(fieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                if (fi != null)
+                {
+                    return fi.GetValue(target) as T;
+                }
+
+                t = t.BaseType;
+            }
+
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private void SetRect(RectTransform rt, float minX, float minY, float maxX, float maxY)

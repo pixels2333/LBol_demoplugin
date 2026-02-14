@@ -1297,21 +1297,42 @@ public static class OtherPlayersOverlayPatch
 
         try
         {
-            if (string.IsNullOrWhiteSpace(_selfPlayerId))
+            // 首先尝试使用网络同步的 _selfPlayerId（从 Welcome 消息中获取）
+            string selfIdToLookup = _selfPlayerId;
+            
+            // 如果网络还没有同步 _selfPlayerId，则回退到本地 NetworkIdentityTracker
+            if (string.IsNullOrWhiteSpace(selfIdToLookup))
             {
-                return false;
+                selfIdToLookup = NetworkIdentityTracker.GetSelfPlayerId();
             }
-
-            lock (_syncLock)
+            
+            // 首先尝试从网络同步的 _players 字典中获取位置
+            if (!string.IsNullOrWhiteSpace(selfIdToLookup))
             {
-                if (_players.TryGetValue(_selfPlayerId, out PlayerSummary p) && p != null)
+                lock (_syncLock)
                 {
-                    stage = p.Stage;
-                    locationX = p.LocationX;
-                    locationY = p.LocationY;
-                    locationName = p.LocationName;
-                    return true;
+                    if (_players.TryGetValue(selfIdToLookup, out PlayerSummary p) && p != null && p.LocationX >= 0 && p.LocationY >= 0)
+                    {
+                        stage = p.Stage;
+                        locationX = p.LocationX;
+                        locationY = p.LocationY;
+                        locationName = p.LocationName;
+                        return true;
+                    }
                 }
+            }
+            
+            // 如果网络同步数据不可用，则直接从游戏状态读取当前位置
+            // 这种情况发生在网络消息还没有到达或游戏在单人模式时
+            var run = GameStateUtils.GetCurrentGameRun();
+            var node = run?.CurrentMap?.VisitingNode;
+            if (node != null)
+            {
+                stage = node.Act;
+                locationX = node.X;
+                locationY = node.Y;
+                locationName = node.StationType.ToString();
+                return true;
             }
         }
         catch

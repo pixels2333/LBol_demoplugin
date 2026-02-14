@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+### UI
+- **[networkplugin]**: 重构 `TradeDetailDialog` 交易详情界面，采用分栏布局并优化列表显示。
+- **[networkplugin]**: 引入紧凑型 `ListItem` 样式（44px 高度），替代原本笨重的按钮列表占位符。
+- **[networkplugin]**: 优化卡牌与遗物选择器，移除冗余背景并改用网格布局 (Grid Layout)。
+- **[networkplugin]**: 修正按钮颜色逻辑，移除确认/添加按钮的错误红色样式。
+- **[networkplugin]**: 调整报价编辑器（Offer Editor）按钮缩放比例，提升布局平衡感。
+- **[networkplugin]**: 升级 UI 版本至 `v6`，确保修改实时生效。
+
 ### Docs
 - **[helloagents]**: 更新方案包 `plan/202602071900_trade-partner-picker-centered-ui`：聚焦 TradePanel 内 partner picker，使用游戏 UI 资源并以居中窗口弹层展示玩家列表。
 
@@ -17,11 +25,19 @@
 - **[networkplugin]**: TradePanel partner picker 弹层改为克隆 `UI/Dialogs/MessageDialog` 作为遮罩/窗口框架（替换运行时纯色遮罩与 Outline 边框），列表仍使用 CommonButtonWidget 行样式以保持风格统一。
 - **[networkplugin]**: TradePanel partner picker 禁用 fallback/兜底策略：列表滚动区与行模板直接复用 `UI/Panels/HistoryPanel` 的 `ScrollRect + RecordRow`，空列表提示复用 `MessageDialog` 的 subText，确保可见控件均为游戏 UI 资源。
 - **[networkplugin]**: 修复 TradePanel partner picker 候选“点不了”：点击检测改为优先使用 Unity InputSystem 的 `Mouse`（兼容禁用 legacy `UnityEngine.Input` 的环境），并在命中判定中遍历候选项全部 `Graphic`，避免根 Rect 为 0 导致无法选中。
+- **[networkplugin]**: 改善 TradePanel partner picker 在“严格同节点”筛选下的空列表体验：打开时若尚未同步到自身位置，则显示“正在同步位置信息...”并在 1.0 秒内自动刷新一次；同时增加“刷新”按钮用于手动重试（并在位置仍缺失时重新触发一次性等待刷新）。
 - **[networkplugin]**: 修复状态效果同步日志刷错：部分状态效果 `HasLevel=false`，读取 `StatusEffect.Level` 会抛 `has no level`；改为仅在 `HasLevel` 时读取并将 Level 作为可空字段输出。
 - **[networkplugin]**: 避免网络事件缓冲区因同一 tick 重复 key 导致的异常（SortedList duplicate key）。
 - **[networkplugin]**: 修复 CardStateChanged 负载序列化失败（ManaGroup 自引用）——卡牌快照改为发送 `CostText`。
 - **[networkplugin]**: 限流/去重高频同步事件：`UpdatePlayerLocation` 与 `OnMoodEffectStateSync`，减少刷屏与重复发送。
 - **[networkplugin]**: 为 `FullStateSyncRequest` 增加 2 秒节流并附带 `RequestId`，降低重连路径重复请求。
+- **[networkplugin]**: 修复 TradePanel 运行时 UI “矩形块”观感：`TradePanelRuntimeFactory` 的面板背景与交易槽位背景改为使用游戏内 `Adventure` 切片背景（`ResourcesHelper.LoadUiBackground("Adventure")` + `Image.Type.Sliced`），并用白色 tint 让纹理可见。
+- **[networkplugin]**: TradePanel 交易槽位 UI 改为直接克隆游戏内 `CommonButtonWidget` 按钮模板并挂载 `TradeSlotWidget`，确保槽位外观使用原生按钮素材而非运行时纯色矩形。
+- **[networkplugin]**: TradePanel 移除全屏半透明背景色块：改为透明 raycast blocker，仅使用 `UI/Dialogs/MessageDialog` 的游戏框架提供视觉；同时 `TradeSlotWidget` 选中态不再把按钮底图染成纯色块（优先仅调整 alpha），避免再次出现“纯色矩形”。
+- **[networkplugin]**: 增强“是否加载了新 DLL”的可观测性：启动时输出插件程序集路径、最后写入时间、大小与 FNV64 指纹，便于排查“没有任何变化”是否为部署路径/版本不一致。
+- **[networkplugin]**: TradePanel 状态文案 `Trade.WaitingForItems` 缺失本地化时回退为中文，避免 Unity Log 刷屏并更直观地看到状态变化。
+- **[tooling]**: `copy_networkplugin_dll.ps1` 支持自动探测目标 Mods 目录（从 BepInEx/ModLBoL 日志推断），并在复制前后输出源/目标的元信息与 SHA256（可选复制支持库）。
+- **[networkplugin]**: TradePanel 报价编辑弹层（`EnsureOfferEditorOverlay()`）改为优先从 `UI/Dialogs/MessageDialog` 预制体提取 TMP/按钮模板并克隆，按钮会禁用多余 Button/Tooltip 行为；同时为容器增加 `Adventure` 切片背景，确保报价编辑区域整体观感为游戏原生 UI。
 
 ### 变更
 - **[networkplugin]**: 网络日志中文化与参数化：发送/接收日志附带 payload 指纹（FNV-1a 64）与关键字段摘要，便于区分“同一事件重复发送”与“不同事件”。
@@ -69,6 +85,10 @@
 	- `debugtools/VerifyInrunMapProgressSync.cs`: 轻量级仓库不变量校验（无 SaveLoadSyncPatch、无 HostSaveTransfer 常量）。
 
 ### 新增
+- **[networkplugin]**: 完善交易详情对话框 `TradeDetailDialog`：
+    - **逻辑与同步**: 实现完整的报价同步、地理位置过滤（仅显示同节点玩家）、握手确认以及交易完成后卡牌/金币/遗物的严格扣除与增加。
+    - **UI 风格沉浸化**: 彻底重构 UI 构建流程，移除“矩形块”原生样式，全面使用游戏内的 `Adventure` 背景素材、`CommonButtonWidget` 按钮素材以及 `RecordCardCell`/`ExhibitWidget` 等原生组件，确保视觉风格与游戏本体高度一致。
+    - **交互增强**: 为交易面板添加游戏原生音效（确认/取消/点击），并在列表区域增加半透明装饰底色，提升操作反馈感。
 - 交易同步：新增 `TradeSyncPatch`（Host 权威裁决 + 广播）与 `TradePanel` 联机接入，支持两端报价/确认/取消与完成后各自卡组落地（模型A）；并提供 `OnTradeSnapshotRequest` 用于重连/中途加入的会话状态恢复。
 - 交易同步 v2：交易范围扩展为卡牌/道具/金币/Exhibit；增加 Preparing + PrepareResult 握手（本地严格校验并允许失败后回到 Open 重试）；TradePanel 增加交易对象选择 overlay、报价编辑（金币/展品），并在 Completed 阶段严格落地（缺失即失败）。
 - 交易入口一致性：GapOptions 与 ShopTradeIcon 统一“交易不可用/未连接/配置禁用/缺少 TradePanel 实例”提示。
@@ -100,3 +120,10 @@
 
 ### 文档
 - 补齐 `INetworkPlayer` 的 XML 文档注释：解释 `stance/ultimatePower/mana/UpdateLocation/GetMyself` 的网络语义与 TODO 背景。
+
+### [0.10.3] - 2026-02-13
+- **[TradePanel]**: 优化报价编辑器（Offer Editor）布局。
+  - 减小按钮缩放比例 (0.75x) 以适应行高。
+  - 调整行间距与对齐方式，使文字和按钮分布更合理。
+  - 强制 UI 版本更新至 `v4` 以刷新运行时实例。
+  - 优化了卡牌、金币、展品三行的水平布局。

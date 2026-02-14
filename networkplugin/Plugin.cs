@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.IO;
 using System.Reflection;
 using System.Threading;
 using BepInEx;
@@ -89,6 +90,10 @@ public class Plugin : BaseUnityPlugin
         MainThreadId = Thread.CurrentThread.ManagedThreadId;
         Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
 
+        // Print a stable fingerprint so we can confirm which DLL is actually loaded in-game.
+        // This helps diagnose "no visible change" issues caused by copying to the wrong folder.
+        TryLogAssemblyFingerprint();
+
         // 初始化配置管理器，使用BepInEx原生的配置系统
         ConfigManager = new ConfigManager(Config);
         Logger.LogInfo("配置管理器已初始化");
@@ -160,6 +165,65 @@ public class Plugin : BaseUnityPlugin
 
         // 输出当前配置信息到日志
         LogCurrentConfig();
+    }
+
+    private static void TryLogAssemblyFingerprint()
+    {
+        try
+        {
+            var asm = typeof(Plugin).Assembly;
+            var asmPath = string.Empty;
+            try { asmPath = asm.Location ?? string.Empty; } catch { asmPath = string.Empty; }
+
+            if (string.IsNullOrWhiteSpace(asmPath) || !File.Exists(asmPath))
+            {
+                Logger?.LogInfo($"[Build] AssemblyLocation unavailable (Location='{asmPath ?? ""}')");
+                return;
+            }
+
+            FileInfo fi = null;
+            try { fi = new FileInfo(asmPath); } catch { fi = null; }
+
+            var size = fi != null ? fi.Length : -1;
+            var lastWriteUtc = fi != null ? fi.LastWriteTimeUtc.ToString("O") : "unknown";
+            var fnv64 = TryComputeFnv1a64Hex(asmPath);
+
+            Logger?.LogInfo($"[Build] Assembly='{asmPath}', LastWriteUtc='{lastWriteUtc}', Size={size}, FNV64={fnv64}");
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static string TryComputeFnv1a64Hex(string path)
+    {
+        try
+        {
+            const ulong offset = 14695981039346656037UL;
+            const ulong prime = 1099511628211UL;
+
+            ulong hash = offset;
+            using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            {
+                var buf = new byte[64 * 1024];
+                int read;
+                while ((read = fs.Read(buf, 0, buf.Length)) > 0)
+                {
+                    for (int i = 0; i < read; i++)
+                    {
+                        hash ^= buf[i];
+                        hash *= prime;
+                    }
+                }
+            }
+
+            return $"0x{hash:x16}";
+        }
+        catch
+        {
+            return "(unavailable)";
+        }
     }
 
     /// <summary>

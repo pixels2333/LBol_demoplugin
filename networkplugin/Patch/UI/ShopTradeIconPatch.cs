@@ -41,10 +41,22 @@ public static class ShopTradeIconPatch
         public Button CardServiceButton;
         public Button ReturnButton;
 
+        public Vector2 CardServiceOriginalAnchoredPosition;
+        public Vector2 CardServiceOriginalSizeDelta;
+        public Vector3 CardServiceOriginalScale;
+
+        public Vector2 TradeOriginalAnchoredPosition;
+        public Vector2 TradeOriginalSizeDelta;
+        public Vector3 TradeOriginalScale;
+
+        public Vector2 ReturnOriginalAnchoredPosition;
+        public Vector2 ReturnOriginalSizeDelta;
+        public Vector3 ReturnOriginalScale;
+
         // Cache original anchor positions so our adjustments don't accumulate.
         public bool HasOriginalPositions;
-        public Vector2 CardServiceOriginalAnchoredPosition;
-        public Vector2 ReturnOriginalAnchoredPosition;
+        public Vector2 CardServiceOriginalButtonBarAnchoredPosition;
+        public Vector2 ReturnOriginalButtonBarAnchoredPosition;
     }
 
     private static TradeButtonUi _ui;
@@ -274,14 +286,14 @@ public static class ShopTradeIconPatch
     {
         if (shopPanel == null || !shopPanel.IsVisible)
         {
-            SetUiVisible(false);
+            CleanupUi();
             return;
         }
 
         bool shouldShow = IsTradeEnabledAndConnected();
         if (!shouldShow)
         {
-            SetUiVisible(false);
+            CleanupUi();
             return;
         }
 
@@ -382,29 +394,21 @@ public static class ShopTradeIconPatch
         var allLabels = root.GetComponentsInChildren<TextMeshProUGUI>(true);
         if (allLabels != null && allLabels.Length > 0)
         {
-            // 优先改掉“原始卡牌服务文字”，避免抓到其它说明文本。
+            // 找到主文本组件。
             if (!string.IsNullOrEmpty(sourceLabelText))
             {
-                label = allLabels.FirstOrDefault(t => t != null && t.text == sourceLabelText);
+                label = allLabels.FirstOrDefault(t => t != null && (t.text == sourceLabelText || t.name.Contains("Label")));
             }
-
-            // 兜底：取第一个
             label ??= allLabels.FirstOrDefault(t => t != null);
 
-            // 把所有等于源按钮文案的 TMP 一并替换，确保不会出现两个“卡牌服务”。
-            if (!string.IsNullOrEmpty(sourceLabelText))
+            // 无论原有内容是什么，强制修改为“交易”，避免显示重复的“卡牌服务”。
+            foreach (var t in allLabels)
             {
-                foreach (var t in allLabels)
+                if (t != null)
                 {
-                    if (t != null && t.text == sourceLabelText)
-                    {
-                        t.text = "交易";
-                    }
+                    t.text = "交易";
+                    t.alignment = TextAlignmentOptions.Center;
                 }
-            }
-            else if (label != null)
-            {
-                label.text = "交易";
             }
         }
 
@@ -414,7 +418,7 @@ public static class ShopTradeIconPatch
             label.font = sourceLabel.font;
             label.fontSize = sourceLabel.fontSize;
             label.fontStyle = sourceLabel.fontStyle;
-            label.alignment = sourceLabel.alignment;
+            label.alignment = TextAlignmentOptions.Center;
             label.characterSpacing = sourceLabel.characterSpacing;
             label.wordSpacing = sourceLabel.wordSpacing;
             label.lineSpacing = sourceLabel.lineSpacing;
@@ -427,6 +431,22 @@ public static class ShopTradeIconPatch
             label.font = _defaultFont;
         }
 
+        // Per user: icon on top + text on bottom, whole button centered.
+        // Avoid inheriting a left alignment from certain localized TMP templates.
+        try
+        {
+            if (label != null)
+            {
+                label.alignment = TextAlignmentOptions.Center;
+                label.enableWordWrapping = false;
+                label.overflowMode = TextOverflowModes.Overflow;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
         // 4. 放置位置：水平排列在右下角一栏
         var leftRect = cardServiceButton.GetComponent<RectTransform>();
         var midRect = root.GetComponent<RectTransform>();
@@ -437,32 +457,20 @@ public static class ShopTradeIconPatch
         Vector2 rightOriginal = rightRect != null ? rightRect.anchoredPosition : Vector2.zero;
         if (_ui != null && _ui.ShopPanel == shopPanel && _ui.HasOriginalPositions)
         {
-            leftOriginal = _ui.CardServiceOriginalAnchoredPosition;
-            rightOriginal = _ui.ReturnOriginalAnchoredPosition;
+            leftOriginal = _ui.CardServiceOriginalButtonBarAnchoredPosition;
+            rightOriginal = _ui.ReturnOriginalButtonBarAnchoredPosition;
         }
 
         if (leftRect != null && midRect != null && rightRect != null)
         {
-
-            // 统一应用紧凑样式（缩放）以确保三个按钮能放下
-            ApplyCompactButtonStyle_NoThrow(cardServiceButton);
-            ApplyCompactButtonStyle_NoThrow(button);
-            ApplyCompactButtonStyle_NoThrow(returnButton);
-
-            // 强制设置缩放为 0.85f
-            cardServiceButton.transform.localScale = new Vector3(0.85f, 0.85f, 1f);
-            root.transform.localScale = new Vector3(0.85f, 0.85f, 1f);
-            returnButton.transform.localScale = new Vector3(0.85f, 0.85f, 1f);
-
-            // 水平排列布局
-            // 交易与卡牌服务整体左移 30；关闭商店横向向右移动 30，同时纵向与另外两个保持一致。
-            float spacing = 265f;
-            var basePos = leftOriginal + new Vector2(-30f, 0f);
-            leftRect.anchoredPosition = basePos;
-            midRect.anchoredPosition = basePos + new Vector2(spacing, 0f);
-            rightRect.anchoredPosition = new Vector2(rightOriginal.x + 30f, basePos.y);
-            
-            Plugin.Logger?.LogInfo($"[ShopTradeIcon] 布局更新：水平排列 [卡牌服务] -> [交易] -> [返回]");
+            // User requirement: strictly within the original bounding box.
+            // Spacing reduced to 5f, margin set to 0f.
+            ApplyThreeButtonLayout_NoReparent(leftRect, midRect, rightRect, leftOriginal, rightOriginal,
+                marginX: 0f, 
+                paddingX: 2f, 
+                spacingX: 5f, 
+                scale: 1f);
+            Plugin.Logger?.LogInfo("[ShopTradeIcon] 布局更新：严格边界三等分布局 [CardService] [Trade] [Return]");
         }
 
         // 5. 确保克隆的图标（如果有）也被正确处理
@@ -491,8 +499,20 @@ public static class ShopTradeIconPatch
             ReturnButton = returnButton,
 
             HasOriginalPositions = true,
-            CardServiceOriginalAnchoredPosition = leftOriginal,
-            ReturnOriginalAnchoredPosition = rightOriginal
+            CardServiceOriginalButtonBarAnchoredPosition = leftOriginal,
+            ReturnOriginalButtonBarAnchoredPosition = rightOriginal,
+
+            CardServiceOriginalAnchoredPosition = leftRect.anchoredPosition,
+            CardServiceOriginalSizeDelta = leftRect.sizeDelta,
+            CardServiceOriginalScale = cardServiceButton.transform.localScale,
+
+            TradeOriginalAnchoredPosition = midRect.anchoredPosition,
+            TradeOriginalSizeDelta = midRect.sizeDelta,
+            TradeOriginalScale = root.transform.localScale,
+
+            ReturnOriginalAnchoredPosition = rightRect.anchoredPosition,
+            ReturnOriginalSizeDelta = rightRect.sizeDelta,
+            ReturnOriginalScale = returnButton.transform.localScale
         };
 
         Plugin.Logger?.LogInfo($"[ShopTradeIcon] 按钮已成功插入并水平排列。");
@@ -624,9 +644,59 @@ public static class ShopTradeIconPatch
     {
         try
         {
-            if (_ui?.Root != null)
+            if (_ui != null)
             {
-                UnityEngine.Object.Destroy(_ui.Root);
+                try
+                {
+                    if (_ui.CardServiceButton != null)
+                    {
+                        _ui.CardServiceButton.transform.localScale = _ui.CardServiceOriginalScale;
+                        var rt = _ui.CardServiceButton.GetComponent<RectTransform>();
+                        if (rt != null)
+                        {
+                            rt.anchoredPosition = _ui.CardServiceOriginalAnchoredPosition;
+                            rt.sizeDelta = _ui.CardServiceOriginalSizeDelta;
+                        }
+                    }
+
+                    if (_ui.ReturnButton != null)
+                    {
+                        _ui.ReturnButton.transform.localScale = _ui.ReturnOriginalScale;
+                        var rt = _ui.ReturnButton.GetComponent<RectTransform>();
+                        if (rt != null)
+                        {
+                            rt.anchoredPosition = _ui.ReturnOriginalAnchoredPosition;
+                            rt.sizeDelta = _ui.ReturnOriginalSizeDelta;
+                        }
+                    }
+
+                    if (_ui.Root != null)
+                    {
+                        _ui.Root.transform.localScale = _ui.TradeOriginalScale;
+                        var rt = _ui.Root.GetComponent<RectTransform>();
+                        if (rt != null)
+                        {
+                            rt.anchoredPosition = _ui.TradeOriginalAnchoredPosition;
+                            rt.sizeDelta = _ui.TradeOriginalSizeDelta;
+                        }
+                    }
+                }
+                catch
+                {
+                    // ignored
+                }
+
+                try
+                {
+                    if (_ui.Root != null)
+                    {
+                        UnityEngine.Object.Destroy(_ui.Root);
+                    }
+                }
+                catch
+                {
+                    // ignored
+                }
             }
         }
         catch
@@ -636,6 +706,162 @@ public static class ShopTradeIconPatch
         finally
         {
             _ui = null;
+        }
+    }
+
+    private static void FixInternalButtonLayout(RectTransform rect, float fontSize)
+    {
+        if (rect == null) return;
+
+        try
+        {
+            // 按钮通常由一个背景/图标 Image 和一个 TextMeshPro 组成
+            var image = rect.GetComponent<Image>();
+            var label = rect.GetComponentInChildren<TextMeshProUGUI>(true);
+
+            // 1. 处理图标：如果没有独立的图标物体，Image 本身就是图标
+            // 在 LBoL 的商店按钮中，通常有一个名为 "Icon" 的子物体，或者 Image 本身带 Sprite
+            var iconTransform = rect.Find("Icon") as RectTransform;
+            if (iconTransform != null)
+            {
+                iconTransform.anchorMin = new Vector2(0.5f, 1f);
+                iconTransform.anchorMax = new Vector2(0.5f, 1f);
+                iconTransform.pivot = new Vector2(0.5f, 1f);
+                iconTransform.sizeDelta = new Vector2(50f, 50f);
+                iconTransform.anchoredPosition = new Vector2(0f, -5f);
+            }
+            else if (image != null && image.sprite != null)
+            {
+                // 如果没有独立的子物体，我们假设 Image 是背景，不做激进移动
+            }
+
+            // 2. 处理文字：移到底部
+            if (label != null)
+            {
+                var labelRect = label.rectTransform;
+                labelRect.anchorMin = new Vector2(0f, 0f);
+                labelRect.anchorMax = new Vector2(1f, 0f);
+                labelRect.pivot = new Vector2(0.5f, 0f);
+                labelRect.anchoredPosition = new Vector2(0f, 5f);
+                labelRect.sizeDelta = new Vector2(0f, 30f);
+                
+                label.fontSize = fontSize;
+                label.alignment = TextAlignmentOptions.Center;
+                label.enableAutoSizing = false; // 禁用自动缩放以强制使用指定字号
+                label.margin = new Vector4(2, 0, 2, 0);
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogDebug($"[ShopTradeIcon] 内部布局调整失败 ({rect.name}): {ex.Message}");
+        }
+    }
+
+    private static void ApplyThreeButtonLayout_NoReparent(
+        RectTransform left,
+        RectTransform mid,
+        RectTransform right,
+        Vector2 leftOriginal,
+        Vector2 rightOriginal,
+        float marginX,
+        float paddingX,
+        float spacingX,
+        float scale)
+    {
+        if (left == null || mid == null || right == null)
+        {
+            return;
+        }
+
+        try
+        {
+            // Reset to requested scale.
+            left.transform.localScale = new Vector3(scale, scale, 1f);
+            mid.transform.localScale = new Vector3(scale, scale, 1f);
+            right.transform.localScale = new Vector3(scale, scale, 1f);
+
+            float leftW = left.rect.width;
+            float rightW = right.rect.width;
+
+            // 严格计算左右边界：不允许超出原位置外边距
+            float leftEdge = leftOriginal.x - (leftW * left.pivot.x) - marginX;
+            float rightEdge = rightOriginal.x + (rightW * (1f - right.pivot.x)) + marginX;
+
+            float innerLeft = leftEdge + paddingX;
+            float innerRight = rightEdge - paddingX;
+            float totalAvailableWidth = innerRight - innerLeft;
+            
+            if (totalAvailableWidth <= 0f) return;
+
+            // 三等分
+            float buttonWidth = (totalAvailableWidth - (2f * spacingX)) / 3f;
+            if (buttonWidth <= 0f) return;
+
+            // 商店按钮高度通常为 80-100，我们稍微拉高一点点以容纳上下排版（图上文下）
+            float buttonHeight = 110f; 
+
+            // 执行位置与大小分配
+            left.sizeDelta = new Vector2(buttonWidth, buttonHeight);
+            mid.sizeDelta = new Vector2(buttonWidth, buttonHeight);
+            right.sizeDelta = new Vector2(buttonWidth, buttonHeight);
+
+            float y = (leftOriginal.y + rightOriginal.y) * 0.5f;
+            
+            float leftX = innerLeft + (buttonWidth * left.pivot.x);
+            float midX = innerLeft + buttonWidth + spacingX + (buttonWidth * mid.pivot.x);
+            float rightX = innerLeft + (2f * (buttonWidth + spacingX)) + (buttonWidth * right.pivot.x);
+
+            left.anchoredPosition = new Vector2(leftX, y);
+            mid.anchoredPosition = new Vector2(midX, y);
+            right.anchoredPosition = new Vector2(rightX, y);
+
+            // 修正内部图文排版
+            float targetFontSize = 18f;
+            FixInternalButtonLayout(left, targetFontSize);
+            FixInternalButtonLayout(mid, targetFontSize);
+            FixInternalButtonLayout(right, targetFontSize);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[ShopTradeIcon] 布局计算出错: {ex}");
+        }
+    }
+
+    private static void ForceButtonLabelCenter(Button button, string expectedText)
+    {
+        if (button == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var tmps = button.GetComponentsInChildren<TextMeshProUGUI>(true);
+            if (tmps == null || tmps.Length == 0)
+            {
+                return;
+            }
+
+            foreach (var t in tmps)
+            {
+                if (t == null)
+                {
+                    continue;
+                }
+                if (!string.IsNullOrEmpty(expectedText) && t.text != expectedText)
+                {
+                    continue;
+                }
+
+                t.alignment = TextAlignmentOptions.Center;
+                t.enableWordWrapping = false;
+                t.overflowMode = TextOverflowModes.Overflow;
+                break;
+            }
+        }
+        catch
+        {
+            // ignored
         }
     }
 
@@ -712,28 +938,15 @@ public static class ShopTradeIconPatch
                 return;
             }
 
-            // 若项目内已经有可用的 TradePanel（例如后续用Prefab/运行时构建完成），则优先打开它。
-            TradePanel tradePanel = null;
-            try
+            // Always let the factory decide whether to reuse a prefab-wired panel, reuse a current runtime panel,
+            // or destroy/rebuild old runtime panels (which often look like translucent rectangles).
+            Transform parent = null;
+            if (shopPanel != null && shopPanel.transform != null)
             {
-                tradePanel = UnityEngine.Object.FindObjectOfType<TradePanel>(true);
-            }
-            catch
-            {
-                tradePanel = null;
+                parent = shopPanel.transform.parent != null ? shopPanel.transform.parent : shopPanel.transform;
             }
 
-            // If there is no prefab-wired instance, build a minimal panel by cloning in-game UI templates.
-            if (tradePanel == null)
-            {
-                Transform parent = null;
-                if (shopPanel != null && shopPanel.transform != null)
-                {
-                    parent = shopPanel.transform.parent != null ? shopPanel.transform.parent : shopPanel.transform;
-                }
-
-                tradePanel = NetworkPlugin.UI.Panels.TradePanelRuntimeFactory.GetOrCreate(parent);
-            }
+            TradePanel tradePanel = NetworkPlugin.UI.Panels.TradePanelRuntimeFactory.GetOrCreate(parent);
 
             if (tradePanel != null)
             {

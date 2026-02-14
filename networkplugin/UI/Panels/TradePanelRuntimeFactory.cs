@@ -1,7 +1,9 @@
 using System;
 using System.Linq;
+using System.Reflection;
 using LBoL.Presentation;
 using LBoL.Presentation.UI;
+using LBoL.Presentation.UI.Dialogs;
 using LBoL.Presentation.UI.Widgets;
 using NetworkPlugin.Patch.UI;
 using NetworkPlugin.UI.Widgets;
@@ -13,6 +15,9 @@ namespace NetworkPlugin.UI.Panels;
 
 internal static class TradePanelRuntimeFactory
 {
+    private const string RuntimeRootName = "NetworkPlugin_TradePanel";
+    private const string RuntimeUiVersion = "2026-02-14-ui-v6";
+
     internal static TradePanel GetOrCreate(Transform preferredParent)
     {
         try
@@ -21,7 +26,7 @@ internal static class TradePanelRuntimeFactory
             TradePanel[] existingPanels = null;
             try
             {
-                existingPanels = UnityEngine.Object.FindObjectsOfType<TradePanel>(true);
+                existingPanels = UnityEngine.Object.FindObjectsByType<TradePanel>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             }
             catch
             {
@@ -30,22 +35,98 @@ internal static class TradePanelRuntimeFactory
 
             if (existingPanels != null && existingPanels.Length > 0)
             {
-                for (int i = 1; i < existingPanels.Length; i++)
+                // Prefer a non-runtime (prefab-wired) TradePanel if present.
+                TradePanel prefabPanel = null;
+                foreach (var p in existingPanels)
                 {
-                    try
+                    if (p == null)
                     {
-                        if (existingPanels[i] != null)
-                        {
-                            existingPanels[i].gameObject.SetActive(false);
-                        }
+                        continue;
                     }
-                    catch
+
+                    if (!IsRuntimeCreatedPanel(p))
                     {
-                        // ignored
+                        prefabPanel = p;
+                        break;
                     }
                 }
 
-                return existingPanels[0];
+                // Otherwise reuse only the current runtime panel version.
+                TradePanel currentRuntime = null;
+                foreach (var p in existingPanels)
+                {
+                    if (p == null)
+                    {
+                        continue;
+                    }
+
+                    if (IsCurrentRuntimePanel(p))
+                    {
+                        currentRuntime = p;
+                        break;
+                    }
+                }
+
+                if (prefabPanel != null)
+                {
+                    foreach (var p in existingPanels)
+                    {
+                        if (p == null || ReferenceEquals(p, prefabPanel))
+                        {
+                            continue;
+                        }
+
+                        try
+                        {
+                            if (IsRuntimeCreatedPanel(p))
+                            {
+                                p.gameObject.SetActive(false);
+                            }
+                        }
+                        catch
+                        {
+                            // ignored
+                        }
+                    }
+
+                    Plugin.Logger?.LogInfo("[TradePanelRuntimeFactory] Reusing prefab-wired TradePanel.");
+                    return prefabPanel;
+                }
+
+                if (currentRuntime != null)
+                {
+                    foreach (var p in existingPanels)
+                    {
+                        if (p == null || ReferenceEquals(p, currentRuntime))
+                        {
+                            continue;
+                        }
+
+                        try { p.gameObject.SetActive(false); } catch { }
+                    }
+
+                    Plugin.Logger?.LogInfo($"[TradePanelRuntimeFactory] Reusing runtime TradePanel (version={RuntimeUiVersion}).");
+                    return currentRuntime;
+                }
+
+                // Old runtime panels from previous builds can remain in memory and keep the old "rectangle" look.
+                // Destroy them so the next creation reflects the latest UI code.
+                foreach (var p in existingPanels)
+                {
+                    if (p == null)
+                    {
+                        continue;
+                    }
+
+                    if (!IsRuntimeCreatedPanel(p))
+                    {
+                        continue;
+                    }
+
+                    try { UnityEngine.Object.Destroy(p.gameObject); } catch { }
+                }
+
+                Plugin.Logger?.LogInfo("[TradePanelRuntimeFactory] Destroyed old runtime TradePanel(s); rebuilding with latest UI.");
             }
 
             if (!UiManager.IsInitialized)
@@ -55,31 +136,26 @@ internal static class TradePanelRuntimeFactory
             }
 
             // Find an in-game styled button template (CommonButtonWidget) to clone.
-            // We intentionally clone from existing UI so we inherit the game's visuals and input behavior.
-            CommonButtonWidget buttonTemplate = TryPickButtonTemplate();
+            // Prefer extracting from vanilla prefabs to avoid accidentally picking our own old runtime buttons.
+            CommonButtonWidget confirmTemplate = TryPickButtonTemplate(preferConfirm: true);
+            CommonButtonWidget cancelTemplate = TryPickButtonTemplate(preferConfirm: false);
 
-            if (buttonTemplate == null)
+            if (confirmTemplate == null)
             {
                 TradeUiMessages.ShowTopMessage("交易界面不可用：未找到可复用的按钮模板。请先进入游戏内 UI（例如商店/间隙）。");
                 return null;
             }
 
-            TextMeshProUGUI textTemplate = null;
-            try
-            {
-                textTemplate = UnityEngine.Object.FindObjectsOfType<TextMeshProUGUI>(true)
-                    ?.FirstOrDefault(t => t != null);
-            }
-            catch
-            {
-                textTemplate = null;
-            }
+            // Fallback: if we can't locate a dedicated cancel template, reuse confirm template.
+            cancelTemplate ??= confirmTemplate;
+
+            TextMeshProUGUI textTemplate = TryPickTextTemplate();
 
             // Capture a lightweight visual style from the picked template (used for slot backgrounds).
             Image templateImage = null;
             try
             {
-                templateImage = buttonTemplate.GetComponentInChildren<Image>(true);
+                templateImage = confirmTemplate.GetComponentInChildren<Image>(true);
             }
             catch
             {
@@ -101,7 +177,7 @@ internal static class TradePanelRuntimeFactory
                 }
             }
 
-            var root = new GameObject("NetworkPlugin_TradePanel");
+            var root = new GameObject(RuntimeRootName);
             root.SetActive(false);
             if (parent != null)
             {
@@ -118,39 +194,96 @@ internal static class TradePanelRuntimeFactory
             canvasGroup.interactable = true;
             canvasGroup.blocksRaycasts = true;
 
-            // Background
-            var bg = root.AddComponent<Image>();
+            // Raycast blocker.
+            // Do NOT draw a full-screen semi-transparent rectangle here; if the sprite load fails at runtime,
+            // Unity will render a plain colored quad which looks like a generic rectangle.
+            // Visuals come from the in-game MessageDialog frame we clone below.
+            var blocker = root.AddComponent<Image>();
+            blocker.sprite = null;
+            blocker.color = new Color(0f, 0f, 0f, 0f);
+            blocker.raycastTarget = true;
+
+            // Use an in-game authored dialog prefab as the main frame so the trade UI matches vanilla visuals.
+            // We do NOT call UiDialog.Show() here; we only reuse the prefab's graphics/layout.
+            RectTransform framePanelRect = null;
+            TextMeshProUGUI frameTextTemplate = null;
             try
             {
-                bg.sprite = ResourcesHelper.LoadUiBackground("Adventure");
+                var framePrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
+                if (framePrefab != null)
+                {
+                    var frame = UnityEngine.Object.Instantiate(framePrefab, root.transform, false);
+                    frame.name = "TradeFrame";
+                    frame.SetActive(true);
+
+                    var frameRt = frame.GetComponent<RectTransform>();
+                    if (frameRt != null)
+                    {
+                        // Keep a margin so the frame doesn't touch screen edges.
+                        frameRt.anchorMin = new Vector2(0.06f, 0.06f);
+                        frameRt.anchorMax = new Vector2(0.94f, 0.94f);
+                        frameRt.offsetMin = Vector2.zero;
+                        frameRt.offsetMax = Vector2.zero;
+                    }
+
+                    var dialog = frame.GetComponentInChildren<MessageDialog>(true);
+                    if (dialog != null)
+                    {
+                        var mainText = GetDialogField<TextMeshProUGUI>(dialog, "mainText");
+                        var subText = GetDialogField<TextMeshProUGUI>(dialog, "subText");
+                        var dlgSingleConfirm = GetDialogField<Button>(dialog, "singleConfirmButton");
+                        var dlgConfirm = GetDialogField<Button>(dialog, "confirmButton");
+                        var dlgCancel = GetDialogField<Button>(dialog, "cancelButton");
+
+                        // Pick a TMP template from the dialog so any cloned labels inherit vanilla font/material.
+                        frameTextTemplate = mainText != null ? mainText : subText;
+
+                        // Hide built-in dialog texts/buttons; our panel provides its own header + actions.
+                        HideDialogText(mainText);
+                        HideDialogText(subText);
+                        HideDialogButton(dlgSingleConfirm);
+                        HideDialogButton(dlgConfirm);
+                        HideDialogButton(dlgCancel);
+
+                        // Disable dialog behavior to avoid input handling side effects.
+                        dialog.enabled = false;
+
+                        var cancelRt = dlgCancel != null ? dlgCancel.GetComponent<RectTransform>() : null;
+                        framePanelRect = TryFindCommonAncestorRect(mainText != null ? mainText.rectTransform : null, cancelRt)
+                                         ?? TryFindCommonAncestorRect(subText != null ? subText.rectTransform : null, cancelRt)
+                                         ?? frameRt;
+                    }
+                }
             }
             catch
             {
-                bg.sprite = null;
+                framePanelRect = null;
+                frameTextTemplate = null;
             }
-            bg.color = new Color(0f, 0f, 0f, 0.65f);
-            bg.raycastTarget = true;
+
+            // All trade UI content is attached to the frame panel if available.
+            Transform uiParent = (framePanelRect != null ? framePanelRect.transform : root.transform);
 
             // Title / status / player names
-            var title = CloneTextOrCreate(textTemplate, root.transform, "Title");
+            var title = CloneTextOrCreate(frameTextTemplate != null ? frameTextTemplate : textTemplate, uiParent, "Title");
             title.text = "交易";
             title.alignment = TextAlignmentOptions.Center;
             title.fontSize = Mathf.Max(title.fontSize, 34);
             ConfigureAnchors(title.rectTransform, new Vector2(0.2f, 0.88f), new Vector2(0.8f, 0.96f));
 
-            var status = CloneTextOrCreate(textTemplate, root.transform, "Status");
+            var status = CloneTextOrCreate(frameTextTemplate != null ? frameTextTemplate : textTemplate, uiParent, "Status");
             status.text = "请选择交易对象";
             status.alignment = TextAlignmentOptions.Center;
             status.fontSize = Mathf.Max(status.fontSize, 22);
             ConfigureAnchors(status.rectTransform, new Vector2(0.15f, 0.82f), new Vector2(0.85f, 0.88f));
 
-            var p1Name = CloneTextOrCreate(textTemplate, root.transform, "Player1Name");
+            var p1Name = CloneTextOrCreate(frameTextTemplate != null ? frameTextTemplate : textTemplate, uiParent, "Player1Name");
             p1Name.text = "Player 1";
             p1Name.alignment = TextAlignmentOptions.Center;
             p1Name.fontSize = Mathf.Max(p1Name.fontSize, 20);
             ConfigureAnchors(p1Name.rectTransform, new Vector2(0.08f, 0.74f), new Vector2(0.46f, 0.80f));
 
-            var p2Name = CloneTextOrCreate(textTemplate, root.transform, "Player2Name");
+            var p2Name = CloneTextOrCreate(frameTextTemplate != null ? frameTextTemplate : textTemplate, uiParent, "Player2Name");
             p2Name.text = "Player 2";
             p2Name.alignment = TextAlignmentOptions.Center;
             p2Name.fontSize = Mathf.Max(p2Name.fontSize, 20);
@@ -158,28 +291,29 @@ internal static class TradePanelRuntimeFactory
 
             // Trade areas
             var p1AreaGo = new GameObject("Player1Area");
-            p1AreaGo.transform.SetParent(root.transform, false);
+            p1AreaGo.transform.SetParent(uiParent, false);
             var p1Area = p1AreaGo.AddComponent<RectTransform>();
             ConfigureAnchors(p1Area, new Vector2(0.08f, 0.28f), new Vector2(0.46f, 0.72f));
 
             var p2AreaGo = new GameObject("Player2Area");
-            p2AreaGo.transform.SetParent(root.transform, false);
+            p2AreaGo.transform.SetParent(uiParent, false);
             var p2Area = p2AreaGo.AddComponent<RectTransform>();
             ConfigureAnchors(p2Area, new Vector2(0.54f, 0.28f), new Vector2(0.92f, 0.72f));
 
-            // Slots: create lightweight slot rows (do NOT clone the full button hierarchy per slot).
-            var p1Slots = CreateSlotColumn(p1Area, textTemplate, templateImage, 5, "P1");
-            var p2Slots = CreateSlotColumn(p2Area, textTemplate, templateImage, 5, "P2");
+            // Slots: clone the in-game button widget so slots use vanilla button visuals instead of plain rectangles.
+            var slotTextTemplate = frameTextTemplate != null ? frameTextTemplate : textTemplate;
+            var p1Slots = CreateSlotColumn(p1Area, slotTextTemplate, confirmTemplate, 5, "P1");
+            var p2Slots = CreateSlotColumn(p2Area, slotTextTemplate, confirmTemplate, 5, "P2");
 
             // Confirm / cancel buttons at bottom.
-            var confirm = UnityEngine.Object.Instantiate(buttonTemplate, root.transform, false);
+            var confirm = UnityEngine.Object.Instantiate(confirmTemplate, uiParent, false);
             confirm.name = "Confirm";
-            SetButtonLabel(confirm, "确认");
+            SetButtonLabel(confirm, "确认交易");
             DisableExtraButtons(confirm);
             DisableTooltipBehaviours(confirm.gameObject);
             ConfigureAnchors(confirm.GetComponent<RectTransform>(), new Vector2(0.22f, 0.10f), new Vector2(0.48f, 0.18f));
 
-            var cancel = UnityEngine.Object.Instantiate(buttonTemplate, root.transform, false);
+            var cancel = UnityEngine.Object.Instantiate(cancelTemplate, uiParent, false);
             cancel.name = "Cancel";
             SetButtonLabel(cancel, "取消");
             DisableExtraButtons(cancel);
@@ -188,6 +322,17 @@ internal static class TradePanelRuntimeFactory
 
             // Add TradePanel and bind fields.
             var panel = root.AddComponent<TradePanel>();
+
+            // Mark as runtime-created so future calls can decide whether to rebuild.
+            try
+            {
+                var marker = root.AddComponent<TradePanelRuntimeMarker>();
+                marker.Version = RuntimeUiVersion;
+            }
+            catch
+            {
+                // ignored
+            }
             panel.BindRuntimeUi(
                 p1Area,
                 p2Area,
@@ -208,6 +353,182 @@ internal static class TradePanelRuntimeFactory
         catch (Exception ex)
         {
             TradeUiMessages.ShowTopMessage($"交易界面初始化失败：{ex.Message}");
+            return null;
+        }
+    }
+
+    private static bool IsRuntimeCreatedPanel(TradePanel panel)
+    {
+        try
+        {
+            if (panel == null)
+            {
+                return false;
+            }
+
+            if (panel.GetComponent<TradePanelRuntimeMarker>() != null)
+            {
+                return true;
+            }
+
+            // Back-compat: old runtime panels had a stable root name.
+            return string.Equals(panel.gameObject != null ? panel.gameObject.name : null, RuntimeRootName, StringComparison.Ordinal);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsCurrentRuntimePanel(TradePanel panel)
+    {
+        try
+        {
+            if (panel == null)
+            {
+                return false;
+            }
+
+            var marker = panel.GetComponent<TradePanelRuntimeMarker>();
+            if (marker == null)
+            {
+                return false;
+            }
+
+            return string.Equals(marker.Version, RuntimeUiVersion, StringComparison.Ordinal);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsUnderRuntimeTradePanel(Transform t)
+    {
+        try
+        {
+            Transform cur = t;
+            while (cur != null)
+            {
+                if (string.Equals(cur.name, RuntimeRootName, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+
+                if (cur.GetComponent<TradePanelRuntimeMarker>() != null)
+                {
+                    return true;
+                }
+
+                cur = cur.parent;
+            }
+
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    internal sealed class TradePanelRuntimeMarker : MonoBehaviour
+    {
+        public string Version;
+    }
+
+    private static void HideDialogButton(Button button)
+    {
+        try
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            button.onClick.RemoveAllListeners();
+            button.gameObject.SetActive(false);
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static void HideDialogText(TextMeshProUGUI text)
+    {
+        try
+        {
+            if (text == null)
+            {
+                return;
+            }
+
+            text.text = string.Empty;
+            text.raycastTarget = false;
+            var c = text.color;
+            c.a = 0f;
+            text.color = c;
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static T GetDialogField<T>(MessageDialog dialog, string fieldName) where T : class
+    {
+        try
+        {
+            if (dialog == null || string.IsNullOrWhiteSpace(fieldName))
+            {
+                return null;
+            }
+
+            FieldInfo fi = typeof(MessageDialog).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+            if (fi == null)
+            {
+                return null;
+            }
+
+            return fi.GetValue(dialog) as T;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static RectTransform TryFindCommonAncestorRect(RectTransform a, RectTransform b)
+    {
+        try
+        {
+            if (a == null || b == null)
+            {
+                return null;
+            }
+
+            var ancestors = new System.Collections.Generic.HashSet<Transform>();
+            Transform t = a;
+            while (t != null)
+            {
+                ancestors.Add(t);
+                t = t.parent;
+            }
+
+            Transform u = b;
+            while (u != null)
+            {
+                if (ancestors.Contains(u))
+                {
+                    return u as RectTransform;
+                }
+                u = u.parent;
+            }
+
+            return null;
+        }
+        catch
+        {
             return null;
         }
     }
@@ -262,11 +583,48 @@ internal static class TradePanelRuntimeFactory
         }
     }
 
-    private static CommonButtonWidget TryPickButtonTemplate()
+    private static CommonButtonWidget TryPickButtonTemplate(bool preferConfirm)
     {
         try
         {
-            var candidates = UnityEngine.Object.FindObjectsOfType<CommonButtonWidget>(true);
+            // 1) Strong preference: extract from a known vanilla UI prefab.
+            try
+            {
+                var dialogPrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
+                if (dialogPrefab != null)
+                {
+                    var dialog = dialogPrefab.GetComponent<MessageDialog>();
+                    if (dialog != null)
+                    {
+                        Button btn;
+                        if (preferConfirm)
+                        {
+                            btn = GetDialogField<Button>(dialog, "singleConfirmButton")
+                               ?? GetDialogField<Button>(dialog, "confirmButton");
+                        }
+                        else
+                        {
+                            btn = GetDialogField<Button>(dialog, "cancelButton")
+                               ?? GetDialogField<Button>(dialog, "confirmButton")
+                               ?? GetDialogField<Button>(dialog, "singleConfirmButton");
+                        }
+                        if (btn != null)
+                        {
+                            var w = TryResolveCommonButtonWidget(btn);
+                            if (w != null)
+                            {
+                                return w;
+                            }
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            var candidates = UnityEngine.Object.FindObjectsByType<CommonButtonWidget>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             if (candidates == null || candidates.Length == 0)
             {
                 return null;
@@ -278,6 +636,12 @@ internal static class TradePanelRuntimeFactory
             foreach (var c in candidates)
             {
                 if (c == null || c.button == null)
+                {
+                    continue;
+                }
+
+                // Avoid selecting our own runtime-generated buttons.
+                if (IsUnderRuntimeTradePanel(c.transform))
                 {
                     continue;
                 }
@@ -294,6 +658,23 @@ internal static class TradePanelRuntimeFactory
                     continue;
                 }
 
+                // Prefer non-cancel widgets when picking the confirm style.
+                if (preferConfirm)
+                {
+                    try
+                    {
+                        if (!string.IsNullOrWhiteSpace(c.name)
+                            && c.name.IndexOf("cancel", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            continue;
+                        }
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
+                }
+
                 int score = (buttons * 1000) + nodes;
                 if (score < bestScore)
                 {
@@ -303,6 +684,92 @@ internal static class TradePanelRuntimeFactory
             }
 
             return best;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static CommonButtonWidget TryResolveCommonButtonWidget(Button target)
+    {
+        try
+        {
+            if (target == null)
+            {
+                return null;
+            }
+
+            // Prefer the closest widget that explicitly references this Button.
+            var widgets = target.GetComponentsInParent<CommonButtonWidget>(true);
+            if (widgets != null)
+            {
+                foreach (var w in widgets)
+                {
+                    if (w == null)
+                    {
+                        continue;
+                    }
+
+                    if (ReferenceEquals(w.button, target))
+                    {
+                        return w;
+                    }
+                }
+            }
+
+            return target.GetComponentInParent<CommonButtonWidget>(true);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static TextMeshProUGUI TryPickTextTemplate()
+    {
+        try
+        {
+            // Prefer vanilla dialog prefab TMP so our cloned labels match game font/material.
+            try
+            {
+                var dialogPrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
+                if (dialogPrefab != null)
+                {
+                    var tmp = dialogPrefab.GetComponentInChildren<TextMeshProUGUI>(true);
+                    if (tmp != null)
+                    {
+                        return tmp;
+                    }
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            var tmps = UnityEngine.Object.FindObjectsByType<TextMeshProUGUI>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            if (tmps == null || tmps.Length == 0)
+            {
+                return null;
+            }
+
+            foreach (var t in tmps)
+            {
+                if (t == null)
+                {
+                    continue;
+                }
+
+                if (IsUnderRuntimeTradePanel(t.transform))
+                {
+                    continue;
+                }
+
+                return t;
+            }
+
+            return tmps.FirstOrDefault(t => t != null);
         }
         catch
         {
@@ -372,38 +839,110 @@ internal static class TradePanelRuntimeFactory
         }
     }
 
-    private static TradeSlotWidget[] CreateSlotColumn(RectTransform area, TextMeshProUGUI textTemplate, Image templateImage, int count, string prefix)
+    private static TradeSlotWidget[] CreateSlotColumn(RectTransform area, TextMeshProUGUI textTemplate, CommonButtonWidget buttonTemplate, int count, string prefix)
     {
         var slots = new TradeSlotWidget[count];
         for (int i = 0; i < count; i++)
         {
-            // Slot rows are lightweight buttons (Image + Button + TMP). We intentionally do NOT clone
-            // arbitrary existing button hierarchies, to avoid producing lots of nested duplicate buttons.
-            var slotGo = new GameObject($"{prefix}_Slot_{i + 1}");
-            slotGo.transform.SetParent(area, false);
+            // Clone an in-game authored button widget so the slot looks like vanilla UI.
+            // Then attach TradeSlotWidget (derives from CommonButtonWidget) for card tooltip + remove behavior.
+            var slotWidget = UnityEngine.Object.Instantiate(buttonTemplate, area, false);
+            slotWidget.name = $"{prefix}_Slot_{i + 1}";
+            DisableExtraButtons(slotWidget);
+            DisableTooltipBehaviours(slotWidget.gameObject);
 
-            var bg = slotGo.AddComponent<Image>();
-            if (templateImage != null)
+            // Slot widgets must not inherit template sub-buttons/icons (they can render as a stack of X markers).
+            // Keep only the primary button object.
+            try
             {
-                bg.sprite = templateImage.sprite;
-                bg.material = templateImage.material;
-                bg.type = templateImage.type;
-                bg.preserveAspect = templateImage.preserveAspect;
-                bg.color = new Color(1f, 1f, 1f, 0.12f);
+                var keepBtn = slotWidget.button;
+                var buttons = slotWidget.GetComponentsInChildren<Button>(true);
+                if (buttons != null)
+                {
+                    foreach (var b in buttons)
+                    {
+                        if (b == null || b == keepBtn)
+                        {
+                            continue;
+                        }
+
+                        try { UnityEngine.Object.Destroy(b.gameObject); } catch { }
+                    }
+                }
+
+                // Also remove extra images/icons under the template (e.g., cancel/close icons).
+                var keepGraphic = keepBtn != null ? keepBtn.targetGraphic : null;
+                var keepImage = keepGraphic as Image;
+                var images = slotWidget.GetComponentsInChildren<Image>(true);
+                if (images != null)
+                {
+                    foreach (var img in images)
+                    {
+                        if (img == null)
+                        {
+                            continue;
+                        }
+
+                        // Keep the main background image (usually targetGraphic) and any selection border.
+                        if (keepImage != null && ReferenceEquals(img, keepImage))
+                        {
+                            continue;
+                        }
+
+                        if (string.Equals(img.gameObject.name, "selectedBorder", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(img.gameObject.name, "SelectedBorder", StringComparison.Ordinal))
+                        {
+                            continue;
+                        }
+
+                        // If it's on the same object as the kept image, keep it.
+                        if (keepImage != null && ReferenceEquals(img.gameObject, keepImage.gameObject))
+                        {
+                            continue;
+                        }
+
+                        // Otherwise remove; the slot content (card image/text) is provided by our runtime children.
+                        try { UnityEngine.Object.Destroy(img); } catch { }
+                    }
+                }
             }
-            else
+            catch
             {
-                bg.color = new Color(1f, 1f, 1f, 0.12f);
+                // ignored
             }
 
-            var btn = slotGo.AddComponent<Button>();
-            btn.targetGraphic = bg;
+            // Some button templates carry default labels like "取消"/"确认".
+            // Slots should not inherit those; we provide our own Name label instead.
+            try
+            {
+                var tmps = slotWidget.GetComponentsInChildren<TextMeshProUGUI>(true);
+                if (tmps != null)
+                {
+                    foreach (var t in tmps)
+                    {
+                        if (t == null)
+                        {
+                            continue;
+                        }
 
+                        t.text = string.Empty;
+                        t.raycastTarget = false;
+                        var c = t.color;
+                        c.a = 0f;
+                        t.color = c;
+                    }
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            // Disable the original CommonButtonWidget component to avoid double pointer handling.
+            try { slotWidget.enabled = false; } catch { }
+
+            var slotGo = slotWidget.gameObject;
             var rt = slotGo.GetComponent<RectTransform>();
-            if (rt == null)
-            {
-                rt = slotGo.AddComponent<RectTransform>();
-            }
 
             // Manual vertical positioning (avoid LayoutGroup dependencies).
             float height = 1f / count;
@@ -415,14 +954,49 @@ internal static class TradePanelRuntimeFactory
             rt.offsetMax = new Vector2(0f, -4f);
 
             var slot = slotGo.AddComponent<TradeSlotWidget>();
+            // Wire the underlying UnityEngine.UI.Button from the cloned template.
+            try
+            {
+                slot.button = slotGo.GetComponentInChildren<Button>(true);
+            }
+            catch
+            {
+                slot.button = null;
+            }
 
-            slot.button = btn;
+            // Optional card image surface (RawImage) for vanilla card textures.
+            var imgGo = new GameObject("CardImage");
+            imgGo.transform.SetParent(slotGo.transform, false);
+            var raw = imgGo.AddComponent<RawImage>();
+            raw.texture = null;
+            raw.raycastTarget = false;
+            var rawRt = imgGo.GetComponent<RectTransform>();
+            if (rawRt == null)
+            {
+                rawRt = imgGo.AddComponent<RectTransform>();
+            }
+            ConfigureAnchors(rawRt, new Vector2(0.02f, 0.12f), new Vector2(0.20f, 0.88f));
 
+            // Reuse the template's label if present; otherwise clone/create one.
             var label = CloneTextOrCreate(textTemplate, slotGo.transform, "Name");
-            ConfigureAnchors(label.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 1f));
+            label.name = "Name";
+            // Leave room for the card image.
+            ConfigureAnchors(label.rectTransform, new Vector2(0.22f, 0f), new Vector2(1f, 1f));
             label.alignment = TextAlignmentOptions.Center;
+            label.raycastTarget = false;
 
-            slot.BindRuntime(label);
+            try
+            {
+                var c = label.color;
+                c.a = 1f;
+                label.color = c;
+            }
+            catch
+            {
+                // ignored
+            }
+
+            slot.BindRuntime(label, raw);
             slot.ClearSlot();
             slots[i] = slot;
         }

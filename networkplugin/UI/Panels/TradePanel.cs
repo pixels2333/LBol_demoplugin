@@ -131,6 +131,10 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private bool _isApplyingState;
     private bool _subscribedToTrade;
 
+    // When true, this TradePanel has handed off to TradeDetailDialog and should not issue
+    // any network requests or initialize in-panel editors.
+    private bool _handoffToDetailDialog;
+
     /// <summary>
     /// 当前交易的参数载荷。
     /// </summary>
@@ -164,6 +168,10 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private bool _partnerPickerActive;
     private string _partnerPickerBuildError;
     private Button _partnerPickerCancelButton;
+    private Button _partnerPickerRefreshButton;
+
+    // Auto-refresh partner list once after opening (helps when location metadata arrives slightly later).
+    private Coroutine _partnerPickerAutoRefreshCo;
 
     // Tracks whether this panel has pushed itself onto UiManager's action handler stack.
     private bool _actionHandlerPushed;
@@ -178,6 +186,13 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     // Runtime offer editor overlay (money + exhibits).
     private GameObject _offerEditorRoot;
+    private GameObject _offerActionsRoot;
+    private Button _offerActionsPickCardsBtn;
+    private Button _offerActionsPickExhibitsBtn;
+    private GameObject _moneyTripletRoot;
+    private HorizontalLayoutGroup _moneyTripletLayout;
+    private float _moneyValueBaseFontSize;
+    private TextMeshProUGUI _ownedMoneyText;
     private TextMeshProUGUI _moneyValueText;
     private TextMeshProUGUI _exhibitValueText;
 
@@ -206,6 +221,45 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         statusText = runtimeStatusText;
         player1NameText = runtimePlayer1NameText;
         player2NameText = runtimePlayer2NameText;
+
+        // Runtime-created panels are bound after Awake(), so we must hook button listeners here.
+        try
+        {
+            if (confirmButton?.button != null)
+            {
+                confirmButton.button.onClick.RemoveAllListeners();
+                confirmButton.button.onClick.AddListener(OnConfirmTrade);
+
+                // User choice: confirm button uses Open behavior + Normal weight.
+                try
+                {
+                    var traverse = HarmonyLib.Traverse.Create(confirmButton);
+                    traverse.Field("buttonBehavior").SetValue(0);
+                    traverse.Field("buttonWeight").SetValue(0);
+                }
+                catch
+                {
+                    // ignored
+                }
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        try
+        {
+            if (cancelButton?.button != null)
+            {
+                cancelButton.button.onClick.RemoveAllListeners();
+                cancelButton.button.onClick.AddListener(OnCancelTrade);
+            }
+        }
+        catch
+        {
+            // ignored
+        }
     }
 
     #endregion
@@ -300,6 +354,12 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         // 初始化交易参与者（联机：会触发 partner picker；本地调试：也需要 partner picker）。
         SetupTradeSession(payload);
 
+        // If we handed off to the dialog, do not create any in-panel editors or issue further UI work.
+        if (_handoffToDetailDialog)
+        {
+            return;
+        }
+
         // 若正在选择交易对象，或已经进入“阻塞提示”状态，则不需要提前初始化报价编辑/卡牌选择等 overlay。
         if (_partnerPickerActive || _blockingCenterMessageActive)
         {
@@ -383,7 +443,31 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private void UpdateUIStrings()
     {
         // 设置初始状态提示为“等待放入卡牌”
-        UpdateUIStatus("Trade.WaitingForItems".Localize());
+        UpdateUIStatus(TryLocalize("Trade.WaitingForItems", "等待放入物品..."));
+
+        // Ensure action button labels are stable across prefab/runtime panels.
+        try { SetButtonText(confirmButton, "确认交易"); } catch { }
+        try { SetButtonText(cancelButton, "取消"); } catch { }
+    }
+
+    private static string TryLocalize(string key, string fallback)
+    {
+        try
+        {
+            // Some builds/mod packs don't ship these keys, which produces Unity Log noise.
+            // Use a readable Chinese fallback so users can still see state changes.
+            var s = key.Localize();
+            if (string.IsNullOrWhiteSpace(s) || string.Equals(s, key, StringComparison.Ordinal))
+            {
+                return fallback;
+            }
+
+            return s;
+        }
+        catch
+        {
+            return fallback;
+        }
     }
 
     /// <summary>
@@ -402,6 +486,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         _isApplyingState = false;
 
         _localDebugTradeMode = false;
+        _handoffToDetailDialog = false;
 
         _localMoneyOffer = 0;
         _localExhibitOfferIds.Clear();
@@ -426,6 +511,12 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             if (_partnerPickerRoot != null)
             {
                 _partnerPickerRoot.SetActive(false);
+            }
+
+            if (_partnerPickerAutoRefreshCo != null)
+            {
+                StopCoroutine(_partnerPickerAutoRefreshCo);
+                _partnerPickerAutoRefreshCo = null;
             }
             if (_cardPickerRoot != null)
             {
@@ -607,10 +698,11 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         bool remoteHasOffer = HasRemoteOffer();
         bool bothPlayersReady = localHasOffer && remoteHasOffer;
 
-        // 根据当前是否满足条件更新确认按钮状态
+        // User choice: never grey out the confirm button in the panel.
+        // When not ready, clicking will show a status message but won't send confirm.
         if (confirmButton?.button != null)
         {
-            confirmButton.button.interactable = bothPlayersReady;
+            confirmButton.button.interactable = true;
         }
 
         // 更新提示文本
@@ -620,7 +712,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
         else
         {
-            UpdateUIStatus("Trade.WaitingForItems".Localize());
+            UpdateUIStatus(TryLocalize("Trade.WaitingForItems", "等待放入物品..."));
         }
     }
 
@@ -659,6 +751,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
             if (!localHasOffer || !remoteHasOffer)
             {
+                UpdateUIStatus(TryLocalize("Trade.WaitingForItems", "等待放入物品..."));
                 return;
             }
 
@@ -667,9 +760,10 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             return;
         }
 
-        // 单机：再次检查双方是否都放入了卡牌
+        // 单机：未满足条件时只提示，不执行交易。
         if (_player1OfferedCards.Count <= 0 || _player2OfferedCards.Count <= 0)
         {
+            UpdateUIStatus(TryLocalize("Trade.WaitingForItems", "等待放入物品..."));
             return;
         }
 
@@ -832,14 +926,19 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             // Connected: request the host-driven session. Offline/local debug: skip network.
             if (connected)
             {
+                // Prefer the dialog-based editor. If dialog creation fails, fall back to in-panel flow.
+                if (TryShowTradeDetailDialog(_playerBId, payload?.Player2Name))
+                {
+                    _handoffToDetailDialog = true;
+                    Hide(false);
+                    return;
+                }
+
                 TrySubscribeTradeEvents();
 
                 // 若本端是参与者之一，发起会话（Host 会裁决并广播状态）。
-                if (!string.IsNullOrWhiteSpace(_playerBId))
-                {
-                    TradeSyncPatch.RequestStartTrade(_tradeId, _playerAId, _playerBId, _maxTradeSlots);
-                    TradeSyncPatch.RequestSnapshot(_tradeId, _selfPlayerId);
-                }
+                TradeSyncPatch.RequestStartTrade(_tradeId, _playerAId, _playerBId, _maxTradeSlots);
+                TradeSyncPatch.RequestSnapshot(_tradeId, _selfPlayerId);
             }
             else
             {
@@ -855,6 +954,44 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         catch
         {
             // ignored
+        }
+    }
+
+    private bool TryShowTradeDetailDialog(string partnerPlayerId, string partnerPreferredName)
+    {
+        try
+        {
+            // Only hand off when we are actually connected; local debug stays in-panel.
+            if (!TryIsNetworkTrade(out _))
+            {
+                return false;
+            }
+
+            var dialog = TradeDetailDialogRuntimeFactory.GetOrCreate();
+            if (dialog == null)
+            {
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(_tradeId))
+            {
+                _tradeId = Guid.NewGuid().ToString("N");
+            }
+
+            dialog.Show(new TradeDetailPayload
+            {
+                TradeId = _tradeId,
+                SelfPlayerId = _selfPlayerId,
+                PartnerPlayerId = partnerPlayerId,
+                PartnerPlayerName = TryResolveDisplayName(partnerPlayerId, partnerPreferredName, isLocal: false),
+                MaxTradeSlots = _maxTradeSlots
+            });
+
+            return true;
+        }
+        catch
+        {
+            return false;
         }
     }
 
@@ -955,11 +1092,96 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             // Avoid duplicated texts (overlay already has a title).
             UpdateUIStatus(string.Empty);
             RebuildPartnerPickerList();
+
+            // If self location is not yet available, show a lightweight waiting message and refresh once.
+            if (!OtherPlayersOverlayPatch.TryGetSelfLocation(out _, out _, out _, out _))
+            {
+                TryShowPartnerPickerWaiting();
+                if (_partnerPickerAutoRefreshCo != null)
+                {
+                    StopCoroutine(_partnerPickerAutoRefreshCo);
+                    _partnerPickerAutoRefreshCo = null;
+                }
+                _partnerPickerAutoRefreshCo = StartCoroutine(CoPartnerPickerAutoRefreshOnce());
+            }
         }
         catch
         {
             // ignored
         }
+    }
+
+    private void TryShowPartnerPickerWaiting()
+    {
+        try
+        {
+            if (_partnerPickerRoot == null)
+            {
+                return;
+            }
+
+            PartnerPickerTag tag = _partnerPickerRoot.GetComponentInChildren<PartnerPickerTag>(true);
+            if (tag == null)
+            {
+                return;
+            }
+
+            if (tag.ScrollRect != null)
+            {
+                tag.ScrollRect.gameObject.SetActive(false);
+            }
+
+            if (tag.EmptyText != null)
+            {
+                tag.EmptyText.gameObject.SetActive(true);
+                tag.EmptyText.text = "正在同步位置信息...";
+                tag.EmptyText.alignment = TextAlignmentOptions.Center;
+                var c = tag.EmptyText.color;
+                c.a = 1f;
+                tag.EmptyText.color = c;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private IEnumerator CoPartnerPickerAutoRefreshOnce()
+    {
+        // Wait up to 1.0s and refresh the list once.
+        float t = 0f;
+        while (t < 1.0f)
+        {
+            if (!_partnerPickerActive || _partnerPickerRoot == null)
+            {
+                _partnerPickerAutoRefreshCo = null;
+                yield break;
+            }
+
+            // If we already have location, we can refresh immediately.
+            if (OtherPlayersOverlayPatch.TryGetSelfLocation(out _, out _, out _, out _))
+            {
+                break;
+            }
+
+            t += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        try
+        {
+            if (_partnerPickerActive && _partnerPickerRoot != null)
+            {
+                RebuildPartnerPickerList();
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        _partnerPickerAutoRefreshCo = null;
     }
 
     private static void ForceEnableRaycasts(GameObject root)
@@ -1059,6 +1281,19 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void HidePartnerPickerOverlay()
     {
+        if (_partnerPickerAutoRefreshCo != null)
+        {
+            try
+            {
+                StopCoroutine(_partnerPickerAutoRefreshCo);
+            }
+            catch
+            {
+                // ignored
+            }
+            _partnerPickerAutoRefreshCo = null;
+        }
+
         _partnerPickerActive = false;
         if (_partnerPickerRoot != null)
         {
@@ -1118,6 +1353,11 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             if (_offerEditorRoot != null)
             {
                 _offerEditorRoot.SetActive(visible);
+            }
+
+            if (_offerActionsRoot != null)
+            {
+                _offerActionsRoot.SetActive(visible);
             }
         }
         catch
@@ -1208,7 +1448,28 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             if (confirm != null)
             {
                 confirm.onClick.RemoveAllListeners();
-                confirm.gameObject.SetActive(false);
+                confirm.gameObject.SetActive(true);
+
+                _partnerPickerRefreshButton = confirm;
+
+                var refreshLabel = confirm.GetComponentInChildren<TextMeshProUGUI>(true);
+                if (refreshLabel != null)
+                {
+                    refreshLabel.text = "刷新";
+                    refreshLabel.alignment = TextAlignmentOptions.Center;
+                }
+
+                confirm.onClick.AddListener(() =>
+                {
+                    try
+                    {
+                        OnPartnerPickerRefreshClicked();
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
+                });
             }
 
             if (cancel != null)
@@ -1330,6 +1591,38 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 // ignored
             }
             _partnerPickerRoot = null;
+        }
+    }
+
+    private void OnPartnerPickerRefreshClicked()
+    {
+        if (!_partnerPickerActive || _partnerPickerRoot == null)
+        {
+            return;
+        }
+
+        // Always attempt an immediate rebuild.
+        RebuildPartnerPickerList();
+
+        // If self location is still unavailable, show the waiting state and schedule a one-shot refresh.
+        if (!OtherPlayersOverlayPatch.TryGetSelfLocation(out _, out _, out _, out _))
+        {
+            TryShowPartnerPickerWaiting();
+
+            if (_partnerPickerAutoRefreshCo != null)
+            {
+                try
+                {
+                    StopCoroutine(_partnerPickerAutoRefreshCo);
+                }
+                catch
+                {
+                    // ignored
+                }
+                _partnerPickerAutoRefreshCo = null;
+            }
+
+            _partnerPickerAutoRefreshCo = StartCoroutine(CoPartnerPickerAutoRefreshOnce());
         }
     }
 
@@ -1640,6 +1933,25 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
             bool hasSelfLoc = OtherPlayersOverlayPatch.TryGetSelfLocation(out int selfStage, out int selfX, out int selfY, out string selfLocName);
 
+            // Some environments may not inject the virtual debug player into the snapshot early enough.
+            // If debug toggles are enabled, synthesize an "AI Default" entry aligned to self location so it
+            // obeys the strict same-node rule and can be used for local UI testing.
+            if (hasSelfLoc && IsLocalDebugTradeAllowed())
+            {
+                try
+                {
+                    if (players.All(p => !string.Equals(p.PlayerId, "aidefault", StringComparison.Ordinal)))
+                    {
+                        string loc = IsShopLikeLocation(selfLocName) ? selfLocName : "Trade";
+                        players.Add(("aidefault", "AI Default", true, false, selfStage, selfX, selfY, loc, null));
+                    }
+                }
+                catch
+                {
+                    // ignored
+                }
+            }
+
             var connectedOthers = players
                 .Where(p => !string.IsNullOrWhiteSpace(p.PlayerId))
                 .Where(p => !string.Equals(p.PlayerId, selfId, StringComparison.Ordinal))
@@ -1650,19 +1962,19 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 .Where(p => IsShopLikeLocation(p.LocationName))
                 .ToList();
 
-            // If we know our own location, prefer matching the same node; otherwise fall back to any shop-like location.
-            if (hasSelfLoc)
+            // Chosen rule: must be on the same node to be selectable.
+            // If self location is unknown, we cannot safely enforce the rule.
+            if (!hasSelfLoc)
             {
-                var sameNode = candidates
-                    .Where(p => (p.Stage < 0 || selfStage < 0 || p.Stage == selfStage)
-                                && (p.LocationX < 0 || selfX < 0 || p.LocationX == selfX)
-                                && (p.LocationY < 0 || selfY < 0 || p.LocationY == selfY))
+                candidates.Clear();
+            }
+            else
+            {
+                candidates = candidates
+                    .Where(p => p.Stage >= 0 && selfStage >= 0 && p.Stage == selfStage
+                                && p.LocationX >= 0 && selfX >= 0 && p.LocationX == selfX
+                                && p.LocationY >= 0 && selfY >= 0 && p.LocationY == selfY)
                     .ToList();
-
-                if (sameNode.Count > 0)
-                {
-                    candidates = sameNode;
-                }
             }
 
             if (candidates.Count == 0)
@@ -1676,7 +1988,9 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 if (tag.EmptyText != null)
                 {
                     tag.EmptyText.gameObject.SetActive(true);
-                    tag.EmptyText.text = "暂无其他玩家";
+                    tag.EmptyText.text = hasSelfLoc
+                        ? "暂无同节点玩家"
+                        : "无法获取自身位置，暂不显示可交易玩家";
                     tag.EmptyText.alignment = TextAlignmentOptions.Center;
                     var c = tag.EmptyText.color;
                     c.a = 1f;
@@ -1967,6 +2281,11 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             _playerAId = _selfPlayerId;
             _playerBId = partnerPlayerId;
 
+            if (string.IsNullOrWhiteSpace(_tradeId))
+            {
+                _tradeId = Guid.NewGuid().ToString("N");
+            }
+
             if (player1NameText != null)
             {
                 player1NameText.text = ResolveLocalPlayerDisplayName(_payload);
@@ -1978,13 +2297,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
             HidePartnerPickerOverlay();
 
-            // Selecting a partner should always transition into an interactive UI state.
-            EnsureOfferEditorOverlay();
-            EnsureCardPickerOverlay();
-            EnsureExhibitPickerOverlay();
-            SetTradeDetailsVisible(true);
-            cancelButton?.gameObject.SetActive(_canCancel);
-
             // Connected: proceed with the real host-driven session.
             // Offline/local debug: keep UI local (no network requests).
             if (IsLocalDebugTradeAllowed() && string.Equals(partnerPlayerId, "aidefault", StringComparison.Ordinal))
@@ -1992,16 +2304,36 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 // Even when connected, allow selecting aidefault to start a purely local UI test session.
                 _localDebugTradeMode = true;
                 PopulateLocalDebugRemoteOffer();
+                EnsureOfferEditorOverlay();
+                EnsureCardPickerOverlay();
+                EnsureExhibitPickerOverlay();
+                SetTradeDetailsVisible(true);
+                cancelButton?.gameObject.SetActive(_canCancel);
                 UpdateUIStatus("本地调试交易：AI Default（不走服务器）");
+                return;
             }
-            else if (TryIsNetworkTrade(out _))
+
+            // Prefer the dialog-based editor for network trades.
+            if (TryShowTradeDetailDialog(partnerPlayerId, partnerPlayerName))
+            {
+                _handoffToDetailDialog = true;
+                Hide(false);
+                return;
+            }
+
+            // Dialog failed: fall back to the in-panel editor so trading remains usable.
+            UpdateUIStatus("交易详情界面不可用，已回退到面板模式");
+            EnsureOfferEditorOverlay();
+            EnsureCardPickerOverlay();
+            EnsureExhibitPickerOverlay();
+            SetTradeDetailsVisible(true);
+            cancelButton?.gameObject.SetActive(_canCancel);
+
+            if (TryIsNetworkTrade(out _))
             {
                 TrySubscribeTradeEvents();
-                if (!string.IsNullOrWhiteSpace(_playerBId))
-                {
-                    TradeSyncPatch.RequestStartTrade(_tradeId, _playerAId, _playerBId, _maxTradeSlots);
-                    TradeSyncPatch.RequestSnapshot(_tradeId, _selfPlayerId);
-                }
+                TradeSyncPatch.RequestStartTrade(_tradeId, _playerAId, _playerBId, _maxTradeSlots);
+                TradeSyncPatch.RequestSnapshot(_tradeId, _selfPlayerId);
             }
             else
             {
@@ -2150,11 +2482,13 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
         // LocationName is set by network sync to visitingNode.StationType.ToString().
         // We match loosely to be resilient to renames/variants.
-        // LBoL merchant can be StationType.Trade (not Shop). Treat both as eligible for trade partner selection.
+        // Eligible contexts for trade: Shop/Trade (merchant) and Gap (campfire-style).
         return locationName.IndexOf("shop", StringComparison.OrdinalIgnoreCase) >= 0
             || locationName.IndexOf("trade", StringComparison.OrdinalIgnoreCase) >= 0
+            || locationName.IndexOf("gap", StringComparison.OrdinalIgnoreCase) >= 0
             || locationName.IndexOf("商店", StringComparison.OrdinalIgnoreCase) >= 0
-            || locationName.IndexOf("交易", StringComparison.OrdinalIgnoreCase) >= 0;
+            || locationName.IndexOf("交易", StringComparison.OrdinalIgnoreCase) >= 0
+            || locationName.IndexOf("间隙", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     private static Sprite TryLoadAvatarSprite(string characterId)
@@ -2997,14 +3331,15 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                                 || (localIsA ? state.MoneyB : state.MoneyA) > 0
                                 || (localIsA ? (state.ExhibitsB?.Count ?? 0) : (state.ExhibitsA?.Count ?? 0)) > 0;
 
-            confirmButton.button.interactable = state.Status == TradeSyncPatch.TradeStatus.Open && localHasOffer && remoteHasOffer;
+            // User choice: never grey out the confirm button. Guard logic happens on click.
+            confirmButton.button.interactable = true;
         }
 
         if (state.Status == TradeSyncPatch.TradeStatus.Open)
         {
             UpdateUIStatus((state.OfferA?.Count ?? 0) > 0 && (state.OfferB?.Count ?? 0) > 0
                 ? "Trade.ReadyToConfirm".Localize()
-                : "Trade.WaitingForItems".Localize());
+                : TryLocalize("Trade.WaitingForItems", "等待放入物品..."));
         }
         else if (state.Status == TradeSyncPatch.TradeStatus.Completed)
         {
@@ -3416,13 +3751,11 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             rootRect.offsetMin = Vector2.zero;
             rootRect.offsetMax = Vector2.zero;
 
-            // Strict: do not create runtime-only visual UI elements (Image/TMP/Button).
-            // This root is only a layout container; visible widgets are cloned from in-game templates.
+            // Background removed per user request.
 
-            var textTemplate = statusText != null ? statusText : player1NameText;
-            var buttonTemplate = cancelButton != null ? cancelButton : confirmButton;
-            if (textTemplate == null || buttonTemplate == null)
+            if (!TryPickOfferEditorTemplates(out TextMeshProUGUI textTemplate, out CommonButtonWidget buttonTemplate))
             {
+                try { Destroy(_offerEditorRoot); } catch { }
                 _offerEditorRoot = null;
                 return;
             }
@@ -3432,44 +3765,48 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             cardsLabel.name = "CardsLabel";
             cardsLabel.text = "卡牌:";
             cardsLabel.alignment = TextAlignmentOptions.Center;
-            SetRect(cardsLabel.rectTransform, 0.02f, 0.68f, 0.32f, 0.98f);
+            SetRect(cardsLabel.rectTransform, 0.02f, 0.70f, 0.25f, 0.95f);
 
             _cardCountText = Instantiate(textTemplate, _offerEditorRoot.transform, false);
             _cardCountText.name = "CardsValue";
             _cardCountText.text = "0";
             _cardCountText.alignment = TextAlignmentOptions.Left;
-            SetRect(_cardCountText.rectTransform, 0.32f, 0.68f, 0.62f, 0.98f);
-
-            var editCardsWidget = Instantiate(buttonTemplate, _offerEditorRoot.transform, false);
-            editCardsWidget.name = "CardsEdit";
-            SetButtonText(editCardsWidget, "选择");
-            SetRect(editCardsWidget.GetComponent<RectTransform>(), 0.62f, 0.72f, 0.82f, 0.98f);
-            editCardsWidget.button.onClick.RemoveAllListeners();
-            editCardsWidget.button.onClick.AddListener(() =>
-            {
-                if (!CanEditOffer()) return;
-                ShowCardPickerOverlay();
-            });
+            SetRect(_cardCountText.rectTransform, 0.25f, 0.70f, 0.50f, 0.95f);
 
             // Money row
             var moneyLabel = Instantiate(textTemplate, _offerEditorRoot.transform, false);
             moneyLabel.name = "MoneyLabel";
             moneyLabel.text = "金币:";
             moneyLabel.alignment = TextAlignmentOptions.Center;
-            SetRect(moneyLabel.rectTransform, 0.02f, 0.36f, 0.32f, 0.66f);
+            SetRect(moneyLabel.rectTransform, 0.02f, 0.38f, 0.25f, 0.63f);
 
-            _moneyValueText = Instantiate(textTemplate, _offerEditorRoot.transform, false);
-            _moneyValueText.name = "MoneyValue";
-            _moneyValueText.text = "0";
-            _moneyValueText.alignment = TextAlignmentOptions.Left;
-            SetRect(_moneyValueText.rectTransform, 0.32f, 0.36f, 0.62f, 0.66f);
+            // Owned money value (left-bottom list): should reflect the player's current money (top bar).
+            _ownedMoneyText = Instantiate(textTemplate, _offerEditorRoot.transform, false);
+            _ownedMoneyText.name = "OwnedMoneyValue";
+            _ownedMoneyText.text = "0";
+            _ownedMoneyText.alignment = TextAlignmentOptions.Left;
+            _ownedMoneyText.raycastTarget = false;
+            SetRect(_ownedMoneyText.rectTransform, 0.25f, 0.38f, 0.50f, 0.63f);
 
-            var minusWidget = Instantiate(buttonTemplate, _offerEditorRoot.transform, false);
-            minusWidget.name = "MoneyMinus";
-            SetButtonText(minusWidget, "-");
-            SetRect(minusWidget.GetComponent<RectTransform>(), 0.62f, 0.40f, 0.72f, 0.66f);
-            minusWidget.button.onClick.RemoveAllListeners();
-            minusWidget.button.onClick.AddListener(() =>
+            // Money triplet: keep '-' and '+' equally spaced around the number.
+            // Requirement: when number becomes 1/2/3 digits, spacing stays equal and the triplet stays centered.
+            _moneyTripletRoot = new GameObject("MoneyTriplet");
+            _moneyTripletRoot.transform.SetParent(_offerEditorRoot.transform, false);
+            var moneyTripletRect = _moneyTripletRoot.AddComponent<RectTransform>();
+            SetRect(moneyTripletRect, 0.52f, 0.40f, 0.82f, 0.61f);
+
+            _moneyTripletLayout = _moneyTripletRoot.AddComponent<HorizontalLayoutGroup>();
+            _moneyTripletLayout.childAlignment = TextAnchor.MiddleCenter;
+            _moneyTripletLayout.spacing = 12f;
+            _moneyTripletLayout.childControlWidth = true;
+            _moneyTripletLayout.childControlHeight = true;
+            _moneyTripletLayout.childForceExpandWidth = false;
+            _moneyTripletLayout.childForceExpandHeight = false;
+
+            // Money +/-: clickable text (no background).
+            var minusBtn = CreateTextButton(textTemplate, _moneyTripletRoot.transform, "MoneyMinus", "-");
+            minusBtn.onClick.RemoveAllListeners();
+            minusBtn.onClick.AddListener(() =>
             {
                 if (!CanEditOffer()) return;
                 _localMoneyOffer = Math.Max(0, _localMoneyOffer - 1);
@@ -3477,16 +3814,32 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 TrySendOfferUpdate();
             });
 
-            var plusWidget = Instantiate(buttonTemplate, _offerEditorRoot.transform, false);
-            plusWidget.name = "MoneyPlus";
-            SetButtonText(plusWidget, "+");
-            SetRect(plusWidget.GetComponent<RectTransform>(), 0.72f, 0.40f, 0.82f, 0.66f);
-            plusWidget.button.onClick.RemoveAllListeners();
-            plusWidget.button.onClick.AddListener(() =>
+            _moneyValueText = Instantiate(textTemplate, _moneyTripletRoot.transform, false);
+            _moneyValueText.name = "MoneyValue";
+            _moneyValueText.text = "0";
+            _moneyValueText.alignment = TextAlignmentOptions.Center;
+            _moneyValueText.raycastTarget = false; // number is not clickable
+            _moneyValueText.enableWordWrapping = false;
+            _moneyValueText.overflowMode = TextOverflowModes.Overflow;
+            try { _moneyValueBaseFontSize = _moneyValueText.fontSize; } catch { _moneyValueBaseFontSize = 0f; }
+
+            var plusBtn = CreateTextButton(textTemplate, _moneyTripletRoot.transform, "MoneyPlus", "+");
+            plusBtn.onClick.RemoveAllListeners();
+            plusBtn.onClick.AddListener(() =>
             {
                 if (!CanEditOffer()) return;
-                int current = GameRun?.Money ?? 0;
-                _localMoneyOffer = Math.Min(MaxMoneyOffer, Math.Min(current, _localMoneyOffer + 1));
+
+                // Clamp to owned money when available; if we cannot resolve owned money reliably,
+                // allow increasing so the UI remains usable (final confirm still validates affordability).
+                int owned;
+                bool hasOwned = TryGetOwnedMoney(out owned);
+                int next = _localMoneyOffer + 1;
+                if (hasOwned)
+                {
+                    next = Math.Min(next, owned);
+                }
+                next = Math.Min(next, MaxMoneyOffer);
+                _localMoneyOffer = next;
                 RefreshOfferEditorTexts();
                 TrySendOfferUpdate();
             });
@@ -3496,30 +3849,801 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             exLabel.name = "ExLabel";
             exLabel.text = "展品:";
             exLabel.alignment = TextAlignmentOptions.Center;
-            SetRect(exLabel.rectTransform, 0.02f, 0.04f, 0.32f, 0.34f);
+            SetRect(exLabel.rectTransform, 0.02f, 0.05f, 0.25f, 0.30f);
 
             _exhibitValueText = Instantiate(textTemplate, _offerEditorRoot.transform, false);
             _exhibitValueText.name = "ExValue";
             _exhibitValueText.text = "0";
             _exhibitValueText.alignment = TextAlignmentOptions.Left;
-            SetRect(_exhibitValueText.rectTransform, 0.32f, 0.04f, 0.62f, 0.34f);
+            SetRect(_exhibitValueText.rectTransform, 0.25f, 0.05f, 0.50f, 0.30f);
 
-            var editExWidget = Instantiate(buttonTemplate, _offerEditorRoot.transform, false);
-            editExWidget.name = "ExEdit";
-            SetButtonText(editExWidget, "选择");
-            SetRect(editExWidget.GetComponent<RectTransform>(), 0.62f, 0.08f, 0.82f, 0.34f);
-            editExWidget.button.onClick.RemoveAllListeners();
-            editExWidget.button.onClick.AddListener(() =>
-            {
-                if (!CanEditOffer()) return;
-                ShowExhibitPickerOverlay();
-            });
+            // Final cleanup: aggressively remove any accidental "cancel"/extra button objects brought
+            // in by the button template hierarchy. Keep only our known widgets.
+            PruneOfferEditorExtraButtons(_offerEditorRoot);
+
+            EnsureOfferActionsOverlay(textTemplate);
+
+            // Keep offer editor above the frame visuals so its text doesn't get covered by dialog masks.
+            // It doesn't overlap the bottom confirm/cancel buttons in the runtime layout.
+            try { _offerEditorRoot.transform.SetAsLastSibling(); } catch { }
 
             RefreshOfferEditorTexts();
         }
         catch
         {
+            try
+            {
+                if (_offerEditorRoot != null)
+                {
+                    Destroy(_offerEditorRoot);
+                }
+            }
+            catch
+            {
+                // ignored
+            }
             _offerEditorRoot = null;
+        }
+    }
+
+    private static void PruneOfferEditorExtraButtons(GameObject offerRoot)
+    {
+        if (offerRoot == null)
+        {
+            return;
+        }
+
+        try
+        {
+            // Keep the offer editor stable by preserving the full subtree of the controls we created.
+            // Deleting individual Button objects can accidentally remove parts of the widgets (especially
+            // when templates include multiple nested buttons/images).
+            var keepRoots = new HashSet<string>(StringComparer.Ordinal)
+            {
+                "CardsLabel",
+                "CardsValue",
+                "MoneyLabel",
+                "OwnedMoneyValue",
+                "MoneyTriplet",
+                "ExLabel",
+                "ExValue"
+            };
+
+            // Remove any direct child under offerRoot that isn't ours.
+            // (We only ever create direct children; template internals remain under the kept roots.)
+            var children = new List<Transform>();
+            foreach (Transform child in offerRoot.transform)
+            {
+                if (child != null)
+                {
+                    children.Add(child);
+                }
+            }
+
+            foreach (var child in children)
+            {
+                if (child == null)
+                {
+                    continue;
+                }
+
+                var n = child.name ?? string.Empty;
+                if (!keepRoots.Contains(n))
+                {
+                    try { Destroy(child.gameObject); } catch { }
+                }
+            }
+
+            // Safety: within kept subtrees, remove any obvious cancel/close named objects.
+            // This avoids red rings/icons embedded in certain templates.
+            foreach (var t in offerRoot.GetComponentsInChildren<Transform>(true))
+            {
+                if (t == null || ReferenceEquals(t.gameObject, offerRoot))
+                {
+                    continue;
+                }
+
+                var n = t.name ?? string.Empty;
+                if (n.IndexOf("cancel", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    n.IndexOf("close", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    // Only remove if this isn't one of our root nodes.
+                    if (!keepRoots.Contains(n))
+                    {
+                        try { Destroy(t.gameObject); } catch { }
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private void ApplyMoneyValueSizingForDigits()
+    {
+        if (_moneyValueText == null)
+        {
+            return;
+        }
+
+        try
+        {
+            string s = _moneyValueText.text ?? string.Empty;
+            int digits = 0;
+            for (int i = 0; i < s.Length; i++)
+            {
+                char ch = s[i];
+                if (ch >= '0' && ch <= '9')
+                {
+                    digits++;
+                }
+            }
+
+            float baseSize = _moneyValueBaseFontSize > 0f ? _moneyValueBaseFontSize : _moneyValueText.fontSize;
+            if (digits >= 4)
+            {
+                // User choice: shrink only the number when digits >= 4, keep min at 60%.
+                float scale = Mathf.Clamp(3f / digits, 0.6f, 1f);
+                _moneyValueText.fontSize = baseSize * scale;
+            }
+            else
+            {
+                _moneyValueText.fontSize = baseSize;
+            }
+
+            // Rebuild layout so '-' and '+' stay equally spaced around the number.
+            if (_moneyTripletRoot != null)
+            {
+                try { LayoutRebuilder.ForceRebuildLayoutImmediate(_moneyTripletRoot.transform as RectTransform); } catch { }
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private bool TryGetOwnedMoney(out int ownedMoney)
+    {
+        ownedMoney = 0;
+
+        try
+        {
+            int best = 0;
+
+            // Primary: GameRun.Money (used elsewhere in this panel).
+            try { best = Math.Max(best, GameRun?.Money ?? 0); } catch { }
+
+            // Fallback 1: Player might expose a money-like property.
+            try
+            {
+                var p = GameRun?.Player;
+                if (p != null)
+                {
+                    var t = p.GetType();
+                    var prop = t.GetProperty("Money", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    if (prop != null && prop.PropertyType == typeof(int))
+                    {
+                        best = Math.Max(best, (int)prop.GetValue(p));
+                    }
+                    var field = t.GetField("Money", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    if (field != null && field.FieldType == typeof(int))
+                    {
+                        best = Math.Max(best, (int)field.GetValue(p));
+                    }
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            // Fallback 2: GameMaster.CurrentGameRun (some UI contexts use this).
+            try
+            {
+                var gm = GameMaster.Instance;
+                if (gm != null)
+                {
+                    var t = gm.GetType();
+                    var prop = t.GetProperty("CurrentGameRun", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    var run = prop != null ? prop.GetValue(gm) : null;
+                    if (run != null)
+                    {
+                        var rt = run.GetType();
+                        var moneyProp = rt.GetProperty("Money", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                        if (moneyProp != null && moneyProp.PropertyType == typeof(int))
+                        {
+                            best = Math.Max(best, (int)moneyProp.GetValue(run));
+                        }
+                        var moneyField = rt.GetField("Money", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                        if (moneyField != null && moneyField.FieldType == typeof(int))
+                        {
+                            best = Math.Max(best, (int)moneyField.GetValue(run));
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            if (best < 0)
+            {
+                best = 0;
+            }
+
+            ownedMoney = best;
+            // Treat 0 as a valid value only if we at least had a known run context.
+            return (GameRun != null) || ownedMoney > 0;
+        }
+        catch
+        {
+            ownedMoney = 0;
+            return false;
+        }
+    }
+
+    private void EnsureOfferActionsOverlay(TextMeshProUGUI textTemplate)
+    {
+        if (_offerActionsRoot != null)
+        {
+            return;
+        }
+
+        try
+        {
+            _offerActionsRoot = new GameObject("TradeOfferActions");
+            _offerActionsRoot.transform.SetParent(transform, false);
+
+            var rt = _offerActionsRoot.AddComponent<RectTransform>();
+
+            // Bottom-right (green box area). User wants it aligned with the details column and
+            // consistent with the existing offer editor spacing.
+            rt.anchorMin = new Vector2(0.80f, 0.08f);
+            rt.anchorMax = new Vector2(0.98f, 0.20f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+
+            _offerActionsPickCardsBtn = CreateTextButton(textTemplate, _offerActionsRoot.transform, "PickCards", "选择卡牌");
+            var cardsRt = _offerActionsPickCardsBtn.GetComponent<RectTransform>();
+            SetRect(cardsRt, 0f, 0.45f, 1f, 1f); // 55%/45%
+            try
+            {
+                var tmp = _offerActionsPickCardsBtn.GetComponent<TextMeshProUGUI>();
+                if (tmp != null)
+                {
+                    tmp.alignment = TextAlignmentOptions.Left;
+                }
+            }
+            catch { }
+
+            _offerActionsPickCardsBtn.onClick.RemoveAllListeners();
+            _offerActionsPickCardsBtn.onClick.AddListener(() =>
+            {
+                if (!CanEditOffer())
+                {
+                    UpdateUIStatus(TryLocalize("Trade.WaitingForItems", "请先开始交易/等待交易开启"));
+                    return;
+                }
+
+                ShowCardPickerOverlay();
+            });
+
+            _offerActionsPickExhibitsBtn = CreateTextButton(textTemplate, _offerActionsRoot.transform, "PickExhibits", "选择展品");
+            var exRt = _offerActionsPickExhibitsBtn.GetComponent<RectTransform>();
+            SetRect(exRt, 0f, 0f, 1f, 0.45f);
+            try
+            {
+                var tmp = _offerActionsPickExhibitsBtn.GetComponent<TextMeshProUGUI>();
+                if (tmp != null)
+                {
+                    tmp.alignment = TextAlignmentOptions.Left;
+                }
+            }
+            catch { }
+
+            _offerActionsPickExhibitsBtn.onClick.RemoveAllListeners();
+            _offerActionsPickExhibitsBtn.onClick.AddListener(() =>
+            {
+                if (!CanEditOffer())
+                {
+                    UpdateUIStatus(TryLocalize("Trade.WaitingForItems", "请先开始交易/等待交易开启"));
+                    return;
+                }
+
+                ShowExhibitPickerOverlay();
+            });
+
+            // Follow the offer editor visibility when created.
+            try { _offerActionsRoot.SetActive(_offerEditorRoot != null && _offerEditorRoot.activeSelf); } catch { }
+        }
+        catch
+        {
+            try
+            {
+                if (_offerActionsRoot != null)
+                {
+                    Destroy(_offerActionsRoot);
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            _offerActionsRoot = null;
+            _offerActionsPickCardsBtn = null;
+            _offerActionsPickExhibitsBtn = null;
+        }
+    }
+
+    private sealed class TextButtonHover : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
+    {
+        public float HoverScale = 1.08f;
+        public float PressedScale = 1.02f;
+
+        private RectTransform _rt;
+        private bool _hovering;
+        private bool _pressed;
+
+        private void Awake()
+        {
+            _rt = transform as RectTransform;
+            if (_rt != null)
+            {
+                _rt.localScale = Vector3.one;
+            }
+        }
+
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+            _hovering = true;
+            ApplyScale();
+        }
+
+        public void OnPointerExit(PointerEventData eventData)
+        {
+            _hovering = false;
+            _pressed = false;
+            ApplyScale();
+        }
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            _pressed = true;
+            ApplyScale();
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            _pressed = false;
+            ApplyScale();
+        }
+
+        private void ApplyScale()
+        {
+            if (_rt == null)
+            {
+                return;
+            }
+
+            float s = 1f;
+            if (_pressed)
+            {
+                s = PressedScale;
+            }
+            else if (_hovering)
+            {
+                s = HoverScale;
+            }
+
+            _rt.localScale = new Vector3(s, s, 1f);
+        }
+    }
+
+    private static Button CreateTextButton(TextMeshProUGUI template, Transform parent, string name, string text)
+    {
+        // Clone TMP from an in-game template so font/material matches vanilla.
+        var tmp = Instantiate(template, parent, false);
+        tmp.name = name;
+        tmp.text = text;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.raycastTarget = true;
+        try
+        {
+            var c = tmp.color;
+            c.a = 1f;
+            tmp.color = c;
+        }
+        catch
+        {
+            // ignored
+        }
+
+        var btn = tmp.gameObject.AddComponent<Button>();
+        btn.targetGraphic = tmp;
+        btn.transition = Selectable.Transition.ColorTint;
+
+        // Use a bright hover like the in-game "clickable text" affordance.
+        try
+        {
+            Color baseColor = tmp.color;
+            Color hover = new Color(
+                Mathf.Clamp01(baseColor.r * 1.15f),
+                Mathf.Clamp01(baseColor.g * 1.15f),
+                Mathf.Clamp01(baseColor.b * 1.15f),
+                baseColor.a);
+            Color pressed = new Color(
+                Mathf.Clamp01(baseColor.r * 0.95f),
+                Mathf.Clamp01(baseColor.g * 0.95f),
+                Mathf.Clamp01(baseColor.b * 0.95f),
+                baseColor.a);
+            Color disabled = new Color(baseColor.r, baseColor.g, baseColor.b, baseColor.a * 0.35f);
+
+            var colors = btn.colors;
+            colors.normalColor = baseColor;
+            colors.highlightedColor = hover;
+            colors.selectedColor = hover;
+            colors.pressedColor = pressed;
+            colors.disabledColor = disabled;
+            colors.fadeDuration = 0.08f;
+            btn.colors = colors;
+        }
+        catch
+        {
+            // ignored
+        }
+
+        try
+        {
+            var nav = btn.navigation;
+            nav.mode = Navigation.Mode.None;
+            btn.navigation = nav;
+        }
+        catch
+        {
+            // ignored
+        }
+
+        _ = tmp.gameObject.AddComponent<TextButtonHover>();
+        return btn;
+    }
+
+    private bool TryPickOfferEditorTemplates(out TextMeshProUGUI textTemplate, out CommonButtonWidget buttonTemplate)
+    {
+        textTemplate = null;
+        buttonTemplate = null;
+
+        try
+        {
+            // Strong preference: reuse vanilla dialog prefab templates.
+            try
+            {
+                GameObject dialogPrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
+                if (dialogPrefab != null)
+                {
+                    // Prefer the dialog's own text fields so TMP font/material matches vanilla.
+                    var dialog = dialogPrefab.GetComponentInChildren<MessageDialog>(true);
+                    if (dialog != null)
+                    {
+                        textTemplate = GetDialogField<TextMeshProUGUI>(dialog, "mainText")
+                                       ?? GetDialogField<TextMeshProUGUI>(dialog, "subText")
+                                       ?? dialogPrefab.GetComponentInChildren<TextMeshProUGUI>(true);
+
+                        // Prioritize singleConfirmButton (usually gold/wood confirm) or confirmButton.
+                        // Only use cancelButton as an absolute last resort.
+                        Button targetButton = GetDialogField<Button>(dialog, "singleConfirmButton")
+                                           ?? GetDialogField<Button>(dialog, "confirmButton")
+                                           ?? GetDialogField<Button>(dialog, "cancelButton");
+
+                        buttonTemplate = TryResolveCommonButtonWidget(targetButton);
+                    }
+                    else
+                    {
+                        textTemplate = dialogPrefab.GetComponentInChildren<TextMeshProUGUI>(true);
+                    }
+
+                    // Fallback to heuristic if specific fields are not found.
+                    if (buttonTemplate == null)
+                    {
+                        CommonButtonWidget best = null;
+                        int bestScore = int.MaxValue;
+                        var widgets = dialogPrefab.GetComponentsInChildren<CommonButtonWidget>(true);
+                        foreach (var w in widgets)
+                        {
+                            if (w == null || w.button == null)
+                            {
+                                continue;
+                            }
+
+                            int buttons = 0;
+                            int nodes = 0;
+                            try { buttons = w.GetComponentsInChildren<Button>(true)?.Length ?? 0; } catch { buttons = 0; }
+                            try { nodes = w.GetComponentsInChildren<Transform>(true)?.Length ?? 0; } catch { nodes = 0; }
+
+                            if (buttons <= 0)
+                            {
+                                continue;
+                            }
+
+                            int score = (buttons * 1000) + nodes;
+                            
+                            // Highly prefer confirm/singleConfirm buttons visually.
+                            if (w.name.IndexOf("confirm", StringComparison.OrdinalIgnoreCase) >= 0)
+                            {
+                                score -= 500;
+                            }
+                            // Strictly avoid anything named "cancel" for these choices.
+                            if (w.name.IndexOf("cancel", StringComparison.OrdinalIgnoreCase) >= 0)
+                            {
+                                score += 2000;
+                            }
+
+                            if (score < bestScore)
+                            {
+                                bestScore = score;
+                                best = w;
+                            }
+                        }
+                        buttonTemplate = best;
+                    }
+
+                    // Final guard: for the offer editor, we want a *single* button widget.
+                    // If the picked template contains multiple Buttons, try to find a better child widget.
+                    buttonTemplate = PreferSingleButtonWidget(buttonTemplate);
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            // Fallback: use existing in-panel references (still game UI, but less strict).
+            // Prefer confirmButton over cancelButton for offer editor actions.
+            textTemplate ??= statusText != null ? statusText : player1NameText;
+            buttonTemplate ??= confirmButton != null ? confirmButton : cancelButton;
+
+            buttonTemplate = PreferSingleButtonWidget(buttonTemplate);
+
+            return textTemplate != null && buttonTemplate != null;
+        }
+        catch
+        {
+            textTemplate = null;
+            buttonTemplate = null;
+            return false;
+        }
+    }
+
+    private static void NormalizeButtonWidget(CommonButtonWidget widget)
+    {
+        try
+        {
+            if (widget == null)
+            {
+                return;
+            }
+
+            // Ensure only the primary button remains interactive.
+            Button keep = widget.button;
+            var buttons = widget.GetComponentsInChildren<Button>(true);
+            if (buttons != null && buttons.Length > 1)
+            {
+                foreach (var b in buttons)
+                {
+                    if (b == null || b == keep)
+                    {
+                        continue;
+                    }
+
+                    // Prefer hard removal: extra buttons from templates should not exist on our
+                    // runtime widgets (they can render as red cancel circles and confuse input).
+                    try
+                    {
+                        if (b.gameObject != null)
+                        {
+                            Destroy(b.gameObject);
+                        }
+                        else
+                        {
+                            Destroy(b);
+                        }
+                        continue;
+                    }
+                    catch
+                    {
+                        // Fallback: if we can't destroy (rare), at least disable & hide.
+                        try { b.enabled = false; } catch { }
+                        try { b.interactable = false; } catch { }
+                        try { b.gameObject.SetActive(false); } catch { }
+                    }
+                }
+            }
+
+            // Avoid popup tooltips / extra pointer handlers from templates.
+            DisableTooltipBehaviours(widget.gameObject);
+
+            // Avoid gamepad cursor / extra visual affordances that some templates include.
+            DisableCursorBehaviours(widget.gameObject);
+
+            // Force behavior to "Open" (0, usually non-red) for these functional buttons.
+            try
+            {
+                var traverse = HarmonyLib.Traverse.Create(widget);
+                traverse.Field("buttonBehavior").SetValue(0);
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static CommonButtonWidget TryResolveCommonButtonWidget(Button target)
+    {
+        try
+        {
+            if (target == null)
+            {
+                return null;
+            }
+
+            // Prefer the closest widget that explicitly references this Button.
+            var widgets = target.GetComponentsInParent<CommonButtonWidget>(true);
+            if (widgets != null)
+            {
+                foreach (var w in widgets)
+                {
+                    if (w == null)
+                    {
+                        continue;
+                    }
+
+                    if (ReferenceEquals(w.button, target))
+                    {
+                        return w;
+                    }
+                }
+            }
+
+            return target.GetComponentInParent<CommonButtonWidget>();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static CommonButtonWidget PreferSingleButtonWidget(CommonButtonWidget template)
+    {
+        try
+        {
+            if (template == null)
+            {
+                return null;
+            }
+
+            int buttons = 0;
+            try { buttons = template.GetComponentsInChildren<Button>(true)?.Length ?? 0; } catch { buttons = 0; }
+            if (buttons <= 1)
+            {
+                return template;
+            }
+
+            CommonButtonWidget best = null;
+            int bestNodes = int.MaxValue;
+            foreach (var w in template.GetComponentsInChildren<CommonButtonWidget>(true))
+            {
+                if (w == null || w.button == null)
+                {
+                    continue;
+                }
+
+                // Avoid any cancel-labeled objects.
+                if (!string.IsNullOrWhiteSpace(w.name) && w.name.IndexOf("cancel", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    continue;
+                }
+
+                int wButtons = 0;
+                try { wButtons = w.GetComponentsInChildren<Button>(true)?.Length ?? 0; } catch { wButtons = 0; }
+                if (wButtons != 1)
+                {
+                    continue;
+                }
+
+                int nodes = 0;
+                try { nodes = w.GetComponentsInChildren<Transform>(true)?.Length ?? 0; } catch { nodes = 0; }
+                if (nodes < bestNodes)
+                {
+                    bestNodes = nodes;
+                    best = w;
+                }
+            }
+
+            return best ?? template;
+        }
+        catch
+        {
+            return template;
+        }
+    }
+
+    private static void DisableCursorBehaviours(GameObject root)
+    {
+        try
+        {
+            if (root == null)
+            {
+                return;
+            }
+
+            foreach (var behaviour in root.GetComponentsInChildren<Behaviour>(true))
+            {
+                if (behaviour == null)
+                {
+                    continue;
+                }
+
+                // We intentionally use name matching to avoid hard references to optional assemblies.
+                var n = behaviour.GetType().Name;
+                if (string.IsNullOrWhiteSpace(n))
+                {
+                    continue;
+                }
+
+                if (n.IndexOf("Gamepad", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    n.IndexOf("Cursor", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    // Do not disable the main Button itself.
+                    if (behaviour is Button)
+                    {
+                        continue;
+                    }
+
+                    try { behaviour.enabled = false; } catch { }
+                }
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static void DisableTooltipBehaviours(GameObject root)
+    {
+        try
+        {
+            if (root == null)
+            {
+                return;
+            }
+
+            foreach (var behaviour in root.GetComponentsInChildren<Behaviour>(true))
+            {
+                if (behaviour == null)
+                {
+                    continue;
+                }
+
+                var n = behaviour.GetType().Name;
+                if (!string.IsNullOrWhiteSpace(n) && n.IndexOf("Tooltip", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    behaviour.enabled = false;
+                }
+            }
+        }
+        catch
+        {
+            // ignored
         }
     }
 
@@ -3554,9 +4678,28 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             _cardCountText.text = (_player1OfferedCards?.Count ?? 0).ToString();
         }
 
+        if (_ownedMoneyText != null)
+        {
+            try
+            {
+                int owned;
+                if (!TryGetOwnedMoney(out owned))
+                {
+                    owned = GameRun?.Money ?? 0;
+                }
+                if (owned < 0) owned = 0;
+                _ownedMoneyText.text = owned.ToString();
+            }
+            catch
+            {
+                _ownedMoneyText.text = "0";
+            }
+        }
+
         if (_moneyValueText != null)
         {
             _moneyValueText.text = _localMoneyOffer.ToString();
+            ApplyMoneyValueSizingForDigits();
         }
 
         if (_exhibitValueText != null)
