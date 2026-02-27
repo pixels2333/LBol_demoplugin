@@ -1320,6 +1320,18 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     {
         try
         {
+            // 背景框（RuntimeFactory 创建时挂在根节点下的 TradeFrame）随主界面一起显隐。
+            var tradeFrame = transform.Find("TradeFrame");
+            if (tradeFrame != null)
+            {
+                tradeFrame.gameObject.SetActive(visible);
+            }
+
+            if (statusText != null)
+            {
+                statusText.gameObject.SetActive(visible);
+            }
+
             if (player1TradeArea != null)
             {
                 player1TradeArea.gameObject.SetActive(visible);
@@ -1428,22 +1440,31 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
             if (subText != null)
             {
-                // Keep the sub text object active so any prefab layout remains stable,
-                // but make it visually invisible by default (we reuse its rect as the list placeholder).
+                // Reuse its rect as the list placeholder; make it a clickable text (tap to refresh).
                 subText.text = string.Empty;
-                subText.raycastTarget = false;
+                subText.raycastTarget = true;
                 subText.alignment = TextAlignmentOptions.Center;
                 var c = subText.color;
                 c.a = 0f;
                 subText.color = c;
                 subText.gameObject.SetActive(true);
+
+                // Add a Button so the empty-state label is tappable (triggers a refresh).
+                var subTextBtn = subText.gameObject.GetComponent<Button>() ?? subText.gameObject.AddComponent<Button>();
+                subTextBtn.targetGraphic = subText;
+                subTextBtn.onClick.RemoveAllListeners();
+                subTextBtn.onClick.AddListener(() =>
+                {
+                    try { OnPartnerPickerRefreshClicked(); }
+                    catch { }
+                });
             }
 
             // Ensure dialog buttons don't call UiDialog.Hide() (which would touch UiManager current dialog state).
             if (singleConfirm != null)
             {
                 singleConfirm.onClick.RemoveAllListeners();
-                singleConfirm.gameObject.SetActive(false);
+                Destroy(singleConfirm.gameObject);
             }
             if (confirm != null)
             {

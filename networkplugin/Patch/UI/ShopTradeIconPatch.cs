@@ -43,10 +43,12 @@ public static class ShopTradeIconPatch
         public Vector2 CardServiceOriginalAnchoredPosition;
         public Vector2 CardServiceOriginalSizeDelta;
         public Vector3 CardServiceOriginalScale;
+        public Vector3 CardServiceOriginalLocalPosition;
 
         public Vector2 ReturnOriginalAnchoredPosition;
         public Vector2 ReturnOriginalSizeDelta;
         public Vector3 ReturnOriginalScale;
+        public Vector3 ReturnOriginalLocalPosition;
     }
 
     private static TradeButtonUi _ui;
@@ -317,66 +319,139 @@ public static class ShopTradeIconPatch
             return;
         }
 
-        Transform barParent = cardServiceButton.transform.parent; // 获取按钮的父节点，用于插入新按钮
+        // 直接读取 ShopPanel.shopBoard 字段作为统一父节点，确保与 cardServiceButton、returnButton 严格同级
+        Transform barParent = null;
+        try
+        {
+            var shopBoardGo = Traverse.Create(shopPanel).Field("shopBoard").GetValue<GameObject>();
+            if (shopBoardGo != null)
+            {
+                barParent = shopBoardGo.transform;
+            }
+        }
+        catch
+        {
+            barParent = null;
+        }
+
         if (barParent == null)
         {
-            Plugin.Logger?.LogWarning("[ShopTradeIcon] cardServiceButton 没有父节点，无法插入容器。");
+            Plugin.Logger?.LogWarning("[ShopTradeIcon] 无法读取 shopBoard 字段，无法插入容器。");
             return;
         }
 
-        _defaultFont ??= FindDefaultFont(barParent); // 查找默认字体，如果未找到则赋值
+        Plugin.Logger?.LogInfo($"[ShopTradeIcon] barParent = {barParent.name}，cardService parent = {cardServiceButton.transform.parent?.name}，returnButton parent = {returnButton.transform.parent?.name}");
 
-        // 不创建新布局容器：保持原版层级，只通过 RectTransform 调整三按钮位置/大小。
-        // 2. 准备按钮资产
-        var left = cardServiceButton.GetComponent<RectTransform>(); // 获取卡牌服务按钮的RectTransform
-        var right = returnButton.GetComponent<RectTransform>(); // 获取返回按钮的RectTransform
-        
-        // 记录原始信息用于恢复
-        var ui = new TradeButtonUi // 创建新的TradeButtonUi实例
+        _defaultFont ??= FindDefaultFont(barParent);
+
+        // 获取 CardService 容器和 ReturnButton 容器作为参照
+        RectTransform leftContainer = cardServiceButton.transform.parent as RectTransform;
+        RectTransform rightContainer = returnButton.transform.parent as RectTransform;
+
+        if (leftContainer == null || rightContainer == null)
         {
-            ShopPanel = shopPanel, // 关联商店面板
-            CardServiceButton = cardServiceButton, // 卡牌服务按钮
-            ReturnButton = returnButton, // 返回按钮
-            CardServiceOriginalAnchoredPosition = left.anchoredPosition, // 记录卡牌服务按钮原始位置
-            CardServiceOriginalSizeDelta = left.sizeDelta, // 记录卡牌服务按钮原始尺寸
-            CardServiceOriginalScale = left.localScale, // 记录卡牌服务按钮原始缩放
-            ReturnOriginalAnchoredPosition = right.anchoredPosition, // 记录返回按钮原始位置
-            ReturnOriginalSizeDelta = right.sizeDelta, // 记录返回按钮原始尺寸
-            ReturnOriginalScale = right.localScale // 记录返回按钮原始缩放
+            Plugin.Logger?.LogWarning("[ShopTradeIcon] 无法获取按钮容器，退回到直接按钮引用。");
+            leftContainer = cardServiceButton.GetComponent<RectTransform>();
+            rightContainer = returnButton.GetComponent<RectTransform>();
+        }
+
+        var ui = new TradeButtonUi
+        {
+            ShopPanel         = shopPanel,
+            CardServiceButton = cardServiceButton,
+            ReturnButton      = returnButton,
         };
 
-        // 克隆生成“交易”按钮（与原版按钮同父节点，保证渲染层级/遮罩行为一致）
-        GameObject midGo = UnityEngine.Object.Instantiate(cardServiceButton.gameObject, barParent, false); // 克隆卡牌服务按钮作为交易按钮
-        midGo.name = "NetworkPlugin_TradeButton"; // 设置新按钮名称
-        RectTransform mid = midGo.GetComponent<RectTransform>(); // 获取交易按钮的RectTransform
-        Button tradeButton = midGo.GetComponent<Button>(); // 获取交易按钮组件
-        tradeButton.onClick = new Button.ButtonClickedEvent(); // 重置点击事件
-        tradeButton.onClick.AddListener(() => OnTradeButtonClicked(shopPanel)); // 添加点击监听器
-        CleanTooltipComponents(midGo); // 清理工具提示组件
-
-        // 3. 仅通过属性调整位置/大小（不使用容器布局）
-        // 约束：按钮尺寸只允许在原始基础上缩小最多 20%；不做其他兜底策略。
-        ApplyThreeButtonLayout_NoReparent( // 应用三按钮布局，无需重新父化
-            left, // 左侧按钮（卡牌服务）
-            mid, // 中间按钮（交易）
-            right, // 右侧按钮（返回）
-            ui.CardServiceOriginalAnchoredPosition, // 左侧原始位置
-            ui.ReturnOriginalAnchoredPosition, // 右侧原始位置
-            0f, // 边距X
-            0f, // 内边距X
-            6f, // 间距X
-            1f); // 缩放因子
-
-        // 4. 原生按钮内部样式保持不动；仅对交易按钮做“无图标 + 文字全居中”处理。
-        FixInternalButtonLayout(mid, 0f); // 修复交易按钮内部布局，字体大小参数为0（不强制修改）
-
-        // 5. 记录 UI 句柄（Root 指向交易按钮本体，关闭商店时销毁）
-        ui.Root = midGo; // 设置UI根对象为交易按钮
-
-        _ui = ui; // 赋值全局UI实例
-        _ui.Button = tradeButton; // 设置按钮组件
+        // 克隆整个 CardService 容器，以获得背景、边框等完整按钮样式
+        GameObject midGo = UnityEngine.Object.Instantiate(leftContainer.gameObject, barParent, false);
+        midGo.name = "NetworkPlugin_TradeButton";
+        RectTransform mid = midGo.GetComponent<RectTransform>();
         
-        Plugin.Logger?.LogInfo($"[ShopTradeIcon] 已插入交易按钮：在原版按钮条中手动调整三按钮布局");
+        // 查找克隆后的 Button 组件并重新挂载事件
+        Button tradeButton = midGo.GetComponentInChildren<Button>(true);
+        if (tradeButton != null)
+        {
+            tradeButton.onClick = new Button.ButtonClickedEvent();
+            tradeButton.onClick.AddListener(() => OnTradeButtonClicked(shopPanel));
+        }
+        
+        CleanTooltipComponents(midGo);
+
+        // 剥离本地化组件，防止文字被游戏本地化系统覆盖回原文
+        TryStripLocalizationComponents(midGo);
+
+        // 在容器层级上直接遍历，避免文字节点与 Button 同级时搜不到的问题
+        // 只改文字内容，不覆盖字体——克隆已继承 CardService 的原始样式，无需修改
+        //TODO: 检查这里是否冗余，如果克隆的层级结构和原来完全一样，理论上不应该有额外的 Text 组件了。
+        foreach (var label in midGo.GetComponentsInChildren<TMP_Text>(true))
+        {
+            if (label == null) continue;
+            label.text = "玩家交易";
+        }
+        foreach (var t in midGo.GetComponentsInChildren<Text>(true))
+        {
+            if (t == null) continue;
+            t.text = "玩家交易";
+        }
+
+        // 打印克隆后的完整层级结构，帮助诊断 TextMeshProUGUI 位置
+        LogHierarchy(midGo.transform, 0);
+
+        // 设置为用户指定的固定坐标项（参考运行时截图）
+        mid.anchorMin        = new Vector2(0.5f, 0.5f);
+        mid.anchorMax        = new Vector2(0.5f, 0.5f);
+        mid.pivot            = new Vector2(0.5f, 0.5f);
+        mid.sizeDelta        = new Vector2(300f, 100f);
+        
+        // 直接设置本地坐标、缩放和旋转
+        mid.localPosition    = new Vector3(1031.00f, -669.00f, 0.00f);
+        mid.localScale       = Vector3.one;
+        mid.localEulerAngles = Vector3.zero;
+
+        Plugin.Logger?.LogInfo(
+            $"[ShopTradeIcon] TradeButton (Container) 已设置为固定坐标: localPos={mid.localPosition}, size={mid.sizeDelta}");
+
+        // 同步调整原生 CardService 容器到截图中的属性
+        if (leftContainer != null)
+        {
+            ui.CardServiceOriginalLocalPosition = leftContainer.localPosition;
+            ui.CardServiceOriginalSizeDelta     = leftContainer.sizeDelta;
+            leftContainer.sizeDelta      = new Vector2(300f, 100f);
+            leftContainer.localPosition  = new Vector3(870f, -720f, 0f);
+            Plugin.Logger?.LogInfo($"[ShopTradeIcon] CardService 容器已调整: localPos=870,-720,0 sizeDelta=300,100");
+        }
+
+        // 同步调整原生 ReturnButton 容器到截图中的属性
+        if (rightContainer != null)
+        {
+            ui.ReturnOriginalLocalPosition = rightContainer.localPosition;
+            ui.ReturnOriginalSizeDelta     = rightContainer.sizeDelta;
+            rightContainer.sizeDelta      = new Vector2(300f, 100f);
+            rightContainer.localPosition  = new Vector3(1490f, -720f, 0f);
+            Plugin.Logger?.LogInfo($"[ShopTradeIcon] ReturnButton 容器已调整: localPos=1490,-720,0 sizeDelta=300,100");
+        }
+
+        ui.Root    = midGo;
+        _ui        = ui;
+        _ui.Button = tradeButton;
+
+        Plugin.Logger?.LogInfo("[ShopTradeIcon] 已插入带样式的交易按钮");
+    }
+
+    private static void LogHierarchy(Transform t, int depth)
+    {
+        try
+        {
+            string indent = new string('-', depth * 2);
+            var comps = string.Join(", ", System.Linq.Enumerable.Select(t.GetComponents<Component>(), c => c?.GetType().Name ?? "null"));
+            string textVal = "";
+            var tmp = t.GetComponent<TMPro.TextMeshProUGUI>();
+            if (tmp != null) textVal = $" [TEXT='{tmp.text}']";
+            Plugin.Logger?.LogInfo($"[ShopTradeIcon] {indent}{t.name} ({comps}){textVal}");
+            for (int i = 0; i < t.childCount; i++)
+                LogHierarchy(t.GetChild(i), depth + 1);
+        }
+        catch { }
     }
 
     private static void CleanTooltipComponents(GameObject go)
@@ -522,30 +597,43 @@ public static class ShopTradeIconPatch
             {
                 try
                 {
-                    // 1. 恢复两个原生按钮的属性（不改父子关系）
+                    // 恢复原生 CardService 容器属性
                     if (_ui.CardServiceButton != null)
                     {
-                        var rt = _ui.CardServiceButton.GetComponent<RectTransform>();
-                        if (rt != null)
+                        var ct = _ui.CardServiceButton.transform.parent as RectTransform;
+                        if (ct != null)
                         {
-                            rt.anchoredPosition = _ui.CardServiceOriginalAnchoredPosition;
-                            rt.sizeDelta = _ui.CardServiceOriginalSizeDelta;
-                            rt.localScale = _ui.CardServiceOriginalScale;
+                            ct.sizeDelta     = _ui.CardServiceOriginalSizeDelta;
+                            ct.localPosition = _ui.CardServiceOriginalLocalPosition;
                         }
                     }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Logger?.LogDebug($"[ShopTradeIcon] 恢复 CardService 属性时忽略错误: {ex.Message}");
+                }
 
+                try
+                {
+                    // 恢复原生 ReturnButton 容器属性
                     if (_ui.ReturnButton != null)
                     {
-                        var rt = _ui.ReturnButton.GetComponent<RectTransform>();
+                        var rt = _ui.ReturnButton.transform.parent as RectTransform;
                         if (rt != null)
                         {
-                            rt.anchoredPosition = _ui.ReturnOriginalAnchoredPosition;
-                            rt.sizeDelta = _ui.ReturnOriginalSizeDelta;
-                            rt.localScale = _ui.ReturnOriginalScale;
+                            rt.sizeDelta     = _ui.ReturnOriginalSizeDelta;
+                            rt.localPosition = _ui.ReturnOriginalLocalPosition;
                         }
                     }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Logger?.LogDebug($"[ShopTradeIcon] 恢复 ReturnButton 属性时忽略错误: {ex.Message}");
+                }
 
-                    // 2. 销毁注入的交易按钮
+                try
+                {
+                    // 销毁注入的交易按钮
                     if (_ui.Root != null)
                     {
                         UnityEngine.Object.Destroy(_ui.Root);
@@ -565,42 +653,6 @@ public static class ShopTradeIconPatch
         {
             _ui = null;
         }
-    }
-
-    private static void FixInternalButtonLayout(RectTransform rect, float fontSize)
-    {
-        if (rect == null) return;
-
-        try
-        {
-            rect.localScale = Vector3.one;
-
-            // 1. 文字全居中排版 (暂时没有图标)
-            var label = rect.GetComponentInChildren<TextMeshProUGUI>(true);
-            if (label != null)
-            {
-                if (rect.name.Contains("Trade")) label.text = "交易";
-
-                var lRect = label.rectTransform;
-                lRect.anchorMin = Vector2.zero;
-                lRect.anchorMax = Vector2.one;
-                lRect.pivot = new Vector2(0.5f, 0.5f);
-                lRect.offsetMin = lRect.offsetMax = Vector2.zero;
-
-                // 不强行改字体大小：保持原版按钮的字体规格，只改对齐。
-                label.alignment = TextAlignmentOptions.Center;
-                label.enableAutoSizing = false;
-            }
-
-            // 2. 隐藏图标 (按用户要求)
-            var iconTr = rect.GetComponentsInChildren<Image>(true)
-                .FirstOrDefault(img => img.name.ToLower().Contains("icon"))?.rectTransform;
-            if (iconTr != null)
-            {
-                iconTr.gameObject.SetActive(false);
-            }
-        }
-        catch { }
     }
 
     private static void ApplyThreeButtonLayout_NoReparent(
@@ -782,6 +834,35 @@ public static class ShopTradeIconPatch
             return null;
         }
     }
+
+    private static void TryStripLocalizationComponents(GameObject root)
+    {
+        try
+        {
+            if (root == null) return;
+
+            var behaviours = root.GetComponentsInChildren<MonoBehaviour>(true);
+            foreach (var b in behaviours)
+            {
+                if (b == null) continue;
+
+                string n = b.GetType().Name;
+                if (string.IsNullOrWhiteSpace(n)) continue;
+
+                if (n.IndexOf("localiz", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    n.IndexOf("locale", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    UnityEngine.Object.Destroy(b);
+                }
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+
 
     private static TMP_FontAsset FindDefaultFont(Transform root)
     {

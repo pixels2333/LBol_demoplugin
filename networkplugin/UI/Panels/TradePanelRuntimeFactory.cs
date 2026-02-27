@@ -203,9 +203,8 @@ internal static class TradePanelRuntimeFactory
             blocker.color = new Color(0f, 0f, 0f, 0f);
             blocker.raycastTarget = true;
 
-            // Use an in-game authored dialog prefab as the main frame so the trade UI matches vanilla visuals.
-            // We do NOT call UiDialog.Show() here; we only reuse the prefab's graphics/layout.
-            RectTransform framePanelRect = null;
+            // Restore the in-game dialog frame as a pure visual background.
+            // We only need its graphics/layout; all interactive content stays on root so z-order is correct.
             TextMeshProUGUI frameTextTemplate = null;
             try
             {
@@ -219,7 +218,6 @@ internal static class TradePanelRuntimeFactory
                     var frameRt = frame.GetComponent<RectTransform>();
                     if (frameRt != null)
                     {
-                        // Keep a margin so the frame doesn't touch screen edges.
                         frameRt.anchorMin = new Vector2(0.06f, 0.06f);
                         frameRt.anchorMax = new Vector2(0.94f, 0.94f);
                         frameRt.offsetMin = Vector2.zero;
@@ -230,39 +228,34 @@ internal static class TradePanelRuntimeFactory
                     if (dialog != null)
                     {
                         var mainText = GetDialogField<TextMeshProUGUI>(dialog, "mainText");
-                        var subText = GetDialogField<TextMeshProUGUI>(dialog, "subText");
+                        var subText  = GetDialogField<TextMeshProUGUI>(dialog, "subText");
                         var dlgSingleConfirm = GetDialogField<Button>(dialog, "singleConfirmButton");
                         var dlgConfirm = GetDialogField<Button>(dialog, "confirmButton");
-                        var dlgCancel = GetDialogField<Button>(dialog, "cancelButton");
+                        var dlgCancel  = GetDialogField<Button>(dialog, "cancelButton");
 
-                        // Pick a TMP template from the dialog so any cloned labels inherit vanilla font/material.
                         frameTextTemplate = mainText != null ? mainText : subText;
 
-                        // Hide built-in dialog texts/buttons; our panel provides its own header + actions.
+                        // Hide all built-in texts/buttons; our panel provides its own.
                         HideDialogText(mainText);
                         HideDialogText(subText);
                         HideDialogButton(dlgSingleConfirm);
                         HideDialogButton(dlgConfirm);
                         HideDialogButton(dlgCancel);
 
-                        // Disable dialog behavior to avoid input handling side effects.
                         dialog.enabled = false;
-
-                        var cancelRt = dlgCancel != null ? dlgCancel.GetComponent<RectTransform>() : null;
-                        framePanelRect = TryFindCommonAncestorRect(mainText != null ? mainText.rectTransform : null, cancelRt)
-                                         ?? TryFindCommonAncestorRect(subText != null ? subText.rectTransform : null, cancelRt)
-                                         ?? frameRt;
                     }
+
+                    // Push frame behind everything else so controls render on top.
+                    frame.transform.SetAsFirstSibling();
                 }
             }
             catch
             {
-                framePanelRect = null;
-                frameTextTemplate = null;
+                // ignored — frame is cosmetic only
             }
 
-            // All trade UI content is attached to the frame panel if available.
-            Transform uiParent = (framePanelRect != null ? framePanelRect.transform : root.transform);
+            // All trade UI content is attached directly to root (above the frame).
+            Transform uiParent = root.transform;
 
             // Title / status / player names
             var title = CloneTextOrCreate(frameTextTemplate != null ? frameTextTemplate : textTemplate, uiParent, "Title");
