@@ -353,6 +353,7 @@ public static class ShopTradeIconPatch
         tradeButton.onClick = new Button.ButtonClickedEvent(); // 重置点击事件
         tradeButton.onClick.AddListener(() => OnTradeButtonClicked(shopPanel)); // 添加点击监听器
         CleanTooltipComponents(midGo); // 清理工具提示组件
+        TrySetButtonText(tradeButton, "交易"); // 设置交易按钮文本
 
         // 3. 仅通过属性调整位置/大小（不使用容器布局）
         // 约束：按钮尺寸只允许在原始基础上缩小最多 20%；不做其他兜底策略。
@@ -820,6 +821,58 @@ public static class ShopTradeIconPatch
         catch
         {
             return null;
+        }
+    }
+
+    /// <summary>
+    /// 尝试设置按钮上的 TextMeshPro 文本（参照 MainMenuMultiplayerEntryPatch.TrySetButtonText）。
+    /// </summary>
+    private static void TrySetButtonText(Button button, string text)
+    {
+        try
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            // 兼容 TextMeshProUGUI / TextMeshPro：不同版本/Prefab 的按钮文案组件类型可能不同。
+            var labels = button.GetComponentsInChildren<TMP_Text>(true);
+            if (labels != null)
+            {
+                foreach (var label in labels)
+                {
+                    if (label == null)
+                    {
+                        continue;
+                    }
+
+                    label.text = text;
+                    if (_defaultFont != null)
+                    {
+                        label.font = _defaultFont;
+                    }
+                }
+            }
+
+            // 兼容旧式 UI.Text（部分界面文案可能不是 TMP）。
+            var legacyTexts = button.GetComponentsInChildren<Text>(true);
+            if (legacyTexts != null)
+            {
+                foreach (var t in legacyTexts)
+                {
+                    if (t == null)
+                    {
+                        continue;
+                    }
+
+                    t.text = text;
+                }
+            }
+        }
+        catch
+        {
+            // 忽略：设置 UI 文案失败不影响整体流程。
         }
     }
 
