@@ -1548,24 +1548,83 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 return;
             }
 
-            // Strict mode: no fallback/兜底策略. If we cannot attach in-game scroll list/template, the picker is unavailable.
-            if (!TryAttachInGameScrollList(panelRect, subTextRect))
+            // Build a simple ScrollRect container for TMP clickable-text partner entries.
+            TextMeshProUGUI pickerTextTemplate = mainText ?? subText;
+            if (pickerTextTemplate == null)
             {
-                // Some builds don't ship HistoryPanel in Resources; still keep the picker usable by using
-                // MessageDialog's own button visuals (still game-authored UI) as a simple list.
-                if (!TryAttachInGameButtonList(panelRect, subTextRect, cancel))
-                {
-                    Destroy(_partnerPickerRoot);
-                    _partnerPickerRoot = null;
-                    if (string.IsNullOrWhiteSpace(_partnerPickerBuildError))
-                    {
-                        _partnerPickerBuildError = "无法构建交易对象列表";
-                    }
-                    return;
-                }
+                Destroy(_partnerPickerRoot);
+                _partnerPickerRoot = null;
+                _partnerPickerBuildError = "无法获取文字模板";
+                return;
             }
 
-            // Keep cancel above the list and ensure the list is not behind any panel graphics.
+            {
+                var scrollGo = new GameObject("PartnerScroll");
+                scrollGo.transform.SetParent(panelRect, false);
+                scrollGo.transform.SetAsLastSibling();
+
+                var scrollRt = scrollGo.AddComponent<RectTransform>();
+                if (subTextRect != null)
+                {
+                    CopyRectTransform(scrollRt, subTextRect);
+                }
+                else
+                {
+                    scrollRt.anchorMin = new Vector2(0.06f, 0.20f);
+                    scrollRt.anchorMax = new Vector2(0.94f, 0.78f);
+                    scrollRt.offsetMin = Vector2.zero;
+                    scrollRt.offsetMax = Vector2.zero;
+                }
+
+                var scrollImg = scrollGo.AddComponent<Image>();
+                scrollImg.color = new Color(0f, 0f, 0f, 0f);
+                scrollImg.raycastTarget = true;
+
+                var scrollRect = scrollGo.AddComponent<ScrollRect>();
+                scrollRect.horizontal = false;
+                scrollRect.vertical = true;
+                scrollRect.movementType = ScrollRect.MovementType.Clamped;
+
+                var viewport = new GameObject("Viewport");
+                viewport.transform.SetParent(scrollGo.transform, false);
+                var viewportRt = viewport.AddComponent<RectTransform>();
+                viewportRt.anchorMin = Vector2.zero;
+                viewportRt.anchorMax = Vector2.one;
+                viewportRt.offsetMin = Vector2.zero;
+                viewportRt.offsetMax = Vector2.zero;
+                viewport.AddComponent<RectMask2D>();
+
+                var contentGo = new GameObject("Content");
+                contentGo.transform.SetParent(viewport.transform, false);
+                var contentRt = contentGo.AddComponent<RectTransform>();
+                contentRt.anchorMin = new Vector2(0f, 1f);
+                contentRt.anchorMax = new Vector2(1f, 1f);
+                contentRt.pivot = new Vector2(0.5f, 1f);
+                contentRt.sizeDelta = new Vector2(0f, 0f);
+
+                var vlg = contentGo.AddComponent<VerticalLayoutGroup>();
+                vlg.childAlignment = TextAnchor.UpperCenter;
+                vlg.spacing = 8f;
+                vlg.padding = new RectOffset(10, 10, 10, 10);
+                vlg.childControlWidth = true;
+                vlg.childControlHeight = false;
+                vlg.childForceExpandWidth = true;
+                vlg.childForceExpandHeight = false;
+
+                var csf = contentGo.AddComponent<ContentSizeFitter>();
+                csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+                scrollRect.viewport = viewportRt;
+                scrollRect.content = contentRt;
+
+                var tag = contentGo.AddComponent<PartnerPickerTag>();
+                tag.TextTemplate = pickerTextTemplate;
+                tag.ListContainer = contentRt;
+                tag.ScrollRect = scrollRect;
+                tag.EmptyText = subText;
+            }
+
+            // Keep cancel above the list.
             try
             {
                 if (cancel != null)
@@ -1578,18 +1637,15 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 // ignored
             }
 
-            // Wire empty text + scroll reference onto the tag for later rebuild.
-            PartnerPickerTag tag = _partnerPickerRoot.GetComponentInChildren<PartnerPickerTag>(true);
-            if (tag == null || (tag.RecordRowTemplate == null && tag.ButtonTemplate == null))
+            // Validate the tag was created successfully.
+            PartnerPickerTag tagCheck = _partnerPickerRoot.GetComponentInChildren<PartnerPickerTag>(true);
+            if (tagCheck == null || tagCheck.TextTemplate == null)
             {
                 Destroy(_partnerPickerRoot);
                 _partnerPickerRoot = null;
-                _partnerPickerBuildError = "列表模板 RecordRow 缺失";
+                _partnerPickerBuildError = "列表模板创建失败";
                 return;
             }
-
-            tag.EmptyText = subText;
-            tag.ScrollRect = tag.GetComponentInParent<ScrollRect>();
 
             // Disable the dialog component to avoid unexpected input handling; we only need its visuals.
             dialog.enabled = false;
@@ -1644,166 +1700,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             }
 
             _partnerPickerAutoRefreshCo = StartCoroutine(CoPartnerPickerAutoRefreshOnce());
-        }
-    }
-
-    private bool TryAttachInGameScrollList(RectTransform dialogPanelRect, RectTransform placeholderRect)
-    {
-        GameObject historyInstance = null;
-        try
-        {
-            GameObject historyPrefab = Resources.Load<GameObject>("UI/Panels/HistoryPanel");
-            if (historyPrefab == null)
-            {
-                _partnerPickerBuildError = "无法加载 UI/Panels/HistoryPanel";
-                return false;
-            }
-
-            historyInstance = Instantiate(historyPrefab);
-            historyInstance.SetActive(false);
-
-            var historyPanel = historyInstance.GetComponentInChildren<HistoryPanel>(true);
-            if (historyPanel == null)
-            {
-                _partnerPickerBuildError = "HistoryPanel 组件缺失";
-                return false;
-            }
-
-            // Prefer accessing the serialized fields by name (fast path), but don't rely on it.
-            // Some builds/versions may change field visibility/names; fall back to hierarchy heuristics.
-            ScrollRect listScrollRect = GetPrivateFieldValue<ScrollRect>(historyPanel, "listScrollRect");
-            RectTransform listContent = GetPrivateFieldValue<RectTransform>(historyPanel, "listContent");
-            RecordRow recordRowTemplate = GetPrivateFieldValue<RecordRow>(historyPanel, "recordRowTemplate");
-
-            if (listScrollRect == null || listContent == null || recordRowTemplate == null)
-            {
-                listScrollRect = null;
-                listContent = null;
-                recordRowTemplate = null;
-
-                // Heuristic: pick a ScrollRect whose content contains a RecordRow (the template row).
-                foreach (var sr in historyInstance.GetComponentsInChildren<ScrollRect>(true))
-                {
-                    if (sr == null || sr.content == null)
-                    {
-                        continue;
-                    }
-
-                    var rr = sr.content.GetComponentInChildren<RecordRow>(true);
-                    if (rr == null)
-                    {
-                        continue;
-                    }
-
-                    listScrollRect = sr;
-                    listContent = sr.content;
-                    recordRowTemplate = rr;
-                    break;
-                }
-
-                if (listScrollRect == null || listContent == null || recordRowTemplate == null)
-                {
-                    _partnerPickerBuildError = "HistoryPanel 中找不到 ScrollRect/RecordRow 模板";
-                    return false;
-                }
-            }
-
-            listScrollRect.transform.SetParent(dialogPanelRect, false);
-            listScrollRect.gameObject.name = "PartnerScroll";
-
-            // Ensure the list renders & receives clicks above the panel background graphics.
-            listScrollRect.transform.SetAsLastSibling();
-
-            RectTransform scrollRt = listScrollRect.GetComponent<RectTransform>();
-            if (scrollRt != null)
-            {
-                if (placeholderRect != null)
-                {
-                    CopyRectTransform(scrollRt, placeholderRect);
-                }
-                else
-                {
-                    scrollRt.anchorMin = new Vector2(0.06f, 0.20f);
-                    scrollRt.anchorMax = new Vector2(0.94f, 0.78f);
-                    scrollRt.offsetMin = Vector2.zero;
-                    scrollRt.offsetMax = Vector2.zero;
-                }
-            }
-
-            // Mark the list container for rebuild.
-            PartnerPickerTag tag = listContent.gameObject.AddComponent<PartnerPickerTag>();
-            tag.RecordRowTemplate = recordRowTemplate;
-            tag.ScrollRect = listScrollRect;
-
-            if (recordRowTemplate != null)
-            {
-                recordRowTemplate.gameObject.SetActive(false);
-            }
-
-            // Detach succeeded; destroy the rest of the instantiated panel (unless the ScrollRect is the root).
-            if (historyInstance != null && listScrollRect != null && historyInstance != listScrollRect.gameObject)
-            {
-                Destroy(historyInstance);
-            }
-            return true;
-        }
-        catch
-        {
-            try
-            {
-                if (historyInstance != null)
-                {
-                    Destroy(historyInstance);
-                }
-            }
-            catch
-            {
-                // ignored
-            }
-            return false;
-        }
-    }
-
-    private bool TryAttachInGameButtonList(RectTransform dialogPanelRect, RectTransform placeholderRect, Button template)
-    {
-        try
-        {
-            if (dialogPanelRect == null || template == null)
-            {
-                _partnerPickerBuildError = "按钮模板缺失";
-                return false;
-            }
-
-            // Use the subText rect as a dedicated container region.
-            RectTransform container = placeholderRect;
-            if (container == null)
-            {
-                _partnerPickerBuildError = "按钮容器缺失";
-                return false;
-            }
-
-            container.anchorMin = new Vector2(0.06f, 0.20f);
-            container.anchorMax = new Vector2(0.94f, 0.78f);
-            container.offsetMin = Vector2.zero;
-            container.offsetMax = Vector2.zero;
-
-            // Tag the container so rebuild can populate it.
-            PartnerPickerTag tag = container.gameObject.GetComponent<PartnerPickerTag>();
-            if (tag == null)
-            {
-                tag = container.gameObject.AddComponent<PartnerPickerTag>();
-            }
-            tag.ButtonTemplate = template;
-            tag.ButtonContainer = container;
-            tag.ScrollRect = null;
-            tag.RecordRowTemplate = null;
-
-            return true;
-        }
-        catch
-        {
-            _partnerPickerBuildError = "构建按钮列表失败";
-            return false;
         }
     }
 
@@ -1920,31 +1816,15 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             }
 
             PartnerPickerTag tag = _partnerPickerRoot.GetComponentInChildren<PartnerPickerTag>(true);
-            if (tag == null || (tag.RecordRowTemplate == null && tag.ButtonTemplate == null))
+            if (tag == null || tag.TextTemplate == null)
             {
                 return;
             }
 
-            Transform container;
-            if (tag.RecordRowTemplate != null)
+            Transform container = tag.ListContainer != null ? (Transform)tag.ListContainer : tag.transform;
+            foreach (Transform child in container)
             {
-                container = tag.transform;
-                foreach (Transform child in container)
-                {
-                    if (tag.RecordRowTemplate != null && child == tag.RecordRowTemplate.transform)
-                    {
-                        continue;
-                    }
-                    Destroy(child.gameObject);
-                }
-            }
-            else
-            {
-                container = tag.ButtonContainer != null ? tag.ButtonContainer : tag.transform;
-                foreach (Transform child in container)
-                {
-                    Destroy(child.gameObject);
-                }
+                Destroy(child.gameObject);
             }
 
             string selfId = _selfPlayerId ?? NetworkIdentityTracker.GetSelfPlayerId();
@@ -2043,250 +1923,30 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
                 string where = BuildWhereText(p.LocationName, p.Stage, p.LocationX, p.LocationY, sameNode);
 
-                if (tag.RecordRowTemplate != null)
+                string label = string.IsNullOrWhiteSpace(where) ? displayName : $"{displayName}  {where}";
+                if (p.IsHost)
                 {
-                    CreatePartnerRecordRow(container, tag.RecordRowTemplate, p.PlayerId, displayName, p.IsHost, p.CharacterId, where);
-                }
-                else
-                {
-                    CreatePartnerButtonRow(container, tag.ButtonTemplate, candidates.Count, p.PlayerId, displayName, where);
-                }
-            }
-
-            // When using RecordRow (HistoryPanel template), we must position rows and expand content height.
-            // The vanilla HistoryPanel does this manually (anchoredPosition + listContent.sizeDelta).
-            if (tag.RecordRowTemplate != null)
-            {
-                try
-                {
-                    var contentRt = container as RectTransform;
-                    if (contentRt != null)
-                    {
-                        float y = 10f;
-                        float spacing = 10f;
-                        foreach (Transform child in container)
-                        {
-                            if (child == null || (tag.RecordRowTemplate != null && child == tag.RecordRowTemplate.transform))
-                            {
-                                continue;
-                            }
-
-                            var rt = child as RectTransform;
-                            if (rt == null)
-                            {
-                                continue;
-                            }
-
-                            rt.anchoredPosition = new Vector2(0f, -y);
-                            y += rt.sizeDelta.y + spacing;
-                        }
-
-                        contentRt.sizeDelta = contentRt.sizeDelta.WithY(y);
-                    }
-                }
-                catch
-                {
-                    // ignored
-                }
-            }
-        }
-        catch
-        {
-            // ignored
-        }
-    }
-
-    private void CreatePartnerButtonRow(Transform parent, Button template, int total, string playerId, string playerName, string whereText)
-    {
-        try
-        {
-            if (parent == null || template == null || string.IsNullOrWhiteSpace(playerId))
-            {
-                return;
-            }
-
-            // Clone a game-authored dialog button as a list row.
-            Button btn = Instantiate(template, parent, false);
-            btn.name = $"PlayerBtn_{playerId}";
-            btn.onClick.RemoveAllListeners();
-            btn.interactable = true;
-            btn.enabled = true;
-
-            var cand = btn.gameObject.GetComponent<PartnerCandidateTag>();
-            if (cand == null)
-            {
-                cand = btn.gameObject.AddComponent<PartnerCandidateTag>();
-            }
-            cand.PlayerId = playerId;
-            cand.PlayerName = playerName;
-
-            var label = btn.GetComponentInChildren<TextMeshProUGUI>(true);
-            if (label != null)
-            {
-                label.alignment = TextAlignmentOptions.Center;
-                label.text = string.IsNullOrWhiteSpace(whereText) ? playerName : (playerName + "\n" + whereText);
-            }
-
-            // Layout: evenly split container height by count (cap to avoid ultra-thin rows).
-            var rt = btn.GetComponent<RectTransform>();
-            if (rt != null)
-            {
-                int safeTotal = Mathf.Clamp(total, 1, 8);
-                float pad = 0.02f;
-                float h = (1f - pad * 2f) / safeTotal;
-                // Append rows in creation order: top to bottom.
-                int index = parent.childCount - 1;
-                int row = index % safeTotal;
-                float yMax = 1f - pad - row * h;
-                float yMin = yMax - h;
-                rt.anchorMin = new Vector2(0f, yMin);
-                rt.anchorMax = new Vector2(1f, yMax);
-                rt.offsetMin = new Vector2(0f, 2f);
-                rt.offsetMax = new Vector2(0f, -2f);
-            }
-
-            btn.onClick.AddListener(() =>
-            {
-                try
-                {
-                    OnPartnerSelected(playerId, playerName);
-                }
-                catch
-                {
-                    // ignored
-                }
-            });
-
-            // Ensure mouse raycasts can hit some graphic under the button.
-            ForceEnableGraphicsRaycast(btn.gameObject);
-        }
-        catch
-        {
-            // ignored
-        }
-    }
-
-    private static void ForceEnableGraphicsRaycast(GameObject root)
-    {
-        try
-        {
-            if (root == null)
-            {
-                return;
-            }
-
-            foreach (var g in root.GetComponentsInChildren<Graphic>(true))
-            {
-                if (g == null)
-                {
-                    continue;
+                    label += " [Host]";
                 }
 
-                g.raycastTarget = true;
-                g.enabled = true;
-            }
+                Button btn = CreateTextButton(tag.TextTemplate, container, $"Player_{p.PlayerId}", label, tag.TextTemplate.fontSize * 0.5f);
 
-            foreach (var cg in root.GetComponentsInChildren<CanvasGroup>(true))
-            {
-                if (cg == null)
+                var le = btn.gameObject.AddComponent<LayoutElement>();
+                le.preferredHeight = 40f;
+                le.flexibleWidth = 1f;
+
+                var cand = btn.gameObject.AddComponent<PartnerCandidateTag>();
+                cand.PlayerId = p.PlayerId;
+                cand.PlayerName = displayName;
+
+                string pid = p.PlayerId;
+                string pname = displayName;
+                btn.onClick.RemoveAllListeners();
+                btn.onClick.AddListener(() =>
                 {
-                    continue;
-                }
-
-                cg.interactable = true;
-                cg.blocksRaycasts = true;
-            }
-        }
-        catch
-        {
-            // ignored
-        }
-    }
-
-    private void CreatePartnerRecordRow(Transform parent, RecordRow template, string playerId, string playerName, bool isHost, string characterId, string whereText)
-    {
-        try
-        {
-            if (template == null)
-            {
-                return;
-            }
-
-            RecordRow row = Instantiate(template, parent, false);
-            row.name = $"Player_{playerId}";
-            row.gameObject.SetActive(true);
-
-            var cand = row.gameObject.GetComponent<PartnerCandidateTag>();
-            if (cand == null)
-            {
-                cand = row.gameObject.AddComponent<PartnerCandidateTag>();
-            }
-            cand.PlayerId = playerId;
-            cand.PlayerName = playerName;
-
-                // Match vanilla HistoryPanel: initialize selection state so the cover is active.
-                row.SetSelected(false, false);
-                // Ensure there is at least one raycast target on the row.
-                // RecordRow implements IPointerClickHandler; Unity will only route the event if a Graphic is hit.
-                var cover = GetPrivateFieldValue<Image>(row, "cover");
-                if (cover != null)
-                {
-                    cover.raycastTarget = true;
-                    cover.enabled = true;
-                    cover.gameObject.SetActive(true);
-                }
-            // Populate the row visuals by reusing prefab-authored widgets.
-            Image avatarImage = GetPrivateFieldValue<Image>(row, "avatarImage");
-            TextMeshProUGUI gameResultText = GetPrivateFieldValue<TextMeshProUGUI>(row, "gameResultText");
-            TextMeshProUGUI difficultyText = GetPrivateFieldValue<TextMeshProUGUI>(row, "difficultyText");
-            TextMeshProUGUI timestampText = GetPrivateFieldValue<TextMeshProUGUI>(row, "timestampText");
-            GameObject selectedIndicator = GetPrivateFieldValue<GameObject>(row, "selectedIndicator");
-            Image exhibitIcon = GetPrivateFieldValue<Image>(row, "exhibitIcon");
-
-            if (avatarImage != null)
-            {
-                avatarImage.sprite = TryLoadAvatarSprite(characterId);
-            }
-            if (gameResultText != null)
-            {
-                gameResultText.text = isHost ? $"{playerName} [Host]" : playerName;
-            }
-            if (difficultyText != null)
-            {
-                difficultyText.text = string.IsNullOrWhiteSpace(whereText) ? string.Empty : whereText;
-            }
-            if (timestampText != null)
-            {
-                timestampText.text = string.Empty;
-            }
-            if (selectedIndicator != null)
-            {
-                selectedIndicator.SetActive(false);
-            }
-            if (exhibitIcon != null)
-            {
-                exhibitIcon.gameObject.SetActive(false);
-            }
-
-            row.Click += () => OnPartnerSelected(playerId, playerName);
-
-            // In some prefab variants, the row's TMP/Image graphics may have raycastTarget disabled.
-            // Force-enable all graphics so hover/click events can reach RecordRow's handlers.
-            ForceEnableGraphicsRaycast(row.gameObject);
-
-            // Also bind gamepad click if the prefab provides it (mirrors HistoryPanel behavior).
-            try
-            {
-                var cursor = row.GetComponent<GamepadButtonCursor>();
-                if (cursor != null)
-                {
-                    cursor.OnClick.RemoveAllListeners();
-                    cursor.OnClick.AddListener(() => OnPartnerSelected(playerId, playerName));
-                }
-            }
-            catch
-            {
-                // ignored
+                    try { OnPartnerSelected(pid, pname); }
+                    catch { }
+                });
             }
         }
         catch
@@ -2894,6 +2554,8 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         public ScrollRect ScrollRect;
         public Button ButtonTemplate;
         public RectTransform ButtonContainer;
+        public TextMeshProUGUI TextTemplate;
+        public RectTransform ListContainer;
     }
 
     private sealed class PartnerCandidateTag : MonoBehaviour
@@ -2997,13 +2659,13 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 }
 
                 RectTransform listRegion = null;
-                if (pickerTag.ScrollRect != null)
+                if (pickerTag.ListContainer != null)
+                {
+                    listRegion = pickerTag.ListContainer;
+                }
+                else if (pickerTag.ScrollRect != null)
                 {
                     listRegion = pickerTag.ScrollRect.GetComponent<RectTransform>();
-                }
-                else if (pickerTag.ButtonContainer != null)
-                {
-                    listRegion = pickerTag.ButtonContainer;
                 }
                 else
                 {
@@ -3016,15 +2678,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                     return;
                 }
 
-                Transform container;
-                if (pickerTag.RecordRowTemplate != null)
-                {
-                    container = pickerTag.transform;
-                }
-                else
-                {
-                    container = pickerTag.ButtonContainer != null ? pickerTag.ButtonContainer : pickerTag.transform;
-                }
+                Transform container = pickerTag.ListContainer != null ? (Transform)pickerTag.ListContainer : pickerTag.transform;
 
                 if (container == null)
                 {
@@ -3114,15 +2768,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                     return;
                 }
 
-                Transform container = null;
-                if (pickerTag.RecordRowTemplate != null)
-                {
-                    container = pickerTag.transform;
-                }
-                else
-                {
-                    container = pickerTag.ButtonContainer != null ? pickerTag.ButtonContainer : pickerTag.transform;
-                }
+                Transform container = pickerTag.ListContainer != null ? (Transform)pickerTag.ListContainer : pickerTag.transform;
 
                 if (container == null)
                 {
@@ -4265,7 +3911,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
     }
 
-    private static Button CreateTextButton(TextMeshProUGUI template, Transform parent, string name, string text)
+    private static Button CreateTextButton(TextMeshProUGUI template, Transform parent, string name, string text, float fontSize = -1f)
     {
         // Clone TMP from an in-game template so font/material matches vanilla.
         var tmp = Instantiate(template, parent, false);
@@ -4273,6 +3919,13 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         tmp.text = text;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.raycastTarget = true;
+        if (fontSize > 0f)
+        {
+            tmp.enableAutoSizing = false;
+            tmp.fontSize = fontSize;
+            tmp.fontSizeMin = 1f;
+            tmp.fontSizeMax = fontSize;
+        }
         try
         {
             var c = tmp.color;
