@@ -110,6 +110,10 @@ public static class RemoteCardUsePatch
     /// <summary>
     /// Harmony反向补丁，获取Card.GetActions的原始实现
     /// </summary>
+    /// <remarks>
+    /// 注意：该方法是 Harmony ReversePatch 必需桩方法（白名单保留），
+    /// 即使方法体抛出异常也不能按“幽灵方法”删除。
+    /// </remarks>
     [HarmonyReversePatch(HarmonyReversePatchType.Original)]
     [HarmonyPatch(typeof(Card), "GetActions")]
     private static IEnumerable<BattleAction> Card_GetActions_Original(
@@ -745,7 +749,7 @@ public static class RemoteCardUsePatch
 
         switch (eventType)
         {
-            case "Welcome":
+            case NetworkMessageTypes.Welcome:
                 HandleWelcome(root); // 处理欢迎消息
                 return;
             case NetworkMessageTypes.OnRemoteCardUse:

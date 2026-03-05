@@ -302,36 +302,7 @@ public class NetworkClient : INetworkClient
     /// <returns>如果是游戏事件返回 true，否则返回 false</returns>
     private bool IsGameEvent(string messageType)
     {
-        // Some multiplayer events don't follow the common prefixes and must still go through the GameEvent bus.
-        if (messageType == NetworkMessageTypes.EndTurnRequest ||
-            messageType == NetworkMessageTypes.EndTurnStatus ||
-            messageType == NetworkMessageTypes.EndTurnConfirm ||
-            messageType == NetworkMessageTypes.CardStateChanged)
-        {
-            return true;
-        }
-
-        return messageType.StartsWith("On") ||
-               messageType.StartsWith("Mana") ||
-               messageType.StartsWith("Gap") ||
-               messageType.StartsWith("Battle") ||
-               messageType == "EnemySpawned" ||
-               messageType == NetworkMessageTypes.ChatMessage ||
-               messageType == "StateSyncResponse" ||
-               messageType == "FullStateSyncRequest" ||
-               messageType == "FullStateSyncResponse" ||
-               messageType == NetworkMessageTypes.RoomStateRequest ||
-               messageType == NetworkMessageTypes.RoomStateResponse ||
-               messageType == NetworkMessageTypes.RoomStateUpload ||
-               messageType == NetworkMessageTypes.RoomStateBroadcast ||
-               messageType == NetworkMessageTypes.MidGameJoinRequest ||
-               messageType == NetworkMessageTypes.MidGameJoinResponse ||
-               // 系统消息（用于 UI/远程玩家渲染等）：同样走 GameEvent 通道，便于统一订阅
-               messageType == "Welcome" ||
-               messageType == "PlayerJoined" ||
-               messageType == "PlayerLeft" ||
-               messageType == "PlayerListUpdate" ||
-               messageType == "HostChanged";
+        return NetworkMessageTypes.IsGameEvent(messageType, NetworkMessageTypes.GameEventRoute.Client);
     }
 
     // 说明：FullStateSyncResponse 的“客户端落地”目前由 MidGameJoinManager 通过 DirectMessage

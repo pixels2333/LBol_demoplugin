@@ -95,6 +95,11 @@ public interface INetworkPlayer
     string location { get; set; }
 
     /// <summary>
+    /// 玩家当前章节（Act/Stage）索引。
+    /// </summary>
+    int stage { get; set; }
+
+    /// <summary>
     /// 是否已结束回合
     /// 回合制游戏中的重要状态，控制游戏流程
     /// </summary>
@@ -304,19 +309,6 @@ public interface INetworkPlayer
     /// </summary>
     /// <param name="updateServer">是否同步到服务器</param>
     void UpdateLiveStatus(bool updateServer);
-
-    //TODO:预计弃用
-    // NOTE: 若后续引入统一的玩家管理器/上下文，本方法可被替代为从上下文获取本地玩家实例。
-    /// <summary>
-    /// 获取玩家自身实例
-    /// 返回当前玩家的网络对象引用
-    /// </summary>
-    /// <returns>当前玩家的INetworkPlayer实例</returns>
-    /// <remarks>
-    /// TODO 说明：GetMyself 可能导致接口职责不清（接口同时承担“行为契约”和“全局访问点”）。
-    /// 建议后续由上层维护本地玩家引用（例如 PlayerManager/NetworkContext），并逐步迁移调用点。
-    /// </remarks>
-    INetworkPlayer GetMyself();
 
     /// <summary>
     /// 受到伤害

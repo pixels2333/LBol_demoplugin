@@ -253,60 +253,6 @@ public class NetworkManager : INetworkManager
         }
     }
 
-    /// <summary>
-    /// 更新玩家信息
-    /// 当接收到玩家状态更新时调用
-    /// </summary>
-    /// <param name="playerInfo">更新后的玩家信息</param>
-    internal void UpdatePlayerInfo(object playerInfo)
-    {
-        if (playerInfo == null)
-        {
-            return;
-        }
-
-        try
-        {
-            if (!TryGetJsonElement(playerInfo, out JsonElement root))
-            {
-                string s = playerInfo as string ?? playerInfo.ToString();
-                if (string.IsNullOrWhiteSpace(s) || !TryGetJsonElement(s, out root))
-                {
-                    return;
-                }
-            }
-
-            if (root.ValueKind == JsonValueKind.Array)
-            {
-                UpdatePlayersFromArray(root);
-                return;
-            }
-
-            if (root.ValueKind != JsonValueKind.Object)
-            {
-                return;
-            }
-
-            if (TryGetPlayersArrayFromWelcome(root, out JsonElement list))
-            {
-                UpdatePlayersFromArray(list);
-                return;
-            }
-
-            if (root.TryGetProperty("Players", out JsonElement players) && players.ValueKind == JsonValueKind.Array)
-            {
-                UpdatePlayersFromArray(players);
-                return;
-            }
-
-            UpdateSinglePlayer(root);
-        }
-        catch
-        {
-            // ignored
-        }
-    }
-
     public INetworkPlayer GetPlayerByPeerId(int peerId)
     {
         // LiteNetLib 的 PeerId 并不会在当前协议中与 PlayerId 做映射下发，暂无法可靠实现。
@@ -325,6 +271,9 @@ public class NetworkManager : INetworkManager
 
             // Ensure resurrect sync patch is listening on all peers (especially Host).
             ResurrectSyncPatch.EnsureSubscribed(_networkClient);
+
+            // Ensure campfire sync patch is listening on all peers.
+            CampfireSyncPatch.EnsureSubscribed(_networkClient);
 
             _networkClient.OnGameEventReceived += OnGameEventReceived;
             _networkClient.OnConnectionStateChanged += OnConnectionStateChanged;
@@ -531,6 +480,7 @@ public class NetworkManager : INetworkManager
         string characterId = GetString(playerObj, "CharacterId");
         int locX = GetInt(playerObj, "LocationX", -1);
         int locY = GetInt(playerObj, "LocationY", -1);
+        int stage = GetInt(playerObj, "Stage", -1);
         string locName = GetString(playerObj, "LocationName");
 
         lock (_playersLock)
@@ -550,6 +500,11 @@ public class NetworkManager : INetworkManager
                 if (string.IsNullOrWhiteSpace(_selfPlayer?.userName) && !string.IsNullOrWhiteSpace(playerName))
                 {
                     _selfPlayer.userName = playerName;
+                }
+
+                if (stage >= 0)
+                {
+                    _selfPlayer.stage = stage;
                 }
 
                 return;
@@ -594,6 +549,11 @@ public class NetworkManager : INetworkManager
             if (locY >= 0)
             {
                 existing.location_Y = locY;
+            }
+
+            if (stage >= 0)
+            {
+                existing.stage = stage;
             }
 
             if (changed)

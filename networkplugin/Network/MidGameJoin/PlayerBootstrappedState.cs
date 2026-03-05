@@ -15,6 +15,6 @@ public class PlayerBootstrappedState
     public int Gold { get; set; }
     public List<string> Cards { get; set; } = [];
     public List<string> Exhibits { get; set; } = [];
-    public Dictionary<string, int> Potions { get; set; } = [];
+    public Dictionary<string, int> ToolCards { get; set; } = [];
     public long LastEventIndex { get; set; }
 }

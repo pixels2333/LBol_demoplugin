@@ -8,6 +8,7 @@ using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
@@ -26,8 +27,6 @@ namespace NetworkPlugin.Patch.Network;
 [HarmonyPatch]
 public static class GameResultSyncPatch
 {
-    private const string GameResultEventType = "OnGameRunResult";
-
     public static bool SyncOnResult = true;
     public static GameResultType? LastLocalResult;
     public static GameResultType? LastRemoteResult;
@@ -145,7 +144,7 @@ public static class GameResultSyncPatch
 
     private static void OnGameEventReceived(string eventType, object payload)
     {
-        if (!string.Equals(eventType, GameResultEventType, StringComparison.Ordinal))
+        if (!string.Equals(eventType, NetworkMessageTypes.OnGameRunResult, StringComparison.Ordinal))
         {
             return;
         }
@@ -237,7 +236,7 @@ public static class GameResultSyncPatch
             };
 
             // 走 GameEvent 通道（Server 会广播给除发送方之外的所有客户端）。
-            client.SendRequest(GameResultEventType, JsonCompat.Serialize(payload));
+            client.SendRequest(NetworkMessageTypes.OnGameRunResult, JsonCompat.Serialize(payload));
             Plugin.Logger?.LogInfo($"[GameResultSync] Broadcast game result: {resultType}");
         }
         catch (Exception ex)

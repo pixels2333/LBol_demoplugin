@@ -16,6 +16,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Configuration;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Utils;
 using TMPro;
 using UnityEngine;
@@ -500,23 +501,23 @@ public static class OtherPlayersOverlayPatch
             // 根据事件类型分发处理
             switch (eventType)
             {
-                case "Welcome":
+                case NetworkMessageTypes.Welcome:
                     // 服务器欢迎消息：包含自身 PlayerId 与初始玩家列表
                     HandleWelcome(root);
                     break;
-                case "PlayerListUpdate":
+                case NetworkMessageTypes.PlayerListUpdate:
                     // 玩家列表更新事件：完整覆盖现有玩家列表
                     HandlePlayerListUpdate(root);
                     break;
-                case "PlayerJoined":
+                case NetworkMessageTypes.PlayerJoined:
                     // 新玩家加入事件：添加新玩家
                     HandlePlayerJoined(root);
                     break;
-                case "PlayerLeft":
+                case NetworkMessageTypes.PlayerLeft:
                     // 玩家离开事件：移除玩家
                     HandlePlayerLeft(root);
                     break;
-                case "HostChanged":
+                case NetworkMessageTypes.HostChanged:
                     // 房主变更事件：更新房主标记
                     HandleHostChanged(root);
                     break;
@@ -2300,6 +2301,24 @@ public static class OtherPlayersOverlayPatch
         {
             element = je;
             return true;
+        }
+
+        if (payload is string s && !string.IsNullOrWhiteSpace(s))
+        {
+            using JsonDocument doc = JsonDocument.Parse(s);
+            element = doc.RootElement.Clone();
+            return true;
+        }
+
+        if (payload != null)
+        {
+            string json = JsonCompat.Serialize(payload);
+            if (!string.IsNullOrWhiteSpace(json))
+            {
+                using JsonDocument doc = JsonDocument.Parse(json);
+                element = doc.RootElement.Clone();
+                return true;
+            }
         }
 
         element = default;

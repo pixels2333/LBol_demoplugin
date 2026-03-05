@@ -45,4 +45,26 @@ public sealed class RoomStateSnapshot
     public List<EnemyStateSnapshot> Enemies { get; set; } = [];
 
     public BattleRewardSnapshot Rewards { get; set; } = new();
+
+    public List<CampfireEventSnapshot> CampfireEvents { get; set; } = [];
+}
+
+/// <summary>
+/// Campfire/GAP 关键事件快照（用于中途加入最小追赶）。
+/// </summary>
+public sealed class CampfireEventSnapshot
+{
+    public string ActionId { get; set; } = string.Empty;
+
+    public string EventType { get; set; } = string.Empty;
+
+    public string PlayerId { get; set; } = string.Empty;
+
+    public string CardId { get; set; } = string.Empty;
+
+    public string CardName { get; set; } = string.Empty;
+
+    public string RoomKey { get; set; } = string.Empty;
+
+    public long TimestampUtcTicks { get; set; } = 0;
 }

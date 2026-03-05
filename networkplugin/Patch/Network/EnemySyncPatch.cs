@@ -10,6 +10,7 @@ using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
@@ -32,6 +33,29 @@ public class EnemySyncPatch
     /// 依赖注入服务提供者，用于解析网络客户端。
     /// </summary>
     private static IServiceProvider serviceProvider => ModService.ServiceProvider;
+
+    private static INetworkClient TryGetHostNetworkClient()
+    {
+        if (serviceProvider == null)
+        {
+            return null;
+        }
+
+        INetworkClient networkClient = serviceProvider.GetService<INetworkClient>();
+        if (networkClient == null || !networkClient.IsConnected)
+        {
+            return null;
+        }
+
+        NetworkIdentityTracker.EnsureSubscribed(networkClient);
+        return NetworkIdentityTracker.GetSelfIsHost() ? networkClient : null;
+    }
+
+    private static void SendEnemyStateUpdate(INetworkClient networkClient, string json)
+    {
+        networkClient.SendRequest(NetworkMessageTypes.BattleEnemyStateChanged, json);
+        networkClient.SendRequest(NetworkMessageTypes.EnemyStateUpdate, json);
+    }
 
     #endregion
 
@@ -62,15 +86,8 @@ public class EnemySyncPatch
     {
         try
         {
-            // 服务未就绪直接跳过。
-            if (serviceProvider == null)
-            {
-                return;
-            }
-
-            // 客户端未连接则不发送。
-            var networkClient = serviceProvider.GetService<INetworkClient>();
-            if (networkClient == null || !networkClient.IsConnected)
+            INetworkClient networkClient = TryGetHostNetworkClient();
+            if (networkClient == null)
             {
                 return;
             }
@@ -97,7 +114,7 @@ public class EnemySyncPatch
             });
 
             string json = JsonCompat.Serialize(enemyData);
-            networkClient.SendRequest("EnemyStateUpdate", json);
+            SendEnemyStateUpdate(networkClient, json);
 
             Plugin.Logger?.LogInfo($"[EnemySync] 敌人 {__instance.Name} HP: {oldHp} -> {hp}");
         }
@@ -136,13 +153,8 @@ public class EnemySyncPatch
     {
         try
         {
-            if (serviceProvider == null)
-            {
-                return;
-            }
-
-            var networkClient = serviceProvider.GetService<INetworkClient>();
-            if (networkClient == null || !networkClient.IsConnected)
+            INetworkClient networkClient = TryGetHostNetworkClient();
+            if (networkClient == null)
             {
                 return;
             }
@@ -166,7 +178,7 @@ public class EnemySyncPatch
             });
 
             string json = JsonCompat.Serialize(enemyData);
-            networkClient.SendRequest("EnemyStateUpdate", json);
+            SendEnemyStateUpdate(networkClient, json);
 
             Plugin.Logger?.LogDebug($"[EnemySync] 敌人 {__instance.Name} Block: {oldBlock} -> {block}");
         }
@@ -205,13 +217,8 @@ public class EnemySyncPatch
     {
         try
         {
-            if (serviceProvider == null)
-            {
-                return;
-            }
-
-            var networkClient = serviceProvider.GetService<INetworkClient>();
-            if (networkClient == null || !networkClient.IsConnected)
+            INetworkClient networkClient = TryGetHostNetworkClient();
+            if (networkClient == null)
             {
                 return;
             }
@@ -235,7 +242,7 @@ public class EnemySyncPatch
             });
 
             string json = JsonCompat.Serialize(enemyData);
-            networkClient.SendRequest("EnemyStateUpdate", json);
+            SendEnemyStateUpdate(networkClient, json);
 
             Plugin.Logger?.LogDebug($"[EnemySync] 敌人 {__instance.Name} Shield: {oldShield} -> {shield}");
         }
@@ -260,13 +267,8 @@ public class EnemySyncPatch
     {
         try
         {
-            if (serviceProvider == null)
-            {
-                return;
-            }
-
-            var networkClient = serviceProvider.GetService<INetworkClient>();
-            if (networkClient == null || !networkClient.IsConnected)
+            INetworkClient networkClient = TryGetHostNetworkClient();
+            if (networkClient == null)
             {
                 return;
             }
@@ -286,7 +288,7 @@ public class EnemySyncPatch
             });
 
             string json = JsonCompat.Serialize(enemyData);
-            networkClient.SendRequest("EnemyStateUpdate", json);
+            SendEnemyStateUpdate(networkClient, json);
 
             Plugin.Logger?.LogInfo($"[EnemySync] 敌人 {enemy.Name} 状态效果已更新，数量: {statusEffects.Count}");
         }
@@ -307,13 +309,8 @@ public class EnemySyncPatch
     {
         try
         {
-            if (serviceProvider == null)
-            {
-                return;
-            }
-
-            var networkClient = serviceProvider.GetService<INetworkClient>();
-            if (networkClient == null || !networkClient.IsConnected)
+            INetworkClient networkClient = TryGetHostNetworkClient();
+            if (networkClient == null)
             {
                 return;
             }
@@ -333,7 +330,7 @@ public class EnemySyncPatch
             });
 
             string json = JsonCompat.Serialize(enemyData);
-            networkClient.SendRequest("EnemyStateUpdate", json);
+            SendEnemyStateUpdate(networkClient, json);
 
             Plugin.Logger?.LogInfo($"[EnemySync] 敌人 {enemy.Name} 状态效果移除后剩余: {statusEffects.Count}");
         }
@@ -358,13 +355,8 @@ public class EnemySyncPatch
     {
         try
         {
-            if (serviceProvider == null)
-            {
-                return;
-            }
-
-            var networkClient = serviceProvider.GetService<INetworkClient>();
-            if (networkClient == null || !networkClient.IsConnected)
+            INetworkClient networkClient = TryGetHostNetworkClient();
+            if (networkClient == null)
             {
                 return;
             }
@@ -383,7 +375,7 @@ public class EnemySyncPatch
             });
 
             string json = JsonCompat.Serialize(enemyData);
-            networkClient.SendRequest("EnemyStateUpdate", json);
+            SendEnemyStateUpdate(networkClient, json);
 
             Plugin.Logger?.LogDebug($"[EnemySync] 敌人 {enemy.Name} 意图已更新: {intentionData.Type}");
         }
@@ -408,13 +400,8 @@ public class EnemySyncPatch
     {
         try
         {
-            if (serviceProvider == null)
-            {
-                return;
-            }
-
-            var networkClient = serviceProvider.GetService<INetworkClient>();
-            if (networkClient == null || !networkClient.IsConnected)
+            INetworkClient networkClient = TryGetHostNetworkClient();
+            if (networkClient == null)
             {
                 return;
             }
@@ -433,7 +420,7 @@ public class EnemySyncPatch
             });
 
             string json = JsonCompat.Serialize(enemyData);
-            networkClient.SendRequest("EnemyStateUpdate", json);
+            SendEnemyStateUpdate(networkClient, json);
 
             Plugin.Logger?.LogInfo($"[EnemySync] 敌人 {enemy.Name} 已死亡");
         }

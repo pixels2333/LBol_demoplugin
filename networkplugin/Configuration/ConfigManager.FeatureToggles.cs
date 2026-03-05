@@ -11,31 +11,8 @@ public partial class ConfigManager
     /// </summary>
     #region 功能开关
 
-    /// <summary>
-    /// 卡牌同步开关
-    /// 控制卡牌使用、抽取、洗牌等行为的网络同步
-    /// </summary>
-    #if false // Duplicate: kept for reference; actual declaration is in Configuration/ConfigManager.Sync.cs
-    public ConfigEntry<bool> EnableCardSync { get; private set; }
-
-    /// <summary>
-    /// 法力同步开关
-    /// 控制法力消耗、恢复、增益等行为的网络同步
-    /// </summary>
-    public ConfigEntry<bool> EnableManaSync { get; private set; }
-
-    /// <summary>
-    /// 战斗同步开关
-    /// 控制伤害计算、状态效果、战斗结果的同步
-    /// </summary>
-    public ConfigEntry<bool> EnableBattleSync { get; private set; }
-
-    /// <summary>
-    /// 地图同步开关
-    /// 控制地图探索、节点状态、地图事件的同步
-    /// </summary>
-    public ConfigEntry<bool> EnableMapSync { get; private set; }
-    #endif
+    // 同步开关（EnableCardSync/EnableManaSync/EnableBattleSync/EnableMapSync）
+    // 统一声明于 Configuration/ConfigManager.Sync.cs。
 
     /// <summary>
     /// GapStation功能扩展开关

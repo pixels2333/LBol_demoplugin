@@ -6,7 +6,7 @@ using System.Text.Json;
 using NetworkPlugin.Utils;
 using BepInEx.Logging;
 using NetworkPlugin.Network.Client;
-using NetworkPlugin.Utils;
+using NetworkPlugin.Network.Messages;
 
 namespace NetworkPlugin.Chat;
 
@@ -120,9 +120,9 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
 
         // 获取当前玩家信息（优先使用网络侧自我标识，失败则回退到游戏侧信息/占位）
         string playerId = GetLocalPlayerId();
-        string username = GetLocalPlayerName();
+        string playerName = GetLocalPlayerName();
 
-        ChatMessage message = new ChatMessage(playerId, username, content, type);
+        ChatMessage message = new ChatMessage(playerId, playerName, content, type);
 
         try
         {
@@ -130,7 +130,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
             string json = JsonCompat.Serialize(message);
 
             // 通过网络客户端发送消息
-            _networkClient.SendRequest("ChatMessage", json);
+            _networkClient.SendRequest(NetworkMessageTypes.ChatMessage, json);
 
             // 添加消息到本地历史记录
             AddToHistory(message);
@@ -313,7 +313,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
             // DisplayMessageInUI(message);
 
             // 记录消息接收日志
-            _logger.LogInfo($"[Chat] 接收到消息 - 发送者: {message.Username}, 内容: {message.Content}, 类型: {message.MessageType}");
+            _logger.LogInfo($"[Chat] 接收到消息 - 发送者: {message.PlayerName}, 内容: {message.Content}, 类型: {message.MessageType}");
         }
         catch (JsonException ex)
         {

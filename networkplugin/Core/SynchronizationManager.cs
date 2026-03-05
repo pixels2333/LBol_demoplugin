@@ -499,39 +499,64 @@ public class SynchronizationManager : ISynchronizationManager
             eventType = "Unknown";
         }
 
-        string userName = "remote";
-        try
-        {
-            if (payload is Dictionary<string, object> dict)
-            {
-                if (dict.TryGetValue("UserName", out object un) && un is string s1 && !string.IsNullOrWhiteSpace(s1))
-                {
-                    userName = s1;
-                }
-                else if (dict.TryGetValue("PlayerName", out object pn) && pn is string s2 && !string.IsNullOrWhiteSpace(s2))
-                {
-                    userName = s2;
-                }
-                else if (dict.TryGetValue("PlayerId", out object pid) && pid is string s3 && !string.IsNullOrWhiteSpace(s3))
-                {
-                    userName = s3;
-                }
-            }
-        }
-        catch
-        {
-            // 忽略：仅用于日志/缓存 key 的辅助字段
-        }
+        string playerName = ResolvePlayerName(payload);
 
         return new GameEvent
         {
             EventType = eventType,
             Data = payload ?? string.Empty,
             Timestamp = timestamp.Ticks,
-            UserName = userName,
+            UserName = playerName,
             Source = "Network",
             IsProcessed = false,
         };
+    }
+
+    private static string ResolvePlayerName(object payload)
+    {
+        try
+        {
+            if (payload is Dictionary<string, object> dict)
+            {
+                if (TryGetNonEmptyString(dict, "PlayerName", out string playerName))
+                {
+                    return playerName;
+                }
+
+                if (TryGetNonEmptyString(dict, "UserName", out string legacyUserName))
+                {
+                    return legacyUserName;
+                }
+
+                if (TryGetNonEmptyString(dict, "username", out string legacyUserNameLower))
+                {
+                    return legacyUserNameLower;
+                }
+            }
+        }
+        catch
+        {
+            // ignore
+        }
+
+        return "remote";
+    }
+
+    private static bool TryGetNonEmptyString(Dictionary<string, object> dict, string key, out string value)
+    {
+        value = null;
+        if (!dict.TryGetValue(key, out object raw) || raw == null)
+        {
+            return false;
+        }
+
+        if (raw is string s && !string.IsNullOrWhiteSpace(s))
+        {
+            value = s;
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>

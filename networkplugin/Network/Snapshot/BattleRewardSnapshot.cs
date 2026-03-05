@@ -23,9 +23,9 @@ public class BattleRewardSnapshot
     public List<string> ExhibitRewards { get; set; } = [];
 
     /// <summary>
-    /// 药水奖励
+    /// 工具牌奖励
     /// </summary>
-    public List<string> PotionRewards { get; set; } = [];
+    public List<string> ToolCardRewards { get; set; } = [];
 
     /// <summary>
     /// 奖励是否已领取

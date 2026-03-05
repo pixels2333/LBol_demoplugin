@@ -14,11 +14,11 @@ using NetworkPlugin.Utils;
 namespace NetworkPlugin.Patch.Network;
 
 /// <summary>
-/// 药水/道具（Tool 卡）同步补丁：
-/// LBoL 中“药水”更接近 Tool 卡（CardType.Tool + DeckCounter），其获取/移除发生在 GameRunController 的牌组增删，
-/// 其使用发生在战斗中 UseCardAction 流程里并最终调用 BattleController.RecordCardUsage。
+/// 工具牌（Tool 卡）同步补丁：
+/// LBoL 的 Tool 卡（CardType.Tool + DeckCounter）获取/移除发生在 GameRunController 的牌组增删，
+/// 使用发生在战斗中 UseCardAction 流程里并最终调用 BattleController.RecordCardUsage。
 /// </summary>
-public static class PotionToolSyncPatch
+public static class ToolCardSyncPatch
 {
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
@@ -46,7 +46,7 @@ public static class PotionToolSyncPatch
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[PotionToolSync] Error sending game event {eventType}: {ex.Message}");
+            Plugin.Logger?.LogError($"[ToolCardSync] Error sending game event {eventType}: {ex.Message}");
         }
     }
 
@@ -83,17 +83,17 @@ public static class PotionToolSyncPatch
                 var payload = new
                 {
                     Timestamp = DateTime.Now.Ticks,
-                    EventType = NetworkMessageTypes.OnPotionObtained,
+                    EventType = NetworkMessageTypes.OnToolCardObtained,
                     PlayerId = GameStateUtils.GetCurrentPlayerId(),
                     Tools = toolCards.Select(SnapshotToolCard).ToArray(),
                     Source = sourceData?.ToString() ?? "Unknown"
                 };
 
-                SendGameEvent(NetworkMessageTypes.OnPotionObtained, payload);
+                SendGameEvent(NetworkMessageTypes.OnToolCardObtained, payload);
             }
             catch (Exception ex)
             {
-                Plugin.Logger?.LogError($"[PotionToolSync] Error in AddDeckCards Postfix: {ex.Message}");
+                Plugin.Logger?.LogError($"[ToolCardSync] Error in AddDeckCards Postfix: {ex.Message}");
             }
         }
     }
@@ -133,17 +133,17 @@ public static class PotionToolSyncPatch
                 var payload = new
                 {
                     Timestamp = DateTime.Now.Ticks,
-                    EventType = NetworkMessageTypes.OnPotionDiscarded,
+                    EventType = NetworkMessageTypes.OnToolCardRemoved,
                     PlayerId = GameStateUtils.GetCurrentPlayerId(),
                     Tools = __state.Select(SnapshotToolCard).ToArray(),
                     TriggerVisual = triggerVisual
                 };
 
-                SendGameEvent(NetworkMessageTypes.OnPotionDiscarded, payload);
+                SendGameEvent(NetworkMessageTypes.OnToolCardRemoved, payload);
             }
             catch (Exception ex)
             {
-                Plugin.Logger?.LogError($"[PotionToolSync] Error in RemoveDeckCards Postfix: {ex.Message}");
+                Plugin.Logger?.LogError($"[ToolCardSync] Error in RemoveDeckCards Postfix: {ex.Message}");
             }
         }
     }
@@ -178,7 +178,7 @@ public static class PotionToolSyncPatch
             }
             catch (Exception ex)
             {
-                Plugin.Logger?.LogError($"[PotionToolSync] Error in RecordCardUsage Prefix: {ex.Message}");
+                Plugin.Logger?.LogError($"[ToolCardSync] Error in RecordCardUsage Prefix: {ex.Message}");
             }
         }
 
@@ -195,7 +195,7 @@ public static class PotionToolSyncPatch
                 var payload = new
                 {
                     Timestamp = DateTime.Now.Ticks,
-                    EventType = NetworkMessageTypes.OnPotionUsed,
+                    EventType = NetworkMessageTypes.OnToolCardUsed,
                     PlayerId = GameStateUtils.GetCurrentPlayerId(),
                     BattleId = __instance.GetHashCode(),
                     ToolBefore = __state.ToolSnapshotBefore,
@@ -204,11 +204,11 @@ public static class PotionToolSyncPatch
                     DeckCounterAfter = card.DeckCounter
                 };
 
-                SendGameEvent(NetworkMessageTypes.OnPotionUsed, payload);
+                SendGameEvent(NetworkMessageTypes.OnToolCardUsed, payload);
             }
             catch (Exception ex)
             {
-                Plugin.Logger?.LogError($"[PotionToolSync] Error in RecordCardUsage Postfix: {ex.Message}");
+                Plugin.Logger?.LogError($"[ToolCardSync] Error in RecordCardUsage Postfix: {ex.Message}");
             }
         }
     }

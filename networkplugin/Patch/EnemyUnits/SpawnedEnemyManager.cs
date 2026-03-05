@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Patch.Network;
 using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.EnemyUnits;
@@ -144,12 +145,15 @@ public static class SpawnedEnemyManager
                 }
 
                 EnemySpawnCount++;
+                string spawnId = SpawnedEnemySyncPatch.BuildSpawnId(__instance.EnemyGroup?.Id, EnemySpawnCount, __result.RootIndex, __result.Id);
+                SpawnedEnemySyncPatch.BindSpawnId(__result, spawnId);
 
                 var spawnEvent = new
                 {
                     Timestamp = DateTime.Now.Ticks,
                     BattleId = __instance.GetHashCode().ToString(),
                     SpawnIndex = EnemySpawnCount,
+                    SpawnId = spawnId,
                     Spawner = spawner == null
                         ? null
                         : new
@@ -160,6 +164,7 @@ public static class SpawnedEnemyManager
                         },
                     Spawned = new
                     {
+                        SpawnId = spawnId,
                         __result.Id,
                         Type = __result.GetType().Name,
                         __result.RootIndex,
@@ -179,6 +184,10 @@ public static class SpawnedEnemyManager
 
                 if (SuppressBroadcastDepth <= 0)
                 {
+                    // 主路径：BattleEnemySpawned
+                    client.SendRequest(NetworkMessageTypes.BattleEnemySpawned, JsonCompat.Serialize(spawnEvent));
+
+                    // 兼容桥（1 个迭代周期）：镜像发送旧事件名，避免旧端断链。
                     client.SendRequest(NetworkMessageTypes.EnemySpawned, JsonCompat.Serialize(spawnEvent));
                     Plugin.Logger?.LogInfo($"[SpawnedEnemyManager] Enemy spawned: {__result.Name} (Type={__result.GetType().Name}, RootIndex={__result.RootIndex})");
                 }

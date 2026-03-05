@@ -40,6 +40,19 @@ public partial class NatTraversal
     private static bool _upnpEnabled = false;
 
     /// <summary>
+    /// UPnP 状态标签（DisabledByConfig / UnsupportedOrUnavailable / AvailableButNotImplemented / Enabled）。
+    /// </summary>
+    private static string _upnpState = "DisabledByConfig";
+
+    /// <summary>
+    /// 最近一次 NAT 探测结果。
+    /// </summary>
+    private static NatType _lastDetectedNatType = NatType.Unknown;
+
+    public static string UpnpState => _upnpState;
+    public static NatType LastDetectedNatType => _lastDetectedNatType;
+
+    /// <summary>
     /// 静态构造函数
     /// 初始化NAT穿透类的静态成员
     /// </summary>
@@ -324,6 +337,22 @@ public partial class NatTraversal
     {
         try
         {
+            if (Plugin.ConfigManager?.EnableUpnpExperimental?.Value != true)
+            {
+                _upnpEnabled = false;
+                _upnpState = "DisabledByConfig";
+                _logger?.LogInfo("[NATTraversal][UPnP] Skipped: disabled by config (EnableUpnpExperimental=false).");
+                return new UpnpMappingResult
+                {
+                    Success = false,
+                    ErrorMessage = "UPnP disabled by config (EnableUpnpExperimental=false).",
+                    InternalPort = internalPort,
+                    ExternalPort = externalPort == 0 ? internalPort : externalPort,
+                    Protocol = "UDP",
+                    Description = description
+                };
+            }
+
             if (externalPort == 0)
             {
                 externalPort = internalPort;
@@ -334,10 +363,12 @@ public partial class NatTraversal
             if (!available)
             {
                 _upnpEnabled = false;
+                _upnpState = "UnsupportedOrUnavailable";
+                _logger?.LogInfo("[NATTraversal][UPnP] Unavailable in current environment.");
                 return new UpnpMappingResult
                 {
                     Success = false,
-                    ErrorMessage = "UPnP not available (treated as unsupported by default).",
+                    ErrorMessage = "UPnP unavailable in current environment.",
                     InternalPort = internalPort,
                     ExternalPort = externalPort,
                     Protocol = "UDP",
@@ -347,10 +378,12 @@ public partial class NatTraversal
 
             // TODO(可选增强): 如未来需要真实映射，可接入 Open.NAT 并在此创建端口映射。
             _upnpEnabled = false;
+            _upnpState = "AvailableButNotImplemented";
+            _logger?.LogInfo("[NATTraversal][UPnP] Available but mapping implementation is not enabled yet.");
             return new UpnpMappingResult
             {
                 Success = false,
-                ErrorMessage = "UPnP mapping not implemented (optional enhancement).",
+                ErrorMessage = "UPnP available, but mapping is not implemented.",
                 InternalPort = internalPort,
                 ExternalPort = externalPort,
                 Protocol = "UDP",
@@ -397,8 +430,15 @@ public partial class NatTraversal
     {
         try
         {
+            if (Plugin.ConfigManager?.EnableUpnpExperimental?.Value != true)
+            {
+                _upnpState = "DisabledByConfig";
+                return Task.FromResult(false);
+            }
+
             // 默认按“不支持”处理，避免把 UPnP 变成主流程依赖。
             // 如未来需要更精确探测，可实现 SSDP/IGD 发现并在成功时返回 true。
+            _upnpState = "UnsupportedOrUnavailable";
             return Task.FromResult(false);
         }
         catch (Exception ex)
@@ -439,6 +479,18 @@ public partial class NatTraversal
     {
         try
         {
+            if (Plugin.ConfigManager?.EnableNatDetection?.Value == false)
+            {
+                _lastDetectedNatType = NatType.Unknown;
+                _logger?.LogInfo("[NATTraversal][STUN] Skipped: disabled by config (EnableNatDetection=false).");
+                return new StunResponse
+                {
+                    Success = false,
+                    ErrorMessage = "NAT detection disabled by config.",
+                    DetectedNatType = NatType.Unknown,
+                };
+            }
+
             string server = stunServer ?? DefaultStunServers[0];
 
             var (host, port) = ParseHostPort(server, 3478);
@@ -477,12 +529,14 @@ public partial class NatTraversal
                 StunServer = server
             };
 
-            _logger?.LogInfo($"[NATTraversal] NAT type detected: {result.DetectedNatType}, public={result.PublicEndPoint}");
+            _lastDetectedNatType = result.DetectedNatType;
+            _logger?.LogInfo($"[NATTraversal][STUN] NAT type detected: {result.DetectedNatType}, public={result.PublicEndPoint}");
             return result;
         }
         catch (Exception ex)
         {
-            _logger?.LogError($"[NATTraversal] NAT type detection failed: {ex.Message}");
+            _lastDetectedNatType = NatType.Unknown;
+            _logger?.LogError($"[NATTraversal][STUN] NAT type detection failed: {ex.Message}");
             return new StunResponse
             {
                 Success = false,
@@ -981,6 +1035,8 @@ public partial class NatTraversal
             StringBuilder report = new StringBuilder();
             report.AppendLine("=== NAT Traversal Report ===");
             report.AppendLine($"UPnP Enabled: {_upnpEnabled}");
+            report.AppendLine($"UPnP State: {_upnpState}");
+            report.AppendLine($"Last NAT Type: {_lastDetectedNatType}");
             report.AppendLine($"Registered Peers: {_peerNatInfo.Count}");
             report.AppendLine();
 

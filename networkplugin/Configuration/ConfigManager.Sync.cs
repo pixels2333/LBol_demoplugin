@@ -65,6 +65,18 @@ public partial class ConfigManager
     /// </summary>
     public ConfigEntry<bool> EnableSaveLoadSync { get; private set; }
 
+    /// <summary>
+    /// NAT 检测开关
+    /// 控制 STUN 探测与 NAT 类型识别流程。
+    /// </summary>
+    public ConfigEntry<bool> EnableNatDetection { get; private set; }
+
+    /// <summary>
+    /// UPnP 实验开关
+    /// 当前实现仅做能力探测与状态标注，不执行真实映射。
+    /// </summary>
+    public ConfigEntry<bool> EnableUpnpExperimental { get; private set; }
+
     #endregion
 
     /// <summary>
@@ -115,6 +127,20 @@ public partial class ConfigManager
             "(Deprecated) 旧版存档同步已废弃：联机不再传输存档 bytes。仅保留本地 Restore + FullSnapshot 追赶。"
         );
 
+        EnableNatDetection = configFile.Bind(
+            "Sync.Toggles",
+            "EnableNatDetection",
+            true,
+            "是否启用 NAT 类型检测（STUN）。关闭后不做 NAT 探测。"
+        );
+
+        EnableUpnpExperimental = configFile.Bind(
+            "Sync.Toggles",
+            "EnableUpnpExperimental",
+            false,
+            "UPnP 实验开关：当前仅用于状态标注，不执行真实端口映射。"
+        );
+
         // 在Sync.Performance区域下绑定同步性能参数
         MaxQueueSize = configFile.Bind(
             "Sync.Performance",
@@ -144,6 +170,8 @@ public partial class ConfigManager
             EnableManaSync = EnableManaSync?.Value ?? true,
             EnableBattleSync = EnableBattleSync?.Value ?? true,
             EnableMapSync = EnableMapSync?.Value ?? true,
+            EnableNatDetection = EnableNatDetection?.Value ?? true,
+            EnableUpnpExperimental = EnableUpnpExperimental?.Value ?? false,
             // SyncConfiguration 里暂未声明该字段；这里保持兼容，patch 层自己读取 EnableSaveLoadSync。
             MaxQueueSize = MaxQueueSize?.Value ?? 100,
             StateCacheExpiry = TimeSpan.FromMinutes(StateCacheExpiryMinutes?.Value ?? 5.0f)

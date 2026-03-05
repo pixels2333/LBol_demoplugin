@@ -1,5 +1,3 @@
-
-using System;
 using System.Text.Json.Serialization;
 using LBoL.Core;
 
@@ -171,57 +169,5 @@ public class NetWorkPlayer
         location_X = VisitingNode?.X ?? 0; // 与访问节点同步 X（无节点时回退0）
         location_Y = VisitingNode?.Y ?? 0; // 与访问节点同步 Y（无节点时回退0）
     }
-
-    /// <summary>
-    /// 发送玩家数据到网络。
-    /// </summary>
-    /// <remarks>
-    /// 当前方法体为占位，具体实现应由网络层/同步补丁负责。
-    /// </remarks>
-    public void SendData()
-    {
-        // ...existing code...
-    }
-
-    /// <summary>
-    /// 判断玩家是否为房主。
-    /// </summary>
-    /// <returns>当前实现未提供可用结果。</returns>
-    /// <exception cref="NotImplementedException">当前版本尚未实现。</exception>
-    public bool IsLobbyOwner()
-    {
-        throw new NotImplementedException("IsLobbyOwner method is not implemented yet."); // 未实现
-    }
-
-    /// <summary>
-    /// 存档加载后的状态重置。
-    /// </summary>
-    public void PostSaveLoad()
-    {
-        endturn = false; // 回合结束标记复位
-        block = 0; // 格挡复位
-    }
-
-    /// <summary>
-    /// 判断玩家是否在同一房间。
-    /// </summary>
-    /// <returns>当前实现未提供可用结果。</returns>
-    /// <exception cref="NotImplementedException">当前版本尚未实现。</exception>
-    public bool IsPlayerInSameRoom()
-    {
-        throw new NotImplementedException("IsPlayerInSameRoom method is not implemented yet."); // 未实现
-    }
-
-    /// <summary>
-    /// 判断玩家是否在同一章节（Act）。
-    /// </summary>
-    /// <returns>当前实现未提供可用结果。</returns>
-    /// <exception cref="NotImplementedException">当前版本尚未实现。</exception>
-    public bool IsPlayerOnSameAct()
-    {
-        throw new NotImplementedException("IsPlayerOnSameAct method is not implemented yet."); // 未实现
-    }
-
-    // 说明：如后续补齐 INetworkPlayer 能力，可在此区域继续扩展对应方法。
 
 }

@@ -499,33 +499,6 @@ public static class ShopTradeIconPatch
         return cardServiceButton != null && returnButton != null;
     }
 
-    private static void ApplyCompactButtonStyle_NoThrow(Button button)
-    {
-        try
-        {
-            if (button == null)
-            {
-                return;
-            }
-
-            var rt = button.GetComponent<RectTransform>();
-            if (rt == null)
-            {
-                return;
-            }
-
-            // Uniform scale down; keeps anchors/layout intact while making room.
-            rt.localScale = new Vector3(0.85f, 0.85f, 1f);
-
-            // Slight horizontal nudge so the group feels centered after scaling.
-            rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, rt.anchoredPosition.y);
-        }
-        catch
-        {
-            // ignored
-        }
-    }
-
     private static void BuildFloatingButton(ShopPanel shopPanel, Transform parent)
     {
         _defaultFont ??= FindDefaultFont(parent);
@@ -774,44 +747,6 @@ public static class ShopTradeIconPatch
         }
     }
 
-    private static void ForceButtonLabelCenter(Button button, string expectedText)
-    {
-        if (button == null)
-        {
-            return;
-        }
-
-        try
-        {
-            var tmps = button.GetComponentsInChildren<TextMeshProUGUI>(true);
-            if (tmps == null || tmps.Length == 0)
-            {
-                return;
-            }
-
-            foreach (var t in tmps)
-            {
-                if (t == null)
-                {
-                    continue;
-                }
-                if (!string.IsNullOrEmpty(expectedText) && t.text != expectedText)
-                {
-                    continue;
-                }
-
-                t.alignment = TextAlignmentOptions.Center;
-                t.enableWordWrapping = false;
-                t.overflowMode = TextOverflowModes.Overflow;
-                break;
-            }
-        }
-        catch
-        {
-            // ignored
-        }
-    }
-
     private static void SetUiVisible(bool visible)
     {
         if (_ui?.Root == null)
@@ -820,19 +755,6 @@ public static class ShopTradeIconPatch
         }
 
         _ui.Root.SetActive(visible);
-    }
-
-    private static Transform TryGetShopPanelRoot(ShopPanel shopPanel)
-    {
-        try
-        {
-            var root = Traverse.Create(shopPanel).Field("root").GetValue<RectTransform>();
-            return root != null ? root.transform : null;
-        }
-        catch
-        {
-            return null;
-        }
     }
 
     private static void TryStripLocalizationComponents(GameObject root)

@@ -8,6 +8,8 @@ public sealed class SyncConfiguration
     public bool EnableManaSync { get; set; } = true;
     public bool EnableBattleSync { get; set; } = true;
     public bool EnableMapSync { get; set; } = true;
+    public bool EnableNatDetection { get; set; } = true;
+    public bool EnableUpnpExperimental { get; set; } = false;
     public int MaxQueueSize { get; set; } = 100;
     public TimeSpan StateCacheExpiry { get; set; } = TimeSpan.FromMinutes(5);
 }
