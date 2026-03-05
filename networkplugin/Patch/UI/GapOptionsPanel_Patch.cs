@@ -15,6 +15,8 @@ using NetworkPlugin.Configuration;
 using NetworkPlugin.Core;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Messages;
+using NetworkPlugin.Patch.Network;
 using NetworkPlugin.UI.Panels;
 using NetworkPlugin.Utils;
 using UnityEngine;
@@ -36,6 +38,10 @@ public class GapOptionsPanel_Patch
     /// 配置管理器实例
     /// </summary>
     private static ConfigManager ConfigManager => serviceProvider?.GetService<ConfigManager>();
+
+    private static bool _pendingDrinkTeaCompletion;
+    private static string _pendingDrinkTeaOptionId;
+    private static string _pendingDrinkTeaOptionName;
 
     /// <summary>
     /// 获取网络管理器
@@ -69,6 +75,11 @@ public class GapOptionsPanel_Patch
             INetworkManager networkManager = GetNetworkManager();
             if (networkManager == null || !networkManager.IsConnected)
                 return;
+
+            _pendingDrinkTeaCompletion = false;
+            _pendingDrinkTeaOptionId = null;
+            _pendingDrinkTeaOptionName = null;
+            CampfireSyncPatch.BroadcastCampfireEvent(NetworkMessageTypes.GapStationEntered, "GapStation", gapStation?.GetType().Name);
 
             // 添加交易选项
             if (ConfigManager?.AllowTrading?.Value == true)
@@ -278,6 +289,9 @@ public class GapOptionsPanel_Patch
                 return false; // 阻止原始方法执行
             }
 
+            // 内置篝火选项（升级/移除）走最小同步广播。
+            TryBroadcastBuiltInCampfireSelection(option);
+
             return true; // 继续执行原始方法
         }
         catch (Exception ex)
@@ -285,6 +299,25 @@ public class GapOptionsPanel_Patch
             Plugin.Logger?.LogError($"[GapOptionsPanel_Patch] OptionClicked_Prefix错误: {ex.Message}");
             return true;
         }
+    }
+
+    [HarmonyPatch(typeof(GapOptionsPanel), nameof(GapOptionsPanel.SelectedAndHide))]
+    [HarmonyPostfix]
+    public static void SelectedAndHide_Postfix()
+    {
+        if (!_pendingDrinkTeaCompletion)
+        {
+            return;
+        }
+
+        string optionId = _pendingDrinkTeaOptionId;
+        string optionName = _pendingDrinkTeaOptionName;
+
+        _pendingDrinkTeaCompletion = false;
+        _pendingDrinkTeaOptionId = null;
+        _pendingDrinkTeaOptionName = null;
+
+        CampfireSyncPatch.BroadcastCampfireEvent(NetworkMessageTypes.DrinkTeaCompleted, optionId, optionName);
     }
 
     #region 辅助方法
@@ -382,6 +415,99 @@ public class GapOptionsPanel_Patch
     private static bool IsCustomResurrectOption(GapOption option)
     {
         return option?.GetType().GetProperty("Id")?.GetValue(option)?.ToString() == "Resurrect";
+    }
+
+    private static void TryBroadcastBuiltInCampfireSelection(GapOption option)
+    {
+        if (option == null)
+        {
+            return;
+        }
+
+        List<string> eventTypes = ResolveGapEventTypes(option);
+        if (eventTypes.Count == 0)
+        {
+            return;
+        }
+
+        string cardId = TryGetOptionString(option, "CardId") ?? TryGetOptionString(option, "Id");
+        string cardName = TryGetOptionString(option, "CardName") ?? TryGetOptionString(option, "Name");
+
+        bool includesDrinkTeaStarted = false;
+        foreach (string eventType in eventTypes)
+        {
+            CampfireSyncPatch.BroadcastCampfireEvent(eventType, cardId, cardName);
+            if (string.Equals(eventType, NetworkMessageTypes.DrinkTeaStarted, StringComparison.Ordinal))
+            {
+                includesDrinkTeaStarted = true;
+            }
+        }
+
+        if (includesDrinkTeaStarted)
+        {
+            _pendingDrinkTeaCompletion = true;
+            _pendingDrinkTeaOptionId = cardId;
+            _pendingDrinkTeaOptionName = cardName;
+        }
+    }
+
+    private static List<string> ResolveGapEventTypes(GapOption option)
+    {
+        List<string> eventTypes = [];
+        string typeText = TryGetOptionString(option, "Type") ?? option.GetType().Name;
+        string nameText = TryGetOptionString(option, "Name");
+        string idText = TryGetOptionString(option, "Id");
+
+        string merged = $"{typeText}|{nameText}|{idText}";
+
+        if (ContainsAny(merged, "Upgrade", "升级", "Enhance", "强化"))
+        {
+            eventTypes.Add(NetworkMessageTypes.CampfireUpgradeSelected);
+        }
+
+        if (ContainsAny(merged, "Remove", "Delete", "Exile", "移除", "删除", "放逐"))
+        {
+            eventTypes.Add(NetworkMessageTypes.CampfireRemoveCard);
+        }
+
+        if (ContainsAny(merged, "Tea", "Drink", "Rest", "Recover", "Heal", "喝茶", "休息", "恢复", "疗伤"))
+        {
+            eventTypes.Add(NetworkMessageTypes.DrinkTeaStarted);
+        }
+
+        return eventTypes;
+    }
+
+    private static string TryGetOptionString(GapOption option, string propertyName)
+    {
+        try
+        {
+            object value = option.GetType().GetProperty(propertyName)?.GetValue(option);
+            return value?.ToString();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static bool ContainsAny(string source, params string[] tokens)
+    {
+        if (string.IsNullOrWhiteSpace(source) || tokens == null)
+        {
+            return false;
+        }
+
+        foreach (string token in tokens)
+        {
+            if (!string.IsNullOrWhiteSpace(token) &&
+                source.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

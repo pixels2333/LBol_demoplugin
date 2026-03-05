@@ -67,6 +67,11 @@ public sealed class RemoteNetworkPlayer : INetworkPlayer
     public string location { get; set; } = string.Empty;
 
     /// <summary>
+    /// 当前章节（Act/Stage）。
+    /// </summary>
+    public int stage { get; set; } = -1;
+
+    /// <summary>
     /// 是否已结束本回合。
     /// </summary>
     public bool endturn { get; set; }
@@ -198,12 +203,6 @@ public sealed class RemoteNetworkPlayer : INetworkPlayer
     public void UpdatePlayerInfo(bool updateServer) { }
 
     /// <summary>
-    /// 更新架势（stance）显示/同步。
-    /// </summary>
-    /// <param name="updateServer">是否需要同步到服务器（远程占位对象忽略）。</param>
-    public void UpdateStance(bool updateServer) { }
-
-    /// <summary>
     /// 更新心境（mood）显示/同步。
     /// </summary>
     /// <param name="updateServer">是否需要同步到服务器（远程占位对象忽略）。</param>
@@ -253,12 +252,6 @@ public sealed class RemoteNetworkPlayer : INetworkPlayer
     public void UpdateLiveStatus(bool updateServer) { }
 
     // ===== 区域：便捷方法与战斗事件（远程占位实现） =====
-
-    /// <summary>
-    /// 获取“我自己”的网络玩家对象。
-    /// </summary>
-    /// <returns>返回当前实例。</returns>
-    public INetworkPlayer GetMyself() => this;
 
     /// <summary>
     /// 处理受到伤害事件。

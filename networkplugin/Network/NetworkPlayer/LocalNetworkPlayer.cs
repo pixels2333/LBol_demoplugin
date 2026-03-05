@@ -5,7 +5,6 @@ using LBoL.Core;
 using LBoL.Core.Units;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Utils;
-using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Network.NetworkPlayer;
 
@@ -29,6 +28,7 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
     private int[] _mana = new int[4];
     private int _locationX;
     private int _locationY;
+    private int _stage = -1;
 
     public LocalNetworkPlayer(INetworkClient client)
     {
@@ -152,6 +152,28 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
             return _location;
         }
         set => _location = value ?? string.Empty;
+    }
+
+    public int stage
+    {
+        get
+        {
+            try
+            {
+                MapNode node = CurrentGameRun?.CurrentMap?.VisitingNode;
+                if (node != null)
+                {
+                    return node.Act;
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            return _stage;
+        }
+        set => _stage = value;
     }
 
     public bool endturn
@@ -299,7 +321,6 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
     public void UpdateMaxHP(bool updateServer) { }
     public void UpdateCoins(bool updateServer) { }
     public void UpdatePlayerInfo(bool updateServer) { }
-    public void UpdateStance(bool updateServer) { }
     public void UpdateMood(bool updateServer) { }
     public void UpdateStatusEffects(bool updateServer) { }
     public void UpdateUltimatePower(bool updateServer) { }
@@ -314,6 +335,7 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
             location_X = visitingnode.X;
             location_Y = visitingnode.Y;
             location = visitingnode.StationType.ToString();
+            stage = visitingnode.Act;
         }
 
         if (!updateServer || _client?.IsConnected != true || visitingnode == null)
@@ -345,8 +367,6 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
     }
 
     public void UpdateLiveStatus(bool updateServer) { }
-
-    public INetworkPlayer GetMyself() => this;
 
     public void Takedamage(int damage) { }
     public void DealDamage(int damage) { }

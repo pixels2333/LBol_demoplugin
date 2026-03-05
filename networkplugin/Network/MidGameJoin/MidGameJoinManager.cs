@@ -87,11 +87,6 @@ public sealed class MidGameJoinManager
     /// </summary>
     private readonly FastSyncService _fastSyncService;
 
-    /// <summary>
-    /// 托管AI服务（用于玩家断线时代理操作）
-    /// </summary>
-    public AIPlayerController AIController { get; private set; }
-
     #endregion
 
     #region 构造函数
@@ -110,7 +105,6 @@ public sealed class MidGameJoinManager
         _pendingRequests = [];
         _approvedJoins = [];
         _fastSyncService = new FastSyncService(_logger);
-        AIController = new AIPlayerController(_logger);
     }
 
     #endregion
@@ -298,7 +292,7 @@ public sealed class MidGameJoinManager
             {
                 bootstrapped.Cards = GenerateStartingCards(progress);
                 bootstrapped.Exhibits = GenerateStartingExhibits(progress);
-                bootstrapped.Potions = GenerateStartingPotions(progress);
+                bootstrapped.ToolCards = GenerateStartingToolCards(progress);
             }
 
             lock (_lock) // 线程安全存储令牌并移除请求
@@ -614,12 +608,12 @@ public sealed class MidGameJoinManager
     }
 
     /// <summary>
-    /// 生成初始药水
+    /// 生成初始工具牌
     /// 说明：当前为安全默认实现，返回空集合（避免生成非法 ID）；如需启用需接入白名单/游戏数据校验。
     /// </summary>
     /// <param name="progress">游戏进度百分比</param>
-    /// <returns>初始药水ID到数量的字典（当前返回空字典）</returns>
-    private Dictionary<string, int> GenerateStartingPotions(int progress)       
+    /// <returns>初始工具牌ID到数量的字典（当前返回空字典）</returns>
+    private Dictionary<string, int> GenerateStartingToolCards(int progress)
     {
         return [];
     }
@@ -674,26 +668,6 @@ public sealed class MidGameJoinManager
         }
 
         return CatchUpResult.Success(applied); // 返回成功应用的事件数量
-    }
-
-    /// <summary>
-    /// 开始AI托管（代管掉线玩家）
-    /// </summary>
-    /// <param name="playerId">要托管的玩家ID</param>
-    public void StartAIControl(string playerId)
-    {
-        AIController.StartControlling(playerId);
-        _logger.LogInfo($"[MidGameJoinManager] AI started controlling player {playerId}");
-    }
-
-    /// <summary>
-    /// 停止AI托管（玩家重新连接后）
-    /// </summary>
-    /// <param name="playerId">要停止托管的玩家ID</param>
-    public void StopAIControl(string playerId)
-    {
-        AIController.StopControlling(playerId);
-        _logger.LogInfo($"[MidGameJoinManager] AI stopped controlling player {playerId}");
     }
 
     /// <summary>
@@ -1425,11 +1399,26 @@ public sealed class MidGameJoinManager
             return false;
         }
 
-        return eventType.StartsWith("On", StringComparison.Ordinal) || // 统一的游戏状态事件
-               eventType.StartsWith("Mana", StringComparison.Ordinal) || // 法力相关事件
-               eventType.StartsWith("Gap", StringComparison.Ordinal) || // 间隙相关事件
-               eventType.StartsWith("Battle", StringComparison.Ordinal) || // 战斗相关事件
-               string.Equals(eventType, NetworkMessageTypes.EnemySpawned, StringComparison.Ordinal); // 敌人生成事件
+        if (eventType.StartsWith("On", StringComparison.Ordinal) || // 统一的游戏状态事件
+            eventType.StartsWith("Mana", StringComparison.Ordinal) || // 法力相关事件
+            eventType.StartsWith("Gap", StringComparison.Ordinal)) // 间隙相关事件
+        {
+            return true;
+        }
+
+        return string.Equals(eventType, NetworkMessageTypes.BattlePlayerDamageReport, StringComparison.Ordinal) ||
+               string.Equals(eventType, NetworkMessageTypes.BattlePlayerDamageBroadcast, StringComparison.Ordinal) ||
+               string.Equals(eventType, NetworkMessageTypes.BattlePlayerHealReport, StringComparison.Ordinal) ||
+               string.Equals(eventType, NetworkMessageTypes.BattlePlayerHealBroadcast, StringComparison.Ordinal) ||
+               string.Equals(eventType, NetworkMessageTypes.BattlePlayerStatusEffectsDeltaReport, StringComparison.Ordinal) ||
+               string.Equals(eventType, NetworkMessageTypes.BattlePlayerStatusEffectsDeltaBroadcast, StringComparison.Ordinal) ||
+               string.Equals(eventType, NetworkMessageTypes.BattlePlayerStatusEffectsFullReport, StringComparison.Ordinal) ||
+               string.Equals(eventType, NetworkMessageTypes.BattlePlayerStatusEffectsFullBroadcast, StringComparison.Ordinal) ||
+               string.Equals(eventType, NetworkMessageTypes.BattleEnemySpawned, StringComparison.Ordinal) ||
+               string.Equals(eventType, NetworkMessageTypes.EnemySpawned, StringComparison.Ordinal) ||
+               string.Equals(eventType, NetworkMessageTypes.BattleEnemyIntentChanged, StringComparison.Ordinal) ||
+               string.Equals(eventType, NetworkMessageTypes.BattleEnemyStateChanged, StringComparison.Ordinal) ||
+               string.Equals(eventType, NetworkMessageTypes.EnemyStateUpdate, StringComparison.Ordinal);
     }
 
     #endregion

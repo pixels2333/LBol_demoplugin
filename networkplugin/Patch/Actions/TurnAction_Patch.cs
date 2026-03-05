@@ -129,7 +129,6 @@ public class TurnAction_Patch
                 ReconnectToken = string.Empty,
                 DisconnectTime = 0,
                 LastUpdateTime = DateTime.Now.Ticks,
-                IsAIControlled = false,
                 TurnCounter = source.TurnCounter,
                 Timestamp = DateTime.Now,
             };
@@ -273,7 +272,6 @@ public class TurnAction_Patch
                 ReconnectToken = string.Empty,
                 DisconnectTime = 0,
                 LastUpdateTime = DateTime.Now.Ticks,
-                IsAIControlled = false,
                 TurnCounter = source.TurnCounter,
                 Timestamp = DateTime.Now,
             };

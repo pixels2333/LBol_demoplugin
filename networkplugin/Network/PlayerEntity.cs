@@ -140,7 +140,7 @@ public class PlayerEntity
             Gold = Coins.Value,
             Cards = [],
             Exhibits = [],
-            Potions = [],
+            ToolCards = [],
             StatusEffects = [],
             GameLocation = new LocationSnapshot() { X = LocationX.Value, Y = LocationY.Value },
             IsInBattle = IsInBattle.Value,

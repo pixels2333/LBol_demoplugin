@@ -53,12 +53,6 @@ public class Plugin : BaseUnityPlugin
     }
 
     /// <summary>
-    /// 网络玩家实例，管理玩家的网络连接和状态同步
-    /// 该实例负责处理玩家在网络环境中的身份验证、数据同步和通信功能
-    /// </summary>
-    private NetWorkPlayer netWorkPlayer;
-
-    /// <summary>
     /// 配置管理器实例，管理插件的所有配置项
     /// 使用BepInEx原生的配置系统，自动加载和保存配置
     /// </summary>

@@ -355,31 +355,7 @@ public class NetworkServer : BaseGameServer
     /// <returns>如果是游戏事件消息返回true，否则返回false</returns>
     private bool IsGameEvent(string messageType)
     {
-        // Some multiplayer events don't follow the common prefixes (On/Mana/Gap/Battle).
-        // If they are misclassified as system messages, the server will drop them and the
-        // client's sync gate (e.g., EndTurn) can deadlock even in host-only sessions.
-        if (messageType == NetworkMessageTypes.EndTurnRequest ||
-            messageType == NetworkMessageTypes.EndTurnStatus ||
-            messageType == NetworkMessageTypes.EndTurnConfirm ||
-            messageType == NetworkMessageTypes.CardStateChanged)
-        {
-            return true;
-        }
-
-        return messageType.StartsWith("On") ||
-               messageType.StartsWith("Mana") ||
-               messageType.StartsWith("Gap") ||
-               messageType.StartsWith("Battle") ||
-               messageType == NetworkMessageTypes.ChatMessage ||
-               messageType == "StateSyncRequest" ||
-               // FullSync 控制消息：仍视为 GameEvent 进入 HandleGameEvent，但必须禁止广播。
-               messageType == NetworkMessageTypes.FullStateSyncRequest ||
-               messageType == NetworkMessageTypes.FullStateSyncResponse ||
-               // 房间残局同步：同样需要进入 HandleGameEvent，但必须禁止广播（由路由函数定向转发）。
-               messageType == NetworkMessageTypes.RoomStateRequest ||
-               messageType == NetworkMessageTypes.RoomStateResponse ||
-               messageType == NetworkMessageTypes.RoomStateUpload ||
-               messageType == NetworkMessageTypes.RoomStateBroadcast;
+        return NetworkMessageTypes.IsGameEvent(messageType, NetworkMessageTypes.GameEventRoute.HostServer);
     }
 
     /// <summary>

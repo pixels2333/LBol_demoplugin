@@ -48,12 +48,26 @@ public class ChatMessage
     public string PlayerId { get; set; }
 
     /// <summary>
-    /// 发送者用户名
+    /// 发送者名称
     /// 显示在聊天界面中的发送者名称，用于用户识别和社交体验
     /// 可以是游戏角色名或自定义昵称
     /// </summary>
+    [JsonPropertyName("playerName")]
+    public string PlayerName { get; set; }
+
     [JsonPropertyName("username")]
-    public string Username { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string LegacyUsername
+    {
+        get => null;
+        set
+        {
+            if (!string.IsNullOrWhiteSpace(value) && string.IsNullOrWhiteSpace(PlayerName))
+            {
+                PlayerName = value;
+            }
+        }
+    }
 
     /// <summary>
     /// 消息内容
@@ -106,7 +120,7 @@ public class ChatMessage
     /// 使用指定参数创建聊天消息，自动调用默认构造函数初始化基础属性
     /// </summary>
     /// <param name="playerId">发送者玩家的唯一标识符</param>
-    /// <param name="username">发送者的显示名称</param>
+    /// <param name="playerName">发送者的显示名称</param>
     /// <param name="content">消息的文本内容</param>
     /// <param name="type">消息类型，默认为Normal普通消息</param>
     /// <remarks>
@@ -115,12 +129,12 @@ public class ChatMessage
     /// 2. 设置发送者信息和消息内容
     /// 3. 根据参数设置消息类型
     /// </remarks>
-    public ChatMessage(string playerId, string username, string content, ChatMessageType type = ChatMessageType.Normal)
+    public ChatMessage(string playerId, string playerName, string content, ChatMessageType type = ChatMessageType.Normal)
         : this()
     {
         // 设置发送者信息
         PlayerId = playerId;
-        Username = username;
+        PlayerName = playerName;
 
         // 设置消息内容
         Content = content;
@@ -156,7 +170,7 @@ public class ChatMessage
             ? Content.Substring(0, 50) + "..."
             : Content;
 
-        return $"[{MessageType}] {Username}: {shortContent}";
+        return $"[{MessageType}] {PlayerName}: {shortContent}";
     }
 }
 

@@ -15,6 +15,53 @@
 ### Docs
 - **[helloagents]**: 更新方案包 `plan/202602071900_trade-partner-picker-centered-ui`：聚焦 TradePanel 内 partner picker，使用游戏 UI 资源并以居中窗口弹层展示玩家列表。
 
+### 变更
+- **[networkplugin]**: 执行方案包 `plan/202603051930_networkplugin-review-optimization-closure` 的 5.5/5.6/6.1~6.4/7.5 收尾批次。
+	- 消息治理：`DebutBonusSyncPatch`、`RemoteCardUsePatch`、`GameResultSyncPatch` 关键消息切换到 `NetworkMessageTypes` 常量；新增 `OnDebutBonusRolled` / `OnGameRunResult` 常量。
+	- 结构清理：移除未接入的 `MessageCategories`，避免“定义但不使用”结构。
+	- NAT 收口：`NatTraversal` 明确 UPnP 语义状态（`DisabledByConfig` / `UnsupportedOrUnavailable` / `AvailableButNotImplemented`），并统一 `[NATTraversal][UPnP]/[STUN]` 日志口径。
+	- 配置对齐：`ConfigManager.Sync`/`SyncConfiguration` 新增 `EnableNatDetection` 与 `EnableUpnpExperimental`；`NetworkStatusIndicator` 增加 NAT/UPnP 状态展示。
+	- 遗留清理：删除 `ConfigManager.FeatureToggles.cs` 与 `ConfigManager.Performance.cs` 的 `#if false` 历史参考块。
+	- 验收范围调整：聊天功能移出当前方案验收范围；`Campfire` 与敌人链路手工双端回归因无测试环境顺延。
+	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj` 通过（289 warnings，0 errors）。
+- **[networkplugin]**: 执行方案包 `plan/202603051930_networkplugin-review-optimization-closure` 的 4.4~5.4（玩家模型映射补齐 + 三端事件判定同源收敛）。
+	- `INetworkPlayer` 新增 `stage` 字段；`LocalNetworkPlayer/RemoteNetworkPlayer` 实现并贯通 `NetworkManager.UpdateSinglePlayer` 的 Stage 映射。
+	- `OtherPlayersOverlayPatch` 修复 `TryGetJsonElement` 的 string payload 解析断点，并将 `Welcome/PlayerListUpdate/PlayerJoined/PlayerLeft/HostChanged` 切换为 `NetworkMessageTypes` 常量引用。
+	- `NetworkMessageTypes` 新增统一判定入口 `IsGameEvent(messageType, route)`（Client/HostServer/Relay），并补充 Chat/Battle/Room/Trade 分组。
+	- `NetworkClient/NetworkServer/RelayServer` 的 `IsGameEvent` 改为委托同源规则，消除三端规则漂移。
+	- 验证：Problems 视图无错误；关键符号引用链完整（`IsGameEvent`/`stage`/`TryGetJsonElement`）。
+- **[networkplugin]**: 执行方案包 `plan/202603051930_networkplugin-review-optimization-closure` 的 3.4~3.6（敌人状态/意图/回放收敛，保留 1 个迭代兼容桥）。
+	- `NetworkMessageTypes` 新增 `BattleEnemyIntentChanged`、`BattleEnemyStateChanged` 常量，并将 `EnemyStateUpdate` 显式定义为兼容桥事件。
+	- `EnemySyncPatch` 改为 Host 权威发送：主发 `BattleEnemyStateChanged`，兼容镜像 `EnemyStateUpdate`。
+	- 新增 `EnemyStateReceivePatch`：客机接收 `BattleEnemyStateChanged/EnemyStateUpdate`，按 `SpawnId` 主键定位并保留 `RootIndex+Id` 兜底匹配，落地 HP/Block/Shield。
+	- `EnemyIntentSyncPatch` 与 `EnemyIntentReceivePatch` 收敛为常量事件名；接收侧升级为 SpawnId 主键 + 兼容键双写双查。
+	- `NetworkClient/NetworkServer/RelayServer` 的 `IsGameEvent` 显式纳入敌人状态/意图新旧事件名。
+	- `MidGameJoinManager.ShouldReplayEventType` 改为显式白名单（含 `BattleEnemySpawned/BattleEnemyIntentChanged/BattleEnemyStateChanged` 与旧名兼容）。
+	- 构建验证：`dotnet build networkplugin/NetWorkPlugin.csproj` 通过（289 warnings，无新增错误）。
+- **[networkplugin]**: 执行方案包 `plan/202603051930_networkplugin-review-optimization-closure` 的 3.1~3.3（敌人出生单入口收敛，保留 1 个迭代兼容桥）。
+	- `NetworkMessageTypes` 新增 `BattleEnemySpawned` 主路径常量；`EnemySpawned` 标注为兼容桥事件。
+	- `SpawnedEnemyManager` 发送侧改为主发 `BattleEnemySpawned`，并兼容镜像发送 `EnemySpawned`（仅过渡期保留）。
+	- `EnemySpawnSyncPatch` 接收侧统一为 `BattleEnemySpawned/EnemySpawned` 双入口共用同一落地处理。
+	- `NetworkClient/NetworkServer/RelayServer` 的 `IsGameEvent` 显式纳入 `BattleEnemySpawned`，降低对前缀匹配的隐式依赖。
+	- 构建验证：`dotnet build networkplugin/NetWorkPlugin.csproj` 通过（289 warnings，无新增错误）。
+- **[networkplugin]**: 执行方案包 `plan/202603051930_networkplugin-review-optimization-closure` 的 2.5（Campfire 中途加入追赶最小补充）。
+	- `RoomStateSnapshot` 新增 `CampfireEvents`（最近 8 条）事件摘要字段，支持 Joiner 最小追赶载荷。
+	- `CampfireSyncPatch` 广播 payload 新增 `RoomKey`；新增房间级事件缓存与 `MergeCatchupEvents`（仅缓存+ActionId 去重标记，不强行执行游戏动作）。
+	- `RoomSyncManager` 在 Request/Upload/Response 链路透传 `CampfireEvents`，客户端收到 `RoomStateResponse` 后执行追赶合并。
+	- `RoomStateSyncPatch.BuildSnapshot` 附带当前房间 Campfire 事件摘要。
+	- 构建验证：`dotnet build networkplugin/NetWorkPlugin.csproj` 通过（warning 从 290 降至 289，无新增错误）。
+- **[networkplugin]**: 执行方案包 `plan/202603051930_networkplugin-review-optimization-closure` 的幽灵方法治理批次。
+	- 清理插件入口无用字段 `Plugin.netWorkPlayer`，并删除无引用重复 DTO `Network/NetworkPlayer/dto/NetWorkPlayer.cs`。
+	- 移除无调用接口/实现占位：`GetMyself`、`UpdateStance`、`NetworkManager.UpdatePlayerInfo(object)`。
+	- 删除 `ShopTradeIconPatch` 中 3 个无调用私有方法，并标注 `RemoteCardUsePatch.Card_GetActions_Original` 为 ReversePatch 白名单保留项。
+	- 构建验证：`dotnet build networkplugin/NetWorkPlugin.csproj` 通过（存在既有 warning，无新增错误）。
+- **[networkplugin]**: 执行方案包 `plan/202603051930_networkplugin-review-optimization-closure` 的聊天协议统一批次。
+	- 统一聊天模型到 `Chat/ChatMessage.cs`，主字段收敛为 `PlayerName`，并兼容读取旧 `username` 负载。
+	- 删除 `UI/Components/ChatUI.cs` 内重复 `ChatMessage/ChatMessageType` 定义，改为复用 `NetworkPlugin.Chat` 命名空间模型。
+	- 修复聊天消息淡出计时：由哈希构造时间改为显式记录消息创建时间，避免淡出跳变。
+	- `ChatConsole` 发送改为 `NetworkMessageTypes.ChatMessage` 常量；`SynchronizationManager` 接收侧名字解析统一为 `PlayerName` 优先并兼容旧字段。
+	- 构建验证：`dotnet build networkplugin/NetWorkPlugin.csproj` 通过（存在既有 warning，无新增错误）。
+
 ### Fixed
 - **[networkplugin]**: 修复服务器端 GameEvent 分类遗漏导致的回合结束卡死：将 `EndTurnRequest/EndTurnStatus/EndTurnConfirm` 与 `CardStateChanged` 归类为 GameEvent，避免被当作未知系统消息丢弃（影响 Host/Relay）。
 - **[networkplugin]**: 修复客户端点击结束回合后掉线与按钮卡死：补齐 `EndTurn*`/`CardStateChanged` 的 GameEvent 分类；在 `PollEvents()` 中周期发送 `Heartbeat` 保活；断线时强制恢复 EndTurn 按钮可点击。

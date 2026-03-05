@@ -22,7 +22,7 @@ namespace NetworkPlugin.Network.Snapshot
 
         public List<CardStateSnapshot> Cards { get; set; } = [];
         public List<ExhibitStateSnapshot> Exhibits { get; set; } = [];
-        public Dictionary<string, int> Potions { get; set; } = [];
+        public Dictionary<string, int> ToolCards { get; set; } = [];
         public List<StatusEffectStateSnapshot> StatusEffects { get; set; } = [];
 
         public LocationSnapshot GameLocation { get; set; } = new LocationSnapshot();
@@ -38,8 +38,6 @@ namespace NetworkPlugin.Network.Snapshot
 
         public long DisconnectTime { get; set; }
         public long LastUpdateTime { get; set; }
-
-        public bool IsAIControlled { get; set; }
 
         public int TurnCounter { get; set; }
         public int TurnNumber { get; set; }

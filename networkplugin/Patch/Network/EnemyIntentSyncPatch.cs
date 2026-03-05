@@ -207,7 +207,7 @@ public static class EnemyIntentSyncPatch
             string json = JsonCompat.Serialize(payload);
 
             // 用 Battle* 前缀走 GameEvent 通道，避免被 NetworkClient/Server 当作“未知系统消息”丢弃。
-            networkClient.SendRequest("BattleEnemyIntentChanged", json);
+            networkClient.SendRequest(NetworkMessageTypes.BattleEnemyIntentChanged, json);
 
             Plugin.Logger?.LogDebug(
                 $"[EnemyIntentSync] Intentions updated. Enemy={__instance.Name} RootIndex={__instance.RootIndex} Round={__instance.Battle.RoundCounter} EOT={_generatingRoundStartIntentions}"
@@ -290,7 +290,7 @@ public static class EnemyIntentSyncPatch
                     Intentions = BuildIntentionsSnapshot(enemy.Intentions),
                 };
 
-                client.SendRequest("BattleEnemyIntentChanged", JsonCompat.Serialize(payload));
+                client.SendRequest(NetworkMessageTypes.BattleEnemyIntentChanged, JsonCompat.Serialize(payload));
             }
 
             Plugin.Logger?.LogDebug("[EnemyIntentSync] Broadcasted current battle intentions for join/reconnect.");

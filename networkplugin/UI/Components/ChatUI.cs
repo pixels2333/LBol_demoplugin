@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using NetworkPlugin.Chat;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
@@ -34,6 +34,7 @@ public class ChatUI : MonoBehaviour
 
     private Queue<ChatMessage> messageQueue = new();      // 存储聊天消息的队列，先进先出
     private List<GameObject> messageObjects = [];          // 存储UI消息对象列表，用于管理和清理
+    private Dictionary<GameObject, DateTime> messageCreatedAt = [];
     private IServiceProvider _serviceProvider;            // 依赖注入服务提供者
     private INetworkClient _networkClient;                // 网络客户端接口，负责消息发送
 
@@ -154,7 +155,7 @@ public class ChatUI : MonoBehaviour
                 return JsonCompat.Deserialize<ChatMessage>(s);
             }
 
-                return JsonCompat.Deserialize<ChatMessage>(JsonCompat.Serialize(payload));
+            return JsonCompat.Deserialize<ChatMessage>(JsonCompat.Serialize(payload));
         }
         catch
         {
@@ -200,8 +201,8 @@ public class ChatUI : MonoBehaviour
             PlayerId = GetCurrentPlayerId(),
             PlayerName = GetCurrentPlayerName(),
             Content = message,
-            Timestamp = DateTime.Now,
-            MessageType = ChatMessageType.Player
+            Timestamp = DateTime.UtcNow,
+            MessageType = ChatMessageType.Normal
         };
 
         try
@@ -243,7 +244,7 @@ public class ChatUI : MonoBehaviour
             PlayerId = "System",
             PlayerName = "系统",
             Content = message,
-            Timestamp = DateTime.Now,
+            Timestamp = DateTime.UtcNow,
             MessageType = ChatMessageType.System
         };
 
@@ -280,6 +281,7 @@ public class ChatUI : MonoBehaviour
             // 存储消息对象用于后续管理
             messageObj.name = $"Message_{message.MessageId}";
             messageObjects.Add(messageObj);
+            messageCreatedAt[messageObj] = DateTime.UtcNow;
         }
 
         // 限制消息对象数量
@@ -287,6 +289,7 @@ public class ChatUI : MonoBehaviour
         {
             var oldestMessage = messageObjects[0];
             messageObjects.RemoveAt(0);
+            messageCreatedAt.Remove(oldestMessage);
             Destroy(oldestMessage);
         }
     }
@@ -300,8 +303,7 @@ public class ChatUI : MonoBehaviour
         return message.MessageType switch
         {
             ChatMessageType.System => $"[{timeStr}] {message.Content}",
-            ChatMessageType.Player => $"[{timeStr}] {message.PlayerName}: {message.Content}",
-            _ => $"[{timeStr}] {message.Content}"
+            _ => $"[{timeStr}] {message.PlayerName}: {message.Content}"
         };
     }
 
@@ -322,19 +324,27 @@ public class ChatUI : MonoBehaviour
     /// </summary>
     private void UpdateMessageFading()
     {
-        var now = DateTime.Now;
+        var now = DateTime.UtcNow;
 
-        foreach (var messageObj in messageObjects)
+        for (int i = messageObjects.Count - 1; i >= 0; i--)
         {
+            var messageObj = messageObjects[i];
             if (messageObj == null)
             {
+                messageObjects.RemoveAt(i);
                 continue;
             }
 
             var textComponent = messageObj.GetComponent<TextMeshProUGUI>();
             if (textComponent != null)
             {
-                var messageAge = now - new DateTime(messageObj.name.GetHashCode());
+                if (!messageCreatedAt.TryGetValue(messageObj, out DateTime createdAt))
+                {
+                    createdAt = now;
+                    messageCreatedAt[messageObj] = createdAt;
+                }
+
+                var messageAge = now - createdAt;
                 if (messageAge.TotalSeconds > messageFadeTime)
                 {
                     float alpha = Mathf.Clamp01(1f - (float)(messageAge.TotalSeconds - messageFadeTime) / messageFadeTime);
@@ -468,30 +478,7 @@ public class ChatUI : MonoBehaviour
             }
         }
         messageObjects.Clear();
+        messageCreatedAt.Clear();
         messageQueue.Clear();
     }
-}
-
-/// <summary>
-/// 聊天消息数据结构
-/// </summary>
-[Serializable]
-public class ChatMessage
-{
-    public string MessageId { get; set; }     // 消息的唯一标识符，用于消息追踪和管理
-    public string PlayerId { get; set; }     // 发送消息的玩家ID
-    public string PlayerName { get; set; }   // 发送消息的玩家显示名称
-    public string Content { get; set; }      // 消息的具体内容文本
-    public DateTime Timestamp { get; set; }  // 消息发送的时间戳
-    public ChatMessageType MessageType { get; set; } // 消息类型（玩家消息/系统消息/错误消息）
-}
-
-/// <summary>
-/// 聊天消息类型
-/// </summary>
-public enum ChatMessageType
-{
-    Player,
-    System,
-    Error
 }

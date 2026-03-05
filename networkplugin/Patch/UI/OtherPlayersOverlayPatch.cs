@@ -16,6 +16,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Configuration;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Utils;
 using TMPro;
 using UnityEngine;
@@ -36,8 +37,11 @@ public static class OtherPlayersOverlayPatch
 {
     #region 常量和字段
 
-    /// <summary>每页显示的玩家数量</summary>
-    private const int PageSize = 10;
+    private const float AvatarEntryBaseWidth = 140f;
+    private const float AvatarEntryBaseHeight = 176f;
+    private const float AvatarVisualSize = 112f;
+    private const float AvatarEntrySpacing = 22f;
+    private const float AvatarStripYOffset = 14f;
 
     /// <summary>获取依赖注入容器</summary>
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
@@ -214,9 +218,6 @@ public static class OtherPlayersOverlayPatch
     /// <summary>存储所有玩家信息的字典，key为PlayerId</summary>
     private static readonly Dictionary<string, PlayerSummary> _players = new();
 
-    /// <summary>当前页码</summary>
-    private static int _page;
-
     /// <summary>overlay UI实例</summary>
     private static OverlayUi _ui;
 
@@ -325,10 +326,15 @@ public static class OtherPlayersOverlayPatch
                 return;
             }
 
-            // 确保 Overlay UI 已创建并处于激活状态
-            EnsureUi();
-            // 根据当前玩家列表和页码刷新 UI 内容
-            RefreshUi();
+            if (IsBattleOverlayActive())
+            {
+                EnsureUi();
+                RefreshUi();
+            }
+            else
+            {
+                HideUi();
+            }
 
             // 渲染远程玩家“角色实体”（战斗场景）
             EnsureVirtualAiDefaultPlayer_NoThrow();
@@ -469,8 +475,6 @@ public static class OtherPlayersOverlayPatch
         {
             // 清空玩家列表
             _players.Clear();
-            // 重置页码
-            _page = 0;
         }
 
         _selfPlayerId = null;
@@ -497,23 +501,23 @@ public static class OtherPlayersOverlayPatch
             // 根据事件类型分发处理
             switch (eventType)
             {
-                case "Welcome":
+                case NetworkMessageTypes.Welcome:
                     // 服务器欢迎消息：包含自身 PlayerId 与初始玩家列表
                     HandleWelcome(root);
                     break;
-                case "PlayerListUpdate":
+                case NetworkMessageTypes.PlayerListUpdate:
                     // 玩家列表更新事件：完整覆盖现有玩家列表
                     HandlePlayerListUpdate(root);
                     break;
-                case "PlayerJoined":
+                case NetworkMessageTypes.PlayerJoined:
                     // 新玩家加入事件：添加新玩家
                     HandlePlayerJoined(root);
                     break;
-                case "PlayerLeft":
+                case NetworkMessageTypes.PlayerLeft:
                     // 玩家离开事件：移除玩家
                     HandlePlayerLeft(root);
                     break;
-                case "HostChanged":
+                case NetworkMessageTypes.HostChanged:
                     // 房主变更事件：更新房主标记
                     HandleHostChanged(root);
                     break;
@@ -569,8 +573,6 @@ public static class OtherPlayersOverlayPatch
                 LocationName = GetString(root, "LocationName"),
                 LastUpdateTime = Time.unscaledTime,
             };
-
-            ClampPage_NoLock();
         }
     }
 
@@ -631,7 +633,6 @@ public static class OtherPlayersOverlayPatch
         lock (_syncLock)
         {
             _players.Remove(playerId);
-            ClampPage_NoLock();
         }
 
         RemoveRemoteCharacter(playerId);
@@ -675,194 +676,138 @@ public static class OtherPlayersOverlayPatch
             {
                 _players[kv.Key] = kv.Value;
             }
-
-            ClampPage_NoLock();
         }
+
     }
 
     #endregion
 
     #region UI 创建和更新
 
-    /// <summary>
-    /// 确保UI已创建，如果未创建则进行初始化
-    /// 包括背景、标题、翻页按钮、玩家条目等
-    /// </summary>
     private static void EnsureUi()
     {
-        // 如果UI已存在，直接显示并返回
         if (_ui != null && _ui.Root != null)
         {
-            _ui.Root.SetActive(true);
             return;
         }
 
-        // 查找合适的UI层级作为父对象（优先使用topLayer或topmostLayer）
-        Transform parent = TryGetUiLayerTransform("topLayer") ?? TryGetUiLayerTransform("topmostLayer") ?? UiManager.Instance.transform;
-        // 缓存默认字体（为了提高性能）
+        Transform parent = TryGetUiLayerTransform("topLayer") ?? TryGetUiLayerTransform("topmostLayer") ?? UiManager.Instance?.transform;
+        if (parent == null)
+        {
+            return;
+        }
+
         _defaultFont ??= FindDefaultFont(parent);
 
-        // 创建根容器
         GameObject root = new("NetworkPlugin_OtherPlayersOverlay");
         root.transform.SetParent(parent, false);
 
-        // 设置根容器的RectTransform（位置在右下角，距离屏幕边缘24像素）
         RectTransform rootRect = root.AddComponent<RectTransform>();
-        rootRect.anchorMin = new Vector2(1f, 1f);  // 锚点：右上角
-        rootRect.anchorMax = new Vector2(1f, 1f);  // 锚点：右上角
-        rootRect.pivot = new Vector2(1f, 1f);      // 中心点：右上角
-        rootRect.anchoredPosition = new Vector2(-24f, -24f);  // 距离锚点偏移
-        rootRect.sizeDelta = new Vector2(360f, 520f);  // 宽360，高520
+        rootRect.anchorMin = new Vector2(0.5f, 0.5f);
+        rootRect.anchorMax = new Vector2(0.5f, 0.5f);
+        rootRect.pivot = new Vector2(0.5f, 1f);
+        rootRect.anchoredPosition = new Vector2(0f, 0f);
+        rootRect.sizeDelta = new Vector2(900f, AvatarEntryBaseHeight + 34f);
 
-        // 设置背景图像（半透明黑色）
-        Image bg = root.AddComponent<Image>();
-        bg.sprite = GetWhiteSprite();
-        bg.color = new Color(0f, 0f, 0f, 0.35f);  // 黑色，35%不透明度
-        bg.raycastTarget = false;  // 不阻挡射线检测
+        GameObject entriesRootGo = new("EntriesRoot");
+        entriesRootGo.transform.SetParent(root.transform, false);
+        RectTransform entriesRect = entriesRootGo.AddComponent<RectTransform>();
+        entriesRect.anchorMin = new Vector2(0.5f, 1f);
+        entriesRect.anchorMax = new Vector2(0.5f, 1f);
+        entriesRect.pivot = new Vector2(0.5f, 1f);
+        entriesRect.anchoredPosition = Vector2.zero;
+        entriesRect.sizeDelta = new Vector2(900f, AvatarEntryBaseHeight);
 
-        // 创建标题文本（"联机玩家（其他玩家信息框）"）
-        // 右上角需要放翻页按钮：这里为按钮预留宽度，避免标题文本区域与按钮区域重叠。
-        TextMeshProUGUI title = CreateTmpText(root.transform, "Title", "联机玩家（其他玩家信息框）", 20);
-        title.alignment = TextAlignmentOptions.TopLeft;
-        RectTransform titleRect = title.GetComponent<RectTransform>();
-        titleRect.anchorMin = new Vector2(0f, 1f);  // 左上角
-        titleRect.anchorMax = new Vector2(1f, 1f);  // 右上角
-        titleRect.pivot = new Vector2(0.5f, 1f);   // 中上
-        titleRect.anchoredPosition = new Vector2(0f, -10f);  // 距上边10像素
-        // 左右各 10px + 右侧额外 80px（两枚 24px 按钮 + 间距）。
-        titleRect.sizeDelta = new Vector2(-(20f + 80f), 30f);
-
-        // 创建上一页按钮（"<"）
-        Button leftButton = CreatePageButton(root.transform, "PrevPage", "<");
-        RectTransform leftRect = leftButton.GetComponent<RectTransform>();
-        leftRect.anchorMin = new Vector2(1f, 1f);
-        leftRect.anchorMax = new Vector2(1f, 1f);
-        leftRect.pivot = new Vector2(1f, 1f);
-        leftRect.anchoredPosition = new Vector2(-64f, -10f);  // 距右边64像素
-        leftRect.sizeDelta = new Vector2(24f, 24f);
-        // 绑定点击事件：页码减1，并确保不小于0
-        leftButton.onClick.AddListener(() =>
-        {
-            lock (_syncLock)
-            {
-                _page = Mathf.Max(0, _page - 1);
-            }
-        });
-
-        // 创建下一页按钮（">"）
-        Button rightButton = CreatePageButton(root.transform, "NextPage", ">");
-        RectTransform rightRect = rightButton.GetComponent<RectTransform>();
-        rightRect.anchorMin = new Vector2(1f, 1f);
-        rightRect.anchorMax = new Vector2(1f, 1f);
-        rightRect.pivot = new Vector2(1f, 1f);
-        rightRect.anchoredPosition = new Vector2(-34f, -10f);  // 在"<"按钮右侧
-        rightRect.sizeDelta = new Vector2(24f, 24f);
-        // 绑定点击事件：页码加1，并调整到有效范围
-        rightButton.onClick.AddListener(() =>
-        {
-            lock (_syncLock)
-            {
-                _page += 1;
-                ClampPage_NoLock();
-            }
-        });
-
-        // 创建玩家条目列表（每页显示10个）
-        var entries = new List<EntryUi>(PageSize);
-        for (int i = 0; i < PageSize; i++)
-        {
-            entries.Add(CreateEntry(root.transform, i));
-        }
-
-        // 保存UI实例以供后续更新使用
         _ui = new OverlayUi
         {
             Root = root,
-            Title = title,
-            PrevPage = leftButton,
-            NextPage = rightButton,
-            Entries = entries,
+            RootRect = rootRect,
+            EntriesRoot = entriesRect,
+            Entries = new Dictionary<string, AvatarEntryUi>(StringComparer.Ordinal)
         };
+
+        root.SetActive(false);
     }
 
-    /// <summary>
-    /// 根据当前页码和玩家列表刷新UI显示内容
-    /// 包括排序玩家、计算分页、更新标题和条目内容
-    /// </summary>
     private static void RefreshUi()
     {
         List<PlayerSummary> list;
-        int page;
-
         lock (_syncLock)
         {
-            // 获取玩家列表副本，按照以下规则排序：
-            // 1. 房主优先（IsHost为true）
-            // 2. 在线玩家优先（IsConnected为true）
-            // 3. 按玩家名称字母顺序
             list = _players.Values
+                .Where(p => p != null && !string.IsNullOrWhiteSpace(p.PlayerId))
+                .Where(p => string.IsNullOrWhiteSpace(_selfPlayerId) || !string.Equals(p.PlayerId, _selfPlayerId, StringComparison.Ordinal))
                 .OrderByDescending(p => p.IsHost)
                 .ThenByDescending(p => p.IsConnected)
                 .ThenBy(p => p.PlayerName, StringComparer.OrdinalIgnoreCase)
                 .ToList();
-            page = _page;
         }
 
-        // 如果没有玩家，隐藏UI
         if (list.Count == 0)
         {
             HideUi();
             return;
         }
 
-        // 计算总页数并调整当前页码
-        int pageCount = Mathf.Max(1, Mathf.CeilToInt(list.Count / (float)PageSize));
-        page = Mathf.Clamp(page, 0, pageCount - 1);
-        lock (_syncLock)
+        EnsureUi();
+        if (_ui?.Root == null)
         {
-            _page = page;
+            return;
         }
 
-        // 计算当前页的起始和结束索引
-        int startIndex = page * PageSize;
-        int endIndex = Mathf.Min(startIndex + PageSize, list.Count);
-        int visibleCount = Mathf.Max(0, endIndex - startIndex);
-
-        // 更新标题（显示当前页码）
-        _ui.Root.SetActive(true);
-        _ui.Title.text = $"联机玩家（第 {page + 1}/{pageCount} 页）";
-
-        // 更新翻页按钮的可交互状态
-        _ui.PrevPage.interactable = page > 0;           // 有上一页时启用
-        _ui.NextPage.interactable = page + 1 < pageCount;  // 有下一页时启用
-
-        // 更新玩家条目显示
-        for (int i = 0; i < _ui.Entries.Count; i++)
+        if (!TryAttachUiToBaseMana())
         {
-            bool visible = i < visibleCount;
-            _ui.Entries[i].Root.SetActive(visible);
-            if (!visible)
+            HideUi();
+            return;
+        }
+
+        EnsureAvatarTemplate();
+        if (_ui.AvatarTemplate == null)
+        {
+            HideUi();
+            return;
+        }
+
+        _ui.Root.SetActive(true);
+
+        HashSet<string> alive = new(list.Select(p => p.PlayerId), StringComparer.Ordinal);
+        foreach (var kv in _ui.Entries.ToList())
+        {
+            if (alive.Contains(kv.Key))
             {
                 continue;
             }
 
-            // 获取玩家数据并格式化显示
-            PlayerSummary p = list[startIndex + i];
-            string hostTag = p.IsHost ? " [房主]" : "";
-            string connTag = p.IsConnected ? "在线" : "离线";
+            if (kv.Value?.Root != null)
+            {
+                UnityEngine.Object.Destroy(kv.Value.Root);
+            }
 
-            _ui.Entries[i].Name.text = $"{p.PlayerName}{hostTag}";
-            _ui.Entries[i].Status.text = connTag;
-
-            // 根据连接状态设置背景颜色（离线玩家显示为红色）
-            Color baseColor = p.IsConnected ? new Color(0f, 0f, 0f, 0.25f) : new Color(0.2f, 0.0f, 0.0f, 0.25f);
-            _ui.Entries[i].Background.color = baseColor;
+            _ui.Entries.Remove(kv.Key);
         }
+
+        var orderedEntries = new List<AvatarEntryUi>(list.Count);
+        foreach (PlayerSummary player in list)
+        {
+            AvatarEntryUi entry = EnsureAvatarEntry(player.PlayerId);
+            if (entry == null)
+            {
+                continue;
+            }
+
+            ApplyAvatarEntry(entry, player);
+            orderedEntries.Add(entry);
+        }
+
+        if (orderedEntries.Count == 0)
+        {
+            HideUi();
+            return;
+        }
+
+        LayoutAvatarEntries(orderedEntries);
     }
 
-    /// <summary>
-    /// 隐藏UI（将根容器设为非活跃状态）
-    /// </summary>
     private static void HideUi()
     {
         if (_ui?.Root != null)
@@ -871,27 +816,8 @@ public static class OtherPlayersOverlayPatch
         }
     }
 
-    /// <summary>
-    /// 调整页码，确保不超过总页数范围
-    /// 此方法必须在持有 _syncLock 锁时调用
-    /// </summary>
-    private static void ClampPage_NoLock()
-    {
-        int count = _players.Count;
-        int pageCount = Mathf.Max(1, Mathf.CeilToInt(count / (float)PageSize));
-        _page = Mathf.Clamp(_page, 0, pageCount - 1);
-    }
-
     #endregion
 
-    #region UI 控件创建
-
-    /// <summary>
-    /// 创建玩家条目UI（包括玩家名称和在线状态）
-    /// </summary>
-    /// <param name="parent">父容器</param>
-    /// <param name="index">条目索引（0-9），用于计算垂直位置</param>
-    /// <returns>创建的条目UI对象</returns>
     #region 远程玩家“角色实体”渲染（战斗 + 地图）
 
     private static void EnsureRemoteCharacters()
@@ -1868,95 +1794,317 @@ public static class OtherPlayersOverlayPatch
 
     #endregion
 
-    private static EntryUi CreateEntry(Transform parent, int index)
+    private static void EnsureAvatarTemplate()
     {
-        const float entryHeight = 42f;
-        const float topOffset = 48f;
-        const float leftPadding = 12f;
-        const float rightPadding = 12f;
+        if (_ui == null || _ui.EntriesRoot == null || _ui.AvatarTemplate != null)
+        {
+            return;
+        }
 
-        // 创建条目容器（命名为 Entry_00、Entry_01 等）
-        var go = new GameObject($"Entry_{index:00}");
-        go.transform.SetParent(parent, false);
+        GameObject source = null;
+        try
+        {
+            UltimateSkillPanel panel = UiManager.GetPanel<UltimateSkillPanel>();
+            if (panel != null)
+            {
+                source = panel.gameObject;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
 
-        // 配置条目的RectTransform（纵向排列，每个条目高42像素，间隔6像素）
-        RectTransform rect = go.AddComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0f, 1f);      // 左上角
-        rect.anchorMax = new Vector2(1f, 1f);      // 右上角
-        rect.pivot = new Vector2(0.5f, 1f);        // 中上
-        // 垂直位置：第一个条目距标题48像素，之后每个条目递进 48像素
-        rect.anchoredPosition = new Vector2(0f, -(topOffset + index * (entryHeight + 6f)));
-        rect.sizeDelta = new Vector2(-24f, entryHeight);  // 宽度留出左右各12像素，高度42
+        if (source == null)
+        {
+            try
+            {
+                source = Resources.Load<GameObject>("UI/Panels/UltimateSkillPanel");
+            }
+            catch
+            {
+                // ignored
+            }
+        }
 
-        // 设置条目背景
-        Image bg = go.AddComponent<Image>();
-        bg.sprite = GetWhiteSprite();
-        bg.color = new Color(0f, 0f, 0f, 0.25f);  // 浅灰色背景
-        bg.raycastTarget = false;  // 不阻挡射线检测
+        if (source == null)
+        {
+            return;
+        }
 
-        // 创建玩家名称文本（显示在左侧）
-        TextMeshProUGUI name = CreateTmpText(go.transform, "Name", "Player", 18);
-        name.alignment = TextAlignmentOptions.Left;
+        GameObject template = UnityEngine.Object.Instantiate(source, _ui.EntriesRoot, false);
+        template.name = "RemotePlayerAvatarTemplate";
+        PrepareAvatarTemplate(template);
+        template.SetActive(false);
+        _ui.AvatarTemplate = template;
+    }
+
+    private static void PrepareAvatarTemplate(GameObject template)
+    {
+        if (template == null)
+        {
+            return;
+        }
+
+        foreach (Graphic graphic in template.GetComponentsInChildren<Graphic>(true))
+        {
+            if (graphic != null)
+            {
+                graphic.raycastTarget = false;
+            }
+        }
+
+        foreach (ParticleSystem particle in template.GetComponentsInChildren<ParticleSystem>(true))
+        {
+            if (particle == null)
+            {
+                continue;
+            }
+
+            particle.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            particle.gameObject.SetActive(false);
+        }
+
+        UltimateSkillPanel panel = template.GetComponent<UltimateSkillPanel>();
+        if (panel != null)
+        {
+            panel.enabled = false;
+            HideUltimateVisualField(panel, "powerText");
+            HideUltimateVisualField(panel, "gauge1");
+            HideUltimateVisualField(panel, "gauge2");
+            HideUltimateVisualField(panel, "gauge3");
+            HideUltimateVisualField(panel, "fireParticle1");
+            HideUltimateVisualField(panel, "fireParticle2");
+            HideUltimateVisualField(panel, "fireParticle3");
+            HideUltimateVisualField(panel, "lightParticle");
+        }
+
+        CanvasGroup group = template.GetComponent<CanvasGroup>();
+        if (group != null)
+        {
+            group.alpha = 1f;
+            group.blocksRaycasts = false;
+            group.interactable = false;
+        }
+    }
+
+    private static void HideUltimateVisualField(UltimateSkillPanel panel, string fieldName)
+    {
+        if (panel == null || string.IsNullOrWhiteSpace(fieldName))
+        {
+            return;
+        }
+
+        try
+        {
+            Component component = Traverse.Create(panel).Field(fieldName).GetValue<Component>();
+            if (component != null)
+            {
+                component.gameObject.SetActive(false);
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static AvatarEntryUi EnsureAvatarEntry(string playerId)
+    {
+        if (_ui == null || _ui.EntriesRoot == null || _ui.AvatarTemplate == null || string.IsNullOrWhiteSpace(playerId))
+        {
+            return null;
+        }
+
+        if (_ui.Entries.TryGetValue(playerId, out AvatarEntryUi existing) && existing?.Root != null)
+        {
+            return existing;
+        }
+
+        GameObject root = new($"AvatarEntry_{playerId}");
+        root.transform.SetParent(_ui.EntriesRoot, false);
+
+        RectTransform rootRect = root.AddComponent<RectTransform>();
+        rootRect.anchorMin = new Vector2(0.5f, 1f);
+        rootRect.anchorMax = new Vector2(0.5f, 1f);
+        rootRect.pivot = new Vector2(0.5f, 1f);
+        rootRect.sizeDelta = new Vector2(AvatarEntryBaseWidth, AvatarEntryBaseHeight);
+
+        GameObject visual = UnityEngine.Object.Instantiate(_ui.AvatarTemplate, root.transform, false);
+        visual.name = "Visual";
+        visual.SetActive(true);
+
+        RectTransform visualRect = visual.GetComponent<RectTransform>();
+        if (visualRect == null)
+        {
+            visualRect = visual.AddComponent<RectTransform>();
+        }
+
+        visualRect.anchorMin = new Vector2(0.5f, 1f);
+        visualRect.anchorMax = new Vector2(0.5f, 1f);
+        visualRect.pivot = new Vector2(0.5f, 1f);
+        visualRect.anchoredPosition = Vector2.zero;
+        visualRect.sizeDelta = new Vector2(AvatarVisualSize, AvatarVisualSize);
+
+        Image avatar = TryGetAvatarImageFromTemplate(visual) ?? CreateFallbackAvatarVisual(visual.transform);
+        avatar.raycastTarget = false;
+        avatar.preserveAspect = true;
+
+        TextMeshProUGUI name = CreateTmpText(root.transform, "Name", playerId, 15f);
+        name.alignment = TextAlignmentOptions.Center;
         RectTransform nameRect = name.GetComponent<RectTransform>();
         nameRect.anchorMin = new Vector2(0f, 0f);
-        nameRect.anchorMax = new Vector2(1f, 1f);
-        nameRect.offsetMin = new Vector2(leftPadding, 4f);       // 左侧12像素，上下各4像素
-        nameRect.offsetMax = new Vector2(-110f, -4f);            // 右侧留110像素给状态文本
+        nameRect.anchorMax = new Vector2(1f, 0f);
+        nameRect.pivot = new Vector2(0.5f, 0f);
+        nameRect.anchoredPosition = new Vector2(0f, 20f);
+        nameRect.sizeDelta = new Vector2(0f, 20f);
 
-        // 创建在线状态文本（显示在右侧）
-        TextMeshProUGUI status = CreateTmpText(go.transform, "Status", "在线", 16);
-        status.alignment = TextAlignmentOptions.Right;
+        TextMeshProUGUI status = CreateTmpText(root.transform, "Status", "在线", 13f);
+        status.alignment = TextAlignmentOptions.Center;
         RectTransform statusRect = status.GetComponent<RectTransform>();
         statusRect.anchorMin = new Vector2(0f, 0f);
-        statusRect.anchorMax = new Vector2(1f, 1f);
-        statusRect.offsetMin = new Vector2(160f, 4f);            // 左侧160像素起
-        statusRect.offsetMax = new Vector2(-rightPadding, -4f);  // 右侧12像素
+        statusRect.anchorMax = new Vector2(1f, 0f);
+        statusRect.pivot = new Vector2(0.5f, 0f);
+        statusRect.anchoredPosition = new Vector2(0f, 2f);
+        statusRect.sizeDelta = new Vector2(0f, 18f);
 
-        return new EntryUi
+        var entry = new AvatarEntryUi
         {
-            Root = go,
-            Background = bg,
+            PlayerId = playerId,
+            Root = root,
+            RootRect = rootRect,
+            Avatar = avatar,
             Name = name,
             Status = status,
         };
+
+        _ui.Entries[playerId] = entry;
+        return entry;
     }
 
-    /// <summary>
-    /// 创建翻页按钮（"<" 或 ">"）
-    /// </summary>
-    /// <param name="parent">父容器</param>
-    /// <param name="name">按钮对象名称</param>
-    /// <param name="text">按钮显示的文字（"<" 或 ">"）</param>
-    /// <returns>创建的按钮组件</returns>
-    private static Button CreatePageButton(Transform parent, string name, string text)
+    private static Image TryGetAvatarImageFromTemplate(GameObject visual)
     {
-        // 创建按钮容器
-        var go = new GameObject(name);
+        if (visual == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            UltimateSkillPanel panel = visual.GetComponent<UltimateSkillPanel>();
+            if (panel != null)
+            {
+                Image skillImage = Traverse.Create(panel).Field("skillImage").GetValue<Image>();
+                if (skillImage != null)
+                {
+                    return skillImage;
+                }
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        try
+        {
+            return visual.GetComponentsInChildren<Image>(true).FirstOrDefault();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static Image CreateFallbackAvatarVisual(Transform parent)
+    {
+        GameObject go = new("Avatar");
         go.transform.SetParent(parent, false);
-        // 设置按钮尺寸（24x24像素）
+
         RectTransform rect = go.AddComponent<RectTransform>();
-        rect.sizeDelta = new Vector2(24f, 24f);
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = new Vector2(AvatarVisualSize * 0.85f, AvatarVisualSize * 0.85f);
 
-        // 设置按钮背景图像（半透明白色）
-        Image img = go.AddComponent<Image>();
-        img.sprite = GetWhiteSprite();
-        img.color = new Color(1f, 1f, 1f, 0.15f);  // 白色，15%不透明度
+        Image image = go.AddComponent<Image>();
+        image.sprite = GetWhiteSprite();
+        image.color = Color.white;
+        image.raycastTarget = false;
+        image.preserveAspect = true;
+        return image;
+    }
 
-        // 配置按钮组件
-        Button btn = go.AddComponent<Button>();
-        btn.targetGraphic = img;  // 点击时改变此图像的颜色
+    private static void ApplyAvatarEntry(AvatarEntryUi entry, PlayerSummary player)
+    {
+        if (entry == null || player == null || entry.Root == null)
+        {
+            return;
+        }
 
-        // 创建按钮标签文本（"<" 或 ">"）
-        TextMeshProUGUI label = CreateTmpText(go.transform, "Label", text, 18);
-        label.alignment = TextAlignmentOptions.Center;
-        RectTransform labelRect = label.GetComponent<RectTransform>();
-        // 标签铺满整个按钮
-        labelRect.anchorMin = Vector2.zero;
-        labelRect.anchorMax = Vector2.one;
-        labelRect.offsetMin = Vector2.zero;
-        labelRect.offsetMax = Vector2.zero;
+        entry.Root.SetActive(true);
 
-        return btn;
+        bool isConnected = player.IsConnected;
+        string hostTag = player.IsHost ? " [房主]" : string.Empty;
+
+        if (entry.Name != null)
+        {
+            entry.Name.text = $"{player.PlayerName}{hostTag}";
+            entry.Name.color = isConnected ? Color.white : new Color(0.78f, 0.78f, 0.78f, 1f);
+        }
+
+        if (entry.Status != null)
+        {
+            entry.Status.text = isConnected ? "在线" : "离线";
+            entry.Status.color = isConnected ? new Color(0.72f, 1f, 0.72f, 1f) : new Color(1f, 0.66f, 0.66f, 1f);
+        }
+
+        if (entry.Avatar != null)
+        {
+            entry.Avatar.sprite = TryGetAvatarSprite(player.CharacterId) ?? GetWhiteSprite();
+            entry.Avatar.color = isConnected ? Color.white : new Color(0.55f, 0.55f, 0.55f, 0.95f);
+        }
+    }
+
+    private static void LayoutAvatarEntries(List<AvatarEntryUi> entries)
+    {
+        if (_ui?.EntriesRoot == null || entries == null || entries.Count == 0)
+        {
+            return;
+        }
+
+        float availableWidth = _ui.EntriesRoot.rect.width;
+        if (availableWidth <= 0f)
+        {
+            availableWidth = 900f;
+        }
+
+        float contentWidth = Mathf.Max(360f, availableWidth - 24f);
+        float requiredWidth = entries.Count * AvatarEntryBaseWidth + Mathf.Max(0, entries.Count - 1) * AvatarEntrySpacing;
+        float scale = requiredWidth > contentWidth
+            ? Mathf.Clamp(contentWidth / requiredWidth, 0.45f, 1f)
+            : 1f;
+
+        float itemWidth = AvatarEntryBaseWidth * scale;
+        float spacing = AvatarEntrySpacing * scale;
+        float totalWidth = entries.Count * itemWidth + Mathf.Max(0, entries.Count - 1) * spacing;
+        float startX = -totalWidth * 0.5f + itemWidth * 0.5f;
+
+        for (int i = 0; i < entries.Count; i++)
+        {
+            AvatarEntryUi entry = entries[i];
+            if (entry?.RootRect == null)
+            {
+                continue;
+            }
+
+            entry.RootRect.anchorMin = new Vector2(0.5f, 1f);
+            entry.RootRect.anchorMax = new Vector2(0.5f, 1f);
+            entry.RootRect.pivot = new Vector2(0.5f, 1f);
+            entry.RootRect.sizeDelta = new Vector2(AvatarEntryBaseWidth, AvatarEntryBaseHeight);
+            entry.RootRect.localScale = new Vector3(scale, scale, 1f);
+            entry.RootRect.anchoredPosition = new Vector2(startX + i * (itemWidth + spacing), 0f);
+        }
     }
 
     /// <summary>
@@ -1988,9 +2136,120 @@ public static class OtherPlayersOverlayPatch
         return tmp;
     }
 
-    #endregion
-
     #region 工具方法
+
+    private static bool IsBattleOverlayActive()
+    {
+        try
+        {
+            GameDirector director = Singleton<GameDirector>.Instance;
+            return director != null && director.PlayerUnitView != null;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool TryAttachUiToBaseMana()
+    {
+        if (_ui?.RootRect == null)
+        {
+            return false;
+        }
+
+        RectTransform anchor = TryGetBaseManaAnchorRect();
+        RectTransform parentRect = anchor != null ? anchor.parent as RectTransform : null;
+
+        if (parentRect == null)
+        {
+            Transform fallback = TryGetUiLayerTransform("topLayer") ?? TryGetUiLayerTransform("topmostLayer") ?? UiManager.Instance?.transform;
+            parentRect = fallback as RectTransform;
+            if (parentRect == null)
+            {
+                return false;
+            }
+
+            if (_ui.RootRect.parent != parentRect)
+            {
+                _ui.RootRect.SetParent(parentRect, false);
+            }
+
+            _ui.RootRect.anchorMin = new Vector2(0.5f, 1f);
+            _ui.RootRect.anchorMax = new Vector2(0.5f, 1f);
+            _ui.RootRect.pivot = new Vector2(0.5f, 1f);
+            _ui.RootRect.anchoredPosition = new Vector2(0f, -180f);
+        }
+        else
+        {
+            if (_ui.RootRect.parent != parentRect)
+            {
+                _ui.RootRect.SetParent(parentRect, false);
+            }
+
+            Vector3 worldBottomCenter = anchor.TransformPoint(new Vector3(anchor.rect.center.x, anchor.rect.yMin, 0f));
+            Vector3 localPoint = parentRect.InverseTransformPoint(worldBottomCenter);
+
+            _ui.RootRect.anchorMin = new Vector2(0.5f, 0.5f);
+            _ui.RootRect.anchorMax = new Vector2(0.5f, 0.5f);
+            _ui.RootRect.pivot = new Vector2(0.5f, 1f);
+            _ui.RootRect.anchoredPosition = new Vector2(localPoint.x, localPoint.y - AvatarStripYOffset);
+        }
+
+        float parentWidth = parentRect.rect.width;
+        float width = parentWidth > 0f ? Mathf.Clamp(parentWidth * 0.6f, 520f, 1500f) : 900f;
+        _ui.RootRect.sizeDelta = new Vector2(width, AvatarEntryBaseHeight + 34f);
+
+        if (_ui.EntriesRoot != null)
+        {
+            _ui.EntriesRoot.sizeDelta = new Vector2(width, AvatarEntryBaseHeight);
+            _ui.EntriesRoot.anchoredPosition = Vector2.zero;
+        }
+
+        return true;
+    }
+
+    private static RectTransform TryGetBaseManaAnchorRect()
+    {
+        try
+        {
+            SystemBoard board = UiManager.GetPanel<SystemBoard>();
+            if (board == null)
+            {
+                return null;
+            }
+
+            RectTransform baseManaContent = TryGetPrivateRectTransform(board, "baseManaContent");
+            if (baseManaContent != null)
+            {
+                return baseManaContent;
+            }
+
+            return TryGetPrivateRectTransform(board, "baseManaParent");
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static RectTransform TryGetPrivateRectTransform(object instance, string fieldName)
+    {
+        if (instance == null || string.IsNullOrWhiteSpace(fieldName))
+        {
+            return null;
+        }
+
+        try
+        {
+            Transform transform = Traverse.Create(instance).Field(fieldName).GetValue<Transform>();
+            return transform as RectTransform;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 
     /// <summary>
     /// 查找默认字体资源（从父容器的现有文本中提取）
@@ -2042,6 +2301,24 @@ public static class OtherPlayersOverlayPatch
         {
             element = je;
             return true;
+        }
+
+        if (payload is string s && !string.IsNullOrWhiteSpace(s))
+        {
+            using JsonDocument doc = JsonDocument.Parse(s);
+            element = doc.RootElement.Clone();
+            return true;
+        }
+
+        if (payload != null)
+        {
+            string json = JsonCompat.Serialize(payload);
+            if (!string.IsNullOrWhiteSpace(json))
+            {
+                using JsonDocument doc = JsonDocument.Parse(json);
+                element = doc.RootElement.Clone();
+                return true;
+            }
         }
 
         element = default;
@@ -2200,37 +2477,20 @@ public static class OtherPlayersOverlayPatch
     /// </summary>
     private sealed class OverlayUi
     {
-        /// <summary>根容器GameObject</summary>
         public GameObject Root { get; set; }
-
-        /// <summary>标题文本控件</summary>
-        public TextMeshProUGUI Title { get; set; }
-
-        /// <summary>上一页按钮</summary>
-        public Button PrevPage { get; set; }
-
-        /// <summary>下一页按钮</summary>
-        public Button NextPage { get; set; }
-
-        /// <summary>玩家条目列表（固定大小）</summary>
-        public List<EntryUi> Entries { get; set; }
+        public RectTransform RootRect { get; set; }
+        public RectTransform EntriesRoot { get; set; }
+        public GameObject AvatarTemplate { get; set; }
+        public Dictionary<string, AvatarEntryUi> Entries { get; set; }
     }
 
-    /// <summary>
-    /// 单个玩家条目UI的数据结构
-    /// </summary>
-    private sealed class EntryUi
+    private sealed class AvatarEntryUi
     {
-        /// <summary>条目容器GameObject</summary>
+        public string PlayerId { get; set; }
         public GameObject Root { get; set; }
-
-        /// <summary>条目背景图像</summary>
-        public Image Background { get; set; }
-
-        /// <summary>玩家名称文本</summary>
+        public RectTransform RootRect { get; set; }
+        public Image Avatar { get; set; }
         public TextMeshProUGUI Name { get; set; }
-
-        /// <summary>在线状态文本（"在线"或"离线"）</summary>
         public TextMeshProUGUI Status { get; set; }
     }
 }

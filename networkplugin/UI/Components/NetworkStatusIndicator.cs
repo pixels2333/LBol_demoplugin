@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Utils;
 using NetworkPlugin.Utils;
 using TMPro;
 using UnityEngine;
@@ -20,6 +21,7 @@ public class NetworkStatusIndicator : MonoBehaviour
     public TextMeshProUGUI statusText;
     public TextMeshProUGUI pingText;
     public TextMeshProUGUI playerCountText;
+    public TextMeshProUGUI natStatusText;
     public Button reconnectButton;
     public GameObject connectionPanel;
 
@@ -60,6 +62,7 @@ public class NetworkStatusIndicator : MonoBehaviour
     {
         UpdatePingDisplay();
         UpdateConnectionStatus();
+        UpdateNatStatusDisplay();
     } // 每帧更新延迟显示和连接状态
 
     private void OnDestroy()
@@ -248,6 +251,30 @@ public class NetworkStatusIndicator : MonoBehaviour
     } // 更新玩家数量显示，获取连接玩家数量并更新UI文本
 
     /// <summary>
+    /// 更新 NAT 状态显示
+    /// </summary>
+    private void UpdateNatStatusDisplay()
+    {
+        string natTypeText = NatTraversal.LastDetectedNatType.ToString();
+        string upnpStateText = NatTraversal.UpnpState;
+
+        if (natStatusText != null)
+        {
+            natStatusText.text = $"NAT: {natTypeText} | UPnP: {upnpStateText}";
+            return;
+        }
+
+        // 兼容旧预制体：未配置专用文本时，写入连接状态行第二行。
+        if (statusText != null)
+        {
+            string current = statusText.text ?? string.Empty;
+            int lineBreak = current.IndexOf('\n');
+            string firstLine = lineBreak >= 0 ? current.Substring(0, lineBreak) : current;
+            statusText.text = $"{firstLine}\nNAT: {natTypeText} | UPnP: {upnpStateText}";
+        }
+    }
+
+    /// <summary>
     /// 获取连接的玩家数量
     /// </summary>
     private int GetConnectedPlayerCount()
@@ -375,7 +402,8 @@ public class NetworkStatusIndicator : MonoBehaviour
         }
 
         details.AppendLine($"UPnP状态: {(_upnpEnabled ? "已启用" : "未启用")}");
-        details.AppendLine($"NAT类型: {_natType}");
+        details.AppendLine($"UPnP语义: {NatTraversal.UpnpState}");
+        details.AppendLine($"NAT类型: {NatTraversal.LastDetectedNatType}");
 
         return details.ToString();
     } // 生成连接详情字符串，包含状态、延迟、地址和NAT信息

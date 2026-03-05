@@ -11,21 +11,7 @@ public partial class ConfigManager
     /// </summary>
     #region 性能参数
 
-    /// <summary>
-    /// 事件队列最大容量
-    /// 网络不可用时事件队列的最大条目数量
-    /// 超过此容量的新事件会被丢弃
-    /// </summary>
-    #if false // Duplicate: kept for reference; actual declaration is in Configuration/ConfigManager.Sync.cs
-    public ConfigEntry<int> MaxQueueSize { get; private set; }
-
-    /// <summary>
-    /// 状态缓存存活时间（分钟）
-    /// 本地状态缓存的存活时间，超过此时间的缓存会被清理
-    /// 默认为5分钟，可以根据需要调整
-    /// </summary>
-    public ConfigEntry<float> StateCacheExpiryMinutes { get; private set; }
-    #endif
+    // MaxQueueSize / StateCacheExpiryMinutes 统一声明于 Configuration/ConfigManager.Sync.cs。
 
     /// <summary>
     /// 网络超时时间（秒）

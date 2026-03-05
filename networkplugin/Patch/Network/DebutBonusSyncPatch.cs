@@ -7,6 +7,7 @@ using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Messages;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -131,13 +132,13 @@ public static class DebutBonusSyncPatch
 
         switch (eventType)
         {
-            case "Welcome":
+            case NetworkMessageTypes.Welcome:
                 HandleWelcome(root);
                 return;
-            case "HostChanged":
+            case NetworkMessageTypes.HostChanged:
                 HandleHostChanged(root);
                 return;
-            case "OnDebutBonusRolled":
+            case NetworkMessageTypes.OnDebutBonusRolled:
                 HandleDebutBonusRolled(root);
                 return;
         }
@@ -307,7 +308,7 @@ public static class DebutBonusSyncPatch
                     int b1 = (int)b1f;
                     int b2 = (int)b2f;
 
-                    client.SendGameEventData("OnDebutBonusRolled", new
+                    client.SendGameEventData(NetworkMessageTypes.OnDebutBonusRolled, new
                     {
                         Timestamp = DateTime.Now.Ticks,
                         PlayerId = _selfPlayerId,

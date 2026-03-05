@@ -17,9 +17,9 @@ namespace NetworkPlugin.Patch.Network;
 
 /// <summary>
 /// 敌人生成同步补丁
-/// 客机接收主机的 EnemySpawned 事件并在本地真正生成敌人。
-/// - 主机：正常执行 BattleController.Spawn，并广播 EnemySpawned（由 SpawnedEnemyManager 负责）
-/// - 客机：收到 EnemySpawned 后，调用 BattleController 的私有 Spawn 重放生成流程（并抑制二次广播）
+/// 客机接收主机的敌人生成事件并在本地真正生成敌人。
+/// - 主机：正常执行 BattleController.Spawn，并广播 BattleEnemySpawned（兼容镜像 EnemySpawned）
+/// - 客机：收到 BattleEnemySpawned/EnemySpawned 后，调用 BattleController 的私有 Spawn 重放生成流程（并抑制二次广播）
 /// 同时处理网络连接状态变化和消息去重，确保生成同步的可靠性。
 /// </summary>
 public static class EnemySpawnSyncPatch
@@ -198,6 +198,7 @@ public static class EnemySpawnSyncPatch
             case NetworkMessageTypes.HostChanged:
                 HandleHostChanged(root);
                 return;
+            case NetworkMessageTypes.BattleEnemySpawned:
             case NetworkMessageTypes.EnemySpawned:
                 HandleEnemySpawned(root);
                 return;
@@ -306,6 +307,8 @@ public static class EnemySpawnSyncPatch
                 return;
             }
 
+            string spawnId = GetString(root, "SpawnId") ?? GetString(spawnedEl, "SpawnId");
+
             if (!root.TryGetProperty("Args", out JsonElement argsEl) || argsEl.ValueKind != JsonValueKind.Object)
             {
                 return;
@@ -339,6 +342,11 @@ public static class EnemySpawnSyncPatch
                 EnemyUnit spawned = Traverse.Create(battle)
                                             .Method("Spawn", spawner, enemyUnit, rootIndex, isServant)
                                             .GetValue<EnemyUnit>();
+
+                if (spawned != null && !string.IsNullOrWhiteSpace(spawnId))
+                {
+                    SpawnedEnemySyncPatch.BindSpawnId(spawned, spawnId);
+                }
 
                 // 尽量把可见基础状态对齐（后续细节由 EnemySyncPatch 的增量同步覆盖）
                 ApplySpawnedSnapshot(spawned, spawnedEl);
@@ -385,7 +393,7 @@ public static class EnemySpawnSyncPatch
                     continue;
                 }
 
-                if (index >= 0 && e.RootIndex != index)
+                if (index >= 0 && GetEnemyIndex(e) != index)
                 {
                     continue;
                 }
@@ -404,6 +412,18 @@ public static class EnemySpawnSyncPatch
         }
 
         return null;
+    }
+
+    private static int GetEnemyIndex(EnemyUnit enemy)
+    {
+        try
+        {
+            return Traverse.Create(enemy).Property("Index")?.GetValue<int>() ?? -1;
+        }
+        catch
+        {
+            return -1;
+        }
     }
 
     /// <summary>

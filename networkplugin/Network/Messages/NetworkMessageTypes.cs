@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace NetworkPlugin.Network.Messages
 {
     /// <summary>
@@ -236,6 +239,29 @@ namespace NetworkPlugin.Network.Messages
         /// </summary>
         public const string OnBattleEnd = "OnBattleEnd";
 
+        /// <summary>
+        /// 战斗内敌人意图变更（Host 权威广播）。
+        /// </summary>
+        public const string BattleEnemyIntentChanged = "BattleEnemyIntentChanged";
+
+        /// <summary>
+        /// 战斗内敌人状态变更（Host 权威广播）。
+        /// </summary>
+        public const string BattleEnemyStateChanged = "BattleEnemyStateChanged";
+
+        /// <summary>
+        /// 战斗内敌人生成（主路径事件）。
+        /// </summary>
+        public const string BattleEnemySpawned = "BattleEnemySpawned";
+
+        /// <summary>
+        /// 敌人状态变更（兼容桥事件，计划在 1 个迭代周期后下线）。
+        /// </summary>
+        public const string EnemyStateUpdate = "EnemyStateUpdate";
+
+        /// <summary>
+        /// 敌人生成（兼容桥事件，计划在 1 个迭代周期后下线）。
+        /// </summary>
         public const string EnemySpawned = "EnemySpawned";
 
         // === 地图/节点同步消息 ===
@@ -291,6 +317,11 @@ namespace NetworkPlugin.Network.Messages
         /// 事件投票：结算结果。
         /// </summary>
         public const string OnEventVotingResult = "OnEventVotingResult";
+
+        /// <summary>
+        /// 开局奖励（Debut Bonus）随机结果广播。
+        /// </summary>
+        public const string OnDebutBonusRolled = "OnDebutBonusRolled";
 
         /// <summary>
         /// Boss 奖励选择同步。
@@ -404,9 +435,9 @@ namespace NetworkPlugin.Network.Messages
         public const string OnExhibitRemoved = "OnExhibitRemoved";
 
         /// <summary>
-        /// 使用药水
+        /// 使用工具牌
         /// </summary>
-        public const string OnPotionUsed = "OnPotionUsed";
+        public const string OnToolCardUsed = "OnToolCardUsed";
 
         /// <summary>
         /// 商店购买
@@ -483,6 +514,11 @@ namespace NetworkPlugin.Network.Messages
         /// 游戏结束
         /// </summary>
         public const string OnGameEnd = "OnGameEnd";
+
+        /// <summary>
+        /// 本局结算结果（胜利链路）。
+        /// </summary>
+        public const string OnGameRunResult = "OnGameRunResult";
 
         /// <summary>
         /// 游戏保存
@@ -593,23 +629,23 @@ namespace NetworkPlugin.Network.Messages
         /// </summary>
         public const string ExhibitCounterChanged = "ExhibitCounterChanged";
 
-        // === 药水/道具同步消息 ===
+        // === 工具牌同步消息 ===
 
         /// <summary>
-        /// 药水获取事件
+        /// 工具牌获得事件
         /// </summary>
-        public const string OnPotionObtained = "OnPotionObtained";
+        public const string OnToolCardObtained = "OnToolCardObtained";
 
 
         /// <summary>
-        /// 药水丢弃事件
+        /// 工具牌移除事件
         /// </summary>
-        public const string OnPotionDiscarded = "OnPotionDiscarded";
+        public const string OnToolCardRemoved = "OnToolCardRemoved";
 
         /// <summary>
-        /// 药水效果应用事件
+        /// 工具牌效果应用事件
         /// </summary>
-        public const string OnPotionEffectApplied = "OnPotionEffectApplied";
+        public const string OnToolCardEffectApplied = "OnToolCardEffectApplied";
 
         // === 存档同步消息 ===
 
@@ -649,60 +685,101 @@ namespace NetworkPlugin.Network.Messages
         /// 打洞协助的错误响应
         /// </summary>
         public const string NatError = "NatError";
-    }
-
-    /// <summary>
-    /// 消息类型分类
-    /// </summary>
-    public static class MessageCategories
-    {
-        /// <summary>
-        /// 系统消息
-        /// </summary>
-        public static readonly string[] System =
-        [
-            NetworkMessageTypes.PlayerJoined,
-            NetworkMessageTypes.PlayerLeft,
-            NetworkMessageTypes.PlayerListUpdate,
-            NetworkMessageTypes.Welcome,
-            NetworkMessageTypes.Heartbeat,
-            NetworkMessageTypes.HeartbeatResponse,
-            NetworkMessageTypes.HostChanged,
-            NetworkMessageTypes.GetSelf_REQUEST,
-            NetworkMessageTypes.GetSelf_RESPONSE
-        ];
 
         /// <summary>
-        /// 游戏同步消息
+        /// 游戏事件判定路由场景。
         /// </summary>
-        public static readonly string[] GameSync =
-        [
-            NetworkMessageTypes.OnCardPlayStart,
-            NetworkMessageTypes.OnCardPlayComplete,
-            NetworkMessageTypes.ManaConsumeStarted,
-            NetworkMessageTypes.ManaConsumeCompleted,
-            NetworkMessageTypes.OnTurnStart,
-            NetworkMessageTypes.OnTurnEnd,
-            NetworkMessageTypes.EndTurnRequest,
-            NetworkMessageTypes.EndTurnStatus,
-            NetworkMessageTypes.EndTurnConfirm,
-            NetworkMessageTypes.OnBattleStart,
-            NetworkMessageTypes.OnBattleEnd
-        ];
+        public enum GameEventRoute
+        {
+            Client,
+            HostServer,
+            Relay,
+        }
+
+        private static readonly HashSet<string> ExplicitGameEvents = new(StringComparer.Ordinal)
+        {
+            EndTurnRequest,
+            EndTurnStatus,
+            EndTurnConfirm,
+            BattleEnemyIntentChanged,
+            BattleEnemyStateChanged,
+            BattleEnemySpawned,
+            EnemyStateUpdate,
+            EnemySpawned,
+            CardStateChanged,
+            CampfireUpgradeSelected,
+            CampfireRemoveCard,
+            GapStationEntered,
+            DrinkTeaStarted,
+            DrinkTeaCompleted,
+            ChatMessage,
+        };
+
+        private static readonly HashSet<string> ClientOnlyGameEvents = new(StringComparer.Ordinal)
+        {
+            StateSyncResponse,
+            FullStateSyncRequest,
+            FullStateSyncResponse,
+            RoomStateRequest,
+            RoomStateResponse,
+            RoomStateUpload,
+            RoomStateBroadcast,
+            MidGameJoinRequest,
+            MidGameJoinResponse,
+            Welcome,
+            PlayerJoined,
+            PlayerLeft,
+            PlayerListUpdate,
+            HostChanged,
+        };
+
+        private static readonly HashSet<string> HostServerOnlyGameEvents = new(StringComparer.Ordinal)
+        {
+            StateSyncRequest,
+            FullStateSyncRequest,
+            FullStateSyncResponse,
+            RoomStateRequest,
+            RoomStateResponse,
+            RoomStateUpload,
+            RoomStateBroadcast,
+        };
+
+        private static readonly HashSet<string> RelayOnlyGameEvents = new(StringComparer.Ordinal)
+        {
+            StateSyncRequest,
+            RoomStateBroadcast,
+        };
 
         /// <summary>
-        /// 状态管理消息
+        /// 统一判定消息是否应进入 GameEvent 通道。
         /// </summary>
-        public static readonly string[] StateManagement =
-        [
-            NetworkMessageTypes.StateSyncRequest,
-            NetworkMessageTypes.StateSyncResponse,
-            NetworkMessageTypes.FullStateSyncRequest,
-            NetworkMessageTypes.FullStateSyncResponse,
-            NetworkMessageTypes.OnConnectionEstablished,
-            NetworkMessageTypes.OnConnectionLost,
-            NetworkMessageTypes.OnReconnectionAttempt
-        ];
+        /// <param name="messageType">消息类型。</param>
+        /// <param name="route">调用方场景（Client / HostServer / Relay）。</param>
+        /// <returns>是否属于 GameEvent。</returns>
+        public static bool IsGameEvent(string messageType, GameEventRoute route)
+        {
+            if (string.IsNullOrWhiteSpace(messageType))
+            {
+                return false;
+            }
+
+            if (ExplicitGameEvents.Contains(messageType) ||
+                messageType.StartsWith("On", StringComparison.Ordinal) ||
+                messageType.StartsWith("Mana", StringComparison.Ordinal) ||
+                messageType.StartsWith("Gap", StringComparison.Ordinal) ||
+                messageType.StartsWith("Battle", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            return route switch
+            {
+                GameEventRoute.Client => ClientOnlyGameEvents.Contains(messageType),
+                GameEventRoute.HostServer => HostServerOnlyGameEvents.Contains(messageType),
+                GameEventRoute.Relay => RelayOnlyGameEvents.Contains(messageType),
+                _ => false,
+            };
+        }
     }
 
     /// <summary>

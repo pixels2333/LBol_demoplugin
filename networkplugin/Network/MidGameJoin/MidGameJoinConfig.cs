@@ -41,24 +41,6 @@ public class MidGameJoinConfig
     
     #endregion
     
-    #region AI控制配置
-    
-    /// <summary>
-    /// AI控制超时时间（分钟）
-    /// <para>玩家离开后AI控制角色的最大持续时间，超过此时间AI控制将自动结束</para>
-    /// <value>默认值：10分钟</value>
-    /// </summary>
-    public int AIControlTimeoutMinutes { get; set; } = 10;
-    
-    /// <summary>
-    /// 是否启用AI直通模式
-    /// <para>控制AI是否可以直接接管玩家角色而不需要等待</para>
-    /// <value>默认值：true（启用）</value>
-    /// </summary>
-    public bool EnableAIPassthrough { get; set; } = true;
-    
-    #endregion
-    
     #region 补偿机制配置
     
     /// <summary>
@@ -96,10 +78,6 @@ public class MidGameJoinConfig
         if (JoinRequestTimeoutMinutes <= 0)
             return false;
             
-        // AI控制超时时间必须为正数
-        if (AIControlTimeoutMinutes <= 0)
-            return false;
-            
         // 最大请求数必须为正数
         if (MaxJoinRequestsPerRoom <= 0)
             return false;
@@ -121,9 +99,7 @@ public class MidGameJoinConfig
                $"AllowMidGameJoin={AllowMidGameJoin}, " +
                $"JoinRequestTimeoutMinutes={JoinRequestTimeoutMinutes}, " +
                $"MaxJoinRequestsPerRoom={MaxJoinRequestsPerRoom}, " +
-               $"AIControlTimeoutMinutes={AIControlTimeoutMinutes}, " +
                $"EnableCompensation={EnableCompensation}, " +
-               $"EnableAIPassthrough={EnableAIPassthrough}, " +
                $"CatchUpBatchSize={CatchUpBatchSize}";
     }
     

@@ -11,6 +11,7 @@ using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
@@ -25,7 +26,7 @@ namespace NetworkPlugin.Patch.Network;
 [HarmonyPatch]
 public static class EnemyIntentReceivePatch
 {
-    private const string EventType = "BattleEnemyIntentChanged";
+    private static readonly string EventType = NetworkMessageTypes.BattleEnemyIntentChanged;
 
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
@@ -192,7 +193,6 @@ public static class EnemyIntentReceivePatch
                 return;
             }
 
-            string key = BuildEnemyKey(groupId, spawnId, rootIndex, enemyId);
             PendingIntent pending = new()
             {
                 Timestamp = ts,
@@ -204,14 +204,17 @@ public static class EnemyIntentReceivePatch
                 Intentions = intentions,
             };
 
+            string spawnKey = BuildSpawnKey(groupId, spawnId, rootIndex, enemyId);
+            string legacyKey = BuildLegacyKey(groupId, rootIndex, enemyId);
+
             lock (_lock)
             {
-                if (_pendingByEnemyKey.TryGetValue(key, out PendingIntent existing) && existing != null && existing.Timestamp >= ts)
-                {
-                    return; // stale
-                }
+                UpsertPending(spawnKey, pending);
 
-                _pendingByEnemyKey[key] = pending;
+                if (!string.Equals(spawnKey, legacyKey, StringComparison.Ordinal))
+                {
+                    UpsertPending(legacyKey, pending);
+                }
             }
 
             // Best-effort immediate apply.
@@ -259,12 +262,19 @@ public static class EnemyIntentReceivePatch
 
         string groupId = enemy.Battle.EnemyGroup.Id;
         string spawnId = SpawnedEnemySyncPatch.TryGetSpawnId(enemy, out string sid) ? sid : null;
-        string key = BuildEnemyKey(groupId, spawnId, enemy.RootIndex, enemy.Id);
+        string spawnKey = BuildSpawnKey(groupId, spawnId, enemy.RootIndex, enemy.Id);
+        string legacyKey = BuildLegacyKey(groupId, enemy.RootIndex, enemy.Id);
 
         PendingIntent pending;
         lock (_lock)
         {
-            if (!_pendingByEnemyKey.TryGetValue(key, out pending) || pending == null)
+            bool found = _pendingByEnemyKey.TryGetValue(spawnKey, out pending);
+            if (!found)
+            {
+                found = _pendingByEnemyKey.TryGetValue(legacyKey, out pending);
+            }
+
+            if (!found || pending == null)
             {
                 return;
             }
@@ -479,15 +489,29 @@ public static class EnemyIntentReceivePatch
         }
     }
 
-    private static string BuildEnemyKey(string enemyGroupId, string spawnId, int rootIndex, string enemyId)
+    private static string BuildSpawnKey(string enemyGroupId, string spawnId, int rootIndex, string enemyId)
     {
-        // SpawnId is best effort for mid-battle spawns; RootIndex+EnemyId is fallback.
         if (!string.IsNullOrWhiteSpace(spawnId))
         {
             return $"{enemyGroupId ?? ""}|spawn:{spawnId}";
         }
 
+        return BuildLegacyKey(enemyGroupId, rootIndex, enemyId);
+    }
+
+    private static string BuildLegacyKey(string enemyGroupId, int rootIndex, string enemyId)
+    {
         return $"{enemyGroupId ?? ""}|root:{rootIndex}|id:{enemyId ?? ""}";
+    }
+
+    private static void UpsertPending(string key, PendingIntent pending)
+    {
+        if (_pendingByEnemyKey.TryGetValue(key, out PendingIntent existing) && existing != null && existing.Timestamp >= pending.Timestamp)
+        {
+            return;
+        }
+
+        _pendingByEnemyKey[key] = pending;
     }
 
     private static bool TryGetJsonElement(object payload, out JsonElement root)

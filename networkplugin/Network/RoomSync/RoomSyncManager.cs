@@ -7,7 +7,7 @@ using NetworkPlugin.Network.Client;
 using NetworkPlugin.Utils;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.Snapshot;
-using NetworkPlugin.Utils;
+using NetworkPlugin.Patch.Network;
 
 namespace NetworkPlugin.Network.RoomSync;
 
@@ -192,6 +192,7 @@ public static class RoomSyncManager
 
             snapshot.OwnerPlayerId = string.IsNullOrWhiteSpace(snapshot.OwnerPlayerId) ? uploaderId : snapshot.OwnerPlayerId;
             snapshot.UpdatedAtUtcTicks = DateTime.UtcNow.Ticks;
+            snapshot.CampfireEvents = CampfireSyncPatch.GetRecentRoomEvents(snapshot.RoomKey);
 
             // 平铺为匿名对象，避免 JsonElement 解析时出现不稳定的复杂类型。
             var payload = new
@@ -209,6 +210,7 @@ public static class RoomSyncManager
                 BattleId = snapshot.BattleId,
                 Enemies = snapshot.Enemies,
                 Rewards = snapshot.Rewards,
+                CampfireEvents = snapshot.CampfireEvents,
             };
 
             client.SendGameEventData(NetworkMessageTypes.RoomStateUpload, payload);
@@ -301,6 +303,8 @@ public static class RoomSyncManager
             // 请求方版本更高（不太可能）：仍按主机为准回发。
         }
 
+        snapshot.CampfireEvents = CampfireSyncPatch.GetRecentRoomEvents(roomKey);
+
         SendRoomStateResponseTo(requesterId, snapshot);
     }
 
@@ -341,6 +345,7 @@ public static class RoomSyncManager
             BattleId = TryGetString(root, "BattleId") ?? string.Empty,
             Rewards = TryDeserialize<BattleRewardSnapshot>(root, "Rewards") ?? new BattleRewardSnapshot(),
             Enemies = TryDeserializeEnemies(root) ?? new List<EnemyStateSnapshot>(),
+            CampfireEvents = TryDeserialize<List<CampfireEventSnapshot>>(root, "CampfireEvents") ?? CampfireSyncPatch.GetRecentRoomEvents(roomKey),
         };
 
         RoomStateSnapshot stored;
@@ -371,6 +376,7 @@ public static class RoomSyncManager
                 stored.BattleId = incoming.BattleId;
                 stored.Enemies = incoming.Enemies;
                 stored.Rewards = incoming.Rewards;
+                stored.CampfireEvents = incoming.CampfireEvents;
             }
             else
             {
@@ -412,12 +418,15 @@ public static class RoomSyncManager
             BattleId = TryGetString(root, "BattleId") ?? string.Empty,
             Rewards = TryDeserialize<BattleRewardSnapshot>(root, "Rewards") ?? new BattleRewardSnapshot(),
             Enemies = TryDeserializeEnemies(root) ?? new List<EnemyStateSnapshot>(),
+            CampfireEvents = TryDeserialize<List<CampfireEventSnapshot>>(root, "CampfireEvents") ?? new List<CampfireEventSnapshot>(),
         };
 
         lock (_lock)
         {
             _clientRoomStates[roomKey] = snapshot;
         }
+
+        CampfireSyncPatch.MergeCatchupEvents(snapshot.RoomKey, snapshot.CampfireEvents);
     }
 
     private static void SendRoomStateResponseTo(string targetPlayerId, RoomStateSnapshot snapshot)
@@ -455,6 +464,7 @@ public static class RoomSyncManager
                 BattleId = snapshot.BattleId,
                 Enemies = snapshot.Enemies,
                 Rewards = snapshot.Rewards,
+                CampfireEvents = snapshot.CampfireEvents,
             };
 
             client.SendGameEventData(NetworkMessageTypes.RoomStateResponse, payload);
