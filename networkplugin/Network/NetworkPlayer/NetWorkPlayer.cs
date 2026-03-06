@@ -112,6 +112,45 @@ public class NetWorkPlayer
 
     #endregion
 
+    #region Runtime aliases
+
+    [JsonIgnore]
+    public string PlayerName
+    {
+        get => username;
+        set => username = string.IsNullOrWhiteSpace(value) ? "Player" : value;
+    }
+
+    [JsonIgnore]
+    public string CharacterId
+    {
+        get => chara;
+        set => chara = value ?? string.Empty;
+    }
+
+    [JsonIgnore]
+    public string LocationName
+    {
+        get => location;
+        set => location = value ?? string.Empty;
+    }
+
+    [JsonIgnore]
+    public int LocationX
+    {
+        get => location_X;
+        set => location_X = value;
+    }
+
+    [JsonIgnore]
+    public int LocationY
+    {
+        get => location_Y;
+        set => location_Y = value;
+    }
+
+    #endregion
+
     #region Runtime-only
 
     /// <summary>
@@ -134,7 +173,7 @@ public class NetWorkPlayer
     public NetWorkPlayer()
     {
         // 身份信息
-        username = "Player"; // 默认用户名（实际应由外部配置/同步赋值）
+        PlayerName = "Player"; // 默认用户名（实际应由外部配置/同步赋值）
 
         // 战斗状态
         HP = 100; // 默认生命值
@@ -146,11 +185,11 @@ public class NetWorkPlayer
         coins = 0; // 默认金币
 
         // 角色/位置
-        chara = ""; // 默认角色标识
+        CharacterId = ""; // 默认角色标识
 
         UltimatePower = 0; // 默认终极能量
 
-        location = ""; // 默认位置名称
+        LocationName = ""; // 默认位置名称
 
         // 回合
         endturn = false; // 默认未结束回合
@@ -166,8 +205,8 @@ public class NetWorkPlayer
         tradingStatus = false; // 默认不在交易中
 
         // 坐标：从访问节点同步（需确保 VisitingNode 非空）
-        location_X = VisitingNode?.X ?? 0; // 与访问节点同步 X（无节点时回退0）
-        location_Y = VisitingNode?.Y ?? 0; // 与访问节点同步 Y（无节点时回退0）
+        LocationX = VisitingNode?.X ?? 0; // 与访问节点同步 X（无节点时回退0）
+        LocationY = VisitingNode?.Y ?? 0; // 与访问节点同步 Y（无节点时回退0）
     }
 
 }

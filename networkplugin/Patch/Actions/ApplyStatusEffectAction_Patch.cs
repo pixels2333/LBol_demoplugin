@@ -292,6 +292,7 @@ public class ApplyStatusEffectAction_Patch
     {
         try
         {
+            Plugin.LogSynchronizationManagerResolveFromPatch(nameof(ApplyStatusEffectAction_Patch), serviceProvider);
             return serviceProvider?.GetService<ISynchronizationManager>();
         }
         catch

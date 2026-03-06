@@ -255,12 +255,11 @@ public class NetworkStatusIndicator : MonoBehaviour
     /// </summary>
     private void UpdateNatStatusDisplay()
     {
-        string natTypeText = NatTraversal.LastDetectedNatType.ToString();
-        string upnpStateText = NatTraversal.UpnpState;
+        string natSummary = NatTraversal.GetStatusSummary();
 
         if (natStatusText != null)
         {
-            natStatusText.text = $"NAT: {natTypeText} | UPnP: {upnpStateText}";
+            natStatusText.text = natSummary;
             return;
         }
 
@@ -270,7 +269,7 @@ public class NetworkStatusIndicator : MonoBehaviour
             string current = statusText.text ?? string.Empty;
             int lineBreak = current.IndexOf('\n');
             string firstLine = lineBreak >= 0 ? current.Substring(0, lineBreak) : current;
-            statusText.text = $"{firstLine}\nNAT: {natTypeText} | UPnP: {upnpStateText}";
+            statusText.text = $"{firstLine}\n{natSummary}";
         }
     }
 
@@ -401,32 +400,11 @@ public class NetworkStatusIndicator : MonoBehaviour
             details.AppendLine($"远程地址: {_networkClient.RemoteEndPoint?.ToString() ?? "Unknown"}");
         }
 
-        details.AppendLine($"UPnP状态: {(_upnpEnabled ? "已启用" : "未启用")}");
-        details.AppendLine($"UPnP语义: {NatTraversal.UpnpState}");
-        details.AppendLine($"NAT类型: {NatTraversal.LastDetectedNatType}");
+        details.AppendLine(NatTraversal.GetStatusSummary());
+        details.AppendLine(NatTraversal.GetConnectionStrategySummary());
 
         return details.ToString();
     } // 生成连接详情字符串，包含状态、延迟、地址和NAT信息
-
-    // 静态属性用于状态存储
-    private static bool _upnpEnabled = false;
-    private static string _natType = "Unknown";
-
-    /// <summary>
-    /// 设置UPnP状态
-    /// </summary>
-    public static void SetUpnpStatus(bool enabled)
-    {
-        _upnpEnabled = enabled;
-    } // 设置UPnP状态，用于网络连接详情显示
-
-    /// <summary>
-    /// 设置NAT类型
-    /// </summary>
-    public static void SetNatType(string natType)
-    {
-        _natType = natType;
-    } // 设置NAT类型，用于网络连接详情显示
 
     /// <summary>
     /// 获取连接状态字符串

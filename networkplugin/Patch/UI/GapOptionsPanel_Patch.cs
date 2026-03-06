@@ -79,7 +79,7 @@ public class GapOptionsPanel_Patch
             _pendingDrinkTeaCompletion = false;
             _pendingDrinkTeaOptionId = null;
             _pendingDrinkTeaOptionName = null;
-            CampfireSyncPatch.BroadcastCampfireEvent(NetworkMessageTypes.GapStationEntered, "GapStation", gapStation?.GetType().Name);
+            GapOptionsSyncPatch.BroadcastGapOptionsEvent(NetworkMessageTypes.GapStationEntered, "GapStation", gapStation?.GetType().Name);
 
             // 添加交易选项
             if (ConfigManager?.AllowTrading?.Value == true)
@@ -289,8 +289,8 @@ public class GapOptionsPanel_Patch
                 return false; // 阻止原始方法执行
             }
 
-            // 内置篝火选项（升级/移除）走最小同步广播。
-            TryBroadcastBuiltInCampfireSelection(option);
+            // 内置 GapOptions 选项（升级/移除）走最小同步广播。
+            TryBroadcastBuiltInGapOptionsSelection(option);
 
             return true; // 继续执行原始方法
         }
@@ -317,7 +317,7 @@ public class GapOptionsPanel_Patch
         _pendingDrinkTeaOptionId = null;
         _pendingDrinkTeaOptionName = null;
 
-        CampfireSyncPatch.BroadcastCampfireEvent(NetworkMessageTypes.DrinkTeaCompleted, optionId, optionName);
+        GapOptionsSyncPatch.BroadcastGapOptionsEvent(NetworkMessageTypes.DrinkTeaCompleted, optionId, optionName);
     }
 
     #region 辅助方法
@@ -417,7 +417,7 @@ public class GapOptionsPanel_Patch
         return option?.GetType().GetProperty("Id")?.GetValue(option)?.ToString() == "Resurrect";
     }
 
-    private static void TryBroadcastBuiltInCampfireSelection(GapOption option)
+    private static void TryBroadcastBuiltInGapOptionsSelection(GapOption option)
     {
         if (option == null)
         {
@@ -436,7 +436,7 @@ public class GapOptionsPanel_Patch
         bool includesDrinkTeaStarted = false;
         foreach (string eventType in eventTypes)
         {
-            CampfireSyncPatch.BroadcastCampfireEvent(eventType, cardId, cardName);
+            GapOptionsSyncPatch.BroadcastGapOptionsEvent(eventType, cardId, cardName);
             if (string.Equals(eventType, NetworkMessageTypes.DrinkTeaStarted, StringComparison.Ordinal))
             {
                 includesDrinkTeaStarted = true;
@@ -462,12 +462,12 @@ public class GapOptionsPanel_Patch
 
         if (ContainsAny(merged, "Upgrade", "升级", "Enhance", "强化"))
         {
-            eventTypes.Add(NetworkMessageTypes.CampfireUpgradeSelected);
+            eventTypes.Add(NetworkMessageTypes.GapOptionsUpgradeSelected);
         }
 
         if (ContainsAny(merged, "Remove", "Delete", "Exile", "移除", "删除", "放逐"))
         {
-            eventTypes.Add(NetworkMessageTypes.CampfireRemoveCard);
+            eventTypes.Add(NetworkMessageTypes.GapOptionsRemoveCard);
         }
 
         if (ContainsAny(merged, "Tea", "Drink", "Rest", "Recover", "Heal", "喝茶", "休息", "恢复", "疗伤"))

@@ -1,4 +1,4 @@
-# LBoL 联机MOD开发规划路线图 v2.5
+# LBoL 联机MOD开发规划路线图 v2.6
 
 ## 📜 历史章节（保留）
 
@@ -11,12 +11,13 @@
 | v2.3 | 2026-03-04 | 代码实扫纠偏版 | 纠正了与代码不一致的完成度描述 |
 | v2.4 | 2026-03-04 | 风格回归 + 实扫校正版 | 在 v2.3 事实基础上恢复 v2.1 风格排版 |
 | v2.5 | 2026-03-05 | 方案库收尾同步版 | 同步 `~exec` 收尾：消息常量治理 + NAT/配置可观测收口 |
+| v2.6 | 2026-03-06 | 架构复扫校正版 | 重新核对 `NetworkServer` / `GapOptions` / `NAT` / `UI` / 静态指标，重排近期待办 |
 
-> 说明：v2.5 继续以当前代码为准，不回退到历史文档中的过高完成度结论。
+> 说明：v2.6 继续以当前代码为准，不回退到历史文档中的过高完成度结论；旧版路线图中的 `TODO≈8`、`#if false≈3` 已不再成立。
 
 ---
 
-## 📊 功能对比分析 - 更新 2026-03-04
+## 📊 功能对比分析 - 更新 2026-03-06
 
 ### ✅ 已完成核心功能（主链路可用）
 
@@ -39,7 +40,8 @@
 
 | 功能模块 | 当前实现 | 完成度 | 备注 |
 |---------|---------|--------|------|
-| NAT 穿透 | ⚠️ 部分完成 | 68% | `Network/Utils/NatTraversal.cs`：STUN/令牌路径可用；UPnP 已明确为配置禁用/未实现语义并可观测 |
+| NAT 穿透 | ✅ 已收口 | 82% | `Network/Utils/NatTraversal.cs` / `UI/Components/NetworkStatusIndicator.cs`：维持 STUN + UPnP 语义展示方向，状态源与文案已统一 |
+| GapOptions 同步 | ⚠️ 部分完成 | 60% | `Patch/Network/GapOptionsSyncPatch.cs`：事件广播、去重、房间缓存已启用；仍缺双端/追赶回归 |
 | 宝物联机同步 | ⚠️ 部分完成 | 65% | `Patch/Network/ExhibitSyncPatch.cs` 目前是定向修复，不是全量矩阵 |
 | 出牌远端落地 | ⚠️ 部分完成 | 70% | `Patch/Network/RemoteCardUsePatch.cs` 使用 reverse patch stub，需专项回归 |
 | 工具牌同步 | ⚠️ 部分完成 | 72% | `Patch/Network/ToolCardSyncPatch.cs` 仍需更多场景覆盖 |
@@ -49,9 +51,10 @@
 
 | 功能模块 | 当前实现 | 完成度 | 备注 |
 |---------|---------|--------|------|
-| 篝火同步 | ⚠️ 已启用主链 | 55% | `Patch/Network/CampfireSyncPatch.cs` 已启用；双端回归仍需执行 |
 | 存档 bytes 联机同步 | ⚠️ 已废弃 | 0% | `EnableSaveLoadSync` 已标记 Deprecated；改为本地恢复 + FullSnapshot |
-| 成就同步 | ❌ 未落地 | 0% | 未发现独立成就联机同步链路 |
+| 成就同步 | ⚠️ 已评估 | 20% | 已确认当前不建议立项；仓库内未发现独立成就同步链路 |
+| 观战模式 | ⚠️ 已评估 | 20% | 需先拆分房间角色、快照裁剪与输入权限 |
+| 调试面板与性能可视化 | ⚠️ 已评估 | 25% | 当前更适合并入既有回归/诊断体系 |
 
 ---
 
@@ -110,102 +113,145 @@
 ### 当前系统能力（实扫口径）
 - ✅ 可支撑多人基础流程（建房、战斗、推进、重连、中途加入）。
 - ✅ 已形成可维护的同步补丁分层（Network / UI / Map / Battle）。
-- ⚠️ 仍存在历史兼容层与未收敛模块（Campfire / NAT / DTO 重复定义）。
+- ⚠️ 仍存在历史兼容层与未收敛模块（`NetworkServer` 单类承载过多职责、RemoteCardUse reverse patch stub、NAT/UI 残余旧状态字段）。
+
+---
+
+## 🧭 架构现状快照（2026-03-06 复扫）
+
+### 1. 插件入口已稳定为 DI + Harmony + 主线程调度
+**代码位置**: `Plugin.cs`
+
+- `Plugin` 已承担配置加载、DI 注册、Harmony 补丁加载、主线程回调泵和重连/中途加入管理器初始化。
+- `SynchronizationManager` 当前通过 `AddSingleton<SynchronizationManager>()` + `AddSingleton<ISynchronizationManager>(...)` 暴露，生命周期比旧版路线图描述更稳定。
+
+### 2. 服务端主链已建立，但 `NetworkServer` 仍是大而全入口
+**代码位置**: `Network/Server/NetworkServer.cs`
+
+- 已接入 `BaseGameServer` / `ServerCore`，但房间广播、系统消息、FullSync/RoomState 定向路由、会话维护仍集中在同一类中。
+- `HandleGameEvent` / `HandleSystemMessage` 仍保留一层旧入口包装再转调 `protected override`，后续维护成本偏高。
+
+### 3. 消息分类已集中到单一源头
+**代码位置**: `Network/Messages/NetworkMessageTypes.cs`
+
+- `NetworkMessageTypes.IsGameEvent(messageType, route)` 已成为 Client / HostServer / Relay 的统一判定入口。
+- 这意味着后续优先改“消息域拆分”和“职责分层”，而不是继续分散修补字面量常量。
+
+### 4. UI 补丁层开始从“大文件”向 façade + 子模块收敛
+**代码位置**: `Patch/UI/OtherPlayersOverlayPatch.cs`, `Patch/UI/OtherPlayersOverlay/`, `Patch/UI/ShopTradeIconPatch.cs`
+
+- `OtherPlayersOverlayPatch` 已拆为 `EventBridge` / `PlayerStore` / `ViewRegistry` 三个 partial 子模块，说明 UI 状态源收敛已经有结构基础。
+- `ShopTradeIconPatch` 已改为精确定位交易按钮标题，不再重写整棵克隆子树的所有文本节点。
+
+### 5. NAT 方向已从“补全一切”转为“可观测优先”
+**代码位置**: `Network/Utils/NatTraversal.cs`, `UI/Components/NetworkStatusIndicator.cs`
+
+- STUN 检测、令牌校验、NAT/UPnP 语义展示已具备。
+- `NetworkStatusIndicator` 已移除 `_upnpEnabled` / `_natType` 旧静态字段，改由 `NatTraversal` 统一提供摘要与策略文案。
 
 ---
 
 ## 📌 第一优先级 (P1 - 稳定性闭环)
 
-#### 1. 篝火同步恢复
+#### 1. 房主路由与服务器职责收敛
 **重要性**: ⭐⭐⭐⭐  
-**状态**: ❌ 未启用  
-**代码位置**: `Patch/Network/CampfireSyncPatch.cs`  
-**完成度**: 15%
+**状态**: ⚠️ 进行中  
+**代码位置**: `Network/Server/NetworkServer.cs`  
+**完成度**: 58%
 
 **任务清单**:
-- [ ] 解除 `#if false` 并补齐收发事件。
-- [ ] 增加主机权威验证与去重。
-- [ ] 加入重连/中途加入后的篝火状态恢复。
+- [√] 将 FullSync / RoomState / DirectMessage 路由继续下沉到更清晰的边界（当前已统一到 `TryRouteControlledMessage(...)`，后续再评估是否继续下沉到 `BaseGameServer` / `ServerCore`）。
+- [√] 收敛 `HandleGameEvent` / `HandleSystemMessage` 的双层包装入口，避免同一消息改两处。
+- [√] 为 `FullStateSync*` / `RoomState*` 建立固定回归路径，减少 Host/Client 分支漂移。
 
 ---
 
-#### 2. 玩家模型收敛
+#### 2. GapOptions 同步闭环
 **重要性**: ⭐⭐⭐⭐  
-**状态**: ⚠️ 进行中  
-**代码位置**: `Network/NetworkPlayer/`  
-**完成度**: 45%
+**状态**: ⚠️ 已启用主链  
+**代码位置**: `Patch/Network/GapOptionsSyncPatch.cs`  
+**完成度**: 60%
 
 **任务清单**:
-- [ ] 梳理 `NetWorkPlayer` 与 `dto/NetWorkPlayer` 引用。
-- [ ] 下线 `NotImplementedException` 相关旧接口。
-- [ ] 统一 DTO 与运行时模型边界。
+- [?] 验证 `GapStationEntered` / `DrinkTea*` / `GapOptions*` 双端幂等与去重是否稳定（已建立回归清单，但仍缺双端实机验收）。
+- [√] 把房间缓存事件与中途加入/重连回归清单绑定，不只停留在日志层。
+- [√] 检查 UI 提示与实际游戏动作是否存在“只同步记录、不触发表现”的缺口（当前代码审计已确认存在该风险）。
 
 ---
 
 #### 3. 聊天模型统一
 **重要性**: ⭐⭐⭐  
-**状态**: ⚠️ 进行中  
+**状态**: ⚠️ 收敛中  
 **代码位置**: `Chat/ChatMessage.cs`, `UI/Components/ChatUI.cs`  
-**完成度**: 55%
+**完成度**: 70%
 
 **任务清单**:
-- [ ] 统一 `PlayerName/Username` 字段口径。
-- [ ] 收敛为单一聊天消息模型。
-- [ ] 验证历史 payload 兼容反序列化。
+- [√] 将 `ChatConsole` 中剩余的 `userName/UserName` 反射兜底读取逐步替换为统一入口。
+- [√] 文档口径固定为 `playerName` 主字段 + `username` 兼容字段。
+- [√] 验证历史 payload 的兼容反序列化与显示回退。
 
 ---
 
 #### 4. 固定回归清单落地
 **重要性**: ⭐⭐⭐⭐  
 **状态**: ⚠️ 待完善  
-**完成度**: 35%
+**完成度**: 45%
 
 **任务清单**:
 - [ ] 房间生命周期（建房/入房/离房/主机切换）。
-- [ ] 战斗一致性（回合/能量/敌人状态）。
-- [ ] 功能链路（交易/复活/地图推进）。
+- [ ] 战斗一致性（回合/能量/敌人状态/远端出牌 reverse patch 链路）。
+- [ ] 功能链路（交易/复活/地图推进/GapOptions）。
 - [ ] 连接恢复（重连/中途加入/FullSnapshot 追赶）。
 
 ---
 
 ## 📌 第二优先级 (P2 - 体验与一致性优化)
 
-#### 1. NAT 能力补全或收口
+#### 1. NAT 能力收口与 UI 清理
 **重要性**: ⭐⭐⭐  
 **状态**: ⚠️ 部分完成  
 **代码位置**: `Network/Utils/NatTraversal.cs`  
-**完成度**: 60%
+**完成度**: 72%
 
 **任务清单**:
-- [ ] 若保留 UPnP：补齐创建/释放映射。
-- [ ] 若不保留 UPnP：下线误导入口并同步文档。
-- [ ] 明确 NAT 类型到连接策略映射表。
+- [√] 明确继续保持“STUN + UPnP 语义展示”而非正式接入真实端口映射库。
+- [√] 清理 `NetworkStatusIndicator` 中与 `NatTraversal` 并行的 `_upnpEnabled` / `_natType` 旧静态状态字段。
+- [√] 将 NAT 类型、UPnP 状态、连接策略文案统一到同一套输出口径。
 
 ---
 
-#### 2. 敌人生成同步路径收敛
+#### 2. 玩家模型轻量收敛
 **重要性**: ⭐⭐⭐  
-**状态**: ⚠️ 进行中  
-**代码位置**: `Patch/Network/EnemySpawnSyncPatch.cs`, `Patch/Network/SpawnedEnemySyncPatch.cs`  
-**完成度**: 70%
+**状态**: ✅ 已收口  
+**代码位置**: `Network/NetworkPlayer/`  
+**完成度**: 82%
 
 **任务清单**:
-- [ ] 明确两条 patch 链路职责边界。
-- [ ] 统一 SpawnId 生成与匹配规则。
-- [ ] 清理重复广播路径。
+- [√] 删除空 `dto/` 占位目录或补正文档说明，避免路线图继续按“双模型并存”判断。
+- [√] 统一 `NetWorkPlayer` 协议字段命名与运行时对象边界。
+- [√] 评估是否为 `username/location_X/location_Y` 等 legacy 字段增加 mapper 或更清晰的封装。
+
+**当前结论**:
+- `NetWorkPlayer` 继续保留 legacy JSON 字段，作为线协议兼容层。
+- 运行时代码通过 `PlayerName/CharacterId/LocationName/LocationX/LocationY` PascalCase 别名属性收口，不新增独立 mapper。
+- `dto/README.md` 已说明目录用途，避免后续误判为“双模型并存”。
 
 ---
 
 #### 3. UI 展示口径统一
 **重要性**: ⭐⭐⭐  
-**状态**: ⚠️ 进行中  
-**代码位置**: `Patch/UI/OtherPlayersOverlayPatch.cs`, `UI/Panels/`  
-**完成度**: 58%
+**状态**: ✅ 已收口  
+**代码位置**: `Patch/UI/OtherPlayersOverlayPatch.cs`, `UI/Panels/`, `Patch/UI/ShopTradeIconPatch.cs`  
+**完成度**: 100%
 
 **任务清单**:
-- [ ] 统一多人覆盖层与玩家状态来源。
-- [ ] 收敛交易/复活面板状态显示逻辑。
-- [ ] 减少网络状态提示抖动。
+- [√] 保持 `OtherPlayersOverlayPatch` façade 稳定，同时继续把状态来源收敛到 partial 子模块。
+- [√] 收敛交易/复活面板与多人覆盖层的玩家状态来源。
+- [√] 复查 `ShopTradeIconPatch` 新的按钮标题定位逻辑在商店场景中的回归表现。
+
+**当前结论**:
+- `ShopTradeIconPatch` 继续只更新克隆交易按钮中的标题文本节点，不触碰原生按钮文本。
+- `CardService` / `ReturnButton` 原生容器在显示、隐藏与异常清理路径都会恢复原始 `RectTransform` 快照，避免商店场景遗留布局漂移。
 
 ---
 
@@ -213,24 +259,36 @@
 
 #### 1. 成就联机同步
 **重要性**: ⭐⭐  
-**状态**: ❌ 未开始  
-**完成度**: 0%
+**状态**: ⚠️ 已评估（当前不建议立项）  
+**完成度**: 20%
+
+- 当前仓库未发现独立的成就同步消息、状态缓存或 UI 回显链路；`Together in Spire` 工作区也未提供可直接复用的源码级成就同步实现。
+- 若立项，需先定义“共享房间成就”还是“仅远端展示成就状态”，否则协议扩展收益低于维护成本。
+- 结论：本轮仅保留路线图观察项，不进入下一轮正式开发计划。
 
 #### 2. 观战模式
 **重要性**: ⭐⭐  
-**状态**: ❌ 未开始  
-**完成度**: 0%
+**状态**: ⚠️ 已评估（需前置重构）  
+**完成度**: 20%
+
+- 当前房间成员模型、`FullSnapshot` / `RoomState` 追赶、`Trade` / `Turn` / `RemoteCardUse` 等链路都默认“房间成员 = 活跃玩家”。
+- UI 侧虽已有 `OtherPlayersOverlay`、地图图标与远端代理视图，但缺少只读玩家角色、输入封禁、观战加入流程与裁剪后的快照载荷。
+- 结论：需先完成房间角色、快照裁剪和战斗输入权限三层改造，再考虑正式立项。
 
 #### 3. 调试面板与性能可视化
 **重要性**: ⭐⭐  
-**状态**: ⚠️ 待规划  
-**完成度**: 10%
+**状态**: ⚠️ 已评估（并入现有诊断体系）  
+**完成度**: 25%
+
+- 当前已有回归清单、`RouteProbe` / `GapOptionsSync` 日志、NAT 状态展示、Debug 开关和性能配置项作为诊断基础。
+- `Network/Snapshot/PlayerPerformanceSnapshot.cs` 仍是未接线的数据模型，`Configuration/ConfigManager.Performance.cs` 也只提供配置项，没有形成独立面板的数据闭环。
+- 结论：短期并入现有回归/诊断体系，不单独拆调试面板产品项；等真实指标采集接线后再评估独立可视化。
 
 ---
 
-## 📊 开发进度更新 (2026-03-04 - 最新)
+## 📊 开发进度更新 (2026-03-06 - 最新)
 
-### 当前进度: ~76%（按核心链路加权）
+### 当前进度: ~82%（按核心链路加权；P3 已完成评估但未进入实现）
 
 **已稳定的主链路**:
 - ✅ 房间与会话管理
@@ -241,15 +299,16 @@
 - ✅ 聊天与网络状态基础 UI
 
 **进行中关键项**:
-- ⚠️ NAT 穿透能力补全（UPnP 未落地）
-- ⚠️ 宝物/远端出牌路径回归强化
-- ⚠️ 玩家模型与聊天模型收敛
+- ⚠️ `NetworkServer` 路由/广播/会话职责仍过于集中
+- ⚠️ `GapOptionsSyncPatch` 双端实机验收仍未完成
+- ⚠️ 远端出牌 / GapOptions / 发布前整体验收仍未形成最终闭环
 
 **当前技术债指标（静态扫描）**:
-- `NetworkMessageTypes` 公共消息常量约 126 个
-- `TODO` 标记约 8 处
-- `NotImplementedException` 约 11 处
-- `#if false` 约 3 处
+- C# 文件数：`177`
+- 精确 `//TODO:`：`0` 处
+- `throw new NotImplementedException`：`1` 处（`RemoteCardUsePatch` reverse patch stub）
+- `#if false`：`0` 处
+- `OtherPlayersOverlayPatch` partial 子模块：`3` 个
 
 ### 2026-03-05 `~exec` 收尾增量
 
@@ -258,6 +317,28 @@
 - ✅ 完成 `6.1~6.3`：`NatTraversal` 新增 UPnP 状态语义（DisabledByConfig / UnsupportedOrUnavailable / AvailableButNotImplemented）与 STUN 日志口径；`NetworkStatusIndicator` 增加 NAT/UPnP 可观测展示。
 - ✅ 完成 `6.4`：清理 `ConfigManager.FeatureToggles.cs` / `ConfigManager.Performance.cs` 中 `#if false` 历史参考块。
 - ⚠️ `7.2` 聊天回归按最新范围决策移出当前方案验收；`7.3~7.4` 因缺少双端环境顺延为手工回归项。
+
+### 2026-03-06 复扫增量
+
+- ✅ `GapOptionsSyncPatch` 已不再是“未启用”状态，当前具备事件广播、去重和按房间缓存最近事件能力。
+- ✅ `OtherPlayersOverlayPatch` 已拆分为 `EventBridge` / `PlayerStore` / `ViewRegistry` 三个 partial 子模块。
+- ✅ `ShopTradeIconPatch` 已完成交易按钮标题的精确定位收敛，避免全量重写克隆子树文本。
+- ⚠️ `NetworkServer` 仍保留较重的路由/广播/会话职责，是下一轮架构收敛重点。
+- ⚠️ 旧版路线图里的 `TODO≈8` / `#if false≈3` 已失效，当前实扫为 `0 / 0`。
+
+### 2026-03-06 `~exec` 首批执行增量
+
+- ✅ `NetworkServer` 已将 `FullStateSync*` / `RoomState*` / `DirectMessage` 内层控制消息收敛到统一的 `TryRouteControlledMessage(...)` 入口。
+- ✅ `HandleGameEvent` / `HandleSystemMessage` 现改为直接调用 core 处理逻辑，不再维护额外的 NetPeer 包装层。
+- ✅ 新增 `networkplugin/NETWORK_ROUTE_REGRESSION_CHECKLIST.md`，固定 Host/Relay 下的请求、响应、定向转发与异常路径回归步骤。
+- ✅ `ChatConsole` 本地显示名解析已统一到 `GameStateUtils.GetCurrentPlayerName()`；聊天文档口径固定为 `playerName` 主字段 + `username` 兼容字段。
+- ✅ `OtherPlayersOverlayPatch.ResolveDisplayName(...)` 已成为 UI 显示名统一入口；`TradePanel`、复活登记链路、Overlay/地图图标/远端指向判定现统一复用玩家缓存 + 本地运行时名称兜底。
+- ✅ `ShopTradeIconPatch` 现会保存并恢复 `CardService` / `ReturnButton` 原生容器的原始 `RectTransform` 快照，异常清理路径不再遗留商店布局偏移。
+- ✅ `ChatMessage` 已显式兼容历史 `username/UserName` payload，并在缺失名称时回退到 `PlayerId/玩家` 显示。
+- ⚠️ `GapOptionsSyncPatch` 当前接收侧仍以缓存/日志为主，尚未证明所有同步事件都能稳定落到 UI/游戏表现；该差异已写入固定回归清单。
+- ✅ NAT 方向已明确固定为“STUN + UPnP 语义展示”；`NetworkStatusIndicator` 不再维护第二套 NAT/UPnP 状态源。
+- ✅ `NetWorkPlayer` 已明确为 legacy 线协议载体；运行时访问改为使用 PascalCase 别名层，`dto/` 目录已补充说明。
+- ✅ P3 已完成立项评估：成就同步暂不立项；观战模式需前置重构；调试/性能可视化短期并入现有诊断体系。
 
 ---
 
@@ -268,7 +349,7 @@
 - ✅ 战斗主流程同步
 - ✅ 地图推进同步
 - ✅ 交易与复活基础流程
-- ⚠️ 篝火节点尚未打通
+- ⚠️ GapOptions 节点尚未打通
 
 ### Alpha（稳定性增强）完成度: 66%
 - ✅ 重连与中途加入主链路
@@ -281,24 +362,24 @@
 - ⚠️ UI 展示口径仍有分歧
 - ⚠️ NAT 策略需明确收口方案
 
-### 正式版本（扩展能力）完成度: 28%
-- ❌ 成就同步未开始
-- ❌ 观战模式未开始
-- ⚠️ 调试可视化未成体系
+### 正式版本（扩展能力）完成度: 34%
+- ⚠️ 成就同步已评估，当前不建议立项
+- ⚠️ 观战模式已评估，但需前置重构
+- ⚠️ 调试可视化已归并到现有诊断体系方向
 
 ---
 
 ## 🚀 推荐开发顺序（修订版）
 
 ### 第一阶段（稳定性闭环）
-1. 打通 `CampfireSyncPatch` 全链路。
-2. 收敛 `NetworkPlayer` 历史兼容层。
-3. 统一聊天 DTO。
+1. 收敛 `NetworkServer` 的 Host 路由与会话职责边界。
+2. 完成 `GapOptionsSyncPatch` 与 `RemoteCardUsePatch` 的双端固定回归。
+3. 统一聊天 payload 口径并收敛旧兼容读取。
 4. 固化回归清单并形成固定复测流程。
 
 ### 第二阶段（一致性优化）
-5. 决策并落实 NAT 方案（补全 UPnP 或明确移除）。
-6. 收敛敌人生成同步双路径。
+5. 决策并落实 NAT 方案（保留语义化收口或接入真实映射库）。
+6. 清理 UI 层的 legacy 状态字段/命名。
 7. 统一 UI 多处玩家状态展示口径。
 
 ### 第三阶段（扩展评估）
@@ -334,15 +415,15 @@
 ## 📝 关键 TODO 清单
 
 ### 立即行动项（本周）
-1. [ ] 启用并补齐 `CampfireSyncPatch`。
-2. [ ] 清理 `NetWorkPlayer` 系列未实现接口。
-3. [ ] 聊天消息模型统一改造。
+1. [ ] 收敛 `NetworkServer` 的 FullSync / RoomState 路由职责。
+2. [ ] 完成 `GapOptionsSyncPatch` + `RemoteCardUsePatch` 的双端固定回归。
+3. [ ] 清理聊天模型剩余的 `userName/UserName` 兼容读取分叉。
 4. [ ] 完成第一版固定回归脚本。
 
 ### 短期目标（1-2 周）
 5. [ ] 明确 NAT 策略并落地。
-6. [ ] 收敛敌人生成同步双路径。
-7. [ ] 统一 UI 覆盖层状态来源。
+6. [ ] 清理 `NetWorkPlayer` 的旧状态字段。
+7. [ ] 完成 `ShopTradeIconPatch` 商店回归，并以统一显示名入口收尾 UI 口径统一。
 
 ### 中期目标（2-4 周）
 8. [ ] 完成 P1/P2 剩余项并回归验证。
@@ -354,14 +435,14 @@
 ## ⚠️ 风险与技术债
 
 ### 高风险
-1. `CampfireSyncPatch` 未启用导致流程断层。
-2. 历史玩家模型仍含 `NotImplementedException`。
-3. 聊天 DTO 双定义存在协议漂移风险。
+1. `NetworkServer` 单类承载路由、广播、会话与回收逻辑，改动面过于集中。
+2. `RemoteCardUsePatch` 仍保留 reverse patch stub，是当前唯一真实 `throw new NotImplementedException` 风险点。
+3. `GapOptionsSyncPatch` 虽已启用，但缺少双端/追赶实机验收。
 
 ### 中风险
-4. `SaveSync` 历史常量仍保留，易引起认知偏差。
-5. 敌人生成双路径并存提高维护成本。
-6. NAT 文档认知与实现存在偏差。
+4. `GapOptionsSyncPatch` 接收侧仍以缓存/日志为主，尚未证明所有同步事件都能稳定落到 UI/游戏表现。
+5. UI 层仍存在部分 legacy 状态来源未完全收口。
+6. `GapOptionsSyncPatch` 接收侧仍以缓存/日志为主，尚未证明所有同步事件都能稳定落到 UI/游戏表现。
 
 ---
 
@@ -373,8 +454,12 @@
 4. 连接恢复：断线重连、中途加入、FullSnapshot 追赶。
 5. UI 反馈：聊天、网络状态、多人覆盖层显示稳定。
 
+> 固定执行材料：
+> - `networkplugin/NETWORK_ROUTE_REGRESSION_CHECKLIST.md`
+> - `networkplugin/MULTIPLAYER_REGRESSION_CHECKLIST.md`
+
 ---
 
-**最后更新**: 2026-03-05  
-**文档版本**: v2.5  
-**更新方式**: 保留 v2.1 风格章节 + 基于当前代码的完成度纠偏
+**最后更新**: 2026-03-06  
+**文档版本**: v2.6  
+**更新方式**: 保留 v2.1 风格章节 + 基于 2026-03-06 代码复扫的完成度与优先级纠偏

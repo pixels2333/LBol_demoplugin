@@ -60,13 +60,15 @@ public class ChatMessage
     public string LegacyUsername
     {
         get => null;
-        set
-        {
-            if (!string.IsNullOrWhiteSpace(value) && string.IsNullOrWhiteSpace(PlayerName))
-            {
-                PlayerName = value;
-            }
-        }
+        set => ApplyLegacyPlayerName(value);
+    }
+
+    [JsonPropertyName("UserName")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string LegacyUsernameUpper
+    {
+        get => null;
+        set => ApplyLegacyPlayerName(value);
     }
 
     /// <summary>
@@ -156,6 +158,21 @@ public class ChatMessage
         return Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
     }
 
+    public string GetDisplayPlayerName()
+    {
+        if (!string.IsNullOrWhiteSpace(PlayerName))
+        {
+            return PlayerName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(PlayerId))
+        {
+            return PlayerId;
+        }
+
+        return "玩家";
+    }
+
     /// <summary>
     /// 获取消息的简短描述
     /// 用于日志记录或调试时快速识别消息内容
@@ -170,7 +187,15 @@ public class ChatMessage
             ? Content.Substring(0, 50) + "..."
             : Content;
 
-        return $"[{MessageType}] {PlayerName}: {shortContent}";
+        return $"[{MessageType}] {GetDisplayPlayerName()}: {shortContent}";
+    }
+
+    private void ApplyLegacyPlayerName(string value)
+    {
+        if (!string.IsNullOrWhiteSpace(value) && string.IsNullOrWhiteSpace(PlayerName))
+        {
+            PlayerName = value;
+        }
     }
 }
 

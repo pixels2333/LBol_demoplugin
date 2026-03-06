@@ -46,13 +46,13 @@ public sealed class RoomStateSnapshot
 
     public BattleRewardSnapshot Rewards { get; set; } = new();
 
-    public List<CampfireEventSnapshot> CampfireEvents { get; set; } = [];
+    public List<GapOptionsEventSnapshot> GapOptionsEvents { get; set; } = [];
 }
 
 /// <summary>
-/// Campfire/GAP 关键事件快照（用于中途加入最小追赶）。
+    /// GapOptions/GAP 关键事件快照（用于中途加入最小追赶）。
 /// </summary>
-public sealed class CampfireEventSnapshot
+public sealed class GapOptionsEventSnapshot
 {
     public string ActionId { get; set; } = string.Empty;
 

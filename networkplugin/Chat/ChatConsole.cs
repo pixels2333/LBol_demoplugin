@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Text.Json;
 using NetworkPlugin.Utils;
 using BepInEx.Logging;
@@ -183,36 +182,10 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
     {
         try
         {
-            object player = GameStateUtils.GetCurrentPlayer();
-            if (player != null)
+            string playerName = GameStateUtils.GetCurrentPlayerName();
+            if (!string.IsNullOrWhiteSpace(playerName))
             {
-                Type t = player.GetType();
-                PropertyInfo prop =
-                    t.GetProperty("userName", BindingFlags.Public | BindingFlags.Instance) ??
-                    t.GetProperty("UserName", BindingFlags.Public | BindingFlags.Instance) ??
-                    t.GetProperty("Name", BindingFlags.Public | BindingFlags.Instance);
-
-                if (prop != null && prop.PropertyType == typeof(string))
-                {
-                    string name = prop.GetValue(player) as string;
-                    if (!string.IsNullOrWhiteSpace(name))
-                    {
-                        return name;
-                    }
-                }
-
-                // 兜底：ModelName/Id 等也可用于诊断
-                PropertyInfo fallback =
-                    t.GetProperty("ModelName", BindingFlags.Public | BindingFlags.Instance) ??
-                    t.GetProperty("Id", BindingFlags.Public | BindingFlags.Instance);
-                if (fallback != null)
-                {
-                    object v = fallback.GetValue(player);
-                    if (v != null)
-                    {
-                        return v.ToString();
-                    }
-                }
+                return playerName;
             }
         }
         catch
@@ -303,6 +276,8 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
                 message.Content = message.Content.Substring(0, MaxMessageLength);
             }
 
+            message.PlayerName = message.GetDisplayPlayerName();
+
             // 添加消息到本地历史记录
             AddToHistory(message);
 
@@ -313,7 +288,7 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
             // DisplayMessageInUI(message);
 
             // 记录消息接收日志
-            _logger.LogInfo($"[Chat] 接收到消息 - 发送者: {message.PlayerName}, 内容: {message.Content}, 类型: {message.MessageType}");
+            _logger.LogInfo($"[Chat] 接收到消息 - 发送者: {message.GetDisplayPlayerName()}, 内容: {message.Content}, 类型: {message.MessageType}");
         }
         catch (JsonException ex)
         {
@@ -488,6 +463,6 @@ public class ChatConsole(INetworkClient networkClient, ManualLogSource logger)
     }
 
     // 兼容说明：
-    // - 本地玩家 ID/名称获取已在 GetCurrentPlayerId()/GetCurrentPlayerName() 内实现。
+    // - 本地玩家 ID/名称获取已在 GetLocalPlayerId()/GetLocalPlayerName() 内实现。
     // - 聊天 UI 的展示由 UI 层负责（例如 ChatUI）。
 }

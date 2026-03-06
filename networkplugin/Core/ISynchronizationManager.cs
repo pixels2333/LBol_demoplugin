@@ -45,10 +45,10 @@ public interface ISynchronizationManager
     void SendManaConsumeEvent(int[] manaBefore, int[] manaConsumed, string source);
 
     /// <summary>
-    /// 发送篝火选项事件
-    /// 同步篝火点的选择和操作给远程玩家，协调多人游戏的决策
+    /// 发送 GapOptions 选项事件
+    /// 同步 GapStation / GapOptions 的选择和操作给远程玩家，协调多人游戏的决策
     /// </summary>
-    /// <param name="eventType">篝火事件类型（如休息、强化、升级等）</param>
+    /// <param name="eventType">GapOptions 事件类型（如喝茶、升级、移除卡牌等）</param>
     /// <param name="optionData">选项的详细数据和参数</param>
     /// <param name="playerState">选择时的玩家状态快照</param>
     void SendGapStationEvent(string eventType, object optionData, object playerState);

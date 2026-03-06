@@ -1,10 +1,10 @@
-# 项目概述
+# legacy: wiki/overview.md
 
-## 模块索引
-- `networkplugin`: 联机/同步相关补丁与网络层实现。
-- `lbol`: 游戏源代码（用于参考与编译依赖）。
+> 旧版项目概览已折叠进标准知识库结构，本文件仅保留旧路径兼容。
 
-## 关键入口
-- Harmony 补丁目录: `networkplugin/Patch/`
-- 网络消息类型: `networkplugin/Network/Messages/NetworkMessageTypes.cs`
+## 当前标准入口
+
+- 项目上下文：[`../context.md`](../context.md)
+- `lbol` 模块说明：[`../modules/lbol.md`](../modules/lbol.md)
+- 模块索引：[`../modules/_index.md`](../modules/_index.md)
 

@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
+using NetworkPlugin.Patch.UI;
 using NetworkPlugin.UI.Panels;
 using NetworkPlugin.Utils;
 
@@ -135,7 +136,7 @@ public static class ResurrectSyncPatch
         var entry = new DeadPlayerEntry
         {
             PlayerId = playerId,
-            PlayerName = playerId, // v1：暂无稳定昵称字段；后续可用 PlayerListUpdate 的 PlayerName
+            PlayerName = OtherPlayersOverlayPatch.ResolveDisplayName(playerId),
             DeadCause = "FakeDeath",
             CanResurrect = true,
             MaxHp = maxHp,

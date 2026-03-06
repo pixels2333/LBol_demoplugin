@@ -192,7 +192,7 @@ public static class RoomSyncManager
 
             snapshot.OwnerPlayerId = string.IsNullOrWhiteSpace(snapshot.OwnerPlayerId) ? uploaderId : snapshot.OwnerPlayerId;
             snapshot.UpdatedAtUtcTicks = DateTime.UtcNow.Ticks;
-            snapshot.CampfireEvents = CampfireSyncPatch.GetRecentRoomEvents(snapshot.RoomKey);
+            snapshot.GapOptionsEvents = GapOptionsSyncPatch.GetRecentGapOptionsEvents(snapshot.RoomKey);
 
             // 平铺为匿名对象，避免 JsonElement 解析时出现不稳定的复杂类型。
             var payload = new
@@ -210,7 +210,7 @@ public static class RoomSyncManager
                 BattleId = snapshot.BattleId,
                 Enemies = snapshot.Enemies,
                 Rewards = snapshot.Rewards,
-                CampfireEvents = snapshot.CampfireEvents,
+                GapOptionsEvents = snapshot.GapOptionsEvents,
             };
 
             client.SendGameEventData(NetworkMessageTypes.RoomStateUpload, payload);
@@ -303,7 +303,7 @@ public static class RoomSyncManager
             // 请求方版本更高（不太可能）：仍按主机为准回发。
         }
 
-        snapshot.CampfireEvents = CampfireSyncPatch.GetRecentRoomEvents(roomKey);
+        snapshot.GapOptionsEvents = GapOptionsSyncPatch.GetRecentGapOptionsEvents(roomKey);
 
         SendRoomStateResponseTo(requesterId, snapshot);
     }
@@ -345,7 +345,7 @@ public static class RoomSyncManager
             BattleId = TryGetString(root, "BattleId") ?? string.Empty,
             Rewards = TryDeserialize<BattleRewardSnapshot>(root, "Rewards") ?? new BattleRewardSnapshot(),
             Enemies = TryDeserializeEnemies(root) ?? new List<EnemyStateSnapshot>(),
-            CampfireEvents = TryDeserialize<List<CampfireEventSnapshot>>(root, "CampfireEvents") ?? CampfireSyncPatch.GetRecentRoomEvents(roomKey),
+            GapOptionsEvents = TryDeserialize<List<GapOptionsEventSnapshot>>(root, "GapOptionsEvents") ?? GapOptionsSyncPatch.GetRecentGapOptionsEvents(roomKey),
         };
 
         RoomStateSnapshot stored;
@@ -376,7 +376,7 @@ public static class RoomSyncManager
                 stored.BattleId = incoming.BattleId;
                 stored.Enemies = incoming.Enemies;
                 stored.Rewards = incoming.Rewards;
-                stored.CampfireEvents = incoming.CampfireEvents;
+                stored.GapOptionsEvents = incoming.GapOptionsEvents;
             }
             else
             {
@@ -418,7 +418,7 @@ public static class RoomSyncManager
             BattleId = TryGetString(root, "BattleId") ?? string.Empty,
             Rewards = TryDeserialize<BattleRewardSnapshot>(root, "Rewards") ?? new BattleRewardSnapshot(),
             Enemies = TryDeserializeEnemies(root) ?? new List<EnemyStateSnapshot>(),
-            CampfireEvents = TryDeserialize<List<CampfireEventSnapshot>>(root, "CampfireEvents") ?? new List<CampfireEventSnapshot>(),
+            GapOptionsEvents = TryDeserialize<List<GapOptionsEventSnapshot>>(root, "GapOptionsEvents") ?? new List<GapOptionsEventSnapshot>(),
         };
 
         lock (_lock)
@@ -426,7 +426,7 @@ public static class RoomSyncManager
             _clientRoomStates[roomKey] = snapshot;
         }
 
-        CampfireSyncPatch.MergeCatchupEvents(snapshot.RoomKey, snapshot.CampfireEvents);
+        GapOptionsSyncPatch.MergeCatchupGapOptionsEvents(snapshot.RoomKey, snapshot.GapOptionsEvents);
     }
 
     private static void SendRoomStateResponseTo(string targetPlayerId, RoomStateSnapshot snapshot)
@@ -464,7 +464,7 @@ public static class RoomSyncManager
                 BattleId = snapshot.BattleId,
                 Enemies = snapshot.Enemies,
                 Rewards = snapshot.Rewards,
-                CampfireEvents = snapshot.CampfireEvents,
+                GapOptionsEvents = snapshot.GapOptionsEvents,
             };
 
             client.SendGameEventData(NetworkMessageTypes.RoomStateResponse, payload);

@@ -373,6 +373,7 @@ public class DamageAction_Patch
     {
         try
         {
+            Plugin.LogSynchronizationManagerResolveFromPatch(nameof(DamageAction_Patch), serviceProvider);
             return serviceProvider?.GetService<ISynchronizationManager>();
         }
         catch
