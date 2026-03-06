@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Threading;
@@ -39,6 +40,9 @@ public class Plugin : BaseUnityPlugin
 
     // Simple main-thread dispatcher so background networking work can safely update UI.
     private static readonly ConcurrentQueue<Action> _mainThreadActions = new();
+    private static readonly object _syncProbeLock = new();
+    private static bool _syncWiringLogged;
+    private static readonly HashSet<string> _syncPatchScopesLogged = new(StringComparer.Ordinal);
 
     internal static int MainThreadId { get; private set; }
 
@@ -119,6 +123,9 @@ public class Plugin : BaseUnityPlugin
 
         // 将服务提供者注册到模块服务中，供其他组件使用
         ModService.ServiceProvider = serviceProvider;
+
+        // 一次性输出同步管理器 wiring 自检，用于确认 DI 别名与客户端注入一致。
+        LogSynchronizationManagerWiringOnce(serviceProvider);
 
         // 初始化断线重连管理器（即使未连接，也会保持低开销监听）。
         try
@@ -220,6 +227,89 @@ public class Plugin : BaseUnityPlugin
         }
     }
 
+    internal static void LogSynchronizationManagerResolveFromPatch(string scope, IServiceProvider serviceProvider)
+    {
+        if (string.IsNullOrWhiteSpace(scope) || serviceProvider == null)
+        {
+            return;
+        }
+
+        try
+        {
+            lock (_syncProbeLock)
+            {
+                if (_syncPatchScopesLogged.Contains(scope))
+                {
+                    return;
+                }
+
+                _syncPatchScopesLogged.Add(scope);
+            }
+
+            ISynchronizationManager syncByInterface = serviceProvider.GetService<ISynchronizationManager>();
+            SynchronizationManager syncByConcrete = serviceProvider.GetService<SynchronizationManager>();
+
+            Logger?.LogInfo(
+                $"[SyncProbe] PatchResolve[{scope}]: aliasSame={ReferenceEquals(syncByInterface, syncByConcrete)}, " +
+                $"interfaceHash={syncByInterface?.GetHashCode() ?? 0}, concreteHash={syncByConcrete?.GetHashCode() ?? 0}");
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning($"[SyncProbe] PatchResolve[{scope}] failed: {ex.Message}");
+        }
+    }
+
+    private static void LogSynchronizationManagerWiringOnce(IServiceProvider serviceProvider)
+    {
+        if (serviceProvider == null)
+        {
+            return;
+        }
+
+        try
+        {
+            lock (_syncProbeLock)
+            {
+                if (_syncWiringLogged)
+                {
+                    return;
+                }
+
+                _syncWiringLogged = true;
+            }
+
+            ISynchronizationManager syncByInterface = serviceProvider.GetService<ISynchronizationManager>();
+            SynchronizationManager syncByConcrete = serviceProvider.GetService<SynchronizationManager>();
+            INetworkClient networkClient = serviceProvider.GetService<INetworkClient>();
+
+            bool networkClientFieldReadable = false;
+            bool networkClientUsesAlias = false;
+            int networkClientSyncHash = 0;
+
+            if (networkClient is NetworkClient typedClient)
+            {
+                FieldInfo syncField = typeof(NetworkClient).GetField("_synchronizationManager", BindingFlags.Instance | BindingFlags.NonPublic);
+                if (syncField != null)
+                {
+                    networkClientFieldReadable = true;
+                    object clientSyncManager = syncField.GetValue(typedClient);
+                    networkClientUsesAlias = ReferenceEquals(clientSyncManager, syncByInterface);
+                    networkClientSyncHash = clientSyncManager?.GetHashCode() ?? 0;
+                }
+            }
+
+            Logger?.LogInfo(
+                $"[SyncProbe] StartupWiring: aliasSame={ReferenceEquals(syncByInterface, syncByConcrete)}, " +
+                $"interfaceHash={syncByInterface?.GetHashCode() ?? 0}, concreteHash={syncByConcrete?.GetHashCode() ?? 0}, " +
+                $"clientFieldReadable={networkClientFieldReadable}, clientSameAsAlias={networkClientUsesAlias}, " +
+                $"clientSyncHash={networkClientSyncHash}");
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning($"[SyncProbe] StartupWiring failed: {ex.Message}");
+        }
+    }
+
     /// <summary>
     /// 配置服务注册，将各种接口和实现类注册到依赖注入容器中
     /// 采用单例模式注册核心网络服务，确保整个应用中共享同一实例
@@ -236,8 +326,9 @@ public class Plugin : BaseUnityPlugin
         services.AddSingleton<LocalNetworkPlayer>();
         services.AddSingleton<INetworkPlayer>(sp => sp.GetRequiredService<LocalNetworkPlayer>());
         services.AddSingleton<INetworkManager, NetworkManager>(); // 注册网络管理器服务
+        services.AddSingleton<SynchronizationManager>();
+        services.AddSingleton<ISynchronizationManager>(sp => sp.GetRequiredService<SynchronizationManager>()); // 注册同步管理器服务
         services.AddSingleton<INetworkClient, NetworkClient>(); // 注册网络客户端服务
-        services.AddSingleton<ISynchronizationManager, SynchronizationManager>(); // 注册同步管理器服务
 
         // 断线重连：作为单例服务提供；内部通过 INetworkClient 事件监听连接状态并维护快照/事件历史。
         services.AddSingleton(sp => new ReconnectionManager(new ReconnectionConfig(), null, sp, Logger));

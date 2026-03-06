@@ -1,8 +1,9 @@
-# API 手册（网络事件）
+# legacy: wiki/api.md
 
-本项目的网络同步主要通过 `NetworkMessageTypes` 中定义的事件类型进行广播。
+> 旧版网络事件 API 说明已并入标准模块文档。
 
-## 远端目标出牌
-- `OnRemoteCardUse`: 发送端对远端队友出牌（目标端结算入口）。
-- `OnRemoteCardResolved`: 目标端结算完成后广播状态快照（用于所有客户端更新远端玩家显示）。
+## 当前标准入口
+
+- 协议文档：[`../modules/protocol.md`](../modules/protocol.md)
+- `networkplugin` 模块文档：[`../modules/networkplugin.md`](../modules/networkplugin.md)
 

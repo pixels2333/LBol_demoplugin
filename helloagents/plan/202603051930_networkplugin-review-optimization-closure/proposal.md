@@ -7,7 +7,7 @@
 优先级: P0-P2
 状态: 草稿
 创建: 2026-03-05
-来源: networkplugin 审查结论（聊天协议漂移 / 敌人生成功能双路径 / Campfire补丁禁用 / NAT占位实现 / 玩家模型重复 / 幽灵方法冗余）
+来源: networkplugin 审查结论（聊天协议漂移 / 敌人生成功能双路径 / GapOptions补丁禁用 / NAT占位实现 / 玩家模型重复 / 幽灵方法冗余）
 ```
 
 ---
@@ -18,7 +18,7 @@
 本次审查聚焦 `networkplugin/`，确认当前核心问题不是单点 bug，而是“历史兼容层 + 协议口径分叉 + 未收敛补丁链路”叠加，具体表现为：
 
 1. 聊天消息 DTO 在 `ChatMessage.cs` 与 `ChatUI.cs` 双轨并存，字段语义不一致（`Username` vs `PlayerName`）。
-2. `CampfireSyncPatch.cs` 整体被 `#if false` 禁用，消息常量仍存在，形成“定义可用但功能不可用”的漂移。
+2. `GapOptionsSyncPatch.cs` 整体被 `#if false` 禁用，消息常量仍存在，形成“定义可用但功能不可用”的漂移。
 3. 敌人生成存在 `EnemySpawned` 与 `BattleEnemySpawned` 双路径，后续意图/状态同步对 SpawnId 的一致性依赖被放大。
 4. `NetWorkPlayer` 在两个目录中重复定义，且包含未实现方法，主流程已转向 `INetworkPlayer` 体系。
 5. 消息常量中心已存在，但路由层仍混入字面量判断，`IsGameEvent` 规则在 Client/Server/Relay 存在分叉风险。
@@ -28,7 +28,7 @@
 
 ### 目标
 1. 建立“单一聊天协议模型”，移除 UI 层本地 DTO 重定义。
-2. 重新启用并闭合 Campfire 网络同步链路（至少覆盖 Upgrade/RemoveCard）。
+2. 重新启用并闭合 GapOptions 网络同步链路（至少覆盖 Upgrade/RemoveCard）。
 3. 将敌人生成同步收敛为单路径，保障 SpawnId 在生成/意图/状态链路中的一致性。
 4. 完成玩家模型收敛：去重 `NetWorkPlayer` 历史定义，统一落到 `INetworkPlayer`。
 5. 统一消息路由规则，消除关键流程中的消息名字面量。
@@ -51,7 +51,7 @@
 
 ### 验收标准
 - [ ] 聊天发送/接收仅使用一套 DTO（`networkplugin/Chat/ChatMessage.cs`），`ChatUI.cs` 不再定义同名模型。
-- [ ] `CampfireUpgradeSelected` / `CampfireRemoveCard` 在 Host 和 Joiner 间可收发并落地，日志不再出现“已定义但无处理”的告警。
+- [ ] `GapOptionsUpgradeSelected` / `GapOptionsRemoveCard` 在 Host 和 Joiner 间可收发并落地，日志不再出现“已定义但无处理”的告警。
 - [ ] 敌人生成链路只保留一种权威消息入口，`BattleEnemySpawned` 不再作为并行主流程。
 - [ ] `NetWorkPlayer` 重复定义被清理，`NotImplementedException` 历史占位不再留在主路径。
 - [ ] Client/Server/Relay 的 `IsGameEvent` 判定来源一致，关键消息不再依赖字面量分支。
@@ -67,7 +67,7 @@
 
 #### Phase A (P0): 协议与运行时风险快速收敛
 - 聊天 DTO 统一 + ChatUI 淡出逻辑修复。
-- Campfire 同步补丁恢复为可执行状态。
+- GapOptions 同步补丁恢复为可执行状态。
 - 消息路由关键分支（Client/Server/Relay）先做一致性对齐。
 
 #### Phase B (P1): 结构技术债清理
@@ -102,7 +102,7 @@
 | 风险 | 等级 | 影响 | 缓解策略 |
 |------|------|------|----------|
 | 聊天字段统一后旧 payload 兼容问题 | 中 | Joiner 收不到历史聊天 | 在边界层保留一次性字段兼容映射并加日志观测 |
-| Campfire 补丁恢复后重复执行 | 中 | 选择事件重复落地 | 引入请求去重键（playerId + floor + actionId） |
+| GapOptions 补丁恢复后重复执行 | 中 | 选择事件重复落地 | 引入请求去重键（playerId + floor + actionId） |
 | 敌人生成路径合并导致旧补丁遗漏 | 高 | SpawnId 不一致，意图同步失配 | 先落地“单入口 + 统一绑定”，再删除旧分支 |
 | 清理 NetWorkPlayer 影响隐式引用 | 中 | 编译失败或运行时空引用 | 先全局替换引用，再删重复类 |
 | 消息字面量清理范围过大 | 中 | 引入回归 | 仅先覆盖高频链路，分批推进 |
@@ -122,14 +122,14 @@
 | `networkplugin/Core/SynchronizationManager.cs` | 清理 `UserName/PlayerName/PlayerId` 的历史并行解析分支，保留最小兼容入口并统一落到 `PlayerName` | 接收链路简化，减少歧义 |
 | `networkplugin/Network/Messages/NetworkMessageTypes.cs` | 复核 `ChatMessage` 常量使用点，禁止新引入聊天消息字面量 | 聊天消息名来源单一 |
 
-### 3.2 Campfire 同步恢复（P0）
+### 3.2 GapOptions 同步恢复（P0）
 
 | 文件 | 具体改动 | 预期结果 |
 |------|----------|----------|
-| `networkplugin/Patch/Network/CampfireSyncPatch.cs` | 移除 `#if false` 禁用块，恢复可执行 Patch；实现 Upgrade/RemoveCard 的发送、接收、落地和去重 | 篝火行为可联机同步 |
-| `networkplugin/Patch/Network/RoomStateSyncPatch.cs` | 在房间状态快照中补充 Campfire 相关阶段状态（仅最小必要字段）用于中途加入追赶 | Joiner 进入后状态更一致 |
-| `networkplugin/Network/Client/NetworkClient.cs` | 注册 Campfire 相关消息处理器，统一走 GameEvent 通道 | 客户端不再漏处理 |
-| `networkplugin/Network/Server/NetworkServer.cs` | 补齐 Campfire 消息分类与广播规则（Host 权威） | 服务端路由闭环 |
+| `networkplugin/Patch/Network/GapOptionsSyncPatch.cs` | 移除 `#if false` 禁用块，恢复可执行 Patch；实现 Upgrade/RemoveCard 的发送、接收、落地和去重 | GapOptions 行为可联机同步 |
+| `networkplugin/Patch/Network/RoomStateSyncPatch.cs` | 在房间状态快照中补充 GapOptions 相关阶段状态（仅最小必要字段）用于中途加入追赶 | Joiner 进入后状态更一致 |
+| `networkplugin/Network/Client/NetworkClient.cs` | 注册 GapOptions 相关消息处理器，统一走 GameEvent 通道 | 客户端不再漏处理 |
+| `networkplugin/Network/Server/NetworkServer.cs` | 补齐 GapOptions 消息分类与广播规则（Host 权威） | 服务端路由闭环 |
 | `networkplugin/Network/Server/RelayServer.cs` | 与 `NetworkServer` 保持相同 GameEvent 分类策略 | Relay/直连行为一致 |
 
 ### 3.3 敌人生成链路收敛（P1）
@@ -157,7 +157,7 @@
 | 文件 | 具体改动 | 预期结果 |
 |------|----------|----------|
 | `networkplugin/Network/Messages/NetworkMessageTypes.cs` | 将现有常量按域分组并补齐注释；若保留 `MessageCategories`，则接入实际路由而非闲置 | 消息定义可维护 |
-| `networkplugin/Network/Client/NetworkClient.cs` | 清理关键链路字面量（聊天、敌人生成、Campfire、回合事件）改为常量引用 | 客户端路由一致 |
+| `networkplugin/Network/Client/NetworkClient.cs` | 清理关键链路字面量（聊天、敌人生成、GapOptions、回合事件）改为常量引用 | 客户端路由一致 |
 | `networkplugin/Network/Server/NetworkServer.cs` | 同步移除字面量分支，`IsGameEvent` 规则与 Client/Relay 同源 | Host 路由一致 |
 | `networkplugin/Network/Server/RelayServer.cs` | 使用同一套路由判定来源，避免 relay 特例漂移 | Relay 路由一致 |
 | `networkplugin/Patch/Network/*.cs` | 扫描并替换高频消息字面量，确保补丁层不再扩散字符串常量 | 消息治理闭环 |
@@ -192,7 +192,7 @@
 ### 4.1 构建与静态检查
 - `dotnet build networkplugin/NetWorkPlugin.csproj`
 - 全局扫描：
-  - 不再出现 `#if false` 包裹的 Campfire 主逻辑。
+  - 不再出现 `#if false` 包裹的 GapOptions 主逻辑。
   - 不再出现并行主流程 `BattleEnemySpawned` 发送入口。
   - 不再出现 `ChatUI.cs` 内本地 `ChatMessage` 类型定义。
   - `Plugin.cs` 不再存在无调用字段 `netWorkPlayer`。
@@ -201,7 +201,7 @@
 
 ### 4.2 手工联机场景验收
 1. Host + Joiner 进入房间后双向聊天（含系统消息、普通消息）。
-2. Campfire 升级与移除卡牌在双方状态一致。
+2. GapOptions 升级与移除卡牌在双方状态一致。
 3. 战斗开始后敌人生成、意图更新、状态更新连续一致。
 4. 断线后重连：聊天/战斗关键状态不出现明显错位。
 

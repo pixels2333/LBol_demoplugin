@@ -31,6 +31,7 @@ public class NetworkClient : INetworkClient
     private INetworkManager _networkManager;
     private INetworkPlayer _networkPlayer;
     private INetworkPlayer _fallbackSelf;
+    private readonly ISynchronizationManager _synchronizationManager;
 
     /// <summary>
     /// 网络连接状态变更事件
@@ -72,8 +73,8 @@ public class NetworkClient : INetworkClient
     private readonly object _payloadPreviewLock = new();
     private readonly HashSet<string> _payloadPreviewLogged = new(StringComparer.Ordinal);
 
-    public NetworkClient(ConfigManager configManager)
-        : this(configManager?.RelayServerConnectionKey?.Value ?? "LBoL_Network_Plugin", null, null)
+    public NetworkClient(ConfigManager configManager, ISynchronizationManager synchronizationManager)
+        : this(configManager?.RelayServerConnectionKey?.Value ?? "LBoL_Network_Plugin", null, null, synchronizationManager)
     {
         try
         {
@@ -98,13 +99,14 @@ public class NetworkClient : INetworkClient
     /// </summary>
     /// <param name="connectionKey">连接密钥，用于服务器身份验证和鉴权</param>
     /// <param name="networkManager">网络管理器实例，用于获取玩家信息等</param>
-    public NetworkClient(string connectionKey, INetworkManager NetworkManager,INetworkPlayer NetworkPlayer)
+    public NetworkClient(string connectionKey, INetworkManager NetworkManager, INetworkPlayer NetworkPlayer, ISynchronizationManager synchronizationManager = null)
     {
         _networkManager = NetworkManager;
         _connectionKey = connectionKey;
         _listener = new EventBasedNetListener();
         _netManager = new NetManager(_listener);
         _networkPlayer = NetworkPlayer;
+        _synchronizationManager = synchronizationManager;
         RegisterEvents();
     }
 
@@ -171,7 +173,7 @@ public class NetworkClient : INetworkClient
             // 通知同步管理器连接已恢复
             try
             {
-                SynchronizationManager.Instance.OnConnectionRestored();
+                _synchronizationManager?.OnConnectionRestored();
             }
             catch (Exception ex)
             {
@@ -218,7 +220,7 @@ public class NetworkClient : INetworkClient
             };
 
             // 向服务器发送玩家加入事件
-            SendGameEventData("PlayerJoined", playerInfo);
+            SendGameEventData(NetworkMessageTypes.PlayerJoined, playerInfo);
         };
 
         _listener.PeerDisconnectedEvent += (peer, disconnectInfo) =>
@@ -235,7 +237,7 @@ public class NetworkClient : INetworkClient
             // 通知同步管理器连接已丢失
             try
             {
-                SynchronizationManager.Instance.OnConnectionLost();
+                _synchronizationManager?.OnConnectionLost();
             }
             catch (Exception ex)
             {
@@ -270,7 +272,7 @@ public class NetworkClient : INetworkClient
                     // Consume payload to avoid leaving unread bytes in the reader.
                     _ = dataReader.GetString();
                 }
-                else if (messageType.EndsWith("GetSelf_RESPONSE"))
+                else if (string.Equals(messageType, NetworkMessageTypes.GetSelf_RESPONSE, StringComparison.Ordinal))
                 {
                     // 处理系统响应消息
                     HandleRequestResponse(fromPeer, dataReader);
@@ -355,7 +357,7 @@ public class NetworkClient : INetworkClient
             OnGameEventReceived?.Invoke(eventType, eventData);
 
             // 将事件传递给同步管理器处理
-            SynchronizationManager.Instance.ProcessEventFromNetwork(new
+            _synchronizationManager?.ProcessEventFromNetwork(new
             {
                 EventType = eventType,
                 Payload = eventData,

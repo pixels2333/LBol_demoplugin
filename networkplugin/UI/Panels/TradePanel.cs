@@ -983,7 +983,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 TradeId = _tradeId,
                 SelfPlayerId = _selfPlayerId,
                 PartnerPlayerId = partnerPlayerId,
-                PartnerPlayerName = TryResolveDisplayName(partnerPlayerId, partnerPreferredName, isLocal: false),
+                PartnerPlayerName = OtherPlayersOverlayPatch.ResolveDisplayName(partnerPlayerId, partnerPreferredName, isLocal: false),
                 MaxTradeSlots = _maxTradeSlots
             });
 
@@ -1973,7 +1973,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             }
             if (player2NameText != null)
             {
-                player2NameText.text = TryResolveDisplayName(partnerPlayerId, partnerPlayerName, isLocal: false);
+                player2NameText.text = OtherPlayersOverlayPatch.ResolveDisplayName(partnerPlayerId, partnerPlayerName, isLocal: false);
             }
 
             HidePartnerPickerOverlay();
@@ -2089,7 +2089,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             id = payload?.Player1Id;
         }
 
-        return TryResolveDisplayName(id, payload?.Player1Name, isLocal: true);
+        return OtherPlayersOverlayPatch.ResolveDisplayName(id, payload?.Player1Name, isLocal: true);
     }
 
     private string ResolvePartnerDisplayName(TradePayload payload)
@@ -2101,57 +2101,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             id = payload?.Player2Id;
         }
 
-        return TryResolveDisplayName(id, payload?.Player2Name, isLocal: false);
-    }
-
-    private static string TryResolveDisplayName(string playerId, string preferredName, bool isLocal)
-    {
-        if (!string.IsNullOrWhiteSpace(preferredName))
-        {
-            return preferredName;
-        }
-
-        // Prefer network-provided player names (same source as other-player overlay).
-        try
-        {
-            if (!string.IsNullOrWhiteSpace(playerId))
-            {
-                var snap = OtherPlayersOverlayPatch.SnapshotPlayersDetailed();
-                foreach (var p in snap)
-                {
-                    if (string.Equals(p.PlayerId, playerId, StringComparison.Ordinal)
-                        && !string.IsNullOrWhiteSpace(p.PlayerName)
-                        && !string.Equals(p.PlayerName, p.PlayerId, StringComparison.Ordinal))
-                    {
-                        return p.PlayerName;
-                    }
-                }
-            }
-        }
-        catch
-        {
-            // ignored
-        }
-
-        // For local player, fall back to the in-run unit name (character name) rather than a generic placeholder.
-        if (isLocal)
-        {
-            try
-            {
-                string n = GameStateUtils.GetCurrentPlayer()?.Name;
-                if (!string.IsNullOrWhiteSpace(n))
-                {
-                    return n;
-                }
-            }
-            catch
-            {
-                // ignored
-            }
-        }
-
-        // Last resort: show the ID (still better than "Player 1/2").
-        return string.IsNullOrWhiteSpace(playerId) ? string.Empty : playerId;
+        return OtherPlayersOverlayPatch.ResolveDisplayName(id, payload?.Player2Name, isLocal: false);
     }
 
     private static bool IsShopLikeLocation(string locationName)
@@ -2163,7 +2113,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
         // LocationName is set by network sync to visitingNode.StationType.ToString().
         // We match loosely to be resilient to renames/variants.
-        // Eligible contexts for trade: Shop/Trade (merchant) and Gap (campfire-style).
+        // Eligible contexts for trade: Shop/Trade (merchant) and Gap (GapOptions-style).
         return locationName.IndexOf("shop", StringComparison.OrdinalIgnoreCase) >= 0
             || locationName.IndexOf("trade", StringComparison.OrdinalIgnoreCase) >= 0
             || locationName.IndexOf("gap", StringComparison.OrdinalIgnoreCase) >= 0

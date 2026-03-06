@@ -39,6 +39,8 @@
 #### 入口一致性
 - GapStation 入口：`networkplugin/Patch/UI/GapOptionsPanel_Patch.cs`。
 - 商店入口：`networkplugin/Patch/UI/ShopTradeIconPatch.cs`。
+- `ShopTradeIconPatch` 在克隆 `CardService` 按钮样式后，仅解析并更新交易按钮的主标题文本；只有未命中 `TMP_Text` 时才回退到 legacy `Text`，并在 fallback/异常层级时输出 hierarchy 日志。
+- `ShopTradeIconPatch` 现会为 `CardService` / `ReturnButton` 原生容器保存 `anchoredPosition/sizeDelta/localScale/localPosition` 快照，并在隐藏或异常清理时完整恢复，避免商店场景残留布局漂移。
 - 两者通过 `networkplugin/Patch/UI/TradeUiMessages.cs` 统一“未连接/配置禁用/缺少 TradePanel 实例”等提示。
 
 #### 主菜单多人入口（多人游戏）
@@ -68,10 +70,27 @@
 - 目标端接收后按蓝图结算，再发送 `OnRemoteCardResolved` 广播结算后的状态快照。
 - 接收端对 `OnRemoteCardResolved` 做 `ResolveSeq/Timestamp/RequestId` 去重与乱序丢弃，避免状态回滚。
 
+### 聊天字段口径
+- 聊天协议主字段固定为 `playerName`（`ChatMessage.PlayerName`）。
+- 历史兼容字段保留为 `username`（`ChatMessage.LegacyUsername`）；同时接受旧包里的 `UserName` 只读输入兼容，不再作为新消息主写入字段。
+- `ChatConsole` 发送端统一通过 `GameStateUtils.GetCurrentPlayerName()` 解析本地显示名，避免在聊天层重复维护 `userName/UserName/Name` 反射兜底。
+- `ChatMessage.GetDisplayPlayerName()` 负责最终显示回退：优先 `playerName`，其次 `PlayerId`，最后显示 `玩家`。
+
+### Host 路由固定回归
+- `NetworkServer` 中 `FullStateSync*` / `RoomState*` 的受控路由已收敛到 `TryRouteControlledMessage(...)`，由 GameEvent/SystemMessage/DirectMessage 共用。
+- 固定回归清单位于 `networkplugin/NETWORK_ROUTE_REGRESSION_CHECKLIST.md`，覆盖 Host/直连、Relay、异常路径与 `RouteProbe` 日志观察点。
+
+### 综合多人回归清单
+- `networkplugin/MULTIPLAYER_REGRESSION_CHECKLIST.md` 覆盖房间生命周期、战斗一致性、交易/复活/地图推进、GapOptions、断线重连、中途加入与 FullSnapshot 追赶。
+- 其中 `RemoteCardUsePatch.Card_GetActions_Original(...)` 被视为 ReversePatch 白名单桩；回归重点是“不能真的落到桩体抛异常”，而不是简单删除该方法。
+- `GapOptionsSyncPatch.MergeCatchupGapOptionsEvents(...)` 与 `GapOptionsSyncPatch.OnGameEventReceived(...)` 当前都以缓存/日志为主，不直接重放动作；回归时必须额外核对 UI/游戏表现是否真正落地。
+
 ### 玩家身份与玩家列表来源
 - 客户端侧“玩家列表/数量”由 `NetworkManager` 维护（轻量缓存），不承担完整权威同步。
 - 服务器侧分配的 `PlayerId` / Host 信息由 `NetworkIdentityTracker` 从 GameEvent 提取并缓存。
 - `NetworkManager` 在收到 `Welcome/PlayerListUpdate/PlayerJoined/PlayerLeft` 等事件后同步缓存，并可通过 `GetAllPlayers/GetPlayerCount/GetPlayer` 查询。
+- `OtherPlayersOverlayPatch.ResolveDisplayName(...)` 现作为 UI 层统一显示名入口：优先使用调用方显式传入名称，其次读取 `OtherPlayersOverlay` 玩家缓存，对本地玩家再用 `GameStateUtils.GetCurrentPlayerName()` 做运行时兜底。
+- `TradePanel`、`DeathPatches` / `ResurrectSyncPatch`、Overlay 头像条、地图图标与远端目标判定都应复用该入口，避免再次在各 UI 面板内部分叉 `PlayerName/playerId/角色名` 的回退顺序。
 
 ### MidGameJoin（中途加入）
 - 消息类型：
@@ -94,8 +113,8 @@
   - 对 `DirectMessage` 内层为 `FullStateSync*` 的情况，服务端强制按房间作用域与房主规则路由，忽略客户端自填的目标。
 - Host/直连模式（NetworkServer）：
   - 服务端实现 `DirectMessage` 中继（用于 `MidGameJoin*` 与 `FullStateSync*` 的既有链路）。
-  - `FullStateSyncRequest`：服务端定向转发给房主客户端（由房主侧 `MidGameJoinManager` 校验 JoinToken 并生成响应）。
-  - `FullStateSyncResponse`：服务端仅单播给 `TargetPlayerId`。
+  - `FullStateSyncRequest`：服务端定向转发给房主客户端（由房主侧 `MidGameJoinManager` 校验 JoinToken 并生成响应），并通过统一路由入口屏蔽错误目标。
+  - `FullStateSyncResponse`：服务端仅单播给 `TargetPlayerId`，非 Host 响应会被直接丢弃。
 
 ## 方案库记录：TurnEnd
 
@@ -111,6 +130,11 @@
 - 背景：历史代码中存在对 `INetworkPlayer.mana` 的直接访问，但该成员未在接口中声明。
 - 方案：使用反射兼容层读取/写入实现类上的 `mana` 属性，避免改接口造成破坏性修改。
   - 实现：`networkplugin/Utils/NetworkPlayerManaCompat.cs`
+
+### NetworkPlayer 模型边界
+- `networkplugin/Network/NetworkPlayer/NetWorkPlayer.cs` 继续承担**历史线协议载体**职责，保留 `username`、`location_X`、`location_Y` 等字段名，避免破坏 JSON 兼容。
+- 新运行时代码应优先使用 `NetWorkPlayer.PlayerName`、`CharacterId`、`LocationName`、`LocationX`、`LocationY` 这些 PascalCase 别名属性，而不是继续扩散 legacy 字段名。
+- `networkplugin/Network/NetworkPlayer/dto/README.md` 明确说明：`dto/` 目录当前为未来 Wire DTO/Mapper 拆分预留，现阶段不代表“双模型并存”。
 
 ## NAT Traversal（NAT/端点辅助）
 
@@ -130,8 +154,15 @@
 - `GenerateConnectionToken/ValidateConnectionToken` 使用 TTL 校验（默认 5 分钟），用于防误用与过期控制（熟人局域网场景，不做强签名）。
 
 ### UPnP/STUN
+- 当前方向固定为“STUN 检测 + UPnP 语义展示”，不把真实端口映射库接入主流程。
 - UPnP：默认按“不支持/不可用”处理，不作为主流程依赖（失败仅记录日志）。
 - STUN：提供最小 Binding 探测获取公网端点，作为可选增强/诊断手段。
+- `NetworkStatusIndicator` 的 NAT/UPnP 展示现统一读取 `NatTraversal.GetStatusSummary()` 与 `NatTraversal.GetConnectionStrategySummary()`，不再保留独立旧状态缓存。
+
+### P3 立项评估（2026-03-06）
+- 成就联机同步：当前仓库未发现独立 achievement 消息、状态缓存或 UI 回显链路；本轮结论为暂不立项。
+- 观战模式：当前房间成员模型、`FullSnapshot` / `RoomState` 追赶、`Trade` / `Turn` 输入链路都默认“成员即活跃玩家”；若要支持观战，需先拆分房间角色与输入权限。
+- 调试面板 / 性能可视化：现有诊断基础更适合继续并入回归/日志体系；`networkplugin/Network/Snapshot/PlayerPerformanceSnapshot.cs` 仍未接线，`networkplugin/Configuration/ConfigManager.Performance.cs` 仅提供配置项。
 
 ## 接口定义（可选）
 

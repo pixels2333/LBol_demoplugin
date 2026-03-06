@@ -44,6 +44,7 @@ public class PlayCardAction_Patch
     {
         try
         {
+            Plugin.LogSynchronizationManagerResolveFromPatch(nameof(PlayCardAction_Patch), serviceProvider);
             return serviceProvider?.GetService<ISynchronizationManager>();
         }
         catch

@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using LBoL.Core;
 using LBoL.Presentation;
 using LBoL.Core.Units;
@@ -53,6 +54,40 @@ namespace NetworkPlugin.Utils
             return player?.Id ?? "unknown_player";
         }
 
+        public static string GetCurrentPlayerName()
+        {
+            try
+            {
+                PlayerUnit player = GetCurrentPlayer();
+                if (player != null)
+                {
+                    string directName = TryGetPlayerStringProperty(player,
+                        "playerName",
+                        "PlayerName",
+                        "userName",
+                        "UserName",
+                        "Name");
+
+                    if (!string.IsNullOrWhiteSpace(directName))
+                    {
+                        return directName;
+                    }
+
+                    string fallbackName = TryGetPlayerStringProperty(player, "ModelName", "Id");
+                    if (!string.IsNullOrWhiteSpace(fallbackName))
+                    {
+                        return fallbackName;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogError($"[GameStateUtils] Error getting current player name: {ex.Message}");
+            }
+
+            return GetCurrentPlayerId();
+        }
+
         public static GameRunController GetCurrentGameRun()
         {
             try
@@ -97,6 +132,41 @@ namespace NetworkPlugin.Utils
                 Plugin.Logger?.LogError($"[GameStateUtils] Error checking host status: {ex.Message}");
                 return false;
             }
+        }
+
+        private static string TryGetPlayerStringProperty(PlayerUnit player, params string[] propertyNames)
+        {
+            if (player == null || propertyNames == null || propertyNames.Length == 0)
+            {
+                return null;
+            }
+
+            Type playerType = player.GetType();
+            foreach (string propertyName in propertyNames)
+            {
+                PropertyInfo property = playerType.GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
+                if (property == null)
+                {
+                    continue;
+                }
+
+                object value = property.GetValue(player);
+                if (value is string text && !string.IsNullOrWhiteSpace(text))
+                {
+                    return text;
+                }
+
+                if (value != null)
+                {
+                    string fallback = value.ToString();
+                    if (!string.IsNullOrWhiteSpace(fallback))
+                    {
+                        return fallback;
+                    }
+                }
+            }
+
+            return null;
         }
     }
 }

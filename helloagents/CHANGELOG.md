@@ -13,16 +13,51 @@
 - **[networkplugin]**: 升级 UI 版本至 `v6`，确保修改实时生效。
 
 ### Docs
+- **[helloagents]**: 执行 `~upgrade` 清洗 `INDEX.md`、`context.md`、`modules/_index.md` 与 `archive/_index.md`，并将 `project.md` / `wiki/` / `history/` 明确标注为 legacy 迁移来源。
+- **[helloagents]**: 继续执行 `~upgrade` 第二阶段收口：新增 `modules/lbol.md`，并在 `INDEX.md` 中补充 legacy → 标准结构映射表，方便后续清理遗留文档。
+- **[helloagents]**: 继续执行 `~upgrade` 第三阶段软清理：将 `project.md`、`wiki/*` 与 `history/index.md` 收口为跳转桩，消除重复维护内容但保留旧路径兼容。
 - **[helloagents]**: 更新方案包 `plan/202602071900_trade-partner-picker-centered-ui`：聚焦 TradePanel 内 partner picker，使用游戏 UI 资源并以居中窗口弹层展示玩家列表。
+- **[helloagents]**: 新增方案包 `plan/202603060931_networkplugin-architecture-consolidation`：精确规划 `NetworkServer` 双路径收敛、`SynchronizationManager` 生命周期统一、`OtherPlayersOverlayPatch`/`RemoteCardUsePatch` 拆层以及系统消息常量治理。
+- **[networkplugin]**: 新增 `networkplugin/NETWORK_ROUTE_REGRESSION_CHECKLIST.md`，固定 `FullStateSync*` / `RoomState*` 在 Host/Relay 下的请求、响应、`DirectMessage` 包裹与异常路径回归步骤。
+- **[networkplugin]**: 新增 `networkplugin/MULTIPLAYER_REGRESSION_CHECKLIST.md`，固定房间生命周期、战斗一致性、功能链路与连接恢复回归步骤，并绑定 `GapOptionsSyncPatch` / `RemoteCardUsePatch` 风险检查。
+- **[helloagents]**: 同步 `plan/202603061435_networkplugin-roadmap-open-items`、`networkplugin/PLANNING_ROADMAP.md` 与 `helloagents/modules/networkplugin.md`，完成 `8.1/8.2/8.3` 立项评估结论（成就同步暂不立项；观战模式需前置重构；调试/性能能力并入现有诊断体系）。
+- **[networkplugin]**: 统一 `networkplugin` / `lbol` 侧的 GapOptions 术语，将历史旧命名收敛到 `GapOptions*`，避免与 `GapStation` / `GapOptionsPanel` 实际代码概念冲突。
 
 ### 变更
+- **[networkplugin]**: 执行方案包 `archive/2026-03/202603060931_networkplugin-architecture-consolidation` 的收敛范围批次（`NetworkServer` + `SynchronizationManager`）。
+	- `NetworkServer.cs`：删除未接线旧监听器注册入口，以及旧 `NetPacketReader/NetDataReader` 双路径处理实现，只保留 `BaseGameServer -> JSON` 主链。
+	- `SynchronizationManager.cs`：删除静态 `Instance` 入口，改为 DI 可构造并延迟解析 `INetworkClient`。
+	- `Plugin.cs`：改为 `SynchronizationManager` concrete + `ISynchronizationManager` 别名同实例注册。
+	- `NetworkClient.cs`：注入 `ISynchronizationManager`，替换连接恢复、断线、网络事件回放三处静态调用。
+	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj -v minimal` 通过（289 warnings，0 errors）。
+- **[networkplugin]**: 继续执行方案包 `archive/2026-03/202603060931_networkplugin-architecture-consolidation` 的 Overlay 拆层批次（`OtherPlayersOverlayPatch`）。
+	- `OtherPlayersOverlayPatch.cs`：改为 `partial` 门面，保留现有静态查询/视图访问 API，避免影响 `TradePanel`、`PlayerTargeterPatch`、`RemoteCardUsePatch`、`MoodEffectSyncPatch` 等现有调用方。
+	- `Patch/UI/OtherPlayersOverlay/OtherPlayersOverlayEventBridge.cs`：提取网络客户端解析、订阅与玩家列表事件桥接逻辑。
+	- `Patch/UI/OtherPlayersOverlay/OtherPlayersOverlayPlayerStore.cs`：提取 `_players` 缓存、自身玩家定位、快照与名称解析逻辑。
+	- `Patch/UI/OtherPlayersOverlay/OtherPlayersOverlayViewRegistry.cs`：提取远端角色视图注册、地图图标、目标选择辅助逻辑。
+	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj -v minimal` 通过（289 warnings，0 errors）。
+- **[networkplugin]**: 继续执行同一方案包的 `RemoteCardUsePatch` 拆层批次。
+	- `RemoteCardUsePatch.cs`：改为 `partial` 发送门面，保留 Harmony 入口、`Card_GetActions_Original` ReversePatch 白名单桩与公共 JSON helper。
+	- `Patch/Network/RemoteCardUsePatch.ReceiveBridge.cs`：提取订阅钩子、网络事件桥接与动画预播放逻辑。
+	- `Patch/Network/RemoteCardUsePatch.Execution.cs`：提取远程回放执行、Resolved 广播与状态落地逻辑。
+	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj -v minimal` 通过（exit 0）。
+- **[networkplugin]**: 继续执行同一方案包的 `5.x` 系统消息常量收口批次。
+	- `NetworkMessageTypes.cs`：补齐 `DirectMessage`、`UpdatePlayerLocation`、`Reconnect_*`、房间管理与 `Error` 等高频系统消息常量。
+	- `NetworkClient.cs`：将 `GetSelf_RESPONSE` 系统响应判定切换为 `NetworkMessageTypes` 常量比较。
+	- `NetworkServer.cs` / `RelayServer.cs`：将 `Welcome`、`PlayerJoined`、`PlayerListUpdate`、`DirectMessage`、`Reconnect_*`、房间管理与通用错误等高频系统消息字面量统一改为常量引用。
+	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj -v minimal` 通过（256 warnings，0 errors）。
+- **[networkplugin]**: 继续执行同一方案包的剩余可执行收尾项（运行时可观测探针）。
+	- `Plugin.cs`：新增 `SyncProbe` 启动期一致性日志（`StartupWiring`），校验 `SynchronizationManager` concrete/alias 同实例以及 `NetworkClient` 注入一致性。
+	- `Patch/Actions/ApplyStatusEffectAction_Patch.cs`、`DamageAction_Patch.cs`、`PlayCardAction_Patch.cs`：接入 `SyncProbe` 的 `PatchResolve[...]` 一次性日志，确认 Patch 侧服务解析路径。
+	- `Network/Server/NetworkServer.cs`：新增 `RouteProbe` 一次性日志，覆盖 `DirectMessage/*`、`FullStateSync*`、`RoomState*` 路由首包，便于 Host/直连联机回归定位。
+	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj -v minimal` 通过（256 warnings，0 errors）。
 - **[networkplugin]**: 执行方案包 `plan/202603051930_networkplugin-review-optimization-closure` 的 5.5/5.6/6.1~6.4/7.5 收尾批次。
 	- 消息治理：`DebutBonusSyncPatch`、`RemoteCardUsePatch`、`GameResultSyncPatch` 关键消息切换到 `NetworkMessageTypes` 常量；新增 `OnDebutBonusRolled` / `OnGameRunResult` 常量。
 	- 结构清理：移除未接入的 `MessageCategories`，避免“定义但不使用”结构。
 	- NAT 收口：`NatTraversal` 明确 UPnP 语义状态（`DisabledByConfig` / `UnsupportedOrUnavailable` / `AvailableButNotImplemented`），并统一 `[NATTraversal][UPnP]/[STUN]` 日志口径。
 	- 配置对齐：`ConfigManager.Sync`/`SyncConfiguration` 新增 `EnableNatDetection` 与 `EnableUpnpExperimental`；`NetworkStatusIndicator` 增加 NAT/UPnP 状态展示。
 	- 遗留清理：删除 `ConfigManager.FeatureToggles.cs` 与 `ConfigManager.Performance.cs` 的 `#if false` 历史参考块。
-	- 验收范围调整：聊天功能移出当前方案验收范围；`Campfire` 与敌人链路手工双端回归因无测试环境顺延。
+	- 验收范围调整：聊天功能移出当前方案验收范围；`GapOptions` 与敌人链路手工双端回归因无测试环境顺延。
 	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj` 通过（289 warnings，0 errors）。
 - **[networkplugin]**: 执行方案包 `plan/202603051930_networkplugin-review-optimization-closure` 的 4.4~5.4（玩家模型映射补齐 + 三端事件判定同源收敛）。
 	- `INetworkPlayer` 新增 `stage` 字段；`LocalNetworkPlayer/RemoteNetworkPlayer` 实现并贯通 `NetworkManager.UpdateSinglePlayer` 的 Stage 映射。
@@ -44,11 +79,11 @@
 	- `EnemySpawnSyncPatch` 接收侧统一为 `BattleEnemySpawned/EnemySpawned` 双入口共用同一落地处理。
 	- `NetworkClient/NetworkServer/RelayServer` 的 `IsGameEvent` 显式纳入 `BattleEnemySpawned`，降低对前缀匹配的隐式依赖。
 	- 构建验证：`dotnet build networkplugin/NetWorkPlugin.csproj` 通过（289 warnings，无新增错误）。
-- **[networkplugin]**: 执行方案包 `plan/202603051930_networkplugin-review-optimization-closure` 的 2.5（Campfire 中途加入追赶最小补充）。
-	- `RoomStateSnapshot` 新增 `CampfireEvents`（最近 8 条）事件摘要字段，支持 Joiner 最小追赶载荷。
-	- `CampfireSyncPatch` 广播 payload 新增 `RoomKey`；新增房间级事件缓存与 `MergeCatchupEvents`（仅缓存+ActionId 去重标记，不强行执行游戏动作）。
-	- `RoomSyncManager` 在 Request/Upload/Response 链路透传 `CampfireEvents`，客户端收到 `RoomStateResponse` 后执行追赶合并。
-	- `RoomStateSyncPatch.BuildSnapshot` 附带当前房间 Campfire 事件摘要。
+- **[networkplugin]**: 执行方案包 `plan/202603051930_networkplugin-review-optimization-closure` 的 2.5（GapOptions 中途加入追赶最小补充）。
+	- `RoomStateSnapshot` 新增 `GapOptionsEvents`（最近 8 条）事件摘要字段，支持 Joiner 最小追赶载荷。
+	- `GapOptionsSyncPatch` 广播 payload 新增 `RoomKey`；新增房间级事件缓存与 `MergeCatchupGapOptionsEvents`（仅缓存+ActionId 去重标记，不强行执行游戏动作）。
+	- `RoomSyncManager` 在 Request/Upload/Response 链路透传 `GapOptionsEvents`，客户端收到 `RoomStateResponse` 后执行追赶合并。
+	- `RoomStateSyncPatch.BuildSnapshot` 附带当前房间 GapOptions 事件摘要。
 	- 构建验证：`dotnet build networkplugin/NetWorkPlugin.csproj` 通过（warning 从 290 降至 289，无新增错误）。
 - **[networkplugin]**: 执行方案包 `plan/202603051930_networkplugin-review-optimization-closure` 的幽灵方法治理批次。
 	- 清理插件入口无用字段 `Plugin.netWorkPlayer`，并删除无引用重复 DTO `Network/NetworkPlayer/dto/NetWorkPlayer.cs`。
@@ -61,8 +96,21 @@
 	- 修复聊天消息淡出计时：由哈希构造时间改为显式记录消息创建时间，避免淡出跳变。
 	- `ChatConsole` 发送改为 `NetworkMessageTypes.ChatMessage` 常量；`SynchronizationManager` 接收侧名字解析统一为 `PlayerName` 优先并兼容旧字段。
 	- 构建验证：`dotnet build networkplugin/NetWorkPlugin.csproj` 通过（存在既有 warning，无新增错误）。
+- **[networkplugin]**: 进入方案包 `plan/202603061435_networkplugin-roadmap-open-items` 的首批执行。
+	- `Network/Server/NetworkServer.cs`：新增 `TryRouteControlledMessage(...)`、统一 `FullStateSync*` / `RoomState*` 在 GameEvent/SystemMessage/DirectMessage 内层的受控路由，并移除旧的 NetPeer 包装转调维护点。
+	- `Utils/GameStateUtils.cs`：新增 `GetCurrentPlayerName()` 统一名称解析入口。
+	- `Chat/ChatConsole.cs` / `Chat/ChatMessage.cs`：本地发送名称解析改为走 `GameStateUtils.GetCurrentPlayerName()`；历史 `username/UserName` payload 新增兼容反序列化与显示回退。
+	- `Network/Utils/NatTraversal.cs` / `UI/Components/NetworkStatusIndicator.cs`：NAT 方向明确为“STUN + UPnP 语义展示”；新增统一摘要/策略文案，并删除 `NetworkStatusIndicator` 中旧的 `_upnpEnabled` / `_natType` 并行状态源。
+	- `Network/NetworkPlayer/NetWorkPlayer.cs` / `Network/NetworkPlayer/dto/README.md`：保留 `username/location_X/location_Y` 等 legacy 线协议字段不变，同时新增 PascalCase 运行时别名层，并为 `dto/` 目录补充用途说明。
+	- `Patch/UI/OtherPlayersOverlay/OtherPlayersOverlayPlayerStore.cs` / `UI/Panels/TradePanel.cs` / `Patch/DeathPatches.cs` / `Patch/Network/ResurrectSyncPatch.cs`：新增 `OtherPlayersOverlayPatch.ResolveDisplayName(...)` 作为统一显示名入口，收敛交易、复活登记、Overlay 与地图图标的名字来源，并把本地玩家兜底固定到 `GameStateUtils.GetCurrentPlayerName()`。
+	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj -v minimal` 通过（257 warnings，0 errors）。
 
 ### Fixed
+- **[networkplugin]**: 收紧 `ShopTradeIconPatch` 的商店回归保护：在注入交易按钮前保存 `CardService` / `ReturnButton` 原生容器的 `RectTransform` 快照，并在隐藏或异常清理时完整恢复，避免商店布局残留偏移。
+- **[networkplugin]**: 收敛 `ShopTradeIconPatch` 的商店交易按钮文案定位逻辑，改为优先解析主标题 `TMP_Text`，仅在异常层级时回退到 legacy `Text` 并打印 hierarchy。
+	- 方案: [202603061348_networkplugin-todo-consolidation](archive/2026-03/202603061348_networkplugin-todo-consolidation/)
+	- 决策: networkplugin-todo-consolidation#D001(目标节点解析替代全量覆盖), networkplugin-todo-consolidation#D002(层级日志改为条件诊断)
+	- 验证: `dotnet build networkplugin/NetWorkPlugin.csproj -v minimal` 通过（257 warnings，0 errors）。
 - **[networkplugin]**: 修复服务器端 GameEvent 分类遗漏导致的回合结束卡死：将 `EndTurnRequest/EndTurnStatus/EndTurnConfirm` 与 `CardStateChanged` 归类为 GameEvent，避免被当作未知系统消息丢弃（影响 Host/Relay）。
 - **[networkplugin]**: 修复客户端点击结束回合后掉线与按钮卡死：补齐 `EndTurn*`/`CardStateChanged` 的 GameEvent 分类；在 `PollEvents()` 中周期发送 `Heartbeat` 保活；断线时强制恢复 EndTurn 按钮可点击。
 - **[networkplugin]**: 修复部分场景下结束回合后意外断线回主菜单：`GameMaster.QuitGame` 在联机中可能被内部流程触发；改为拦截并忽略该调用（仅记录告警+调用栈），避免误触发“断开联机并返回主菜单”。

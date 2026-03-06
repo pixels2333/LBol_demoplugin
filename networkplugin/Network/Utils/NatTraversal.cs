@@ -52,6 +52,21 @@ public partial class NatTraversal
     public static string UpnpState => _upnpState;
     public static NatType LastDetectedNatType => _lastDetectedNatType;
 
+    public static string GetStatusSummary()
+        => $"NAT: {LastDetectedNatType} | UPnP: {UpnpState}";
+
+    public static string GetConnectionStrategySummary()
+    {
+        return UpnpState switch
+        {
+            "DisabledByConfig" => "连接策略: STUN 检测 + UPnP 语义展示（配置关闭真实映射）",
+            "UnsupportedOrUnavailable" => "连接策略: STUN 检测 + UPnP 语义展示（当前环境不可用）",
+            "AvailableButNotImplemented" => "连接策略: STUN 检测 + UPnP 语义展示（检测到可用但未接入真实映射）",
+            "Enabled" => "连接策略: STUN 检测 + UPnP 真实映射",
+            _ => "连接策略: STUN 检测 + UPnP 状态待确认",
+        };
+    }
+
     /// <summary>
     /// 静态构造函数
     /// 初始化NAT穿透类的静态成员
@@ -1037,6 +1052,7 @@ public partial class NatTraversal
             report.AppendLine($"UPnP Enabled: {_upnpEnabled}");
             report.AppendLine($"UPnP State: {_upnpState}");
             report.AppendLine($"Last NAT Type: {_lastDetectedNatType}");
+            report.AppendLine(GetConnectionStrategySummary());
             report.AppendLine($"Registered Peers: {_peerNatInfo.Count}");
             report.AppendLine();
 

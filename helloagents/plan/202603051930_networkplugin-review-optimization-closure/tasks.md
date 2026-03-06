@@ -60,33 +60,33 @@
   - 改动: 校验 `ChatMessage` 常量引用，移除聊天相关字面量入口
   - 验证: 聊天分发只通过常量
 
-### 2. Campfire 同步恢复（P0）
+### 2. GapOptions 同步恢复（P0）
 
-- [√] 2.1 解除 Campfire 补丁禁用并恢复主流程
-  - 文件: `networkplugin/Patch/Network/CampfireSyncPatch.cs`
+- [√] 2.1 解除 GapOptions 补丁禁用并恢复主流程
+  - 文件: `networkplugin/Patch/Network/GapOptionsSyncPatch.cs`
   - 改动: 移除 `#if false`；实现 Upgrade/RemoveCard 的发送与接收落地
   - 验证: 不再出现“补丁已定义但未执行”状态
 
-- [√] 2.2 增加 Campfire 事件去重
-  - 文件: `networkplugin/Patch/Network/CampfireSyncPatch.cs`
+- [√] 2.2 增加 GapOptions 事件去重
+  - 文件: `networkplugin/Patch/Network/GapOptionsSyncPatch.cs`
   - 改动: 基于 `playerId + floor + actionId` 建立去重键
-  - 验证: 连续广播不会重复执行同一篝火动作
+  - 验证: 连续广播不会重复执行同一 GapOptions 动作
 
 - [√] 2.3 客户端路由注册对齐
   - 文件: `networkplugin/Network/Client/NetworkClient.cs`
-  - 改动: 注册 Campfire 相关 handler，统一归入 GameEvent
-  - 验证: 客户端接收到 Campfire 消息后有明确日志与状态更新
+  - 改动: 注册 GapOptions 相关 handler，统一归入 GameEvent
+  - 验证: 客户端接收到 GapOptions 消息后有明确日志与状态更新
 
 - [√] 2.4 Host/Relay 路由分类对齐
   - 文件: `networkplugin/Network/Server/NetworkServer.cs`
   - 文件: `networkplugin/Network/Server/RelayServer.cs`
-  - 改动: 将 Campfire 消息纳入一致的 `IsGameEvent` 规则
+  - 改动: 将 GapOptions 消息纳入一致的 `IsGameEvent` 规则
   - 验证: Host 模式与 Relay 模式行为一致
 
 - [√] 2.5 中途加入追赶最小补充
   - 文件: `networkplugin/Patch/Network/RoomStateSyncPatch.cs`
-  - 改动: 在必要场景下回放 Campfire 关键状态（仅最小字段）
-  - 验证: Joiner 进入后不会出现明显篝火状态错位
+  - 改动: 在必要场景下回放 GapOptions 关键状态（仅最小字段）
+  - 验证: Joiner 进入后不会出现明显 GapOptions 状态错位
 
 ### 3. 敌人生成链路收敛（P1）
 
@@ -226,8 +226,8 @@
   - 验证: 昵称、内容、淡出行为一致
   - 说明: 按最新范围决策，聊天功能移出当前方案验收范围，标记为 `[-]` 跳过。
 
-- [-] 7.3 Campfire 回归验收
-  - 文件: `networkplugin/Patch/Network/CampfireSyncPatch.cs`
+- [-] 7.3 GapOptions 回归验收
+  - 文件: `networkplugin/Patch/Network/GapOptionsSyncPatch.cs`
   - 改动: 无新增，执行 Upgrade/RemoveCard 双端联机回归
   - 验证: 双端状态一致且无重复执行
   - 说明: 当前无双端联机测试环境，标记为 `[-]` 跳过（待后续手工回归）。
@@ -309,4 +309,4 @@
 ## 备注
 
 - 若 3.*（敌人链路收敛）过程中发现跨模块影响超预期，可拆分为独立子方案包执行。
-- 若 2.*（Campfire）在联机房间回放链路出现高风险回归，可先上线“消息可收发 + 最小落地”，再追加中途加入追赶细化。
+- 若 2.*（GapOptions）在联机房间回放链路出现高风险回归，可先上线“消息可收发 + 最小落地”，再追加中途加入追赶细化。

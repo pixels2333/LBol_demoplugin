@@ -1,15 +1,14 @@
-# 项目技术约定
+# legacy: project.md
 
-## 技术栈
-- 语言: C#
-- 形态: LBoL Mod / Harmony Patch / LiteNetLib 网络
+> 此文件已停止作为主维护入口，保留仅用于兼容旧路径与历史追溯。
 
-## 开发约定
-- 代码风格: 以项目现有风格为准，优先最小改动。
-- Patch 约定: HarmonyPatch 类尽量保持单一职责，避免跨模块耦合。
-- 网络事件: 明确事件来源与接收端职责（谁发送/谁结算/谁广播）。
+## 当前标准入口
 
-## 测试与验证
-- `networkplugin/NetWorkPlugin.csproj` 可通过 `dotnet build` 验证（当前仍有既有 warnings）。
-- 全仓库/解决方案的完整构建可能受外部依赖与工程配置影响；涉及运行时行为的改动仍建议进行手动联机验证。
+- 项目上下文与开发约定：[`context.md`](./context.md)
+- 知识库入口：[`INDEX.md`](./INDEX.md)
+
+## 说明
+
+- 原 `project.md` 内容已折叠进标准知识库结构。
+- 如需更新项目技术约定，请直接修改 `context.md`，不要继续在本文件维护副本。
 

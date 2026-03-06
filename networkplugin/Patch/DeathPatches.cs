@@ -12,6 +12,7 @@ using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Utils;
 using NetworkPlugin.Network.Messages;
+using NetworkPlugin.Patch.UI;
 using NetworkPlugin.UI.Panels;
 using NetworkPlugin.Utils;
 
@@ -214,7 +215,7 @@ public class DeathPatches
                     DeathRegistry.UpsertDeadPlayer(new DeadPlayerEntry
                     {
                         PlayerId = playerId,
-                        PlayerName = playerId,
+                        PlayerName = OtherPlayersOverlayPatch.ResolveDisplayName(playerId, null, isLocal: true),
                         DeadCause = "FakeDeath",
                         CanResurrect = true,
                         MaxHp = player.MaxHp,

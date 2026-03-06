@@ -184,7 +184,7 @@ public class RelayServer : BaseGameServer
                 // 握手：把 PlayerId + token 下发给客户端，客户端应保存以便重连/身份标识。
                 SendMessageToPeer(peer, new NetworkMessage
                 {
-                    Type = "Welcome",
+                    Type = NetworkMessageTypes.Welcome,
                     Payload = new
                     {
                         PlayerId = playerId,
@@ -293,39 +293,39 @@ public class RelayServer : BaseGameServer
 
             switch (message.Type)
             {
-                case "CreateRoom":
+                case NetworkMessageTypes.CreateRoom:
                     // 创建房间：创建后当前玩家成为房主，并立即加入房间。
                     HandleCreateRoom(session, message);
                     return;
-                case "JoinRoom":
+                case NetworkMessageTypes.JoinRoom:
                     // 加入房间：加入成功后广播成员列表给房间所有玩家。
                     HandleJoinRoom(session, message);
                     return;
-                case "LeaveRoom":
+                case NetworkMessageTypes.LeaveRoom:
                     // 离开房间：离开后可能销毁空房间。
                     HandleLeaveRoom(session);
                     return;
-                case "RoomMessage":
+                case NetworkMessageTypes.RoomMessage:
                     // 房间广播消息：把 message.Payload 内层数据广播给同房间的其他玩家。
                     HandleRoomMessage(session, message, deliveryMethod);
                     return;
-                case "DirectMessage":
+                case NetworkMessageTypes.DirectMessage:
                     // 点对点消息：由服务端作为中继，转发到目标玩家（不做业务解析）。
                     HandleDirectMessage(session, message, deliveryMethod);
                     return;
-                case "Heartbeat":
+                case NetworkMessageTypes.Heartbeat:
                     // 心跳：刷新心跳时间并回传 timestamp/ping。
                     HandleHeartbeat(session, fromPeer);
                     return;
-                case "GetRoomList":
+                case NetworkMessageTypes.GetRoomList:
                     // 大厅请求：返回房间列表状态（不包含敏感信息/不包含实际连接对象）。
                     HandleGetRoomList(fromPeer);
                     return;
-                case "KickPlayer":
+                case NetworkMessageTypes.KickPlayer:
                     // 踢人：仅房主可踢同房间玩家。
                     HandleKickPlayer(session, message);
                     return;
-                case "Reconnect_REQUEST":
+                case NetworkMessageTypes.Reconnect_REQUEST:
                     // 断线重连：携带 playerId + reconnectToken 在窗口期内重新绑定 peer。
                     HandleReconnectRequest(fromPeer, message);
                     return;
@@ -340,15 +340,15 @@ public class RelayServer : BaseGameServer
                     return;
 
                 // 兼容 Host 模式依赖的系统消息（按房间作用域生效）
-                case "PlayerJoined":
+                case NetworkMessageTypes.PlayerJoined:
                     // 玩家加入后补充信息：昵称、角色等；服务端再转发给同房间其他玩家。
                     HandlePlayerJoined(session, message);
                     return;
-                case "GetSelf_REQUEST":
+                case NetworkMessageTypes.GetSelf_REQUEST:
                     // 客户端询问“自己是谁”：返回 PlayerId/昵称/是否房主等。
                     HandleGetSelfRequest(session, fromPeer);
                     return;
-                case "UpdatePlayerLocation":
+                case NetworkMessageTypes.UpdatePlayerLocation:
                     // 更新位置信息：用于房间 UI 显示（地图坐标/关卡/地点名）。
                     HandleUpdatePlayerLocation(session, message);
                     return;
@@ -405,7 +405,7 @@ public class RelayServer : BaseGameServer
         // 心跳响应：客户端可用它校准时间/显示延迟（ping）。
         SendMessageToPeer(peer, new NetworkMessage
         {
-            Type = "HeartbeatResponse",
+            Type = NetworkMessageTypes.HeartbeatResponse,
             Payload = new
             {
                 Timestamp = DateTime.UtcNow.Ticks,
@@ -425,7 +425,7 @@ public class RelayServer : BaseGameServer
         var rooms = _rooms.Values.Select(r => r.GetStatus()).ToList();
         SendMessageToPeer(peer, new NetworkMessage
         {
-            Type = "RoomList",
+            Type = NetworkMessageTypes.RoomList,
             Payload = new { Rooms = rooms },
             SenderPlayerId = "SERVER"
         }, DeliveryMethod.ReliableOrdered);
@@ -480,7 +480,7 @@ public class RelayServer : BaseGameServer
         // 回包：告知客户端房间已创建，并返回 roomId/配置/创建者 id。
         SendMessageToPeer(session.Peer, new NetworkMessage
         {
-            Type = "RoomCreated",
+            Type = NetworkMessageTypes.RoomCreated,
             Payload = new
             {
                 RoomId = roomId,
@@ -551,7 +551,7 @@ public class RelayServer : BaseGameServer
         // 回包：通知加入成功。
         SendMessageToPeer(session.Peer, new NetworkMessage
         {
-            Type = "RoomJoined",
+            Type = NetworkMessageTypes.RoomJoined,
             Payload = new { RoomId = roomId, PlayerId = session.PlayerId },
             SenderPlayerId = "SERVER"
         }, DeliveryMethod.ReliableOrdered);
@@ -615,7 +615,7 @@ public class RelayServer : BaseGameServer
         }
 
         // 内层消息类型：用于客户端区分具体业务（聊天/准备状态/自定义房间事件等）。
-        string innerType = TryGetStringProperty(message.Payload, "Type") ?? "RoomMessage";
+        string innerType = TryGetStringProperty(message.Payload, "Type") ?? NetworkMessageTypes.RoomMessage;
 
         // 内层负载：优先取 payload.Payload；否则回退为整个 payload（兼容旧客户端格式）。
         object innerPayload = TryGetObjectProperty(message.Payload, "Payload") ?? message.Payload;
@@ -641,7 +641,7 @@ public class RelayServer : BaseGameServer
         string targetPlayerId = TryGetStringProperty(message.Payload, "TargetPlayerId");
 
         // 解析内层类型与负载（同 RoomMessage 的结构）。
-        string innerType = TryGetStringProperty(message.Payload, "Type") ?? "DirectMessage";
+        string innerType = TryGetStringProperty(message.Payload, "Type") ?? NetworkMessageTypes.DirectMessage;
         object innerPayload = TryGetObjectProperty(message.Payload, "Payload") ?? message.Payload;
 
         // FullSync 控制消息：强制走“按房间作用域 + 房主/请求方定向”逻辑，避免滥用 DirectMessage 绕过房间隔离。
@@ -746,7 +746,7 @@ public class RelayServer : BaseGameServer
             if (request == null || string.IsNullOrWhiteSpace(request.PlayerId) || string.IsNullOrWhiteSpace(request.ReconnectToken))
             {
                 // 请求格式不合法：直接拒绝（避免后续空引用或绕过校验）。
-                SendMessageToPeer(fromPeer, new NetworkMessage { Type = "Reconnect_RESPONSE", Payload = new { Success = false, Error = "Invalid request" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
+                SendMessageToPeer(fromPeer, new NetworkMessage { Type = NetworkMessageTypes.Reconnect_RESPONSE, Payload = new { Success = false, Error = "Invalid request" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
                 return;
             }
 
@@ -755,14 +755,14 @@ public class RelayServer : BaseGameServer
                 // 1) 查找旧会话：只有“曾经握手成功并被服务端记录”的玩家才能重连。
                 if (!_sessionsByPlayerId.TryGetValue(request.PlayerId, out var session))
                 {
-                    SendMessageToPeer(fromPeer, new NetworkMessage { Type = "Reconnect_RESPONSE", Payload = new { Success = false, Error = "Unknown playerId" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
+                    SendMessageToPeer(fromPeer, new NetworkMessage { Type = NetworkMessageTypes.Reconnect_RESPONSE, Payload = new { Success = false, Error = "Unknown playerId" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
                     return;
                 }
 
                 // 2) 避免重复连接：如果该 PlayerId 仍处于 connected，说明没有真正断线或状态未同步。
                 if (session.IsConnected)
                 {
-                    SendMessageToPeer(fromPeer, new NetworkMessage { Type = "Reconnect_RESPONSE", Payload = new { Success = false, Error = "Already connected" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
+                    SendMessageToPeer(fromPeer, new NetworkMessage { Type = NetworkMessageTypes.Reconnect_RESPONSE, Payload = new { Success = false, Error = "Already connected" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
                     return;
                 }
 
@@ -770,7 +770,7 @@ public class RelayServer : BaseGameServer
                 string expectedToken = TryGetMetadataString(session.Metadata, "ReconnectToken");
                 if (!string.Equals(expectedToken, request.ReconnectToken, StringComparison.Ordinal))
                 {
-                    SendMessageToPeer(fromPeer, new NetworkMessage { Type = "Reconnect_RESPONSE", Payload = new { Success = false, Error = "Invalid token" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
+                    SendMessageToPeer(fromPeer, new NetworkMessage { Type = NetworkMessageTypes.Reconnect_RESPONSE, Payload = new { Success = false, Error = "Invalid token" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
                     return;
                 }
 
@@ -778,7 +778,7 @@ public class RelayServer : BaseGameServer
                 if (_disconnectedAtByPlayerId.TryGetValue(request.PlayerId, out var disconnectedAt) &&
                     DateTime.UtcNow - disconnectedAt > _reconnectGracePeriod)
                 {
-                    SendMessageToPeer(fromPeer, new NetworkMessage { Type = "Reconnect_RESPONSE", Payload = new { Success = false, Error = "Reconnect window expired" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
+                    SendMessageToPeer(fromPeer, new NetworkMessage { Type = NetworkMessageTypes.Reconnect_RESPONSE, Payload = new { Success = false, Error = "Reconnect window expired" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
                     return;
                 }
 
@@ -800,7 +800,7 @@ public class RelayServer : BaseGameServer
                 // 9) 回包：告知客户端重连成功，并返回服务端视角的基础状态（房间/昵称等）。
                 SendMessageToPeer(fromPeer, new NetworkMessage
                 {
-                    Type = "Reconnect_RESPONSE",
+                    Type = NetworkMessageTypes.Reconnect_RESPONSE,
                     Payload = new
                     {
                         Success = true,
@@ -814,8 +814,8 @@ public class RelayServer : BaseGameServer
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[RelayServer] Error handling Reconnect_REQUEST");
-            SendMessageToPeer(fromPeer, new NetworkMessage { Type = "Reconnect_RESPONSE", Payload = new { Success = false, Error = "Server error" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
+            _logger.LogError(ex, $"[RelayServer] Error handling {NetworkMessageTypes.Reconnect_REQUEST}");
+            SendMessageToPeer(fromPeer, new NetworkMessage { Type = NetworkMessageTypes.Reconnect_RESPONSE, Payload = new { Success = false, Error = "Server error" }, SenderPlayerId = "SERVER" }, DeliveryMethod.ReliableOrdered);
         }
     }
 
@@ -929,7 +929,7 @@ public class RelayServer : BaseGameServer
                 // 广播给房间内其他玩家：告知“某玩家已加入并携带昵称/角色信息”。
                 room.BroadcastMessage(new NetworkMessage
                 {
-                    Type = "PlayerJoined",
+                    Type = NetworkMessageTypes.PlayerJoined,
                     Payload = new
                     {
                         PlayerId = session.PlayerId,
@@ -960,7 +960,7 @@ public class RelayServer : BaseGameServer
         // 直接回包当前会话信息：PlayerId/昵称/是否房主/连接时间等。
         SendMessageToPeer(peer, new NetworkMessage
         {
-            Type = "GetSelf_RESPONSE",
+            Type = NetworkMessageTypes.GetSelf_RESPONSE,
             Payload = new
             {
                 PlayerId = session.PlayerId,
@@ -1074,7 +1074,7 @@ public class RelayServer : BaseGameServer
         // 广播成员列表给房间内所有玩家。
         room.BroadcastMessage(new NetworkMessage
         {
-            Type = "PlayerListUpdate",
+            Type = NetworkMessageTypes.PlayerListUpdate,
             Payload = new { Players = players },
             SenderPlayerId = "SERVER"
         });
@@ -1134,7 +1134,7 @@ public class RelayServer : BaseGameServer
         // 错误消息一律用可靠有序投递，确保客户端一定能收到并提示。
         SendMessageToPeer(peer, new NetworkMessage
         {
-            Type = "Error",
+            Type = NetworkMessageTypes.Error,
             Payload = new { ErrorType = errorType, Message = errorMessage },
             SenderPlayerId = "SERVER"
         }, DeliveryMethod.ReliableOrdered);
@@ -1620,7 +1620,7 @@ public class RelayServer : BaseGameServer
         // 下发 Welcome：客户端需要保存 playerId 与 reconnectToken（用于 Reconnect_REQUEST）。
         SendMessageToPeer(session.Peer, new NetworkMessage
         {
-            Type = "Welcome",
+            Type = NetworkMessageTypes.Welcome,
             Payload = new
             {
                 PlayerId = session.PlayerId,

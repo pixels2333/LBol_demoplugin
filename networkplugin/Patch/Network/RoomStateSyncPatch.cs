@@ -309,7 +309,7 @@ public static class RoomStateSyncPatch
 
         // Rewards: 当前阶段不强行生成/发放，只占位留给后续补齐。
         snapshot.Rewards = new BattleRewardSnapshot();
-        snapshot.CampfireEvents = CampfireSyncPatch.GetRecentRoomEvents(roomKey);
+        snapshot.GapOptionsEvents = GapOptionsSyncPatch.GetRecentGapOptionsEvents(roomKey);
         return snapshot;
     }
 }

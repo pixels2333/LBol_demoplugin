@@ -56,6 +56,76 @@ namespace NetworkPlugin.Network.Messages
         /// </summary>
         public const string GetSelf_RESPONSE = "GetSelf_RESPONSE";
 
+        /// <summary>
+        /// 点对点转发消息
+        /// </summary>
+        public const string DirectMessage = "DirectMessage";
+
+        /// <summary>
+        /// 玩家位置更新
+        /// </summary>
+        public const string UpdatePlayerLocation = "UpdatePlayerLocation";
+
+        /// <summary>
+        /// 重连请求
+        /// </summary>
+        public const string Reconnect_REQUEST = "Reconnect_REQUEST";
+
+        /// <summary>
+        /// 重连响应
+        /// </summary>
+        public const string Reconnect_RESPONSE = "Reconnect_RESPONSE";
+
+        /// <summary>
+        /// 创建房间
+        /// </summary>
+        public const string CreateRoom = "CreateRoom";
+
+        /// <summary>
+        /// 加入房间
+        /// </summary>
+        public const string JoinRoom = "JoinRoom";
+
+        /// <summary>
+        /// 离开房间
+        /// </summary>
+        public const string LeaveRoom = "LeaveRoom";
+
+        /// <summary>
+        /// 房间广播消息
+        /// </summary>
+        public const string RoomMessage = "RoomMessage";
+
+        /// <summary>
+        /// 获取房间列表请求
+        /// </summary>
+        public const string GetRoomList = "GetRoomList";
+
+        /// <summary>
+        /// 房间列表响应
+        /// </summary>
+        public const string RoomList = "RoomList";
+
+        /// <summary>
+        /// 房间创建成功
+        /// </summary>
+        public const string RoomCreated = "RoomCreated";
+
+        /// <summary>
+        /// 房间加入成功
+        /// </summary>
+        public const string RoomJoined = "RoomJoined";
+
+        /// <summary>
+        /// 踢出房间玩家
+        /// </summary>
+        public const string KickPlayer = "KickPlayer";
+
+        /// <summary>
+        /// 通用错误响应
+        /// </summary>
+        public const string Error = "Error";
+
         // === 卡牌同步消息 ===
 
         /// <summary>
@@ -413,14 +483,14 @@ namespace NetworkPlugin.Network.Messages
         public const string DrinkTeaCompleted = "DrinkTeaCompleted";
 
         /// <summary>
-        /// 卡牌升级选择
+        /// GapOptions 卡牌升级选择
         /// </summary>
-        public const string CampfireUpgradeSelected = "CampfireUpgradeSelected";
+        public const string GapOptionsUpgradeSelected = "GapOptionsUpgradeSelected";
 
         /// <summary>
-        /// 卡牌移除选择
+        /// GapOptions 卡牌移除选择
         /// </summary>
-        public const string CampfireRemoveCard = "CampfireRemoveCard";
+        public const string GapOptionsRemoveCard = "GapOptionsRemoveCard";
 
         // === 物品/道具同步消息 ===
 
@@ -707,8 +777,8 @@ namespace NetworkPlugin.Network.Messages
             EnemyStateUpdate,
             EnemySpawned,
             CardStateChanged,
-            CampfireUpgradeSelected,
-            CampfireRemoveCard,
+            GapOptionsUpgradeSelected,
+            GapOptionsRemoveCard,
             GapStationEntered,
             DrinkTeaStarted,
             DrinkTeaCompleted,

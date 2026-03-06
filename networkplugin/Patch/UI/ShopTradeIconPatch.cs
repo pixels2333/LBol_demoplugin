@@ -23,6 +23,8 @@ namespace NetworkPlugin.Patch.UI;
 [HarmonyPatch]
 public static class ShopTradeIconPatch
 {
+    private const string TradeButtonLabelText = "玩家交易";
+
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
     private enum TradeUiUpdateState
@@ -361,9 +363,31 @@ public static class ShopTradeIconPatch
             CardServiceButton = cardServiceButton,
             ReturnButton      = returnButton,
         };
+        
+        if (leftContainer != null)
+        {
+            ui.CardServiceOriginalAnchoredPosition = leftContainer.anchoredPosition;
+            ui.CardServiceOriginalSizeDelta = leftContainer.sizeDelta;
+            ui.CardServiceOriginalScale = leftContainer.localScale;
+            ui.CardServiceOriginalLocalPosition = leftContainer.localPosition;
+        }
+        
+        if (rightContainer != null)
+        {
+            ui.ReturnOriginalAnchoredPosition = rightContainer.anchoredPosition;
+            ui.ReturnOriginalSizeDelta = rightContainer.sizeDelta;
+            ui.ReturnOriginalScale = rightContainer.localScale;
+            ui.ReturnOriginalLocalPosition = rightContainer.localPosition;
+        }
+        
+        _ui = ui;
+        
+        GameObject midGo = null;
+        try
+        {
 
         // 克隆整个 CardService 容器，以获得背景、边框等完整按钮样式
-        GameObject midGo = UnityEngine.Object.Instantiate(leftContainer.gameObject, barParent, false);
+        midGo = UnityEngine.Object.Instantiate(leftContainer.gameObject, barParent, false);
         midGo.name = "NetworkPlugin_TradeButton";
         RectTransform mid = midGo.GetComponent<RectTransform>();
         
@@ -380,22 +404,7 @@ public static class ShopTradeIconPatch
         // 剥离本地化组件，防止文字被游戏本地化系统覆盖回原文
         TryStripLocalizationComponents(midGo);
 
-        // 在容器层级上直接遍历，避免文字节点与 Button 同级时搜不到的问题
-        // 只改文字内容，不覆盖字体——克隆已继承 CardService 的原始样式，无需修改
-        //TODO: 检查这里是否冗余，如果克隆的层级结构和原来完全一样，理论上不应该有额外的 Text 组件了。
-        foreach (var label in midGo.GetComponentsInChildren<TMP_Text>(true))
-        {
-            if (label == null) continue;
-            label.text = "玩家交易";
-        }
-        foreach (var t in midGo.GetComponentsInChildren<Text>(true))
-        {
-            if (t == null) continue;
-            t.text = "玩家交易";
-        }
-
-        // 打印克隆后的完整层级结构，帮助诊断 TextMeshProUGUI 位置
-        LogHierarchy(midGo.transform, 0);
+        ApplyTradeButtonLabel(midGo, tradeButton, TradeButtonLabelText);
 
         // 设置为用户指定的固定坐标项（参考运行时截图）
         mid.anchorMin        = new Vector2(0.5f, 0.5f);
@@ -432,10 +441,20 @@ public static class ShopTradeIconPatch
         }
 
         ui.Root    = midGo;
-        _ui        = ui;
-        _ui.Button = tradeButton;
+        ui.Button  = tradeButton;
 
         Plugin.Logger?.LogInfo("[ShopTradeIcon] 已插入带样式的交易按钮");
+        }
+        catch
+        {
+            if (midGo != null)
+            {
+                UnityEngine.Object.Destroy(midGo);
+            }
+
+            CleanupUi();
+            throw;
+        }
     }
 
     private static void LogHierarchy(Transform t, int depth)
@@ -452,6 +471,151 @@ public static class ShopTradeIconPatch
                 LogHierarchy(t.GetChild(i), depth + 1);
         }
         catch { }
+    }
+
+    private static void ApplyTradeButtonLabel(GameObject root, Button tradeButton, string labelText)
+    {
+        if (TryResolveTradeLabel(root, tradeButton, out TMP_Text tmpLabel, out Text legacyLabel, out string resolution, out bool shouldDumpHierarchy))
+        {
+            if (tmpLabel != null)
+            {
+                tmpLabel.text = labelText;
+            }
+            else if (legacyLabel != null)
+            {
+                legacyLabel.text = labelText;
+                Plugin.Logger?.LogWarning($"[ShopTradeIcon] 使用 legacy Text 回退设置交易按钮文案: {resolution}");
+            }
+
+            if (shouldDumpHierarchy && root != null)
+            {
+                LogHierarchy(root.transform, 0);
+            }
+
+            return;
+        }
+
+        Plugin.Logger?.LogWarning($"[ShopTradeIcon] 未能定位交易按钮标题节点，保留克隆后的原始文本。{resolution}");
+        if (root != null)
+        {
+            LogHierarchy(root.transform, 0);
+        }
+    }
+
+    private static bool TryResolveTradeLabel(
+        GameObject root,
+        Button tradeButton,
+        out TMP_Text tmpLabel,
+        out Text legacyLabel,
+        out string resolution,
+        out bool shouldDumpHierarchy)
+    {
+        tmpLabel = null;
+        legacyLabel = null;
+        resolution = string.Empty;
+        shouldDumpHierarchy = false;
+
+        Transform primaryRoot = tradeButton != null ? tradeButton.transform : root?.transform;
+        if (primaryRoot == null)
+        {
+            resolution = "按钮根节点为空";
+            return false;
+        }
+
+        TMP_Text[] primaryTmpLabels = primaryRoot.GetComponentsInChildren<TMP_Text>(true);
+        tmpLabel = SelectTradeTmpLabel(primaryTmpLabels);
+        if (tmpLabel != null)
+        {
+            shouldDumpHierarchy = primaryTmpLabels.Length > 1;
+            resolution = primaryTmpLabels.Length > 1
+                ? $"在按钮子树中命中 {primaryTmpLabels.Length} 个 TMP_Text，已按优先级选择 {tmpLabel.name}"
+                : $"在按钮子树中命中 TMP_Text: {tmpLabel.name}";
+            return true;
+        }
+
+        Text[] primaryLegacyLabels = primaryRoot.GetComponentsInChildren<Text>(true);
+        legacyLabel = SelectTradeLegacyLabel(primaryLegacyLabels);
+        if (legacyLabel != null)
+        {
+            shouldDumpHierarchy = true;
+            resolution = primaryLegacyLabels.Length > 1
+                ? $"在按钮子树中未命中 TMP_Text，但命中 {primaryLegacyLabels.Length} 个 legacy Text，已按优先级选择 {legacyLabel.name}"
+                : $"在按钮子树中未命中 TMP_Text，回退到 legacy Text: {legacyLabel.name}";
+            return true;
+        }
+
+        if (root != null && root.transform != primaryRoot)
+        {
+            TMP_Text[] rootTmpLabels = root.GetComponentsInChildren<TMP_Text>(true);
+            tmpLabel = SelectTradeTmpLabel(rootTmpLabels);
+            if (tmpLabel != null)
+            {
+                shouldDumpHierarchy = true;
+                resolution = rootTmpLabels.Length > 1
+                    ? $"按钮子树未命中标题，已从克隆根节点的 {rootTmpLabels.Length} 个 TMP_Text 中回退选择 {tmpLabel.name}"
+                    : $"按钮子树未命中标题，已从克隆根节点回退到 TMP_Text: {tmpLabel.name}";
+                return true;
+            }
+
+            Text[] rootLegacyLabels = root.GetComponentsInChildren<Text>(true);
+            legacyLabel = SelectTradeLegacyLabel(rootLegacyLabels);
+            if (legacyLabel != null)
+            {
+                shouldDumpHierarchy = true;
+                resolution = rootLegacyLabels.Length > 1
+                    ? $"按钮子树与根节点均未命中 TMP_Text，已从克隆根节点的 {rootLegacyLabels.Length} 个 legacy Text 中选择 {legacyLabel.name}"
+                    : $"按钮子树与根节点均未命中 TMP_Text，已从克隆根节点回退到 legacy Text: {legacyLabel.name}";
+                return true;
+            }
+        }
+
+        resolution = "按钮子树与克隆根节点均未找到可用的标题文本组件";
+        return false;
+    }
+
+    private static TMP_Text SelectTradeTmpLabel(TMP_Text[] candidates)
+    {
+        return candidates?
+            .Where(label => label != null)
+            .OrderByDescending(label => IsPreferredTradeLabelName(label.name))
+            .ThenByDescending(label => label.isActiveAndEnabled)
+            .ThenByDescending(label => !string.IsNullOrWhiteSpace(label.text))
+            .ThenByDescending(label => GetTransformDepth(label.transform))
+            .FirstOrDefault();
+    }
+
+    private static Text SelectTradeLegacyLabel(Text[] candidates)
+    {
+        return candidates?
+            .Where(label => label != null)
+            .OrderByDescending(label => IsPreferredTradeLabelName(label.name))
+            .ThenByDescending(label => label.isActiveAndEnabled)
+            .ThenByDescending(label => !string.IsNullOrWhiteSpace(label.text))
+            .ThenByDescending(label => GetTransformDepth(label.transform))
+            .FirstOrDefault();
+    }
+
+    private static bool IsPreferredTradeLabelName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+
+        string lowerName = name.ToLowerInvariant();
+        return lowerName.Contains("label") || lowerName.Contains("text") || lowerName.Contains("title");
+    }
+
+    private static int GetTransformDepth(Transform transform)
+    {
+        int depth = 0;
+        while (transform != null)
+        {
+            depth++;
+            transform = transform.parent;
+        }
+
+        return depth;
     }
 
     private static void CleanTooltipComponents(GameObject go)
@@ -544,7 +708,7 @@ public static class ShopTradeIconPatch
         labelRect.offsetMax = new Vector2(-10f, 0f);
 
         var label = labelGo.AddComponent<TextMeshProUGUI>();
-        label.text = "交易";
+        label.text = TradeButtonLabelText;
         label.fontSize = 26f;
         label.alignment = TextAlignmentOptions.MidlineLeft;
         label.color = Color.white;
@@ -576,7 +740,9 @@ public static class ShopTradeIconPatch
                         var ct = _ui.CardServiceButton.transform.parent as RectTransform;
                         if (ct != null)
                         {
+                            ct.anchoredPosition = _ui.CardServiceOriginalAnchoredPosition;
                             ct.sizeDelta     = _ui.CardServiceOriginalSizeDelta;
+                            ct.localScale    = _ui.CardServiceOriginalScale;
                             ct.localPosition = _ui.CardServiceOriginalLocalPosition;
                         }
                     }
@@ -594,7 +760,9 @@ public static class ShopTradeIconPatch
                         var rt = _ui.ReturnButton.transform.parent as RectTransform;
                         if (rt != null)
                         {
+                            rt.anchoredPosition = _ui.ReturnOriginalAnchoredPosition;
                             rt.sizeDelta     = _ui.ReturnOriginalSizeDelta;
+                            rt.localScale    = _ui.ReturnOriginalScale;
                             rt.localPosition = _ui.ReturnOriginalLocalPosition;
                         }
                     }

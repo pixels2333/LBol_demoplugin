@@ -272,8 +272,8 @@ public class NetworkManager : INetworkManager
             // Ensure resurrect sync patch is listening on all peers (especially Host).
             ResurrectSyncPatch.EnsureSubscribed(_networkClient);
 
-            // Ensure campfire sync patch is listening on all peers.
-            CampfireSyncPatch.EnsureSubscribed(_networkClient);
+            // Ensure GapOptions sync patch is listening on all peers.
+            GapOptionsSyncPatch.EnsureSubscribed(_networkClient);
 
             _networkClient.OnGameEventReceived += OnGameEventReceived;
             _networkClient.OnConnectionStateChanged += OnConnectionStateChanged;
