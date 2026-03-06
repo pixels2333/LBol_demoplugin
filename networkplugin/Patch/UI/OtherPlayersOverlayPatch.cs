@@ -723,7 +723,7 @@ public static partial class OtherPlayersOverlayPatch
         }
 
         RectTransform anchor = TryGetBaseManaAnchorRect();
-        RectTransform parentRect = anchor != null ? anchor.parent as RectTransform : null;
+        RectTransform parentRect = TryGetBaseManaOverlayParentRect(anchor);
 
         if (parentRect == null)
         {
@@ -795,6 +795,22 @@ public static partial class OtherPlayersOverlayPatch
         {
             return null;
         }
+    }
+
+    private static RectTransform TryGetBaseManaOverlayParentRect(RectTransform anchor)
+    {
+        if (anchor == null)
+        {
+            return null;
+        }
+
+        RectTransform baseManaRect = anchor.parent as RectTransform;
+        if (baseManaRect == null)
+        {
+            return null;
+        }
+
+        return baseManaRect.parent as RectTransform;
     }
 
     private static RectTransform TryGetPrivateRectTransform(object instance, string fieldName)
