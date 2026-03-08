@@ -15,6 +15,9 @@ namespace NetworkPlugin.Network.Snapshot
         public int MaxHealth { get; set; }
         public int Block { get; set; }
         public int Shield { get; set; }
+        public int CurrentPower { get; set; }
+        public int PowerPerLevel { get; set; }
+        public int MaxPowerLevel { get; set; }
 
         public int[] ManaGroup { get; set; } = [0, 0, 0, 0];
         public int MaxMana { get; set; }

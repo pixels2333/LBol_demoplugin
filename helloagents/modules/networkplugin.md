@@ -92,6 +92,27 @@
 - `OtherPlayersOverlayPatch.ResolveDisplayName(...)` 现作为 UI 层统一显示名入口：优先使用调用方显式传入名称，其次读取 `OtherPlayersOverlay` 玩家缓存，对本地玩家再用 `GameStateUtils.GetCurrentPlayerName()` 做运行时兜底。
 - `TradePanel`、`DeathPatches` / `ResurrectSyncPatch`、Overlay 头像条、地图图标与远端目标判定都应复用该入口，避免再次在各 UI 面板内部分叉 `PlayerName/playerId/角色名` 的回退顺序。
 
+### OtherPlayersOverlay 层级约定
+- `networkplugin/Patch/UI/OtherPlayersOverlayPatch.cs` 中的 `NetworkPlugin_OtherPlayersOverlay` 现固定挂到 `topLayer/topmostLayer` 这类屏幕 UI 层，并使用右上角锚点停靠到屏幕右侧，不再继续跟随 `BaseMana` 世界坐标回算。
+- 右侧停靠偏移现通过 `BepInEx/config/NetworkPlugin.cfg` 的 `[UI.OtherPlayersOverlay]` 区域控制：`RightOffsetX` / `RightOffsetY` 默认分别为 `-24` / `-144`，后续调位置优先改配置，不要再直接改 `OtherPlayersOverlayPatch` 常量。
+- `EntriesRoot` 继续保持右上角 `anchor/pivot=(1,1)`，但玩家条目已改为右侧单列纵向堆叠；右边界仍贴齐 overlay，避免多人时再次横向铺回屏幕中间。
+- 为了兼容 Unity Runtime Editor 的临时调位，`networkplugin/Utils/RuntimeEditorTransformGuard.cs` 现已接入 `OtherPlayersOverlayPatch`、`OtherPlayersOverlayViewRegistry`、`MapNodeMarkSyncPatch` 与 `MainMenuMultiplayerEntryPatch` 的持续布局回写点；运行时手动修改 `RectTransform/Transform` 后，本次游戏进程内不会再被这些补丁下一轮刷新强制写回。
+
+### OtherPlayersOverlay 原生战斗 UI 约定
+- `networkplugin/Patch/UI/OtherPlayersOverlayPatch.cs` 现复用原生 `UltimateSkillPanel` 壳体：保留 `powerText`、`gauge1`、`gauge2`、`gauge3`，仅关闭 Tooltip 与粒子特效，`skillImage` 改为远端角色头像。
+- `UltimateSkillPanel` 内的头像图现通过运行时圆形 mask 裁切：保留原面板壳体与 `Bg` 层级，只把实际头像内容收进 `MaskedAvatar` 子节点，避免重新做一套头像框资源。
+- `UltimateSkillPanel` 条目必须按“整块面板缩放”处理，不能再把复制出来的面板 `RectTransform` 强行压成头像尺寸的小方块；否则会把原生头像框、能量槽和文字裁坏并导致相对位置跑偏。
+- `UltimateSkillPanel` 条目中的 `Root/Bg` 与 `Root/SkillImage` 层级必须显式固定为“`Bg` 在下、`SkillImage` 在上”，并保持两者 alpha 为 `1`；不要依赖 prefab 当前 sibling 顺序或运行时淡入状态。
+- `UnitStatusHud.statusTemplate` 会缓存为 `NetworkPlugin_OtherPlayersOverlay/EntriesRoot/RemotePlayerHealthBarTemplate` 隐藏源模板；玩家条目内实际显示的对象也统一命名为 `RemotePlayerHealthBarTemplate`，旧的 `HealthBar` 命名不要再恢复，避免层级树里同时出现错误目标节点。
+- 每个条目会在右侧复用 `UnitStatusHud.statusTemplate` 对应的 `UnitStatusWidget/HealthBar`，并按远端 `HP/MaxHP/Shield/Block` 驱动原生血条显示，而不是手搓简化进度条。
+- 血条上方会额外生成一份 `HealthName` 文本，位置跟随右侧血条区域，并复用 `ResolveDisplayName(...) + hostTag` 的现有玩家名显示逻辑；其字号不再写死，而是按 `Visual/Root/Power` 的可视大小动态对齐（`powerText.fontSize * AvatarPanelScale`），并改为左对齐显示：`anchoredPosition=(HealthBarLocalPosition.x, HealthBarLocalPosition.y+32)`、`pivot=(0,0)`、`alignment=Left`、`sizeDelta=(280,24)`，让文本左边缘直接贴齐血条左边缘。
+- 右侧血条在 overlay 中使用“紧凑固定视觉宽度”策略：无战斗态时也保持可读长度，并将锚点下压到头像框右侧中部，避免出现悬在上方且过短的默认条。
+- 当前截图基线参数：`RemotePlayerHealthBarTemplate` 使用 `localPosition=(260,-390,0)`、`localScale=(0.62,0.62,1)`；其子节点 `HealthBar/HealthText` 已恢复到血条左侧，当前使用 `localPosition=(30,0,0)`、`localScale=(1,1,1)`，后续微调应以这组值为起点而不是重新估算旧偏移常量。
+- Overlay 的远端战斗数据显示统一走 `networkplugin/Patch/UI/OtherPlayersOverlay/OtherPlayersOverlayBattleState.cs`：优先汇总 `INetworkManager.GetPlayer(playerId)` 与 `TurnStart/TurnEnd` 快照缓存，避免 UI 直接散落读取多个来源。
+- `DebugVirtualPlayerAiDefault` 打开后，overlay/地图/交易调试列表会同时注入两个测试 AI：`aidefault`（`AI Default`）与 `aidefault2`（`AI Partner`）；两者会共用本地角色头像来源，但战斗态固定为两组两位数测试值，当前基线分别为 `47/88 + Shield 14 + Block 26` 与 `63/95 + Shield 11 + Block 18`，用于本地离线目测血条样式。
+- `INetworkPlayer.ultimatePower` 继续保留历史 bool 语义；数值型符卡积攒能量由 `PlayerStateSnapshot.CurrentPower/PowerPerLevel/MaxPowerLevel` 与 `NetworkPlayerBattleStateCompat` 提供，后续补丁不要再把两者混用。
+- 布局宽度已扩到“头像卡 + 右侧血条”组合模式；后续若继续改样式，必须保持多人纵向堆叠时的自动缩放逻辑与“屏幕右侧停靠 + 右边界对齐”约束一起成立。
+
 ### MidGameJoin（中途加入）
 - 消息类型：
   - `MidGameJoinRequest` / `MidGameJoinResponse`：Joiner ⇄ Host 的请求/批准（通过 Relay `DirectMessage` 转发）。

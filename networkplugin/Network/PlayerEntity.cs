@@ -32,6 +32,8 @@ public class PlayerEntity
     // 资源
     public SyncVar<int> Power { get; private set; }
     public SyncVar<int> UltimatePower { get; private set; }
+    public SyncVar<int> PowerPerLevel { get; private set; }
+    public SyncVar<int> MaxPowerLevel { get; private set; }
     public SyncVar<int[]> Mana { get; private set; } // 4色法力: 0=红,1=蓝,2=绿,3=白
 
     // 位置与进度
@@ -80,6 +82,8 @@ public class PlayerEntity
         // 战斗和技能资源初始化
         Power = new SyncVar<int>(nameof(Power), 0);
         UltimatePower = new SyncVar<int>(nameof(UltimatePower), 0);
+        PowerPerLevel = new SyncVar<int>(nameof(PowerPerLevel), 0);
+        MaxPowerLevel = new SyncVar<int>(nameof(MaxPowerLevel), 3);
         Mana = new SyncVar<int[]>(nameof(Mana), new int[4]); // 4色法力：0=红,1=蓝,2=绿,3=白
 
         // 位置和进度信息初始化
@@ -136,6 +140,9 @@ public class PlayerEntity
             MaxHealth = MaxHP.Value,
             Block = Block.Value,
             Shield = Shield.Value,
+            CurrentPower = Power.Value,
+            PowerPerLevel = PowerPerLevel.Value,
+            MaxPowerLevel = MaxPowerLevel.Value,
             ManaGroup = Mana.Value,
             Gold = Coins.Value,
             Cards = [],
@@ -156,6 +163,9 @@ public class PlayerEntity
         MaxHP.Value = snapshot.MaxHealth;
         Block.Value = snapshot.Block;
         Shield.Value = snapshot.Shield;
+        Power.Value = snapshot.CurrentPower;
+        PowerPerLevel.Value = snapshot.PowerPerLevel;
+        MaxPowerLevel.Value = snapshot.MaxPowerLevel;
         Coins.Value = snapshot.Gold;
         Mana.Value = (int[])snapshot.ManaGroup.Clone();
         LocationX.Value = snapshot.GameLocation.X;
@@ -165,4 +175,4 @@ public class PlayerEntity
         Exhibits.Value = snapshot.Exhibits.Select(e => e.ToString()).ToList();
         LastUpdate = snapshot.Timestamp;
     }
-    }
+}

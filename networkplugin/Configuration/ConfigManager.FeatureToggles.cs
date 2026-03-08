@@ -39,8 +39,8 @@ public partial class ConfigManager
     public ConfigEntry<bool> DebugFakePlayersForTrade { get; private set; }
 
     /// <summary>
-    /// 调试：在游戏内生成一个虚拟玩家（PlayerId=aidefault），并按“远程玩家”方式渲染（地图图标/战斗角色）。
-    /// 该虚拟玩家会尽力与本地玩家保持同一节点，并在战斗中镜像本地玩家的出牌动画。
+    /// 调试：在游戏内生成两个虚拟玩家（PlayerId=`aidefault` / `aidefault2`），并按“远程玩家”方式渲染（地图图标/战斗角色）。
+    /// 它们会尽力与本地玩家保持同一节点，并在战斗中提供固定测试血量/格挡/护盾；动画会镜像本地玩家表现。
     /// </summary>
     public ConfigEntry<bool> DebugVirtualPlayerAiDefault { get; private set; }
 
@@ -112,7 +112,7 @@ public partial class ConfigManager
             "General.Toggles",
             "DebugVirtualPlayerAiDefault",
             false,
-            "调试：生成虚拟远程玩家(aidefault)，用于离线测试远程玩家渲染与交易面板"
+            "调试：生成两个虚拟远程玩家(aidefault/aidefault2)，用于离线测试远程玩家渲染、战斗血条与交易面板"
         );
     }
 }

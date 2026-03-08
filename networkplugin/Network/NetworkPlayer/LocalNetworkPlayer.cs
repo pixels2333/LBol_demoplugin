@@ -26,6 +26,9 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
     private bool _tradingStatus;
     private bool _ultimatePower;
     private int[] _mana = new int[4];
+    private int _currentPower;
+    private int _powerPerLevel;
+    private int _maxPowerLevel = 3;
     private int _locationX;
     private int _locationY;
     private int _stage = -1;
@@ -235,6 +238,56 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
     {
         get => _ultimatePower;
         set => _ultimatePower = value;
+    }
+
+    public int CurrentPower
+    {
+        get
+        {
+            try
+            {
+                return CurrentPlayer?.Power ?? _currentPower;
+            }
+            catch
+            {
+                return _currentPower;
+            }
+        }
+        set => _currentPower = Math.Max(0, value);
+    }
+
+    public int PowerPerLevel
+    {
+        get
+        {
+            try
+            {
+                int value = CurrentPlayer?.PowerPerLevel ?? 0;
+                return value > 0 ? value : _powerPerLevel;
+            }
+            catch
+            {
+                return _powerPerLevel;
+            }
+        }
+        set => _powerPerLevel = Math.Max(0, value);
+    }
+
+    public int MaxPowerLevel
+    {
+        get
+        {
+            try
+            {
+                int value = CurrentPlayer?.MaxPowerLevel ?? 0;
+                return value > 0 ? value : _maxPowerLevel;
+            }
+            catch
+            {
+                return _maxPowerLevel;
+            }
+        }
+        set => _maxPowerLevel = Math.Max(0, value);
     }
 
     public int location_X

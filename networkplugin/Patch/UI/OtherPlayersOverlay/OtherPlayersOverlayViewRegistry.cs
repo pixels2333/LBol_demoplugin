@@ -124,8 +124,11 @@ public static partial class OtherPlayersOverlayPatch
             float x = (row + 1) * xStep;
             float y = col == 0 ? yStep : -yStep;
 
-            view.Root.transform.localPosition = basePos + new Vector3(x, y, 0f);
-            view.Root.transform.localScale = new Vector3(scale, scale, scale);
+            RuntimeEditorTransformGuard.ApplyTransform(view.Root.transform, transform =>
+            {
+                transform.localPosition = basePos + new Vector3(x, y, 0f);
+                transform.localScale = new Vector3(scale, scale, scale);
+            });
         }
     }
 
@@ -605,7 +608,10 @@ public static partial class OtherPlayersOverlayPatch
                 MapIconUi icon = EnsureMapIcon(p);
                 icon.Root.SetActive(true);
 
-                icon.RootRect.localPosition = widget.transform.localPosition + new Vector3(0f, 70f + i * 18f, 0f);
+                RuntimeEditorTransformGuard.ApplyRectTransform(icon.RootRect, rect =>
+                {
+                    rect.localPosition = widget.transform.localPosition + new Vector3(0f, 70f + i * 18f, 0f);
+                });
                 icon.Label.text = ResolveDisplayName(p.PlayerId, p.PlayerName);
                 icon.Image.color = p.IsHost ? new Color(1f, 0.95f, 0.4f, 1f) : Color.white;
 

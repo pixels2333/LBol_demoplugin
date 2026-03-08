@@ -11,6 +11,7 @@ using LBoL.Presentation;
 using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.UI.Widgets;
+using LBoL.Presentation.UI.ExtraWidgets;
 using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Configuration;
@@ -37,11 +38,34 @@ public static partial class OtherPlayersOverlayPatch
 {
     #region 常量和字段
 
-    private const float AvatarEntryBaseWidth = 140f;
-    private const float AvatarEntryBaseHeight = 176f;
+    private const float AvatarEntryBaseWidth = 540f;
+    private const float AvatarEntryBaseHeight = 236f;
     private const float AvatarVisualSize = 112f;
-    private const float AvatarEntrySpacing = 22f;
-    private const float AvatarStripYOffset = 14f;
+    private const float AvatarEntrySpacing = 24f;
+    private const float AvatarCircleInset = 6f;
+    private const float AvatarStripYOffset = 10f;
+    private const float AvatarPanelScale = 0.62f;
+    private const float AvatarPanelOffsetY = -6f;
+    private const float EntryLabelWidth = 220f;
+    private const float HealthNameLabelWidth = 280f;
+    private const float HealthNameLabelHeight = 24f;
+    private const float HealthNameFallbackFontSize = 18f;
+    private const float SkillImageOffsetX = -2f;
+    private const float SkillImageOffsetY = -5f;
+    private const float SkillImageScale = 1.06f;
+    private const float AvatarCircleMaskFillFactor = 0.84f;
+    private static readonly Vector2 AvatarMaskedImageOffset = new(4f, 0f);
+    private static readonly Vector3 AvatarMaskHostLocalPosition = new(3f, 0f, 0f);
+    private static readonly Vector3 AvatarMaskHostLocalScale = new(0.8f, 0.8f, 1f);
+    private const float OverlayRootLocalPositionX = 1550f;
+    private static readonly Vector2 DefaultOverlayRightAnchoredPosition = new(-24f, -144f);
+    private const float OverlayRightWidthFactor = 0.52f;
+    private const float OverlayRightMinWidth = 780f;
+    private const float OverlayRightMaxWidth = 1360f;
+    private static readonly Vector3 HealthBarLocalPosition = new(260f, -390f, 0f);
+    private static readonly Vector3 HealthBarLocalScale = new(0.62f, 0.62f, 1f);
+    private static readonly Vector2 HealthNameAnchoredPosition = new(HealthBarLocalPosition.x, HealthBarLocalPosition.y + 32f);
+    private const int OverlayHealthBarVisualMaxHp = 60;
 
     /// <summary>获取依赖注入容器</summary>
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
@@ -307,6 +331,8 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
+        EnsureHealthBarTemplate();
+
         _ui.Root.SetActive(true);
 
         HashSet<string> alive = new(list.Select(p => p.PlayerId), StringComparer.Ordinal);
@@ -364,39 +390,32 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
-        GameObject source = null;
-        try
-        {
-            UltimateSkillPanel panel = UiManager.GetPanel<UltimateSkillPanel>();
-            if (panel != null)
-            {
-                source = panel.gameObject;
-            }
-        }
-        catch
-        {
-            // ignored
-        }
-
-        if (source == null)
-        {
-            try
-            {
-                source = Resources.Load<GameObject>("UI/Panels/UltimateSkillPanel");
-            }
-            catch
-            {
-                // ignored
-            }
-        }
-
-        if (source == null)
-        {
-            return;
-        }
-
-        GameObject template = UnityEngine.Object.Instantiate(source, _ui.EntriesRoot, false);
+        GameObject template = new("RemotePlayerAvatarTemplate");
+        template.transform.SetParent(_ui.EntriesRoot, false);
         template.name = "RemotePlayerAvatarTemplate";
+
+        RectTransform templateRect = template.AddComponent<RectTransform>();
+        templateRect.anchorMin = new Vector2(0.5f, 1f);
+        templateRect.anchorMax = new Vector2(0.5f, 1f);
+        templateRect.pivot = new Vector2(0.5f, 1f);
+        templateRect.sizeDelta = new Vector2(AvatarVisualSize, AvatarVisualSize);
+
+        GameObject avatarHostGo = new("AvatarMaskHostSource");
+        avatarHostGo.transform.SetParent(template.transform, false);
+
+        RectTransform avatarHostRect = avatarHostGo.AddComponent<RectTransform>();
+        avatarHostRect.anchorMin = new Vector2(0.5f, 0.5f);
+        avatarHostRect.anchorMax = new Vector2(0.5f, 0.5f);
+        avatarHostRect.pivot = new Vector2(0.5f, 0.5f);
+        avatarHostRect.sizeDelta = new Vector2(AvatarVisualSize, AvatarVisualSize);
+        avatarHostRect.anchoredPosition = Vector2.zero;
+
+        Image avatarHost = avatarHostGo.AddComponent<Image>();
+        avatarHost.sprite = GetWhiteSprite();
+        avatarHost.color = Color.white;
+        avatarHost.raycastTarget = false;
+        avatarHost.preserveAspect = true;
+
         PrepareAvatarTemplate(template);
         template.SetActive(false);
         _ui.AvatarTemplate = template;
@@ -432,26 +451,31 @@ public static partial class OtherPlayersOverlayPatch
         if (panel != null)
         {
             panel.enabled = false;
-            HideUltimateVisualField(panel, "powerText");
-            HideUltimateVisualField(panel, "gauge1");
-            HideUltimateVisualField(panel, "gauge2");
-            HideUltimateVisualField(panel, "gauge3");
-            HideUltimateVisualField(panel, "fireParticle1");
-            HideUltimateVisualField(panel, "fireParticle2");
-            HideUltimateVisualField(panel, "fireParticle3");
-            HideUltimateVisualField(panel, "lightParticle");
+            SetUltimateVisualFieldActive(panel, "powerText", true);
+            SetUltimateVisualFieldActive(panel, "gauge1", true);
+            SetUltimateVisualFieldActive(panel, "gauge2", true);
+            SetUltimateVisualFieldActive(panel, "gauge3", true);
+            SetUltimateVisualFieldActive(panel, "fireParticle1", false);
+            SetUltimateVisualFieldActive(panel, "fireParticle2", false);
+            SetUltimateVisualFieldActive(panel, "fireParticle3", false);
+            SetUltimateVisualFieldActive(panel, "lightParticle", false);
+
+            UltimateSkillTooltipSource tooltipSource = template.GetComponentInChildren<UltimateSkillTooltipSource>(true);
+            if (tooltipSource != null)
+            {
+                tooltipSource.enabled = false;
+            }
         }
 
-        CanvasGroup group = template.GetComponent<CanvasGroup>();
-        if (group != null)
-        {
-            group.alpha = 1f;
-            group.blocksRaycasts = false;
-            group.interactable = false;
-        }
+        ConfigureAvatarTemplateVisuals(template);
+
+        CanvasGroup group = GetOrAddCanvasGroup(template);
+        group.alpha = 1f;
+        group.blocksRaycasts = false;
+        group.interactable = false;
     }
 
-    private static void HideUltimateVisualField(UltimateSkillPanel panel, string fieldName)
+    private static void SetUltimateVisualFieldActive(UltimateSkillPanel panel, string fieldName, bool active)
     {
         if (panel == null || string.IsNullOrWhiteSpace(fieldName))
         {
@@ -463,13 +487,183 @@ public static partial class OtherPlayersOverlayPatch
             Component component = Traverse.Create(panel).Field(fieldName).GetValue<Component>();
             if (component != null)
             {
-                component.gameObject.SetActive(false);
+                component.gameObject.SetActive(active);
             }
         }
         catch
         {
             // ignored
         }
+    }
+
+    private static void ConfigureAvatarTemplateVisuals(GameObject template)
+    {
+        if (template == null)
+        {
+            return;
+        }
+
+        Transform bg = template.transform.Find("Root/Bg");
+        Transform skillImage = template.transform.Find("Root/SkillImage");
+
+        if (bg != null)
+        {
+            bg.SetAsFirstSibling();
+            SetGraphicTreeAlpha(bg, 1f);
+        }
+
+        if (skillImage != null)
+        {
+            skillImage.SetAsLastSibling();
+            SetGraphicTreeAlpha(skillImage, 1f);
+
+            if (skillImage is RectTransform skillImageRect)
+            {
+                skillImageRect.anchoredPosition = new Vector2(SkillImageOffsetX, SkillImageOffsetY);
+                skillImageRect.localScale = new Vector3(SkillImageScale, SkillImageScale, 1f);
+            }
+        }
+    }
+
+    private static void SetGraphicTreeAlpha(Transform root, float alpha)
+    {
+        if (root == null)
+        {
+            return;
+        }
+
+        foreach (Graphic graphic in root.GetComponentsInChildren<Graphic>(true))
+        {
+            if (graphic == null)
+            {
+                continue;
+            }
+
+            Color color = graphic.color;
+            color.a = alpha;
+            graphic.color = color;
+        }
+    }
+
+    private static void EnsureHealthBarTemplate()
+    {
+        if (_ui == null || _ui.EntriesRoot == null || _ui.HealthBarTemplate != null)
+        {
+            return;
+        }
+
+        UnitStatusWidget sourceWidget = null;
+        bool destroySource = false;
+
+        try
+        {
+            UnitStatusHud hud = UiManager.GetPanel<UnitStatusHud>();
+            if (hud != null)
+            {
+                sourceWidget = Traverse.Create(hud).Field("statusTemplate").GetValue<UnitStatusWidget>();
+                if (sourceWidget == null)
+                {
+                    if (GameDirector.Player != null && GameDirector.Player.Unit != null)
+                    {
+                        sourceWidget = hud.CreateStatusWidget(GameDirector.Player.Unit);
+                        destroySource = sourceWidget != null;
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        if (sourceWidget == null)
+        {
+            return;
+        }
+
+        GameObject template = UnityEngine.Object.Instantiate(sourceWidget.gameObject, _ui.EntriesRoot, false);
+        template.name = "RemotePlayerHealthBarTemplate";
+        PrepareHealthBarTemplate(template);
+        template.SetActive(false);
+        _ui.HealthBarTemplate = template;
+
+        if (destroySource && sourceWidget != null)
+        {
+            UnityEngine.Object.Destroy(sourceWidget.gameObject);
+        }
+    }
+
+    private static void PrepareHealthBarTemplate(GameObject template)
+    {
+        if (template == null)
+        {
+            return;
+        }
+
+        foreach (Graphic graphic in template.GetComponentsInChildren<Graphic>(true))
+        {
+            if (graphic != null)
+            {
+                graphic.raycastTarget = false;
+            }
+        }
+
+        CanvasGroup group = GetOrAddCanvasGroup(template);
+        group.alpha = 1f;
+        group.blocksRaycasts = false;
+        group.interactable = false;
+
+        RectTransform rect = template.GetComponent<RectTransform>();
+        ConfigureHealthBarRect(rect);
+        UnitStatusWidget widget = template.GetComponent<UnitStatusWidget>();
+        if (widget == null)
+        {
+            return;
+        }
+
+        widget.enabled = false;
+        widget.Unit = null;
+
+        ScenePositionTier sceneTier = template.GetComponent<ScenePositionTier>();
+        if (sceneTier != null)
+        {
+            sceneTier.enabled = false;
+        }
+
+        Transform statusEffectParent = TryGetUnitStatusTransform(widget, "statusEffectParent");
+        if (statusEffectParent != null)
+        {
+            statusEffectParent.gameObject.SetActive(false);
+        }
+
+        StatusEffectWidget statusEffectTemplate = TryGetUnitStatusField<StatusEffectWidget>(widget, "statusEffectTemplate");
+        if (statusEffectTemplate != null)
+        {
+            statusEffectTemplate.gameObject.SetActive(false);
+        }
+
+        HealthBar hpBar = TryGetUnitStatusField<HealthBar>(widget, "hpBar");
+        if (hpBar != null)
+        {
+            widget.SetPlayerHpBarLength(OverlayHealthBarVisualMaxHp);
+            hpBar.TweenHp(OverlayHealthBarVisualMaxHp, OverlayHealthBarVisualMaxHp, 0, 0, true);
+        }
+    }
+
+    private static void ConfigureHealthBarRect(RectTransform rect)
+    {
+        if (rect == null)
+        {
+            return;
+        }
+
+        rect.anchorMin = new Vector2(0.5f, 1f);
+        rect.anchorMax = new Vector2(0.5f, 1f);
+        rect.pivot = new Vector2(0f, 1f);
+        rect.anchoredPosition3D = HealthBarLocalPosition;
+        rect.localPosition = HealthBarLocalPosition;
+        rect.localScale = HealthBarLocalScale;
+        rect.localEulerAngles = Vector3.zero;
     }
 
     private static AvatarEntryUi EnsureAvatarEntry(string playerId)
@@ -506,30 +700,66 @@ public static partial class OtherPlayersOverlayPatch
         visualRect.anchorMin = new Vector2(0.5f, 1f);
         visualRect.anchorMax = new Vector2(0.5f, 1f);
         visualRect.pivot = new Vector2(0.5f, 1f);
-        visualRect.anchoredPosition = Vector2.zero;
-        visualRect.sizeDelta = new Vector2(AvatarVisualSize, AvatarVisualSize);
+        visualRect.anchoredPosition = new Vector2(0f, AvatarPanelOffsetY);
+        visualRect.localScale = new Vector3(AvatarPanelScale, AvatarPanelScale, 1f);
 
+        UltimateSkillPanel panel = visual.GetComponent<UltimateSkillPanel>();
         Image avatar = TryGetAvatarImageFromTemplate(visual) ?? CreateFallbackAvatarVisual(visual.transform);
         avatar.raycastTarget = false;
         avatar.preserveAspect = true;
 
+        TextMeshProUGUI powerText = TryGetUltimateField<TextMeshProUGUI>(panel, "powerText");
+
         TextMeshProUGUI name = CreateTmpText(root.transform, "Name", playerId, 15f);
         name.alignment = TextAlignmentOptions.Center;
         RectTransform nameRect = name.GetComponent<RectTransform>();
-        nameRect.anchorMin = new Vector2(0f, 0f);
-        nameRect.anchorMax = new Vector2(1f, 0f);
+        nameRect.anchorMin = new Vector2(0.5f, 0f);
+        nameRect.anchorMax = new Vector2(0.5f, 0f);
         nameRect.pivot = new Vector2(0.5f, 0f);
-        nameRect.anchoredPosition = new Vector2(0f, 20f);
-        nameRect.sizeDelta = new Vector2(0f, 20f);
+        nameRect.anchoredPosition = new Vector2(0f, 26f);
+        nameRect.sizeDelta = new Vector2(EntryLabelWidth, 20f);
 
         TextMeshProUGUI status = CreateTmpText(root.transform, "Status", "在线", 13f);
         status.alignment = TextAlignmentOptions.Center;
         RectTransform statusRect = status.GetComponent<RectTransform>();
-        statusRect.anchorMin = new Vector2(0f, 0f);
-        statusRect.anchorMax = new Vector2(1f, 0f);
+        statusRect.anchorMin = new Vector2(0.5f, 0f);
+        statusRect.anchorMax = new Vector2(0.5f, 0f);
         statusRect.pivot = new Vector2(0.5f, 0f);
-        statusRect.anchoredPosition = new Vector2(0f, 2f);
-        statusRect.sizeDelta = new Vector2(0f, 18f);
+        statusRect.anchoredPosition = new Vector2(0f, 6f);
+        statusRect.sizeDelta = new Vector2(EntryLabelWidth, 18f);
+
+        GameObject healthRoot = null;
+        RectTransform healthRootRect = null;
+        UnitStatusWidget healthWidget = null;
+        HealthBar healthBar = null;
+        CanvasGroup healthGroup = null;
+        TextMeshProUGUI healthName = null;
+
+        if (_ui.HealthBarTemplate != null)
+        {
+            healthRoot = UnityEngine.Object.Instantiate(_ui.HealthBarTemplate, root.transform, false);
+            healthRoot.name = "RemotePlayerHealthBarTemplate";
+            healthRoot.SetActive(true);
+            healthRootRect = healthRoot.GetComponent<RectTransform>();
+            ConfigureHealthBarRect(healthRootRect);
+            healthWidget = healthRoot.GetComponent<UnitStatusWidget>();
+            healthBar = TryGetUnitStatusField<HealthBar>(healthWidget, "hpBar");
+            healthGroup = GetOrAddCanvasGroup(healthRoot);
+
+            if (healthWidget != null)
+            {
+                healthWidget.SetPlayerHpBarLength(OverlayHealthBarVisualMaxHp);
+            }
+
+            healthName = CreateTmpText(root.transform, "HealthName", playerId, ResolveHealthNameFontSize(powerText));
+            healthName.alignment = TextAlignmentOptions.Left;
+            RectTransform healthNameRect = healthName.GetComponent<RectTransform>();
+            healthNameRect.anchorMin = new Vector2(0.5f, 1f);
+            healthNameRect.anchorMax = new Vector2(0.5f, 1f);
+            healthNameRect.pivot = new Vector2(0f, 0f);
+            healthNameRect.anchoredPosition = HealthNameAnchoredPosition;
+            healthNameRect.sizeDelta = new Vector2(HealthNameLabelWidth, HealthNameLabelHeight);
+        }
 
         var entry = new AvatarEntryUi
         {
@@ -539,6 +769,20 @@ public static partial class OtherPlayersOverlayPatch
             Avatar = avatar,
             Name = name,
             Status = status,
+            VisualGroup = GetOrAddCanvasGroup(visual),
+            PowerText = powerText,
+            Gauge1 = TryGetUltimateField<Image>(panel, "gauge1"),
+            Gauge2 = TryGetUltimateField<Image>(panel, "gauge2"),
+            Gauge3 = TryGetUltimateField<Image>(panel, "gauge3"),
+            Gauge1FontColor = TryGetUltimateColorField(panel, "gauge1FontColor", Color.white),
+            Gauge2FontColor = TryGetUltimateColorField(panel, "gauge2FontColor", Color.white),
+            Gauge3FontColor = TryGetUltimateColorField(panel, "gauge3FontColor", Color.white),
+            HealthName = healthName,
+            HealthRoot = healthRoot,
+            HealthRootRect = healthRootRect,
+            HealthWidget = healthWidget,
+            HealthBar = healthBar,
+            HealthGroup = healthGroup,
         };
 
         _ui.Entries[playerId] = entry;
@@ -557,10 +801,10 @@ public static partial class OtherPlayersOverlayPatch
             UltimateSkillPanel panel = visual.GetComponent<UltimateSkillPanel>();
             if (panel != null)
             {
-                Image skillImage = Traverse.Create(panel).Field("skillImage").GetValue<Image>();
+                Image skillImage = TryGetUltimateField<Image>(panel, "skillImage");
                 if (skillImage != null)
                 {
-                    return skillImage;
+                    return EnsureCircularAvatarImage(skillImage);
                 }
             }
         }
@@ -571,12 +815,126 @@ public static partial class OtherPlayersOverlayPatch
 
         try
         {
-            return visual.GetComponentsInChildren<Image>(true).FirstOrDefault();
+            Image image = visual.GetComponentsInChildren<Image>(true).FirstOrDefault();
+            return image != null ? EnsureCircularAvatarImage(image) : null;
         }
         catch
         {
             return null;
         }
+    }
+
+    private static Image EnsureCircularAvatarImage(Image avatarHost)
+    {
+        if (avatarHost == null)
+        {
+            return null;
+        }
+
+        RectTransform maskHost = EnsureCircularAvatarMaskHost(avatarHost);
+        if (maskHost == null)
+        {
+            return avatarHost;
+        }
+
+        Transform existing = maskHost.Find("MaskedAvatar");
+        if (existing != null)
+        {
+            Image existingImage = existing.GetComponent<Image>();
+            if (existingImage != null)
+            {
+                return existingImage;
+            }
+        }
+
+        Sprite originalSprite = avatarHost.sprite;
+        Color originalColor = avatarHost.color;
+
+        GameObject avatarGo = new("MaskedAvatar");
+        avatarGo.transform.SetParent(maskHost, false);
+
+        RectTransform rect = avatarGo.AddComponent<RectTransform>();
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.offsetMin = AvatarMaskedImageOffset;
+        rect.offsetMax = AvatarMaskedImageOffset;
+        rect.localScale = Vector3.one;
+
+        Image maskedAvatar = avatarGo.AddComponent<Image>();
+        maskedAvatar.sprite = originalSprite;
+        maskedAvatar.color = originalColor;
+        maskedAvatar.raycastTarget = false;
+        maskedAvatar.preserveAspect = true;
+        maskedAvatar.maskable = true;
+        return maskedAvatar;
+    }
+
+    private static RectTransform EnsureCircularAvatarMaskHost(Image avatarHost)
+    {
+        if (avatarHost == null)
+        {
+            return null;
+        }
+
+        RectTransform sourceRect = avatarHost.rectTransform;
+        Transform parent = avatarHost.transform.parent ?? avatarHost.transform;
+        Transform legacyBackdrop = parent.Find("CircularAvatarBackdrop");
+        if (legacyBackdrop != null)
+        {
+            UnityEngine.Object.Destroy(legacyBackdrop.gameObject);
+        }
+
+        Transform existing = parent.Find("CircularAvatarMaskHost");
+
+        RectTransform maskRect;
+        Image maskImage;
+        if (existing is RectTransform existingRect)
+        {
+            maskRect = existingRect;
+            maskImage = existingRect.GetComponent<Image>() ?? existingRect.gameObject.AddComponent<Image>();
+        }
+        else
+        {
+            GameObject maskGo = new("CircularAvatarMaskHost");
+            maskGo.transform.SetParent(parent, false);
+            maskRect = maskGo.AddComponent<RectTransform>();
+            maskImage = maskGo.AddComponent<Image>();
+        }
+
+        maskRect.anchorMin = sourceRect.anchorMin;
+        maskRect.anchorMax = sourceRect.anchorMax;
+        maskRect.pivot = sourceRect.pivot;
+        maskRect.sizeDelta = sourceRect.sizeDelta;
+        maskRect.anchoredPosition = sourceRect.anchoredPosition;
+        maskRect.localPosition = AvatarMaskHostLocalPosition;
+        maskRect.localScale = AvatarMaskHostLocalScale;
+        maskRect.localEulerAngles = Vector3.zero;
+        maskRect.SetSiblingIndex(avatarHost.transform.GetSiblingIndex());
+
+        maskImage.sprite = GetCircleMaskSprite();
+        maskImage.color = Color.white;
+        maskImage.type = Image.Type.Simple;
+        maskImage.preserveAspect = false;
+        maskImage.raycastTarget = false;
+
+        Mask mask = maskRect.gameObject.GetComponent<Mask>();
+        if (mask == null)
+        {
+            mask = maskRect.gameObject.AddComponent<Mask>();
+        }
+
+        mask.showMaskGraphic = false;
+
+        Mask legacyMask = avatarHost.gameObject.GetComponent<Mask>();
+        if (legacyMask != null)
+        {
+            legacyMask.enabled = false;
+        }
+
+        avatarHost.enabled = false;
+        avatarHost.raycastTarget = false;
+        return maskRect;
     }
 
     private static Image CreateFallbackAvatarVisual(Transform parent)
@@ -617,6 +975,13 @@ public static partial class OtherPlayersOverlayPatch
             entry.Name.color = isConnected ? Color.white : new Color(0.78f, 0.78f, 0.78f, 1f);
         }
 
+        if (entry.HealthName != null)
+        {
+            entry.HealthName.fontSize = ResolveHealthNameFontSize(entry.PowerText);
+            entry.HealthName.text = $"{displayName}{hostTag}";
+            entry.HealthName.color = isConnected ? Color.white : new Color(0.78f, 0.78f, 0.78f, 1f);
+        }
+
         if (entry.Status != null)
         {
             entry.Status.text = isConnected ? "在线" : "离线";
@@ -626,8 +991,167 @@ public static partial class OtherPlayersOverlayPatch
         if (entry.Avatar != null)
         {
             entry.Avatar.sprite = TryGetAvatarSprite(player.CharacterId) ?? GetWhiteSprite();
-            entry.Avatar.color = isConnected ? Color.white : new Color(0.55f, 0.55f, 0.55f, 0.95f);
+            entry.Avatar.color = isConnected ? Color.white : new Color(0.55f, 0.55f, 0.55f, 1f);
         }
+
+        ApplyBattleState(entry, player, isConnected);
+    }
+
+    private static void ApplyBattleState(AvatarEntryUi entry, PlayerSummary player, bool isConnected)
+    {
+        bool hasBattleState = TryGetRemoteBattleState(player, out RemoteBattleState battleState);
+
+        if (entry.VisualGroup != null)
+        {
+            entry.VisualGroup.alpha = 1f;
+        }
+
+        if (entry.HealthGroup != null)
+        {
+            entry.HealthGroup.alpha = 1f;
+        }
+
+        if (hasBattleState)
+        {
+            ApplyPowerCharge(entry, battleState, isConnected);
+            ApplyHealthBar(entry, battleState);
+            return;
+        }
+
+        ClearPowerCharge(entry);
+    }
+
+    private static void ApplyPowerCharge(AvatarEntryUi entry, RemoteBattleState battleState, bool isConnected)
+    {
+        if (entry == null)
+        {
+            return;
+        }
+
+        int powerPerLevel = Mathf.Max(1, battleState.PowerPerLevel);
+        int maxPowerLevel = Mathf.Max(1, battleState.MaxPowerLevel <= 0 ? 3 : battleState.MaxPowerLevel);
+        int maxPower = powerPerLevel * maxPowerLevel;
+        int currentPower = Mathf.Clamp(battleState.CurrentPower, 0, maxPower);
+
+        if (entry.LastCurrentPower == currentPower && entry.LastPowerPerLevel == powerPerLevel && entry.LastMaxPowerLevel == maxPowerLevel)
+        {
+            return;
+        }
+
+        int currentLevel = Mathf.Clamp(currentPower / powerPerLevel, 0, 3);
+        int residue = currentPower % powerPerLevel;
+
+        if (entry.Gauge1 != null)
+        {
+            entry.Gauge1.fillAmount = currentLevel == 0 ? (float)residue / powerPerLevel : 1f;
+        }
+
+        if (entry.Gauge2 != null)
+        {
+            entry.Gauge2.fillAmount = currentLevel switch
+            {
+                0 => 0f,
+                1 => (float)residue / powerPerLevel,
+                _ => 1f,
+            };
+        }
+
+        if (entry.Gauge3 != null)
+        {
+            entry.Gauge3.fillAmount = currentLevel switch
+            {
+                0 => 0f,
+                1 => 0f,
+                2 => (float)residue / powerPerLevel,
+                _ => 1f,
+            };
+        }
+
+        if (entry.PowerText != null)
+        {
+            Color textColor = currentLevel switch
+            {
+                1 => entry.Gauge1FontColor,
+                2 => entry.Gauge2FontColor,
+                3 => entry.Gauge3FontColor,
+                _ => Color.white,
+            };
+
+            if (!isConnected)
+            {
+                textColor = Color.Lerp(textColor, new Color(0.74f, 0.74f, 0.74f, 1f), 0.5f);
+            }
+
+            entry.PowerText.text = $"<color=#{ColorUtility.ToHtmlStringRGB(textColor)}>{currentPower} </color>/ {powerPerLevel}";
+        }
+
+        entry.LastCurrentPower = currentPower;
+        entry.LastPowerPerLevel = powerPerLevel;
+        entry.LastMaxPowerLevel = maxPowerLevel;
+    }
+
+    private static void ClearPowerCharge(AvatarEntryUi entry)
+    {
+        if (entry == null)
+        {
+            return;
+        }
+
+        if (entry.Gauge1 != null)
+        {
+            entry.Gauge1.fillAmount = 0f;
+        }
+
+        if (entry.Gauge2 != null)
+        {
+            entry.Gauge2.fillAmount = 0f;
+        }
+
+        if (entry.Gauge3 != null)
+        {
+            entry.Gauge3.fillAmount = 0f;
+        }
+
+        if (entry.PowerText != null)
+        {
+            entry.PowerText.text = "-- / --";
+        }
+
+        entry.LastCurrentPower = int.MinValue;
+        entry.LastPowerPerLevel = int.MinValue;
+        entry.LastMaxPowerLevel = int.MinValue;
+    }
+
+    private static void ApplyHealthBar(AvatarEntryUi entry, RemoteBattleState battleState)
+    {
+        if (entry?.HealthBar == null || entry.HealthWidget == null)
+        {
+            return;
+        }
+
+        if (entry.HealthRoot != null && !entry.HealthRoot.activeSelf)
+        {
+            entry.HealthRoot.SetActive(true);
+        }
+
+        int maxHealth = Mathf.Max(1, battleState.MaxHealth);
+        int health = Mathf.Clamp(battleState.Health, 0, maxHealth);
+        int shield = Mathf.Max(0, battleState.Shield);
+        int block = Mathf.Max(0, battleState.Block);
+
+        if (entry.LastHealth == health && entry.LastMaxHealth == maxHealth && entry.LastShield == shield && entry.LastBlock == block)
+        {
+            return;
+        }
+
+        entry.HealthWidget.SetPlayerHpBarLength(Mathf.Min(maxHealth, OverlayHealthBarVisualMaxHp));
+        entry.HealthBar.TweenHp(health, maxHealth, shield, block, !entry.HasInitializedHealthBar);
+
+        entry.LastHealth = health;
+        entry.LastMaxHealth = maxHealth;
+        entry.LastShield = shield;
+        entry.LastBlock = block;
+        entry.HasInitializedHealthBar = true;
     }
 
     private static void LayoutAvatarEntries(List<AvatarEntryUi> entries)
@@ -637,22 +1161,37 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
-        float availableWidth = _ui.EntriesRoot.rect.width;
-        if (availableWidth <= 0f)
-        {
-            availableWidth = 900f;
-        }
-
-        float contentWidth = Mathf.Max(360f, availableWidth - 24f);
-        float requiredWidth = entries.Count * AvatarEntryBaseWidth + Mathf.Max(0, entries.Count - 1) * AvatarEntrySpacing;
-        float scale = requiredWidth > contentWidth
-            ? Mathf.Clamp(contentWidth / requiredWidth, 0.45f, 1f)
+        float availableHeight = ResolveAvailableOverlayHeight();
+        float requiredHeight = entries.Count * AvatarEntryBaseHeight + Mathf.Max(0, entries.Count - 1) * AvatarEntrySpacing;
+        float scale = requiredHeight > availableHeight
+            ? Mathf.Clamp(availableHeight / requiredHeight, 0.38f, 1f)
             : 1f;
 
         float itemWidth = AvatarEntryBaseWidth * scale;
+        float itemHeight = AvatarEntryBaseHeight * scale;
         float spacing = AvatarEntrySpacing * scale;
-        float totalWidth = entries.Count * itemWidth + Mathf.Max(0, entries.Count - 1) * spacing;
-        float startX = -totalWidth * 0.5f + itemWidth * 0.5f;
+        float totalHeight = entries.Count * itemHeight + Mathf.Max(0, entries.Count - 1) * spacing;
+
+        float availableWidth = _ui.RootRect != null && _ui.RootRect.rect.width > 0f
+            ? _ui.RootRect.rect.width
+            : _ui.EntriesRoot.rect.width;
+        if (availableWidth <= 0f)
+        {
+            availableWidth = OverlayRightMinWidth;
+        }
+
+        if (_ui.RootRect != null)
+        {
+            RuntimeEditorTransformGuard.ApplyRectTransform(_ui.RootRect, rect =>
+            {
+                rect.sizeDelta = new Vector2(availableWidth, totalHeight + 34f);
+            });
+        }
+
+        RuntimeEditorTransformGuard.ApplyRectTransform(_ui.EntriesRoot, rect =>
+        {
+            rect.sizeDelta = new Vector2(availableWidth, totalHeight);
+        });
 
         for (int i = 0; i < entries.Count; i++)
         {
@@ -662,13 +1201,26 @@ public static partial class OtherPlayersOverlayPatch
                 continue;
             }
 
-            entry.RootRect.anchorMin = new Vector2(0.5f, 1f);
-            entry.RootRect.anchorMax = new Vector2(0.5f, 1f);
-            entry.RootRect.pivot = new Vector2(0.5f, 1f);
-            entry.RootRect.sizeDelta = new Vector2(AvatarEntryBaseWidth, AvatarEntryBaseHeight);
-            entry.RootRect.localScale = new Vector3(scale, scale, 1f);
-            entry.RootRect.anchoredPosition = new Vector2(startX + i * (itemWidth + spacing), 0f);
+            RuntimeEditorTransformGuard.ApplyRectTransform(entry.RootRect, rect =>
+            {
+                rect.anchorMin = new Vector2(1f, 1f);
+                rect.anchorMax = new Vector2(1f, 1f);
+                rect.pivot = new Vector2(0.5f, 1f);
+                rect.sizeDelta = new Vector2(AvatarEntryBaseWidth, AvatarEntryBaseHeight);
+                rect.localScale = new Vector3(scale, scale, 1f);
+                rect.anchoredPosition = new Vector2(-itemWidth * 0.5f, -i * (itemHeight + spacing));
+            });
         }
+    }
+
+    private static float ResolveAvailableOverlayHeight()
+    {
+        RectTransform parentRect = _ui?.RootRect?.parent as RectTransform;
+        float parentHeight = parentRect != null && parentRect.rect.height > 0f
+            ? parentRect.rect.height
+            : 1080f;
+        float topOffset = Mathf.Abs(ResolveOverlayRightAnchoredPosition().y);
+        return Mathf.Max(AvatarEntryBaseHeight, parentHeight - topOffset - 72f);
     }
 
     /// <summary>
@@ -700,6 +1252,16 @@ public static partial class OtherPlayersOverlayPatch
         return tmp;
     }
 
+    private static float ResolveHealthNameFontSize(TextMeshProUGUI powerText)
+    {
+        if (powerText == null)
+        {
+            return HealthNameFallbackFontSize;
+        }
+
+        return Mathf.Max(1f, powerText.fontSize * AvatarPanelScale);
+    }
+
     #region 工具方法
 
     private static bool IsBattleOverlayActive()
@@ -722,52 +1284,47 @@ public static partial class OtherPlayersOverlayPatch
             return false;
         }
 
-        RectTransform anchor = TryGetBaseManaAnchorRect();
-        RectTransform parentRect = TryGetBaseManaOverlayParentRect(anchor);
+        RectTransform parentRect = TryGetUiLayerTransform("topLayer") as RectTransform
+            ?? TryGetUiLayerTransform("topmostLayer") as RectTransform
+            ?? TryGetBaseManaOverlayParentRect(TryGetBaseManaAnchorRect())
+            ?? UiManager.Instance?.transform as RectTransform;
 
         if (parentRect == null)
         {
-            Transform fallback = TryGetUiLayerTransform("topLayer") ?? TryGetUiLayerTransform("topmostLayer") ?? UiManager.Instance?.transform;
-            parentRect = fallback as RectTransform;
-            if (parentRect == null)
-            {
-                return false;
-            }
-
-            if (_ui.RootRect.parent != parentRect)
-            {
-                _ui.RootRect.SetParent(parentRect, false);
-            }
-
-            _ui.RootRect.anchorMin = new Vector2(0.5f, 1f);
-            _ui.RootRect.anchorMax = new Vector2(0.5f, 1f);
-            _ui.RootRect.pivot = new Vector2(0.5f, 1f);
-            _ui.RootRect.anchoredPosition = new Vector2(0f, -180f);
+            return false;
         }
-        else
+
+        if (_ui.RootRect.parent != parentRect)
         {
-            if (_ui.RootRect.parent != parentRect)
-            {
-                _ui.RootRect.SetParent(parentRect, false);
-            }
-
-            Vector3 worldBottomCenter = anchor.TransformPoint(new Vector3(anchor.rect.center.x, anchor.rect.yMin, 0f));
-            Vector3 localPoint = parentRect.InverseTransformPoint(worldBottomCenter);
-
-            _ui.RootRect.anchorMin = new Vector2(0.5f, 0.5f);
-            _ui.RootRect.anchorMax = new Vector2(0.5f, 0.5f);
-            _ui.RootRect.pivot = new Vector2(0.5f, 1f);
-            _ui.RootRect.anchoredPosition = new Vector2(localPoint.x, localPoint.y - AvatarStripYOffset);
+            _ui.RootRect.SetParent(parentRect, false);
         }
 
         float parentWidth = parentRect.rect.width;
-        float width = parentWidth > 0f ? Mathf.Clamp(parentWidth * 0.6f, 520f, 1500f) : 900f;
-        _ui.RootRect.sizeDelta = new Vector2(width, AvatarEntryBaseHeight + 34f);
+        float width = parentWidth > 0f
+            ? Mathf.Clamp(parentWidth * OverlayRightWidthFactor, OverlayRightMinWidth, OverlayRightMaxWidth)
+            : 1040f;
+        RuntimeEditorTransformGuard.ApplyRectTransform(_ui.RootRect, rect =>
+        {
+            rect.anchorMin = new Vector2(1f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(1f, 1f);
+            rect.anchoredPosition = ResolveOverlayRightAnchoredPosition();
+            rect.sizeDelta = new Vector2(width, AvatarEntryBaseHeight + 34f);
+            Vector3 localPosition = rect.localPosition;
+            localPosition.x = OverlayRootLocalPositionX;
+            rect.localPosition = localPosition;
+        });
 
         if (_ui.EntriesRoot != null)
         {
-            _ui.EntriesRoot.sizeDelta = new Vector2(width, AvatarEntryBaseHeight);
-            _ui.EntriesRoot.anchoredPosition = Vector2.zero;
+            RuntimeEditorTransformGuard.ApplyRectTransform(_ui.EntriesRoot, rect =>
+            {
+                rect.anchorMin = new Vector2(1f, 1f);
+                rect.anchorMax = new Vector2(1f, 1f);
+                rect.pivot = new Vector2(1f, 1f);
+                rect.sizeDelta = new Vector2(width, AvatarEntryBaseHeight);
+                rect.anchoredPosition = Vector2.zero;
+            });
         }
 
         return true;
@@ -811,6 +1368,19 @@ public static partial class OtherPlayersOverlayPatch
         }
 
         return baseManaRect.parent as RectTransform;
+    }
+
+    private static Vector2 ResolveOverlayRightAnchoredPosition()
+    {
+        ConfigManager config = Plugin.ConfigManager;
+        if (config == null)
+        {
+            return DefaultOverlayRightAnchoredPosition;
+        }
+
+        return new Vector2(
+            config.OtherPlayersOverlayRightOffsetX.Value,
+            config.OtherPlayersOverlayRightOffsetY.Value);
     }
 
     private static RectTransform TryGetPrivateRectTransform(object instance, string fieldName)
@@ -869,6 +1439,90 @@ public static partial class OtherPlayersOverlayPatch
         }
     }
 
+    private static CanvasGroup GetOrAddCanvasGroup(GameObject gameObject)
+    {
+        if (gameObject == null)
+        {
+            return null;
+        }
+
+        CanvasGroup group = gameObject.GetComponent<CanvasGroup>();
+        return group ?? gameObject.AddComponent<CanvasGroup>();
+    }
+
+    private static T TryGetUltimateField<T>(UltimateSkillPanel panel, string fieldName) where T : class
+    {
+        if (panel == null || string.IsNullOrWhiteSpace(fieldName))
+        {
+            return null;
+        }
+
+        try
+        {
+            return Traverse.Create(panel).Field(fieldName).GetValue<T>();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static Color TryGetUltimateColorField(UltimateSkillPanel panel, string fieldName, Color fallback)
+    {
+        if (panel == null || string.IsNullOrWhiteSpace(fieldName))
+        {
+            return fallback;
+        }
+
+        try
+        {
+            return Traverse.Create(panel).Field(fieldName).GetValue<Color>();
+        }
+        catch
+        {
+            return fallback;
+        }
+    }
+
+    private static T TryGetUnitStatusField<T>(UnitStatusWidget widget, string fieldName) where T : class
+    {
+        if (widget == null || string.IsNullOrWhiteSpace(fieldName))
+        {
+            return null;
+        }
+
+        try
+        {
+            return Traverse.Create(widget).Field(fieldName).GetValue<T>();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static T TryGetHealthBarField<T>(HealthBar healthBar, string fieldName) where T : class
+    {
+        if (healthBar == null || string.IsNullOrWhiteSpace(fieldName))
+        {
+            return null;
+        }
+
+        try
+        {
+            return Traverse.Create(healthBar).Field(fieldName).GetValue<T>();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static Transform TryGetUnitStatusTransform(UnitStatusWidget widget, string fieldName)
+    {
+        return TryGetUnitStatusField<Transform>(widget, fieldName);
+    }
+
     #endregion
 
     #region 资源缓存
@@ -878,6 +1532,9 @@ public static partial class OtherPlayersOverlayPatch
 
     /// <summary>缓存的白色纹理</summary>
     private static Texture2D _whiteTexture;
+
+    /// <summary>缓存的圆形裁切Sprite</summary>
+    private static Sprite _circleMaskSprite;
 
     /// <summary>
     /// 获取白色Sprite（用作背景和按钮图像）
@@ -901,6 +1558,37 @@ public static partial class OtherPlayersOverlayPatch
         // 从纹理创建Sprite
         _whiteSprite = Sprite.Create(_whiteTexture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
         return _whiteSprite;
+    }
+
+    private static Sprite GetCircleMaskSprite()
+    {
+        if (_circleMaskSprite != null)
+        {
+            return _circleMaskSprite;
+        }
+
+        const int size = 64;
+        Texture2D texture = new(size, size, TextureFormat.RGBA32, false);
+        texture.filterMode = FilterMode.Bilinear;
+
+        float radius = (size - 1) * 0.5f * AvatarCircleMaskFillFactor;
+        float center = (size - 1) * 0.5f;
+        float radiusSquared = radius * radius;
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float dx = x - center;
+                float dy = y - center;
+                float alpha = dx * dx + dy * dy <= radiusSquared ? 1f : 0f;
+                texture.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
+            }
+        }
+
+        texture.Apply(false, true);
+        _circleMaskSprite = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+        return _circleMaskSprite;
     }
 
     #endregion
@@ -952,6 +1640,7 @@ public static partial class OtherPlayersOverlayPatch
         public RectTransform RootRect { get; set; }
         public RectTransform EntriesRoot { get; set; }
         public GameObject AvatarTemplate { get; set; }
+        public GameObject HealthBarTemplate { get; set; }
         public Dictionary<string, AvatarEntryUi> Entries { get; set; }
     }
 
@@ -963,6 +1652,28 @@ public static partial class OtherPlayersOverlayPatch
         public Image Avatar { get; set; }
         public TextMeshProUGUI Name { get; set; }
         public TextMeshProUGUI Status { get; set; }
+        public CanvasGroup VisualGroup { get; set; }
+        public TextMeshProUGUI PowerText { get; set; }
+        public Image Gauge1 { get; set; }
+        public Image Gauge2 { get; set; }
+        public Image Gauge3 { get; set; }
+        public Color Gauge1FontColor { get; set; }
+        public Color Gauge2FontColor { get; set; }
+        public Color Gauge3FontColor { get; set; }
+        public TextMeshProUGUI HealthName { get; set; }
+        public GameObject HealthRoot { get; set; }
+        public RectTransform HealthRootRect { get; set; }
+        public UnitStatusWidget HealthWidget { get; set; }
+        public HealthBar HealthBar { get; set; }
+        public CanvasGroup HealthGroup { get; set; }
+        public int LastCurrentPower { get; set; } = int.MinValue;
+        public int LastPowerPerLevel { get; set; } = int.MinValue;
+        public int LastMaxPowerLevel { get; set; } = int.MinValue;
+        public int LastHealth { get; set; } = int.MinValue;
+        public int LastMaxHealth { get; set; } = int.MinValue;
+        public int LastShield { get; set; } = int.MinValue;
+        public int LastBlock { get; set; } = int.MinValue;
+        public bool HasInitializedHealthBar { get; set; }
     }
 }
     #endregion

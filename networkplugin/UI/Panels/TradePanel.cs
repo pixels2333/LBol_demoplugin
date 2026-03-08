@@ -1834,17 +1834,20 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
             bool hasSelfLoc = OtherPlayersOverlayPatch.TryGetSelfLocation(out int selfStage, out int selfX, out int selfY, out string selfLocName);
 
-            // Some environments may not inject the virtual debug player into the snapshot early enough.
-            // If debug toggles are enabled, synthesize an "AI Default" entry aligned to self location so it
-            // obeys the strict same-node rule and can be used for local UI testing.
+            // Some environments may not inject the virtual debug players into the snapshot early enough.
+            // If debug toggles are enabled, synthesize local test entries aligned to self location so they
+            // obey the strict same-node rule and can be used for local UI testing.
             if (hasSelfLoc && IsLocalDebugTradeAllowed())
             {
                 try
                 {
-                    if (players.All(p => !string.Equals(p.PlayerId, "aidefault", StringComparison.Ordinal)))
+                    string loc = IsShopLikeLocation(selfLocName) ? selfLocName : "Trade";
+                    foreach (var debugPlayer in OtherPlayersOverlayPatch.EnumerateVirtualAiDebugPlayers())
                     {
-                        string loc = IsShopLikeLocation(selfLocName) ? selfLocName : "Trade";
-                        players.Add(("aidefault", "AI Default", true, false, selfStage, selfX, selfY, loc, null));
+                        if (players.All(p => !string.Equals(p.PlayerId, debugPlayer.PlayerId, StringComparison.Ordinal)))
+                        {
+                            players.Add((debugPlayer.PlayerId, debugPlayer.PlayerName, true, false, selfStage, selfX, selfY, loc, null));
+                        }
                     }
                 }
                 catch
@@ -1980,9 +1983,9 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
             // Connected: proceed with the real host-driven session.
             // Offline/local debug: keep UI local (no network requests).
-            if (IsLocalDebugTradeAllowed() && string.Equals(partnerPlayerId, "aidefault", StringComparison.Ordinal))
+            if (IsLocalDebugTradeAllowed() && OtherPlayersOverlayPatch.IsVirtualAiDebugPlayer(partnerPlayerId))
             {
-                // Even when connected, allow selecting aidefault to start a purely local UI test session.
+                // Even when connected, allow selecting debug AI partners to start a purely local UI test session.
                 _localDebugTradeMode = true;
                 PopulateLocalDebugRemoteOffer();
                 EnsureOfferEditorOverlay();
@@ -1990,7 +1993,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 EnsureExhibitPickerOverlay();
                 SetTradeDetailsVisible(true);
                 cancelButton?.gameObject.SetActive(_canCancel);
-                UpdateUIStatus("本地调试交易：AI Default（不走服务器）");
+                UpdateUIStatus($"本地调试交易：{OtherPlayersOverlayPatch.ResolveDisplayName(partnerPlayerId, partnerPlayerName, isLocal: false)}（不走服务器）");
                 return;
             }
 

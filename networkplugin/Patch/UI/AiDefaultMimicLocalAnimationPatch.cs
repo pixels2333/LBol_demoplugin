@@ -11,8 +11,8 @@ using NetworkPlugin.Network.Client;
 namespace NetworkPlugin.Patch.UI;
 
 /// <summary>
-/// Debug-only: when enabled, mirrors the local player's battle animations to the virtual remote player (PlayerId=aidefault).
-/// This helps validate the "remote player" render path in battle without a real network peer.
+/// Debug-only: when enabled, mirrors the local player's battle animations to the virtual remote players
+/// (`aidefault` / `aidefault2`) to validate the remote render path without a real network peer.
 /// </summary>
 [HarmonyPatch]
 internal static class AiDefaultMimicLocalAnimationPatch
@@ -97,13 +97,16 @@ internal static class AiDefaultMimicLocalAnimationPatch
                 return;
             }
 
-            if (!OtherPlayersOverlayPatch.TryGetRemoteCharacterUnitView("aidefault", out UnitView remote) || remote == null)
-            {
-                return;
-            }
-
             _isMirroring = true;
-            remote.PlayAnimation(animationName);
+            foreach (var debugPlayer in OtherPlayersOverlayPatch.EnumerateVirtualAiDebugPlayers())
+            {
+                if (!OtherPlayersOverlayPatch.TryGetRemoteCharacterUnitView(debugPlayer.PlayerId, out UnitView remote) || remote == null)
+                {
+                    continue;
+                }
+
+                remote.PlayAnimation(animationName);
+            }
         }
         catch
         {

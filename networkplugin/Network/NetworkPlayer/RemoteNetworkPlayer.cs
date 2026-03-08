@@ -111,6 +111,21 @@ public sealed class RemoteNetworkPlayer : INetworkPlayer
     public bool ultimatePower { get; set; }
 
     /// <summary>
+    /// 当前符卡积攒能量。
+    /// </summary>
+    public int CurrentPower { get; set; }
+
+    /// <summary>
+    /// 每段所需符卡积攒能量。
+    /// </summary>
+    public int PowerPerLevel { get; set; }
+
+    /// <summary>
+    /// 最大可显示的充能段数。
+    /// </summary>
+    public int MaxPowerLevel { get; set; } = 3;
+
+    /// <summary>
     /// 地图位置 X 坐标；未知时为 <c>-1</c>。
     /// </summary>
     public int location_X { get; set; } = -1;

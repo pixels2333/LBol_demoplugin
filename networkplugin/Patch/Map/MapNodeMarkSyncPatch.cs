@@ -12,6 +12,7 @@ using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.NetworkPlayer;
+using NetworkPlugin.Utils;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -593,7 +594,10 @@ public static class MapNodeMarkSyncPatch
             RectTransform rt = img.GetComponent<RectTransform>();
             if (rt != null)
             {
-                rt.anchoredPosition = offsets[i];
+                RuntimeEditorTransformGuard.ApplyRectTransform(rt, rectTransform =>
+                {
+                    rectTransform.anchoredPosition = offsets[i];
+                });
             }
         }
     }

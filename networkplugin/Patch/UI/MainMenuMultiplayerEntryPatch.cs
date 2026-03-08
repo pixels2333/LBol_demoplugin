@@ -15,6 +15,7 @@ using NetworkPlugin.Configuration;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Server;
+using NetworkPlugin.Utils;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -346,7 +347,10 @@ public static class MainMenuMultiplayerEntryPatch
             newButton.transform.SetSiblingIndex(museumIndexOld);
 
             // 把新按钮摆到“收集总览”原本的位置。
-            newRect.anchoredPosition = museumPosOld;
+            RuntimeEditorTransformGuard.ApplyRectTransform(newRect, rect =>
+            {
+                rect.anchoredPosition = museumPosOld;
+            });
 
             // 将“收集总览”以及其后所有按钮下移一个步长，腾出一行。
             int newIndex = newButton.transform.GetSiblingIndex();
@@ -369,7 +373,10 @@ public static class MainMenuMultiplayerEntryPatch
                     continue;
                 }
 
-                rt.anchoredPosition += step;
+                RuntimeEditorTransformGuard.ApplyRectTransform(rt, rect =>
+                {
+                    rect.anchoredPosition += step;
+                });
             }
 
             return true;
@@ -640,11 +647,20 @@ public static class MainMenuMultiplayerEntryPatch
                     Vector2 leftPos = srcRect.anchoredPosition + new Vector2(-dx, 0f);
 
                     // 先尝试右侧；若会越界则改为左侧。
-                    dstRect.anchoredPosition = rightPos;
-                    if (canvasRect != null && !IsFullyInside(dstRect, canvasRect, paddingWorld: 0f))
+                    Vector2 targetAnchoredPosition = rightPos;
+                    if (canvasRect != null)
                     {
-                        dstRect.anchoredPosition = leftPos;
+                        dstRect.anchoredPosition = rightPos;
+                        if (!IsFullyInside(dstRect, canvasRect, paddingWorld: 0f))
+                        {
+                            targetAnchoredPosition = leftPos;
+                        }
                     }
+
+                    RuntimeEditorTransformGuard.ApplyRectTransform(dstRect, rect =>
+                    {
+                        rect.anchoredPosition = targetAnchoredPosition;
+                    });
 
                     // 最后兜底：无论选了哪边，都钳制在画布范围内。
                     if (canvasRect != null)

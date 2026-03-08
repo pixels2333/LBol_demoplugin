@@ -11,6 +11,21 @@
 - **[networkplugin]**: 修正按钮颜色逻辑，移除确认/添加按钮的错误红色样式。
 - **[networkplugin]**: 调整报价编辑器（Offer Editor）按钮缩放比例，提升布局平衡感。
 - **[networkplugin]**: 升级 UI 版本至 `v6`，确保修改实时生效。
+- **[networkplugin]**: 完成 `OtherPlayersOverlay` 原生战斗 UI 升级：保留 `UltimateSkillPanel` 的三段符卡充能条与 `powerText`，将 `skillImage` 替换为远端角色头像，并在条目右侧复用原生 `HealthBar` 显示远端 HP / Shield / Block。
+- **[networkplugin]**: 修正 `OtherPlayersOverlay` 原生头像条布局：不再把复制出的 `UltimateSkillPanel` 压成小方块，而是缩放整块面板并重新居中，使头像继续处于原生头像框内，三段能量槽保持原始相对位置。
+- **[networkplugin]**: 继续微调 `OtherPlayersOverlay` 原生头像条：显式固定 `Root/Bg` 在下层、`Root/SkillImage` 在上层，并将两者透明度收敛为 `1`，同时细调头像图与右侧原生血条的局部偏移。
+- **[networkplugin]**: 调整 `OtherPlayersOverlay` 右侧血条结构：隐藏 `RemotePlayerHealthBar` 源模板，仅在玩家条目内生成可见的 `RemotePlayerHealthBarTemplate`，并删除旧 `HealthBar` 命名，避免层级中同时出现模板与实例造成混淆。
+- **[networkplugin]**: 继续修正 `OtherPlayersOverlay` 右侧血条：增大条目宽度与血条缩放，改为固定紧凑视觉长度，并把血条整体下压到头像框右侧中部，避免出现位置偏高、尺寸过小的问题。
+- **[networkplugin]**: 纠正 `OtherPlayersOverlay` 右侧血条定位目标：将隐藏源模板恢复到 `NetworkPlugin_OtherPlayersOverlay/EntriesRoot/RemotePlayerHealthBarTemplate`，并让源模板与条目实例共享同一套 RectTransform 配置，避免只改实例或只改错误节点导致调位无效。
+- **[networkplugin]**: 按截图精确收口 `OtherPlayersOverlay` 血条节点属性：`RemotePlayerHealthBarTemplate` 固定为 `localPosition=(260,-390,0)`、`localScale=(0.62,0.62,1)`，`HealthBar/HealthText` 固定为 `localPosition=(300,0,0)`、`localScale=(1,1,1)`。
+- **[networkplugin]**: 为 `OtherPlayersOverlay` 右侧血条新增上方玩家名文本 `HealthName`，并复用现有 `ResolveDisplayName(...) + hostTag` 显示逻辑，让血条区域可直接看到对应玩家名称。
+- **[networkplugin]**: 放大 `OtherPlayersOverlay` 右侧血条上方 `HealthName` 的字号，并同步上移文本锚点与高度，避免字体增大后与血条或周边控件重叠。
+- **[networkplugin]**: 将 `OtherPlayersOverlay` 右侧血条上方 `HealthName` 的字号来源改为跟随 `AvatarEntry/Visual/Root/Power` 的可视字号（按 `powerText.fontSize * AvatarPanelScale` 计算），避免继续依赖固定常量导致和原生面板不一致。
+- **[networkplugin]**: 将 `OtherPlayersOverlay` 右侧血条上方 `HealthName` 改为和血条左边界对齐：文本锚点 x 改为直接复用 `HealthBarLocalPosition.x`，同时把 `pivot`/`alignment` 收口为左对齐，避免名字仍以中心点悬在血条中段。
+- **[networkplugin]**: 将 `OtherPlayersOverlay` 改为固定停靠屏幕右上区域，并把 `EntriesRoot` 改成从右往左排布；同时把 `DebugVirtualPlayerAiDefault` 扩展为双 AI 测试玩家（`aidefault` / `aidefault2`），为两者提供固定的两位数 HP/Shield/Block 调试战斗态，方便离线直接观察右侧血条样式。
+- **[networkplugin]**: 将 `OtherPlayersOverlay` 右上停靠偏移提取为配置项：新增 `UI.OtherPlayersOverlay.RightOffsetX/RightOffsetY`，默认保持当前视觉位置，后续调位可直接改 `NetworkPlugin.cfg`，无需再改代码重编译。
+- **[networkplugin]**: 继续收口 `OtherPlayersOverlay` 右侧战斗条目：头像图改为运行时圆形裁切，多个玩家改为右侧单列纵向排列，`HealthBar/HealthText` 恢复到血条左侧，并把默认右上停靠偏移微调到 `RightOffsetX=0` 以便整体更贴近屏幕右边。
+- **[networkplugin]**: 为补丁生成/持续布局的运行时控件引入 `RuntimeEditorTransformGuard`，重点接入 `OtherPlayersOverlay` 根节点与条目、远端角色/地图图标、地图玩家点位和主菜单多人入口位移逻辑；当使用 Unity Runtime Editor 手动调整这些对象的 `RectTransform/Transform` 后，本次进程内不会再被 networkplugin 的刷新逻辑立刻写回。
 
 ### Docs
 - **[helloagents]**: 执行 `~upgrade` 清洗 `INDEX.md`、`context.md`、`modules/_index.md` 与 `archive/_index.md`，并将 `project.md` / `wiki/` / `history/` 明确标注为 legacy 迁移来源。
@@ -106,6 +121,10 @@
 	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj -v minimal` 通过（257 warnings，0 errors）。
 
 ### Fixed
+- **[networkplugin]**: 调整 `OtherPlayersOverlayPatch` 的头像条挂载层级：`NetworkPlugin_OtherPlayersOverlay` 现改为挂到 `BaseMana` 的同级容器，而不是作为 `BaseMana` 子节点；位置仍通过 `BaseMana` 锚点的世界坐标回算，保持原有屏幕位置不变。
+- **[networkplugin]**: 补齐 `OtherPlayersOverlay` 的远端战斗态数据链：`PlayerStateSnapshot` / `PlayerEntity` / `TurnStartSnapshotReceivePatch` / `TurnEndSnapshotReceivePatch` / `ReconnectionManager` 现都会同步数值型符卡充能字段，并由 `OtherPlayersOverlayBattleState` + `NetworkPlayerBattleStateCompat` 统一供 overlay 读取。
+	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj -v minimal` 通过（259 warnings，0 errors）。
+	- 备注：多人实机回归尚未在本次会话执行，需在双端联机环境下继续验证头像、充能条、血条与断线重连表现。
 - **[networkplugin]**: 收紧 `ShopTradeIconPatch` 的商店回归保护：在注入交易按钮前保存 `CardService` / `ReturnButton` 原生容器的 `RectTransform` 快照，并在隐藏或异常清理时完整恢复，避免商店布局残留偏移。
 - **[networkplugin]**: 收敛 `ShopTradeIconPatch` 的商店交易按钮文案定位逻辑，改为优先解析主标题 `TMP_Text`，仅在异常层级时回退到 legacy `Text` 并打印 hierarchy。
 	- 方案: [202603061348_networkplugin-todo-consolidation](archive/2026-03/202603061348_networkplugin-todo-consolidation/)

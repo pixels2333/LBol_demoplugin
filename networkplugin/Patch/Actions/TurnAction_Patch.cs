@@ -16,7 +16,6 @@ using NetworkPlugin.Network.Reconnection;
 using NetworkPlugin.Utils;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.Snapshot;
-using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Actions;
 
@@ -116,6 +115,9 @@ public class TurnAction_Patch
                 MaxHealth = source.MaxHp,
                 Block = source.Block,
                 Shield = source.Shield,
+                CurrentPower = source.Power,
+                PowerPerLevel = source.PowerPerLevel,
+                MaxPowerLevel = source.MaxPowerLevel,
                 ManaGroup = ManaUtils.ManaGroupToArray(battle.BattleMana),
                 MaxMana = maxMana,
                 Gold = gold,
@@ -259,6 +261,9 @@ public class TurnAction_Patch
                 MaxHealth = source.MaxHp,
                 Block = source.Block,
                 Shield = source.Shield,
+                CurrentPower = source.Power,
+                PowerPerLevel = source.PowerPerLevel,
+                MaxPowerLevel = source.MaxPowerLevel,
                 ManaGroup = ManaUtils.ManaGroupToArray(battle.BattleMana),
                 MaxMana = maxMana,
                 Gold = gold,

@@ -124,15 +124,7 @@ public static class TurnEndSnapshotReceivePatch
                 return;
             }
 
-            string senderId = snapshot?.playerStateSnapshot?.UserName;
-            if (string.IsNullOrWhiteSpace(senderId))
-            {
-                senderId = snapshot?.playerStateSnapshot?.PlayerId;
-            }
-            if (string.IsNullOrWhiteSpace(senderId))
-            {
-                senderId = "unknown";
-            }
+            string senderId = GetSenderId(snapshot);
 
             lock (_cacheLock)
             {
@@ -169,28 +161,16 @@ public static class TurnEndSnapshotReceivePatch
             player.maxHP = ps.MaxHealth;
             player.block = ps.Block;
             player.shield = ps.Shield;
+            player.coins = ps.Gold;
+            player.SetCurrentPowerSafe(ps.CurrentPower);
+            player.SetPowerPerLevelSafe(ps.PowerPerLevel);
+            player.SetMaxPowerLevelSafe(ps.MaxPowerLevel);
+            player.ultimatePower = ps.PowerPerLevel > 0 && ps.MaxPowerLevel > 0 && ps.CurrentPower >= ps.PowerPerLevel * ps.MaxPowerLevel;
 
             // mana 的接口成员在历史代码中以 lowerCamelCase 使用（Remote/LocalNetworkPlayer 也实现了）。
             // 这里按 4 位数组落地，避免长度不一致。
             int[] mana = ps.ManaGroup ?? new[] { 0, 0, 0, 0 };
-            if (mana.Length != 4)
-            {
-                int[] fixedMana = new[] { 0, 0, 0, 0 };
-                for (int i = 0; i < Math.Min(4, mana.Length); i++)
-                {
-                    fixedMana[i] = mana[i];
-                }
-                mana = fixedMana;
-            }
-
-            // 通过动态/反射避免对接口增加新成员的破坏性修改。
-            // RemoteNetworkPlayer/LocalNetworkPlayer 已有 public int[] mana {get;set;}。
-            var t = player.GetType();
-            var prop = t.GetProperty("mana");
-            if (prop != null && prop.PropertyType == typeof(int[]))
-            {
-                prop.SetValue(player, mana);
-            }
+            player.SetManaArraySafe(mana);
 
             player.endturn = true;
         }
@@ -198,6 +178,17 @@ public static class TurnEndSnapshotReceivePatch
         {
             // ignored
         }
+    }
+
+    private static string GetSenderId(TurnEndStateSnapshot snapshot)
+    {
+        string senderId = snapshot?.playerStateSnapshot?.PlayerId;
+        if (string.IsNullOrWhiteSpace(senderId))
+        {
+            senderId = snapshot?.playerStateSnapshot?.UserName;
+        }
+
+        return string.IsNullOrWhiteSpace(senderId) ? "unknown" : senderId;
     }
 
     private static bool TryDeserialize(object payload, out TurnEndStateSnapshot snapshot)

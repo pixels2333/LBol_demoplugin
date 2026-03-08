@@ -10,7 +10,6 @@ using NetworkPlugin.Utils;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.NetworkPlayer;
 using NetworkPlugin.Network.Snapshot;
-using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -32,6 +31,9 @@ public static class TurnStartSnapshotReceivePatch
     private static bool _subscribed;
     private static INetworkClient _subscribedClient;
     private static readonly Action<string, object> _onGameEventReceived = OnGameEventReceived;
+    private static readonly object _cacheLock = new();
+    private static readonly System.Collections.Generic.Dictionary<string, TurnStartStateSnapshot> _lastTurnStartByPlayer
+        = new(StringComparer.Ordinal);
 
     [HarmonyPatch(typeof(GameDirector), "Update")]
     private static class SubscribeHook
@@ -120,14 +122,11 @@ public static class TurnStartSnapshotReceivePatch
                 return;
             }
 
-            string senderId = snapshot?.playerStateSnapshot?.PlayerId;
-            if (string.IsNullOrWhiteSpace(senderId))
+            string senderId = GetSenderId(snapshot);
+
+            lock (_cacheLock)
             {
-                senderId = snapshot?.playerStateSnapshot?.UserName;
-            }
-            if (string.IsNullOrWhiteSpace(senderId))
-            {
-                senderId = "unknown";
+                _lastTurnStartByPlayer[senderId] = snapshot;
             }
 
             // 尝试将快照落地到远端玩家对象（如果存在）。
@@ -161,6 +160,10 @@ public static class TurnStartSnapshotReceivePatch
             player.block = ps.Block;
             player.shield = ps.Shield;
             player.coins = ps.Gold;
+            player.SetCurrentPowerSafe(ps.CurrentPower);
+            player.SetPowerPerLevelSafe(ps.PowerPerLevel);
+            player.SetMaxPowerLevelSafe(ps.MaxPowerLevel);
+            player.ultimatePower = ps.PowerPerLevel > 0 && ps.MaxPowerLevel > 0 && ps.CurrentPower >= ps.PowerPerLevel * ps.MaxPowerLevel;
 
             int[] mana = ps.ManaGroup ?? new[] { 0, 0, 0, 0 };
             player.SetManaArraySafe(mana);
@@ -182,6 +185,17 @@ public static class TurnStartSnapshotReceivePatch
         {
             // ignored
         }
+    }
+
+    private static string GetSenderId(TurnStartStateSnapshot snapshot)
+    {
+        string senderId = snapshot?.playerStateSnapshot?.PlayerId;
+        if (string.IsNullOrWhiteSpace(senderId))
+        {
+            senderId = snapshot?.playerStateSnapshot?.UserName;
+        }
+
+        return string.IsNullOrWhiteSpace(senderId) ? "unknown" : senderId;
     }
 
     private static bool TryDeserialize(object payload, out TurnStartStateSnapshot snapshot)
@@ -216,6 +230,20 @@ public static class TurnStartSnapshotReceivePatch
         catch
         {
             return false;
+        }
+    }
+
+    public static bool TryGetLastTurnStart(string playerId, out TurnStartStateSnapshot snapshot)
+    {
+        snapshot = null;
+        if (string.IsNullOrWhiteSpace(playerId))
+        {
+            return false;
+        }
+
+        lock (_cacheLock)
+        {
+            return _lastTurnStartByPlayer.TryGetValue(playerId, out snapshot);
         }
     }
 }
