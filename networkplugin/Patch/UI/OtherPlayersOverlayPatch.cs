@@ -17,6 +17,7 @@ using NetworkPlugin.Configuration;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
+using NetworkPlugin.Network.NetworkPlayer;
 using NetworkPlugin.Utils;
 using TMPro;
 using UnityEngine;
@@ -37,11 +38,13 @@ public static partial class OtherPlayersOverlayPatch
 {
     #region 常量和字段
 
-    private const float AvatarEntryBaseWidth = 140f;
-    private const float AvatarEntryBaseHeight = 176f;
+    private const float AvatarEntryBaseWidth = 188f;
+    private const float AvatarEntryBaseHeight = 156f;
     private const float AvatarVisualSize = 112f;
-    private const float AvatarEntrySpacing = 22f;
-    private const float AvatarStripYOffset = 14f;
+    private const float AvatarEntrySpacing = 12f;
+    private const float OverlayRootWidth = 224f;
+    private const float OverlayRootTopPadding = 8f;
+    private const float OverlayRootBottomPadding = 12f;
 
     /// <summary>获取依赖注入容器</summary>
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
@@ -242,20 +245,20 @@ public static partial class OtherPlayersOverlayPatch
         root.transform.SetParent(parent, false);
 
         RectTransform rootRect = root.AddComponent<RectTransform>();
-        rootRect.anchorMin = new Vector2(0.5f, 0.5f);
-        rootRect.anchorMax = new Vector2(0.5f, 0.5f);
-        rootRect.pivot = new Vector2(0.5f, 1f);
-        rootRect.anchoredPosition = new Vector2(0f, 0f);
-        rootRect.sizeDelta = new Vector2(900f, AvatarEntryBaseHeight + 34f);
+        rootRect.anchorMin = new Vector2(1f, 1f);
+        rootRect.anchorMax = new Vector2(1f, 1f);
+        rootRect.pivot = new Vector2(1f, 1f);
+        rootRect.anchoredPosition = Vector2.zero;
+        rootRect.sizeDelta = new Vector2(OverlayRootWidth, AvatarEntryBaseHeight + OverlayRootTopPadding + OverlayRootBottomPadding);
 
         GameObject entriesRootGo = new("EntriesRoot");
         entriesRootGo.transform.SetParent(root.transform, false);
         RectTransform entriesRect = entriesRootGo.AddComponent<RectTransform>();
-        entriesRect.anchorMin = new Vector2(0.5f, 1f);
-        entriesRect.anchorMax = new Vector2(0.5f, 1f);
-        entriesRect.pivot = new Vector2(0.5f, 1f);
-        entriesRect.anchoredPosition = Vector2.zero;
-        entriesRect.sizeDelta = new Vector2(900f, AvatarEntryBaseHeight);
+        entriesRect.anchorMin = new Vector2(1f, 1f);
+        entriesRect.anchorMax = new Vector2(1f, 1f);
+        entriesRect.pivot = new Vector2(1f, 1f);
+        entriesRect.anchoredPosition = new Vector2(0f, -OverlayRootTopPadding);
+        entriesRect.sizeDelta = new Vector2(OverlayRootWidth, AvatarEntryBaseHeight);
 
         _ui = new OverlayUi
         {
@@ -294,7 +297,7 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
-        if (!TryAttachUiToBaseMana())
+        if (!TryAttachUiToTopRight(list.Count))
         {
             HideUi();
             return;
@@ -339,6 +342,12 @@ public static partial class OtherPlayersOverlayPatch
         }
 
         if (orderedEntries.Count == 0)
+        {
+            HideUi();
+            return;
+        }
+
+        if (!TryAttachUiToTopRight(orderedEntries.Count))
         {
             HideUi();
             return;
@@ -432,7 +441,6 @@ public static partial class OtherPlayersOverlayPatch
         if (panel != null)
         {
             panel.enabled = false;
-            HideUltimateVisualField(panel, "powerText");
             HideUltimateVisualField(panel, "gauge1");
             HideUltimateVisualField(panel, "gauge2");
             HideUltimateVisualField(panel, "gauge3");
@@ -488,9 +496,9 @@ public static partial class OtherPlayersOverlayPatch
         root.transform.SetParent(_ui.EntriesRoot, false);
 
         RectTransform rootRect = root.AddComponent<RectTransform>();
-        rootRect.anchorMin = new Vector2(0.5f, 1f);
-        rootRect.anchorMax = new Vector2(0.5f, 1f);
-        rootRect.pivot = new Vector2(0.5f, 1f);
+        rootRect.anchorMin = new Vector2(1f, 1f);
+        rootRect.anchorMax = new Vector2(1f, 1f);
+        rootRect.pivot = new Vector2(1f, 1f);
         rootRect.sizeDelta = new Vector2(AvatarEntryBaseWidth, AvatarEntryBaseHeight);
 
         GameObject visual = UnityEngine.Object.Instantiate(_ui.AvatarTemplate, root.transform, false);
@@ -506,7 +514,7 @@ public static partial class OtherPlayersOverlayPatch
         visualRect.anchorMin = new Vector2(0.5f, 1f);
         visualRect.anchorMax = new Vector2(0.5f, 1f);
         visualRect.pivot = new Vector2(0.5f, 1f);
-        visualRect.anchoredPosition = Vector2.zero;
+        visualRect.anchoredPosition = new Vector2(0f, -2f);
         visualRect.sizeDelta = new Vector2(AvatarVisualSize, AvatarVisualSize);
 
         Image avatar = TryGetAvatarImageFromTemplate(visual) ?? CreateFallbackAvatarVisual(visual.transform);
@@ -519,8 +527,10 @@ public static partial class OtherPlayersOverlayPatch
         nameRect.anchorMin = new Vector2(0f, 0f);
         nameRect.anchorMax = new Vector2(1f, 0f);
         nameRect.pivot = new Vector2(0.5f, 0f);
-        nameRect.anchoredPosition = new Vector2(0f, 20f);
-        nameRect.sizeDelta = new Vector2(0f, 20f);
+        nameRect.anchoredPosition = new Vector2(0f, 24f);
+        nameRect.sizeDelta = new Vector2(-8f, 20f);
+        name.enableWordWrapping = false;
+        name.overflowMode = TextOverflowModes.Ellipsis;
 
         TextMeshProUGUI status = CreateTmpText(root.transform, "Status", "在线", 13f);
         status.alignment = TextAlignmentOptions.Center;
@@ -528,8 +538,10 @@ public static partial class OtherPlayersOverlayPatch
         statusRect.anchorMin = new Vector2(0f, 0f);
         statusRect.anchorMax = new Vector2(1f, 0f);
         statusRect.pivot = new Vector2(0.5f, 0f);
-        statusRect.anchoredPosition = new Vector2(0f, 2f);
-        statusRect.sizeDelta = new Vector2(0f, 18f);
+        statusRect.anchoredPosition = new Vector2(0f, 4f);
+        statusRect.sizeDelta = new Vector2(-8f, 18f);
+        status.enableWordWrapping = false;
+        status.overflowMode = TextOverflowModes.Ellipsis;
 
         var entry = new AvatarEntryUi
         {
@@ -619,7 +631,7 @@ public static partial class OtherPlayersOverlayPatch
 
         if (entry.Status != null)
         {
-            entry.Status.text = isConnected ? "在线" : "离线";
+            entry.Status.text = BuildStatusText(player.PlayerId, isConnected);
             entry.Status.color = isConnected ? new Color(0.72f, 1f, 0.72f, 1f) : new Color(1f, 0.66f, 0.66f, 1f);
         }
 
@@ -637,23 +649,6 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
-        float availableWidth = _ui.EntriesRoot.rect.width;
-        if (availableWidth <= 0f)
-        {
-            availableWidth = 900f;
-        }
-
-        float contentWidth = Mathf.Max(360f, availableWidth - 24f);
-        float requiredWidth = entries.Count * AvatarEntryBaseWidth + Mathf.Max(0, entries.Count - 1) * AvatarEntrySpacing;
-        float scale = requiredWidth > contentWidth
-            ? Mathf.Clamp(contentWidth / requiredWidth, 0.45f, 1f)
-            : 1f;
-
-        float itemWidth = AvatarEntryBaseWidth * scale;
-        float spacing = AvatarEntrySpacing * scale;
-        float totalWidth = entries.Count * itemWidth + Mathf.Max(0, entries.Count - 1) * spacing;
-        float startX = -totalWidth * 0.5f + itemWidth * 0.5f;
-
         for (int i = 0; i < entries.Count; i++)
         {
             AvatarEntryUi entry = entries[i];
@@ -662,12 +657,12 @@ public static partial class OtherPlayersOverlayPatch
                 continue;
             }
 
-            entry.RootRect.anchorMin = new Vector2(0.5f, 1f);
-            entry.RootRect.anchorMax = new Vector2(0.5f, 1f);
-            entry.RootRect.pivot = new Vector2(0.5f, 1f);
+            entry.RootRect.anchorMin = new Vector2(1f, 1f);
+            entry.RootRect.anchorMax = new Vector2(1f, 1f);
+            entry.RootRect.pivot = new Vector2(1f, 1f);
             entry.RootRect.sizeDelta = new Vector2(AvatarEntryBaseWidth, AvatarEntryBaseHeight);
-            entry.RootRect.localScale = new Vector3(scale, scale, 1f);
-            entry.RootRect.anchoredPosition = new Vector2(startX + i * (itemWidth + spacing), 0f);
+            entry.RootRect.localScale = Vector3.one;
+            entry.RootRect.anchoredPosition = new Vector2(0f, -i * (AvatarEntryBaseHeight + AvatarEntrySpacing));
         }
     }
 
@@ -715,62 +710,113 @@ public static partial class OtherPlayersOverlayPatch
         }
     }
 
-    private static bool TryAttachUiToBaseMana()
+    private static bool TryAttachUiToTopRight(int entryCount)
     {
         if (_ui?.RootRect == null)
         {
             return false;
         }
 
-        RectTransform anchor = TryGetBaseManaAnchorRect();
-        RectTransform parentRect = anchor != null ? anchor.parent as RectTransform : null;
-
+        Transform fallback = TryGetUiLayerTransform("topLayer") ?? TryGetUiLayerTransform("topmostLayer") ?? UiManager.Instance?.transform;
+        RectTransform parentRect = fallback as RectTransform;
         if (parentRect == null)
         {
-            Transform fallback = TryGetUiLayerTransform("topLayer") ?? TryGetUiLayerTransform("topmostLayer") ?? UiManager.Instance?.transform;
-            parentRect = fallback as RectTransform;
-            if (parentRect == null)
-            {
-                return false;
-            }
-
-            if (_ui.RootRect.parent != parentRect)
-            {
-                _ui.RootRect.SetParent(parentRect, false);
-            }
-
-            _ui.RootRect.anchorMin = new Vector2(0.5f, 1f);
-            _ui.RootRect.anchorMax = new Vector2(0.5f, 1f);
-            _ui.RootRect.pivot = new Vector2(0.5f, 1f);
-            _ui.RootRect.anchoredPosition = new Vector2(0f, -180f);
+            return false;
         }
-        else
+
+        if (_ui.RootRect.parent != parentRect)
         {
-            if (_ui.RootRect.parent != parentRect)
-            {
-                _ui.RootRect.SetParent(parentRect, false);
-            }
-
-            Vector3 worldBottomCenter = anchor.TransformPoint(new Vector3(anchor.rect.center.x, anchor.rect.yMin, 0f));
-            Vector3 localPoint = parentRect.InverseTransformPoint(worldBottomCenter);
-
-            _ui.RootRect.anchorMin = new Vector2(0.5f, 0.5f);
-            _ui.RootRect.anchorMax = new Vector2(0.5f, 0.5f);
-            _ui.RootRect.pivot = new Vector2(0.5f, 1f);
-            _ui.RootRect.anchoredPosition = new Vector2(localPoint.x, localPoint.y - AvatarStripYOffset);
+            _ui.RootRect.SetParent(parentRect, false);
         }
 
-        float parentWidth = parentRect.rect.width;
-        float width = parentWidth > 0f ? Mathf.Clamp(parentWidth * 0.6f, 520f, 1500f) : 900f;
-        _ui.RootRect.sizeDelta = new Vector2(width, AvatarEntryBaseHeight + 34f);
+        (float offsetX, float offsetY) = GetOverlayRightOffsets();
+
+        _ui.RootRect.anchorMin = new Vector2(1f, 1f);
+        _ui.RootRect.anchorMax = new Vector2(1f, 1f);
+        _ui.RootRect.pivot = new Vector2(1f, 1f);
+        _ui.RootRect.anchoredPosition = new Vector2(offsetX, offsetY);
+
+        float height = entryCount * AvatarEntryBaseHeight + Mathf.Max(0, entryCount - 1) * AvatarEntrySpacing + OverlayRootTopPadding + OverlayRootBottomPadding;
+        _ui.RootRect.sizeDelta = new Vector2(OverlayRootWidth, height);
 
         if (_ui.EntriesRoot != null)
         {
-            _ui.EntriesRoot.sizeDelta = new Vector2(width, AvatarEntryBaseHeight);
-            _ui.EntriesRoot.anchoredPosition = Vector2.zero;
+            _ui.EntriesRoot.anchorMin = new Vector2(1f, 1f);
+            _ui.EntriesRoot.anchorMax = new Vector2(1f, 1f);
+            _ui.EntriesRoot.pivot = new Vector2(1f, 1f);
+            _ui.EntriesRoot.anchoredPosition = new Vector2(0f, -OverlayRootTopPadding);
+            _ui.EntriesRoot.sizeDelta = new Vector2(OverlayRootWidth, height - OverlayRootTopPadding - OverlayRootBottomPadding);
         }
 
         return true;
+    }
+
+    private static (float X, float Y) GetOverlayRightOffsets()
+    {
+        try
+        {
+            ConfigManager cfg = TryGetConfig();
+            float x = cfg?.OtherPlayersOverlayRightOffsetX?.Value ?? -24f;
+            float y = cfg?.OtherPlayersOverlayRightOffsetY?.Value ?? -144f;
+            return (x, y);
+        }
+        catch
+        {
+            return (-24f, -144f);
+        }
+    }
+
+    private static string BuildStatusText(string playerId, bool isConnected)
+    {
+        if (!isConnected)
+        {
+            return "离线";
+        }
+
+        INetworkPlayer player = TryGetNetworkManager()?.GetPlayer(playerId);
+        if (player == null)
+        {
+            return "在线";
+        }
+
+        try
+        {
+            var parts = new List<string> { "在线" };
+
+            if (player.maxHP > 0)
+            {
+                parts.Add($"{Mathf.Max(0, player.HP)}/{player.maxHP}");
+            }
+
+            int defense = Mathf.Max(0, player.block) + Mathf.Max(0, player.shield);
+            if (defense > 0)
+            {
+                parts.Add($"盾{defense}");
+            }
+
+            if (player.endturn)
+            {
+                parts.Add("已结束");
+            }
+
+            return string.Join(" · ", parts);
+        }
+        catch
+        {
+            return "在线";
+        }
+    }
+
+    private static INetworkManager TryGetNetworkManager()
+    {
+        try
+        {
+            return ServiceProvider?.GetService<INetworkManager>();
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static RectTransform TryGetBaseManaAnchorRect()
