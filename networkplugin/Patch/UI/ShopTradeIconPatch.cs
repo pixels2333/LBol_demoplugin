@@ -1,13 +1,14 @@
 using System;
 using System.Linq;
 using HarmonyLib;
-using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Configuration;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.UI.Factories;
+using NetworkPlugin.UI.Payloads;
 using NetworkPlugin.UI.Panels;
 using TMPro;
 using UnityEngine;
@@ -66,21 +67,14 @@ public static class ShopTradeIconPatch
     private static float _nextStateLogTime;
     private static string _lastStateLogKey;
 
-    private static float _nextShopPanelFindTime;
-
     [HarmonyPatch(typeof(ShopPanel), "OnShown")]
     [HarmonyPostfix]
     private static void ShopPanel_OnShown_Postfix(ShopPanel __instance)
     {
         try
         {
-            if (__instance == null)
-            {
-                return;
-            }
-
             _cachedShopPanel = __instance;
-            _hasLastState = false; // reset state throttle per-open
+            _hasLastState = false;
             LogStateThrottled(TradeUiUpdateState.Visible, "[ShopTradeIcon] ShopPanel 已显示：开始刷新交易按钮", 0.0f);
             UpdateTradeButtonUi(__instance);
         }
@@ -116,127 +110,29 @@ public static class ShopTradeIconPatch
         }
     }
 
-    private static INetworkClient TryGetNetworkClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+    private static INetworkClient TryGetNetworkClient() => ServiceProvider?.GetService<INetworkClient>();
 
-    private static ConfigManager TryGetConfig()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<ConfigManager>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+    private static ConfigManager TryGetConfig() => ServiceProvider?.GetService<ConfigManager>();
 
     private static bool IsTradeEnabledAndConnected()
     {
         return TradeUiMessages.IsTradeEnabledAndConnected(out _);
     }
 
-    private static bool TryGetShopPanel(out ShopPanel shopPanel)
-    {
-        shopPanel = null;
-
-        // Prefer reusing a cached instance if it's still alive.
-        try
-        {
-            if (_cachedShopPanel != null && _cachedShopPanel.gameObject != null)
-            {
-                shopPanel = _cachedShopPanel;
-                return true;
-            }
-        }
-        catch
-        {
-            _cachedShopPanel = null;
-        }
-
-        // Fast path: use UiManager when available.
-        try
-        {
-            shopPanel = UiManager.GetPanel<ShopPanel>();
-        }
-        catch
-        {
-            shopPanel = null;
-        }
-
-        // Fallback: Unity lookup (throttled) in case UiManager returns null.
-        if (shopPanel == null)
-        {
-            float now = Time.unscaledTime;
-            if (now >= _nextShopPanelFindTime)
-            {
-                _nextShopPanelFindTime = now + 1.0f;
-                try
-                {
-                    shopPanel = UnityEngine.Object.FindObjectOfType<ShopPanel>(true);
-                }
-                catch
-                {
-                    shopPanel = null;
-                }
-
-                if (shopPanel == null)
-                {
-                    try
-                    {
-                        var all = Resources.FindObjectsOfTypeAll<ShopPanel>();
-                        if (all != null && all.Length > 0)
-                        {
-                            shopPanel = all[0];
-                        }
-                    }
-                    catch
-                    {
-                        // ignored
-                    }
-                }
-            }
-        }
-
-        if (shopPanel != null)
-        {
-            _cachedShopPanel = shopPanel;
-            return true;
-        }
-
-        return false;
-    }
-
     private static void LogStateThrottled(TradeUiUpdateState state, string message, float intervalSeconds = 2.0f)
     {
-        try
-        {
-            float now = Time.unscaledTime;
-            string key = state + ":" + message;
-            bool stateChanged = !_hasLastState || state != _lastState;
-            bool keyChanged = _lastStateLogKey != key;
+        float now = Time.unscaledTime;
+        string key = state + ":" + message;
+        bool stateChanged = !_hasLastState || state != _lastState;
+        bool keyChanged = _lastStateLogKey != key;
 
-            if (stateChanged || keyChanged || now >= _nextStateLogTime)
-            {
-                Plugin.Logger?.LogInfo(message);
-                _lastState = state;
-                _hasLastState = true;
-                _lastStateLogKey = key;
-                _nextStateLogTime = now + intervalSeconds;
-            }
-        }
-        catch
+        if (stateChanged || keyChanged || now >= _nextStateLogTime)
         {
-            // ignored
+            Plugin.Logger?.LogInfo(message);
+            _lastState = state;
+            _hasLastState = true;
+            _lastStateLogKey = key;
+            _nextStateLogTime = now + intervalSeconds;
         }
     }
 
@@ -357,7 +253,7 @@ public static class ShopTradeIconPatch
             rightContainer = returnButton.GetComponent<RectTransform>();
         }
 
-        var ui = new TradeButtonUi
+        TradeButtonUi ui = new TradeButtonUi
         {
             ShopPanel         = shopPanel,
             CardServiceButton = cardServiceButton,
@@ -459,18 +355,13 @@ public static class ShopTradeIconPatch
 
     private static void LogHierarchy(Transform t, int depth)
     {
-        try
-        {
-            string indent = new string('-', depth * 2);
-            var comps = string.Join(", ", System.Linq.Enumerable.Select(t.GetComponents<Component>(), c => c?.GetType().Name ?? "null"));
-            string textVal = "";
-            var tmp = t.GetComponent<TMPro.TextMeshProUGUI>();
-            if (tmp != null) textVal = $" [TEXT='{tmp.text}']";
-            Plugin.Logger?.LogInfo($"[ShopTradeIcon] {indent}{t.name} ({comps}){textVal}");
-            for (int i = 0; i < t.childCount; i++)
-                LogHierarchy(t.GetChild(i), depth + 1);
-        }
-        catch { }
+        string indent = new string('-', depth * 2);
+        var comps = string.Join(", ", System.Linq.Enumerable.Select(t.GetComponents<Component>(), c => c?.GetType().Name ?? "null"));
+        var tmp = t.GetComponent<TextMeshProUGUI>();
+        string textVal = tmp != null ? $" [TEXT='{tmp.text}']" : "";
+        Plugin.Logger?.LogInfo($"[ShopTradeIcon] {indent}{t.name} ({comps}){textVal}");
+        for (int i = 0; i < t.childCount; i++)
+            LogHierarchy(t.GetChild(i), depth + 1);
     }
 
     private static void ApplyTradeButtonLabel(GameObject root, Button tradeButton, string labelText)
@@ -667,7 +558,7 @@ public static class ShopTradeIconPatch
     {
         _defaultFont ??= FindDefaultFont(parent);
 
-        var root = new GameObject("NetworkPlugin_ShopTradeButton");
+        GameObject root = new GameObject("NetworkPlugin_ShopTradeButton");
         root.transform.SetParent(parent, false);
 
         var rect = root.AddComponent<RectTransform>();
@@ -685,7 +576,7 @@ public static class ShopTradeIconPatch
         button.targetGraphic = bg;
         button.onClick.AddListener(() => OnTradeButtonClicked(shopPanel));
 
-        var iconGo = new GameObject("Icon");
+        GameObject iconGo = new GameObject("Icon");
         iconGo.transform.SetParent(root.transform, false);
         var iconRect = iconGo.AddComponent<RectTransform>();
         iconRect.anchorMin = new Vector2(0f, 0.5f);
@@ -699,7 +590,7 @@ public static class ShopTradeIconPatch
         iconImg.preserveAspect = true;
         iconImg.color = Color.white;
 
-        var labelGo = new GameObject("Label");
+        GameObject labelGo = new GameObject("Label");
         labelGo.transform.SetParent(root.transform, false);
         var labelRect = labelGo.AddComponent<RectTransform>();
         labelRect.anchorMin = new Vector2(0f, 0f);
@@ -737,7 +628,7 @@ public static class ShopTradeIconPatch
                     // 恢复原生 CardService 容器属性
                     if (_ui.CardServiceButton != null)
                     {
-                        var ct = _ui.CardServiceButton.transform.parent as RectTransform;
+                        RectTransform ct = _ui.CardServiceButton.transform.parent as RectTransform;
                         if (ct != null)
                         {
                             ct.anchoredPosition = _ui.CardServiceOriginalAnchoredPosition;
@@ -757,7 +648,7 @@ public static class ShopTradeIconPatch
                     // 恢复原生 ReturnButton 容器属性
                     if (_ui.ReturnButton != null)
                     {
-                        var rt = _ui.ReturnButton.transform.parent as RectTransform;
+                        RectTransform rt = _ui.ReturnButton.transform.parent as RectTransform;
                         if (rt != null)
                         {
                             rt.anchoredPosition = _ui.ReturnOriginalAnchoredPosition;
@@ -927,28 +818,17 @@ public static class ShopTradeIconPatch
 
     private static void TryStripLocalizationComponents(GameObject root)
     {
-        try
-        {
-            if (root == null) return;
+        if (root == null) return;
 
-            var behaviours = root.GetComponentsInChildren<MonoBehaviour>(true);
-            foreach (var b in behaviours)
+        foreach (var b in root.GetComponentsInChildren<MonoBehaviour>(true))
+        {
+            if (b == null) continue;
+            string n = b.GetType().Name;
+            if (n.IndexOf("localiz", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                n.IndexOf("locale", StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                if (b == null) continue;
-
-                string n = b.GetType().Name;
-                if (string.IsNullOrWhiteSpace(n)) continue;
-
-                if (n.IndexOf("localiz", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    n.IndexOf("locale", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    UnityEngine.Object.Destroy(b);
-                }
+                UnityEngine.Object.Destroy(b);
             }
-        }
-        catch
-        {
-            // ignored
         }
     }
 
@@ -956,15 +836,8 @@ public static class ShopTradeIconPatch
 
     private static TMP_FontAsset FindDefaultFont(Transform root)
     {
-        try
-        {
-            var tmp = root.GetComponentInChildren<TextMeshProUGUI>(true);
-            return tmp != null ? tmp.font : null;
-        }
-        catch
-        {
-            return null;
-        }
+        var tmp = root.GetComponentInChildren<TextMeshProUGUI>(true);
+        return tmp?.font;
     }
 
     private static Sprite GetWhiteSprite()
@@ -983,16 +856,7 @@ public static class ShopTradeIconPatch
     }
 
     private static Sprite TryLoadTradeSprite()
-    {
-        try
-        {
-            return Resources.Load<Sprite>("UI/Icons/TradeIcon") ?? Resources.Load<Sprite>("UI/Icons/DefaultIcon");
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => Resources.Load<Sprite>("UI/Icons/TradeIcon") ?? Resources.Load<Sprite>("UI/Icons/DefaultIcon");
 
     private static void OnTradeButtonClicked(ShopPanel shopPanel)
     {
@@ -1010,7 +874,7 @@ public static class ShopTradeIconPatch
                 parent = shopPanel.transform.parent != null ? shopPanel.transform.parent : shopPanel.transform;
             }
 
-            TradePanel tradePanel = NetworkPlugin.UI.Panels.TradePanelRuntimeFactory.GetOrCreate(parent);
+            TradePanel tradePanel = TradePanelRuntimeFactory.GetOrCreate(parent);
 
             if (tradePanel != null)
             {

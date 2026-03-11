@@ -23,16 +23,7 @@ public static class UnlockEverythingForMPPatch
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
     private static INetworkClient TryGetNetworkClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     private static bool IsMultiplayerConnected()
         => TryGetNetworkClient()?.IsConnected == true;

@@ -1,5 +1,4 @@
 using System;
-using System.Text.Json;
 using LBoL.Base;
 using LBoL.Core;
 using LBoL.Core.Units;

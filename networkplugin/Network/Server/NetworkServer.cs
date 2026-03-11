@@ -9,7 +9,6 @@ using System.Text.Json;
 using BepInEx.Logging;
 using LiteNetLib;
 using LiteNetLib.Utils;
-using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.Server.Core;
 using NetworkPlugin.Utils;

@@ -684,7 +684,7 @@ public partial class NatTraversal
         // 使用分隔符 '|'，避免与 IPv6/冒号冲突。
         long issuedAt = DateTime.UtcNow.Ticks;
         byte[] nonceBytes = new byte[8];
-        using (var rng = RandomNumberGenerator.Create())
+        using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
         {
             rng.GetBytes(nonceBytes);
         }
@@ -766,7 +766,7 @@ public partial class NatTraversal
     private static byte[] BuildStunBindingRequest(out byte[] transactionId)
     {
         transactionId = new byte[12];
-        using (var rng = RandomNumberGenerator.Create())
+        using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
         {
             rng.GetBytes(transactionId);
         }

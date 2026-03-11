@@ -28,16 +28,7 @@ public static class NetworkIdentityTracker
     private static readonly Action<bool> OnConnectionStateChangedHandler = OnConnectionStateChanged;
 
     public static INetworkClient TryGetClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     public static void EnsureSubscribed(INetworkClient client)
     {
@@ -64,7 +55,7 @@ public static class NetworkIdentityTracker
         }
         catch
         {
-            // ignored
+            // 重复解绑时静默忽略。
         }
 
         try
@@ -188,7 +179,7 @@ public static class NetworkIdentityTracker
         }
         catch
         {
-            // ignored
+            // 非法欢迎包直接忽略。
         }
     }
 
@@ -209,7 +200,7 @@ public static class NetworkIdentityTracker
         }
         catch
         {
-            // ignored
+            // 异常 host 变更包直接忽略。
         }
     }
 
@@ -294,7 +285,7 @@ public static class NetworkIdentityTracker
         }
         catch
         {
-            // ignored
+            // 非法 payload 无法转换成 JsonElement 时直接忽略。
         }
 
         root = default;

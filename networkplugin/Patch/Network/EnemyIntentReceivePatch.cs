@@ -74,7 +74,7 @@ public static class EnemyIntentReceivePatch
         {
             try
             {
-                if (__instance == null || __instance.Battle == null)
+                if (__instance.Battle == null)
                 {
                     return;
                 }
@@ -95,16 +95,7 @@ public static class EnemyIntentReceivePatch
     }
 
     private static INetworkClient TryGetNetworkClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     private static void EnsureSubscribed(INetworkClient client)
     {
@@ -113,17 +104,10 @@ public static class EnemyIntentReceivePatch
             return;
         }
 
-        try
+        if (_subscribedClient != null)
         {
-            if (_subscribedClient != null)
-            {
-                _subscribedClient.OnGameEventReceived -= _onGameEventReceived;
-                _subscribedClient.OnConnectionStateChanged -= _onConnectionStateChanged;
-            }
-        }
-        catch
-        {
-            // ignored
+            _subscribedClient.OnGameEventReceived -= _onGameEventReceived;
+            _subscribedClient.OnConnectionStateChanged -= _onConnectionStateChanged;
         }
 
         try
@@ -440,8 +424,8 @@ public static class EnemyIntentReceivePatch
 
     private static Intention BuildSpellCardIntention(JsonElement specific, string moveName)
     {
-        int? dmg = TryGetInt(specific, "Damage", out int d) ? d : (int?)null;
-        int? times = TryGetInt(specific, "Times", out int t) ? t : (int?)null;
+        int? dmg = TryGetInt(specific, "Damage", out int d) ? d : null;
+        int? times = TryGetInt(specific, "Times", out int t) ? t : null;
         bool acc = GetBool(specific, "IsAccuracy");
         string iconName = GetString(specific, "IconName");
 

@@ -1,5 +1,5 @@
 using LBoL.Presentation.UI.Widgets;
-using NetworkPlugin.UI.Panels;
+using NetworkPlugin.UI.Models;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -46,32 +46,21 @@ public class DeadPlayerEntryWidget : CommonButtonWidget
 		PlayerEntry = player;
 
 		// 设置玩家名字
-		if (playerName != null)
-		{
-			playerName.text = player.PlayerName;
-		}
+		playerName?.text = player.PlayerName;
 
 		// 设置玩家信息（等级、复活成本、死因）
-		if (playerInfo != null)
-		{
-			playerInfo.text = $"Lv.{player.Level} | {player.ResurrectionCost}G | {player.DeadCause}";
-		}
+		playerInfo?.text = $"Lv.{player.Level} | {player.ResurrectionCost}G | {player.DeadCause}";
 
 		// 设置文字颜色和按钮状态
 		bool canResurrect = player.CanResurrect;
 		Color textColor = canResurrect ? Color.white : Color.gray;
 
-		if (playerName != null)
-			playerName.color = textColor;
+		playerName?.color = textColor;
 
-		if (playerInfo != null)
-			playerInfo.color = textColor;
+		playerInfo?.color = textColor;
 
 		// 设置按钮可交互性
-		if (button != null)
-		{
-			button.interactable = canResurrect;
-		}
+		button?.interactable = canResurrect;
 
 		SetSelected(false);
 	}
@@ -85,14 +74,8 @@ public class DeadPlayerEntryWidget : CommonButtonWidget
 			_bgImage = GetComponent<Image>();
 		}
 
-		if (_bgImage != null)
-		{
-			_bgImage.color = selected ? selectedColor : normalColor;
-		}
+		_bgImage?.color = selected ? selectedColor : normalColor;
 
-		if (selectedIndicator != null)
-		{
-			selectedIndicator.gameObject.SetActive(selected);
-		}
+		selectedIndicator?.gameObject.SetActive(selected);
 	}
 }

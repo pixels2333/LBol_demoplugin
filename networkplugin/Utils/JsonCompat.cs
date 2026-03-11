@@ -109,7 +109,7 @@ public static class JsonCompat
             }
             catch
             {
-                // ignored
+                // 特性读取失败时保持默认字段名。
             }
 
             // 兼容 [JsonIgnore]（System.Text.Json 的特性）。
@@ -123,7 +123,7 @@ public static class JsonCompat
             }
             catch
             {
-                // ignored
+                // 忽略特性读取失败，继续按默认行为处理。
             }
 
             return prop;

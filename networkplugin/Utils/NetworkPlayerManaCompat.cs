@@ -86,7 +86,7 @@ public static class NetworkPlayerManaCompat
         }
         catch
         {
-            // ignored
+            // 兼容写入失败时静默忽略。
         }
     }
 }

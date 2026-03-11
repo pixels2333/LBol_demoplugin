@@ -1,12 +1,12 @@
 using System;
 using System.Text.Json;
-using HarmonyLib;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Patch.UI;
-using NetworkPlugin.UI.Panels;
+using NetworkPlugin.UI.Models;
+using NetworkPlugin.UI.State;
 using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
@@ -46,10 +46,7 @@ public static class ResurrectSyncPatch
 
         try
         {
-            if (_subscribedClient != null)
-            {
-                _subscribedClient.OnGameEventReceived -= OnGameEventReceived;
-            }
+            _subscribedClient?.OnGameEventReceived -= OnGameEventReceived;
         }
         catch
         {
@@ -133,7 +130,7 @@ public static class ResurrectSyncPatch
             return;
         }
 
-        var entry = new DeadPlayerEntry
+        DeadPlayerEntry entry = new DeadPlayerEntry
         {
             PlayerId = playerId,
             PlayerName = OtherPlayersOverlayPatch.ResolveDisplayName(playerId),

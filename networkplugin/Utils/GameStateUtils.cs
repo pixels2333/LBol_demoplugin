@@ -4,7 +4,6 @@ using LBoL.Core;
 using LBoL.Presentation;
 using LBoL.Core.Units;
 using NetworkPlugin.Network;
-using UnityEngine;
 
 namespace NetworkPlugin.Utils
 {
@@ -17,35 +16,20 @@ namespace NetworkPlugin.Utils
 
         private static GameMaster TryGetGameMaster()
         {
-            try
+            if (_cachedGameMaster != null)
             {
-                // Avoid creating a new singleton instance implicitly.
-                if (_cachedGameMaster != null)
-                {
-                    return _cachedGameMaster;
-                }
-
-                _cachedGameMaster = UnityEngine.Object.FindObjectOfType<GameMaster>();
                 return _cachedGameMaster;
             }
-            catch
-            {
-                return null;
-            }
+
+            // 避免隐式创建新的单例实例。
+            _cachedGameMaster = UnityEngine.Object.FindObjectOfType<GameMaster>();
+            return _cachedGameMaster;
         }
 
         public static PlayerUnit GetCurrentPlayer()
         {
-            try
-            {
-                var gameRun = GetCurrentGameRun();
-                return gameRun?.Player;
-            }
-            catch (Exception ex)
-            {
-                Plugin.Logger?.LogError($"[GameStateUtils] Error getting current player: {ex.Message}");
-                return null;
-            }
+            var gameRun = GetCurrentGameRun();
+            return gameRun?.Player;
         }
 
         public static string GetCurrentPlayerId()
@@ -56,33 +40,26 @@ namespace NetworkPlugin.Utils
 
         public static string GetCurrentPlayerName()
         {
-            try
+            PlayerUnit player = GetCurrentPlayer();
+            if (player != null)
             {
-                PlayerUnit player = GetCurrentPlayer();
-                if (player != null)
+                string directName = TryGetPlayerStringProperty(player,
+                    "playerName",
+                    "PlayerName",
+                    "userName",
+                    "UserName",
+                    "Name");
+
+                if (!string.IsNullOrWhiteSpace(directName))
                 {
-                    string directName = TryGetPlayerStringProperty(player,
-                        "playerName",
-                        "PlayerName",
-                        "userName",
-                        "UserName",
-                        "Name");
-
-                    if (!string.IsNullOrWhiteSpace(directName))
-                    {
-                        return directName;
-                    }
-
-                    string fallbackName = TryGetPlayerStringProperty(player, "ModelName", "Id");
-                    if (!string.IsNullOrWhiteSpace(fallbackName))
-                    {
-                        return fallbackName;
-                    }
+                    return directName;
                 }
-            }
-            catch (Exception ex)
-            {
-                Plugin.Logger?.LogError($"[GameStateUtils] Error getting current player name: {ex.Message}");
+
+                string fallbackName = TryGetPlayerStringProperty(player, "ModelName", "Id");
+                if (!string.IsNullOrWhiteSpace(fallbackName))
+                {
+                    return fallbackName;
+                }
             }
 
             return GetCurrentPlayerId();
@@ -90,17 +67,9 @@ namespace NetworkPlugin.Utils
 
         public static GameRunController GetCurrentGameRun()
         {
-            try
-            {
-                // LBoL run lives on GameMaster; this avoids relying on an Instance property that may not exist.
-                GameMaster gm = TryGetGameMaster();
-                return gm?.CurrentGameRun;
-            }
-            catch (Exception ex)
-            {
-                Plugin.Logger?.LogError($"[GameStateUtils] Error getting current game run: {ex.Message}");
-                return null;
-            }
+            // LBoL 的 run 挂在 GameMaster 上，这样就不用依赖可能不存在的 Instance 属性。
+            GameMaster gm = TryGetGameMaster();
+            return gm?.CurrentGameRun;
         }
 
         public static bool IsHost()
@@ -113,7 +82,7 @@ namespace NetworkPlugin.Utils
                     return true;
                 }
 
-                var networkClient = serviceProvider.GetService(typeof(NetworkPlugin.Network.Client.INetworkClient));
+                var networkClient = serviceProvider.GetService(typeof(Network.Client.INetworkClient));
                 if (networkClient == null)
                 {
                     return true;
@@ -136,7 +105,7 @@ namespace NetworkPlugin.Utils
 
         private static string TryGetPlayerStringProperty(PlayerUnit player, params string[] propertyNames)
         {
-            if (player == null || propertyNames == null || propertyNames.Length == 0)
+            if (player == null)
             {
                 return null;
             }
@@ -150,7 +119,16 @@ namespace NetworkPlugin.Utils
                     continue;
                 }
 
-                object value = property.GetValue(player);
+                object value;
+                try
+                {
+                    value = property.GetValue(player);
+                }
+                catch
+                {
+                    continue;
+                }
+
                 if (value is string text && !string.IsNullOrWhiteSpace(text))
                 {
                     return text;

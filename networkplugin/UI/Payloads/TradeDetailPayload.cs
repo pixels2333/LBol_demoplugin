@@ -1,4 +1,4 @@
-namespace NetworkPlugin.UI.Dialogs;
+namespace NetworkPlugin.UI.Payloads;
 
 public sealed class TradeDetailPayload
 {

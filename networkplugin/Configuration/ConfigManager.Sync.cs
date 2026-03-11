@@ -1,4 +1,3 @@
-using BepInEx;
 using BepInEx.Configuration;
 using System;
 

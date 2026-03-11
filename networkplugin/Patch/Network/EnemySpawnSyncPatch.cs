@@ -106,16 +106,7 @@ public static class EnemySpawnSyncPatch
     /// </summary>
     /// <returns>网络客户端实例，如果获取失败则返回null</returns>
     private static INetworkClient TryGetNetworkClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     /// <summary>
     /// 确保订阅指定网络客户端的事件
@@ -459,9 +450,13 @@ public static class EnemySpawnSyncPatch
             }
 
             // Unit.Hp/Block/Shield 的 setter 多为 internal；用 Traverse 确保插件侧可写。
-            try { Traverse.Create(spawned).Property("Hp").SetValue(currentHp); } catch { /* 忽略设置异常 */ }
-            try { Traverse.Create(spawned).Property("Block").SetValue(block); } catch { /* 忽略设置异常 */ }
-            try { Traverse.Create(spawned).Property("Shield").SetValue(shield); } catch { /* 忽略设置异常 */ }
+            try
+            {
+                Traverse.Create(spawned).Property("Hp").SetValue(currentHp);
+                Traverse.Create(spawned).Property("Block").SetValue(block);
+                Traverse.Create(spawned).Property("Shield").SetValue(shield);
+            }
+            catch { /* 忽略设置异常 */ }
         }
         catch
         {

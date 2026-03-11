@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using HarmonyLib;
@@ -130,16 +128,7 @@ public static partial class RemoteCardUsePatch
     /// </summary>
     /// <returns>网络客户端实例，如果获取失败则返回null</returns>
     private static INetworkClient TryGetClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>(); // 从服务提供者获取网络客户端
-        }
-        catch
-        {
-            return null; // 异常时返回null
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     /// <summary>
     /// 检查是否已连接网络客户端
@@ -166,29 +155,20 @@ public static partial class RemoteCardUsePatch
             ShowTopMessage(message); // 显示顶部消息
         }
 
-        BattleController battle = null;
-        try { battle = card?.Battle; } catch { battle = null; } // 尝试获取战斗控制器
+        BattleController battle = card?.Battle;
 
-        try
+        if (card != null)
         {
-            if (card != null)
-            {
-                card.PendingManaUsage = null; // 清空待处理法力使用
-                card.PendingTarget = null; // 清空待处理目标
-                card.KickerPlaying = false; // 重置踢球状态
-            }
+            card.PendingManaUsage = null;
+            card.PendingTarget = null;
+            card.KickerPlaying = false;
         }
-            catch
-            {
-                // ignored
-            }
 
             // 退还金钱（在 PlayCardAction/UseCardAction 中，金钱可能已在 GetActions 之前被扣除）
             BattleAction refundMoneyAction = null;
             try
             {
-                int? moneyCost = null;
-                try { moneyCost = card?.Config?.MoneyCost; } catch { moneyCost = null; }
+                int? moneyCost = card?.Config?.MoneyCost;
 
                 if (battle != null && card != null && moneyCost != null && moneyCost.Value > 0 &&
                     (card.Zone == CardZone.PlayArea || card.Zone == CardZone.FollowArea))
@@ -289,7 +269,7 @@ public static partial class RemoteCardUsePatch
                 return Array.Empty<object>(); // 无状态效果时返回空数组
             }
 
-            var list = new List<object>();
+            List<object> list = new List<object>();
             foreach (StatusEffect se in unit.StatusEffects)
             {
                 if (se == null)
@@ -301,10 +281,14 @@ public static partial class RemoteCardUsePatch
                 int? count = null;
                 int? duration = null;
                 int? limit = null;
-                try { if (se.HasLevel) level = se.Level; } catch { /* ignored */ } // 获取等级
-                try { if (se.HasCount) count = se.Count; } catch { /* ignored */ } // 获取计数
-                try { if (se.HasDuration) duration = se.Duration; } catch { /* ignored */ } // 获取持续时间
-                try { limit = se.Limit; } catch { /* ignored */ } // 获取限制
+                try
+                {
+                    if (se.HasLevel) level = se.Level;
+                    if (se.HasCount) count = se.Count;
+                    if (se.HasDuration) duration = se.Duration;
+                    limit = se.Limit;
+                }
+                catch { /* ignored */ }
 
                 list.Add(new
                 {
@@ -440,9 +424,9 @@ public static partial class RemoteCardUsePatch
     {
         try
         {
-            if (__instance == null || selector == null)
+            if (selector == null)
             {
-                return true; // 参数无效，执行原始方法
+                return true;
             }
 
             if (selector.Type != TargetType.SingleEnemy)
@@ -491,8 +475,7 @@ public static partial class RemoteCardUsePatch
             senderNetworkId ??= "unknown"; // 默认值
 
             string senderName = GameStateUtils.GetCurrentPlayer()?.Name; // 获取发送者名称
-            string senderCharacterId = null;
-            try { senderCharacterId = card?.Battle?.Player?.Id; } catch { senderCharacterId = null; } // 获取发送者角色ID
+            string senderCharacterId = card?.Battle?.Player?.Id;
 
             try
             {
@@ -507,8 +490,7 @@ public static partial class RemoteCardUsePatch
                 actionBlueprint = Array.Empty<object>(); // 异常时使用空数组
             }
 
-            string requestId = null;
-            try { requestId = Guid.NewGuid().ToString("N"); } catch { requestId = null; } // 生成请求ID
+            string requestId = Guid.NewGuid().ToString("N");
 
             var payload = new
             {
@@ -529,10 +511,10 @@ public static partial class RemoteCardUsePatch
                     IsUpgraded = card.IsUpgraded,
                     UpgradeCounter = card.UpgradeCounter,
                 },
-                ConsumingMana = SnapshotMana(consumingMana), // 快照法力消耗
-                Kicker = kicker, // 踢球状态
-                SenderStatusEffects = SnapshotStatusEffects(card?.Battle?.Player), // 快照发送者状态效果
-                Actions = actionBlueprint // 动作蓝图
+                ConsumingMana = SnapshotMana(consumingMana),
+                Kicker = kicker,
+                SenderStatusEffects = SnapshotStatusEffects(card?.Battle?.Player),
+                Actions = actionBlueprint
             };
 
             client.SendGameEventData(NetworkMessageTypes.OnRemoteCardUse, payload); // 发送网络事件
@@ -553,16 +535,9 @@ public static partial class RemoteCardUsePatch
         }
 
         // 2) 本地仅做最小“出牌动画/状态刷新”，不执行卡牌效果
-        try
-        {
-            card.PendingManaUsage = consumingMana; // 设置待处理法力使用
-            card.PendingTarget = proxy; // 设置待处理目标
-            card.KickerPlaying = kicker; // 设置踢球状态
-        }
-        catch
-        {
-            // ignored
-        }
+        card.PendingManaUsage = consumingMana;
+        card.PendingTarget = proxy;
+        card.KickerPlaying = kicker;
 
         // 简化：仅按卡牌类型播放基础动画（不尝试复刻 Config.Perform）
         BattleAction playAnimation = null;
@@ -572,15 +547,15 @@ public static partial class RemoteCardUsePatch
             {
                 string anim = card.CardType switch
                 {
-                    CardType.Attack => "shoot1", // 攻击类型动画
-                    CardType.Defense => "defend", // 防御类型动画
-                    CardType.Skill => "skill", // 技能类型动画
-                    CardType.Ability => "spell", // 能力类型动画
-                    CardType.Tool => "spell", // 工具类型动画
-                    _ => "spell" // 默认动画
+                    CardType.Attack => "shoot1",
+                    CardType.Defense => "defend",
+                    CardType.Skill => "skill",
+                    CardType.Ability => "spell",
+                    CardType.Tool => "spell",
+                    _ => "spell"
                 };
 
-                playAnimation = PerformAction.Animation(card.Battle.Player, anim, 0.2f, null, 0f, -1); // 播放动画动作
+                playAnimation = PerformAction.Animation(card.Battle.Player, anim, 0.2f, null, 0f, -1);
             }
         }
         catch
@@ -600,7 +575,7 @@ public static partial class RemoteCardUsePatch
                 !string.IsNullOrWhiteSpace(proxy.RemotePlayerId) &&
                 OtherPlayersOverlayPatch.TryGetRemoteCharacterUnitView(proxy.RemotePlayerId, out UnitView targetView))
             {
-                targetView.PlayAnimation(hasDamage ? "hit" : "spell"); // 播放目标动画（伤害用hit，其他用spell）
+                targetView.PlayAnimation(hasDamage ? "hit" : "spell");
             }
         }
         catch
@@ -608,16 +583,9 @@ public static partial class RemoteCardUsePatch
             // ignored
         }
 
-        try
-        {
-            card.PendingManaUsage = null; // 清空待处理法力使用
-            card.PendingTarget = null; // 清空待处理目标
-            card.KickerPlaying = false; // 重置踢球状态
-        }
-        catch
-        {
-            // ignored
-        }
+        card.PendingManaUsage = null;
+        card.PendingTarget = null;
+        card.KickerPlaying = false;
     }
 
     #endregion
@@ -640,7 +608,7 @@ public static partial class RemoteCardUsePatch
 
         try
         {
-            var list = new List<object>();
+            List<object> list = new List<object>();
             foreach (BattleAction action in actions)
             {
                 if (action == null)

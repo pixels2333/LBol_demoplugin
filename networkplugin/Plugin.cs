@@ -173,8 +173,7 @@ public class Plugin : BaseUnityPlugin
         try
         {
             var asm = typeof(Plugin).Assembly;
-            var asmPath = string.Empty;
-            try { asmPath = asm.Location ?? string.Empty; } catch { asmPath = string.Empty; }
+            var asmPath = asm.Location ?? string.Empty;
 
             if (string.IsNullOrWhiteSpace(asmPath) || !File.Exists(asmPath))
             {
@@ -183,7 +182,10 @@ public class Plugin : BaseUnityPlugin
             }
 
             FileInfo fi = null;
-            try { fi = new FileInfo(asmPath); } catch { fi = null; }
+            if (!string.IsNullOrWhiteSpace(asmPath))
+            {
+                try { fi = new FileInfo(asmPath); } catch { }
+            }
 
             var size = fi != null ? fi.Length : -1;
             var lastWriteUtc = fi != null ? fi.LastWriteTimeUtc.ToString("O") : "unknown";
@@ -205,7 +207,7 @@ public class Plugin : BaseUnityPlugin
             const ulong prime = 1099511628211UL;
 
             ulong hash = offset;
-            using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
             {
                 var buf = new byte[64 * 1024];
                 int read;

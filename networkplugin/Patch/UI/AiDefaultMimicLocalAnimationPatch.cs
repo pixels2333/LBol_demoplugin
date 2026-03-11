@@ -1,7 +1,6 @@
 using System;
 using HarmonyLib;
 using LBoL.Core;
-using LBoL.Presentation;
 using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Configuration;
@@ -24,28 +23,14 @@ internal static class AiDefaultMimicLocalAnimationPatch
 
     private static bool IsEnabled()
     {
-        try
-        {
-            var cfg = ServiceProvider?.GetService<ConfigManager>();
-            return cfg?.DebugVirtualPlayerAiDefault?.Value == true;
-        }
-        catch
-        {
-            return false;
-        }
+        var cfg = ServiceProvider?.GetService<ConfigManager>();
+        return cfg?.DebugVirtualPlayerAiDefault?.Value == true;
     }
 
     private static bool IsNetworkConnected()
     {
-        try
-        {
-            var client = ServiceProvider?.GetService<INetworkClient>();
-            return client != null && client.IsConnected;
-        }
-        catch
-        {
-            return false;
-        }
+        var client = ServiceProvider?.GetService<INetworkClient>();
+        return client != null && client.IsConnected;
     }
 
     [HarmonyPatch(typeof(UnitView), "PlayAnimation", typeof(string))]
@@ -70,15 +55,7 @@ internal static class AiDefaultMimicLocalAnimationPatch
                 return;
             }
 
-            UnitView local = null;
-            try
-            {
-                local = Singleton<GameDirector>.Instance?.PlayerUnitView;
-            }
-            catch
-            {
-                local = null;
-            }
+            var local = Singleton<GameDirector>.Instance?.PlayerUnitView;
 
             if (local == null || __instance == null)
             {

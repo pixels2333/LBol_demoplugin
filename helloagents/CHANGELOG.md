@@ -4,6 +4,54 @@
 
 ## [Unreleased]
 
+### 重构
+- **[networkplugin]**: 第二批防御性代码简化——移除 `networkplugin/` 中大量不必要的 try-catch、冗余 null 守卫与过度防御性封装，共涉及 14 个文件：
+  - `TradeSyncPatch`、`ExitGamePatch`、`NetworkIdentityTracker`：`TryGetClient/TryGetNetworkClient/TryGetNetworkManager` 改为表达式体。
+  - `AiDefaultMimicLocalAnimationPatch`：`IsEnabled/IsNetworkConnected` 改为表达式体；`Postfix` 中内层 `Singleton<GameDirector>.Instance?.PlayerUnitView` try-catch 删除（null-conditional 已足够）。
+  - `OtherPlayersOverlayPlayerStore`：`ShouldInjectTradeDebugPlayers/IsVirtualAiDefaultEnabled` 改为表达式体。
+  - `EnemySpawnSyncPatch`、`RoomStateSyncPatch`：3 个独立 Traverse try-catch 合并为 1 个带注释的 try 块。
+  - `MapCatchUpOrchestrator`：`stages[2]?.AsNormalFinal()` / `stages[3]?.AsTrueEndFinal()` 外层 try-catch 删除（null-conditional 安全）。
+  - `OtherPlayersOverlayViewRegistry`：删除 `unit.Initialize()`、`BoxCollider.enabled`、`SelectorCollider.enabled`、`SnapshotRemoteCharacterUnitViews`、`SetRemoteCharacterTargetingEnabled`、`TryGetRemoteCharacterUnitView`、`SetSelectorColliderEnabled` 七处无必要 try-catch；保留 `StartCoroutine`、`Traverse._circleCollider` 反射、`TryGetPointedRemotePlayer` 的 Camera/Raycast try-catch（有合理抛出可能）。
+  - `TradePanel`：
+    - 双 `SetButtonText` try-catch 改为直接调用。
+    - `onClick` 匿名 lambda 内静默 catch 改为带 `Plugin.Log.LogError` 的错误日志。
+    - `Destroy(_offerEditorRoot)` try-catch 删除（Destroy 安全）。
+    - `_moneyValueBaseFontSize = _moneyValueText.fontSize` try-catch 删除。
+    - `_offerEditorRoot.transform.SetAsLastSibling()` → `_offerEditorRoot?.transform.SetAsLastSibling()`。
+    - `Destroy(child/t.gameObject)` 循环体内 try-catch 删除（已有 null 检查）。
+    - `LayoutRebuilder.ForceRebuildLayoutImmediate` try-catch 删除（null 守卫已在外层）。
+    - `TryGetOwnedMoney` 中 `GameRun?.Money ?? 0` try-catch 删除。
+    - `GetComponent<TextMeshProUGUI>` 两处 try-catch 改为直接 block + null 检查。
+    - `_offerActionsRoot.SetActive(...)` → `_offerActionsRoot?.SetActive(...)`。
+    - `NormalizeButtonWidget` 外层整体 try-catch 删除；fallback 分支 3 行单独 try-catch 合并为 1 行。
+    - `PreferSingleButtonWidget` 及 `TryPickButtonTemplate` 的 `GetComponentsInChildren<Button/Transform>` try-catch 删除（返回数组，不抛）。
+    - `DisableCursorBehaviours` 内层 `behaviour.enabled = false` try-catch 删除（外层 try 仍保留）。
+  - `TradePanelRuntimeFactory`：`p.gameObject.SetActive(false)`、`Destroy(p.gameObject)`、`Destroy(b.gameObject)`、`Destroy(img)`、`slotWidget.enabled = false` 以及 `GetComponentsInChildren<Button/Transform>` 的 try-catch 全部删除。
+  - 保留的有理依据 try-catch：`NetworkIdentityTracker.EnsureSubscribed` 事件订阅/取消订阅（竞态保护）；`AiDefaultMimicLocalAnimationPatch.Postfix` 外层（`remote.PlayAnimation` 可能 MRE）；`NormalizeButtonWidget` 的 Traverse 反射 try；`DisableCursorBehaviours/DisableTooltipBehaviours` 外层（Unity 已销毁对象访问）；`TryGetOwnedMoney` 和 `TryGetPointedRemotePlayer` 各自的 Reflection/Raycast 段。
+  - 验证：`get_errors` 扫描 `networkplugin/` 全目录，0 errors。
+
+
+- **[UiObjectQueryPlugin]**: 新增独立 BepInEx 调试插件 `UiObjectQueryPlugin`，通过本地 HTTP `GET /health` 与 `POST /query` 按 `GameObject.name` 精确查询运行时对象，并返回 `Transform`/`RectTransform` 位置、缩放、旋转和布局属性。
+	- 验证：`dotnet build UiObjectQueryPlugin/UiObjectQueryPlugin.csproj -v minimal` 通过（1 个仓库级 `Mono.Cecil` 版本冲突警告，0 errors）。
+	- 文档：新增 `helloagents/modules/ui-object-query-plugin.md` 并同步 `modules/_index.md`。
+	- 方案：已归档至 `helloagents/archive/2026-03/202603111012_ui-object-query-plugin/`。
+
+### 重构
+- **[networkplugin]**: 简化 `RemoteCardUsePatch` — 移除 `__instance == null` 冗余守卫；`BattleController`、`MoneyCost`、`senderCharacterId` 三处从 null-conditional 表达式上层的 try-catch 全部删除（null-conditional 本身不会抛）；`Guid.NewGuid()` try-catch 删除（不可能抛）；`RemoteOnlyActions` 中 `card.PendingManaUsage`/`PendingTarget`/`KickerPlaying` 两处赋值组删除防御包装；`CardType` switch 表达式臂上的逐行注释清理。
+- **[networkplugin]**: 简化 `EnemyIntentReceivePatch` — 移除 `__instance == null` Harmony 守卫；`TryGetNetworkClient` 改为表达式体；去掉 `EnsureSubscribed` 中 `-=` 取消订阅周围无意义的 try-catch。
+- **[networkplugin]**: 简化 `MainMenuMultiplayerEntryPatch` — `TryGetNetworkClient` 改为表达式体。
+- **[networkplugin]**: 简化 `TradeDetailDialog` — `OnHiding` 中两个 `SetActive` try-catch 改为 `?.`；`OnCancel` picker 关闭块去掉外层 try-catch；`ApplyCompletedTradeAndClose` 两处 `try { Hide(); } catch {}` 改为直接 `Hide()`；`OnConfirmClick`/`OnCancelClick`/`ChangeMoney`/`ShowCardPicker`/`ShowExhibitPicker` 中 `AudioManager` 调用和 `CurrentGameRun?.Money` null-conditional 访问上的 try-catch 全部删除。
+- **[networkplugin]**: 简化 `TradeDetailDialogRuntimeFactory` — `GetComponentsInChildren<Button>()` 和 `GetComponentsInChildren<Transform>()` 上的 try-catch 删除（Unity 该方法返回空数组，不抛、不返回 null）。
+- **[networkplugin]**: 移除 `BattleController_Patch`（×2）和 `JoinerStageIndexAlignPatch`、`SpawnedEnemyManager` 中冗余的 `__instance == null` Harmony 守卫。
+- **[networkplugin]**: 简化 `Plugin.cs` — `TryLogAssemblyFingerprint` 中 `asm.Location` 单行 try-catch 内联为直接赋值；`new FileInfo(asmPath)` 保留 try-catch 但移入非空快速路径中。
+- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj --no-restore` 通过（0 errors）。
+
+
+- **[networkplugin]**: 简化 `OtherPlayersOverlayEventBridge` — `TryGetNetworkClient` 改为表达式体，合并 `EnsureSubscribed` 中两个独立的 try-catch（取消订阅不再静默吞异常）。
+- **[networkplugin]**: 简化 `TradePanel` — `SendTradeEvent` 移除空体 try-catch；`SetupTradeSession` 静默 catch 改为错误日志；`UpdateUIStrings`/`SetButtonText` 移除不必要的 try-catch；`TryShowTradeDetailDialog` 静默 catch 改为日志；`IsLocalDebugTradeAllowed`/`TryEnsureNetworkConnected`/`TryShowTopMessage` 改为直接调用；`ResetTradeData` overlay 块移除无实际作用的 try-catch；清理 `AddCardToTrade`/`RemoveCardFromTrade`/`UpdateTradeSlot` 中逐行解释性注释。
+- **[networkplugin]**: 简化 `CardUtils` — `GetHandCardsInfo`/`GetDrawDeckInfo` 移除外层 try-catch（null 检查不会抛，`GetCardInfo` 已有内部保护）。
+- **[networkplugin]**: 简化 `SynchronizationManager` — `TryNormalizeNetworkEvent` 移除外层 try-catch 并补 null 快速返回；`DescribePayloadHead200` 嵌套 try-catch 压缩为单层；`ResolvePlayerName` 移除无意义的 catch 块。
+
 ### UI
 - **[networkplugin]**: 重构 `TradeDetailDialog` 交易详情界面，采用分栏布局并优化列表显示。
 - **[networkplugin]**: 引入紧凑型 `ListItem` 样式（44px 高度），替代原本笨重的按钮列表占位符。

@@ -5,7 +5,7 @@
     <Product>Network Plugin</Product>
     <Version>1.0.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <LangVersion>latest</LangVersion>
+    <LangVersion>preview</LangVersion>
     <!--
       Ensure all NuGet/runtime dependencies are copied next to NetworkPlugin.dll.
       BepInEx will fail to instantiate the plugin if required assemblies are missing.

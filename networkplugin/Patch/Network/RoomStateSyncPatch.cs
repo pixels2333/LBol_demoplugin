@@ -26,16 +26,7 @@ public static class RoomStateSyncPatch
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
     private static INetworkClient TryGetClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     [HarmonyPatch(typeof(GameMap), nameof(GameMap.EnterNode))]
     private static class GameMap_EnterNode_RequestRoomState
@@ -234,9 +225,13 @@ public static class RoomStateSyncPatch
 
                 // 只做基础状态对齐：避免强行改复杂字段导致崩溃。
                 // 注意：LBoL 的 Unit.Hp/Block/Shield 的 setter 可能是 internal，需用反射/Traverse。
-                try { Traverse.Create(local).Property("Hp").SetValue(remote.Health); } catch { }
-                try { Traverse.Create(local).Property("Block").SetValue(remote.Block); } catch { }
-                try { Traverse.Create(local).Property("Shield").SetValue(remote.Shield); } catch { }
+                try
+                {
+                    Traverse.Create(local).Property("Hp").SetValue(remote.Health);
+                    Traverse.Create(local).Property("Block").SetValue(remote.Block);
+                    Traverse.Create(local).Property("Shield").SetValue(remote.Shield);
+                }
+                catch { }
             }
         }
         catch
@@ -247,7 +242,7 @@ public static class RoomStateSyncPatch
 
     private static RoomStateSnapshot BuildSnapshot(BattleController battle, string roomKey, RoomPhase phase)
     {
-        var snapshot = new RoomStateSnapshot
+        RoomStateSnapshot snapshot = new RoomStateSnapshot
         {
             RoomKey = roomKey,
             Phase = phase,

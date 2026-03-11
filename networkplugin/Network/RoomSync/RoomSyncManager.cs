@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Client;
@@ -48,10 +47,7 @@ public static class RoomSyncManager
                 return;
             }
 
-            if (_subscribedClient != null)
-            {
-                _subscribedClient.OnGameEventReceived -= OnGameEventReceived;
-            }
+            _subscribedClient?.OnGameEventReceived -= OnGameEventReceived;
 
             _subscribedClient = client;
             _subscribedClient.OnGameEventReceived += OnGameEventReceived;
@@ -63,10 +59,7 @@ public static class RoomSyncManager
     {
         lock (_lock)
         {
-            if (_subscribedClient != null)
-            {
-                _subscribedClient.OnGameEventReceived -= OnGameEventReceived;
-            }
+            _subscribedClient?.OnGameEventReceived -= OnGameEventReceived;
 
             _subscribedClient = null;
             _subscribed = false;

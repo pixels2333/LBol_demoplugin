@@ -40,7 +40,7 @@ public static class PlayerTargeterPatch
             return existing;
         }
 
-        var created = new RemotePlayerProxyEnemy(playerId, playerName);
+        RemotePlayerProxyEnemy created = new RemotePlayerProxyEnemy(playerId, playerName);
         _proxyTargets[playerId] = created;
         return created;
     }
@@ -111,10 +111,7 @@ public static class PlayerTargeterPatch
         try
         {
             Doll doll = Traverse.Create(selector).Field("_activeDoll").GetValue<Doll>();
-            if (doll != null)
-            {
-                doll.PendingTarget = target;
-            }
+            doll?.PendingTarget = target;
         }
         catch
         {
@@ -248,7 +245,7 @@ public static class PlayerTargeterPatch
         }
     }
 
-    [HarmonyPatch(typeof(TargetSelector), nameof(TargetSelector.EnableSelector), typeof(UltimateSkill), typeof(UnityEngine.Vector3))]
+    [HarmonyPatch(typeof(TargetSelector), nameof(TargetSelector.EnableSelector), typeof(UltimateSkill), typeof(Vector3))]
     [HarmonyPostfix]
     private static void TargetSelector_EnableSelector_Us_Postfix(UltimateSkill us)
     {
@@ -270,7 +267,7 @@ public static class PlayerTargeterPatch
         }
     }
 
-    [HarmonyPatch(typeof(TargetSelector), nameof(TargetSelector.EnableSelector), typeof(Doll), typeof(UnityEngine.Vector3))]
+    [HarmonyPatch(typeof(TargetSelector), nameof(TargetSelector.EnableSelector), typeof(Doll), typeof(Vector3))]
     [HarmonyPostfix]
     private static void TargetSelector_EnableSelector_Doll_Postfix(Doll doll)
     {
@@ -306,10 +303,7 @@ public static class PlayerTargeterPatch
             OtherPlayersOverlayPatch.SetRemoteCharacterTargetingEnabled(false);
             foreach (UnitView remote in OtherPlayersOverlayPatch.SnapshotRemoteCharacterUnitViews())
             {
-                if (remote != null)
-                {
-                    remote.SelectingVisible = false;
-                }
+                remote?.SelectingVisible = false;
             }
         }
         catch

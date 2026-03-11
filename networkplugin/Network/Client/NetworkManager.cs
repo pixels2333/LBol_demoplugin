@@ -659,7 +659,7 @@ public class NetworkManager : INetworkManager
             }
             else
             {
-                var arr = new INetworkPlayer[count];
+                INetworkPlayer[] arr = new INetworkPlayer[count];
                 int i = 0;
                 foreach (INetworkPlayer p in _players.Values)
                 {

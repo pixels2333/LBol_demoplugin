@@ -1,17 +1,17 @@
 using System;
 using System.Linq;
 using System.Reflection;
-using LBoL.Presentation;
 using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Dialogs;
 using LBoL.Presentation.UI.Widgets;
 using NetworkPlugin.Patch.UI;
+using NetworkPlugin.UI.Panels;
 using NetworkPlugin.UI.Widgets;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace NetworkPlugin.UI.Panels;
+namespace NetworkPlugin.UI.Factories;
 
 internal static class TradePanelRuntimeFactory
 {
@@ -22,7 +22,7 @@ internal static class TradePanelRuntimeFactory
     {
         try
         {
-            // Reuse any existing TradePanel instances (and keep only one active to avoid stacking).
+            // 复用现有的TradePanel实例（仅保留一个激活实例，避免界面堆叠）。
             TradePanel[] existingPanels = null;
             try
             {
@@ -35,7 +35,7 @@ internal static class TradePanelRuntimeFactory
 
             if (existingPanels != null && existingPanels.Length > 0)
             {
-                // Prefer a non-runtime (prefab-wired) TradePanel if present.
+                // 如果存在非运行时创建（prefab已绑定）的TradePanel，则优先复用它。
                 TradePanel prefabPanel = null;
                 foreach (var p in existingPanels)
                 {
@@ -51,7 +51,7 @@ internal static class TradePanelRuntimeFactory
                     }
                 }
 
-                // Otherwise reuse only the current runtime panel version.
+                // 否则仅复用当前版本的运行时TradePanel。
                 TradePanel currentRuntime = null;
                 foreach (var p in existingPanels)
                 {
@@ -85,7 +85,7 @@ internal static class TradePanelRuntimeFactory
                         }
                         catch
                         {
-                            // ignored
+                            // 忽略单个旧面板的停用失败，继续处理其他实例。
                         }
                     }
 
@@ -102,15 +102,15 @@ internal static class TradePanelRuntimeFactory
                             continue;
                         }
 
-                        try { p.gameObject.SetActive(false); } catch { }
+                        p.gameObject.SetActive(false);
                     }
 
                     Plugin.Logger?.LogInfo($"[TradePanelRuntimeFactory] Reusing runtime TradePanel (version={RuntimeUiVersion}).");
                     return currentRuntime;
                 }
 
-                // Old runtime panels from previous builds can remain in memory and keep the old "rectangle" look.
-                // Destroy them so the next creation reflects the latest UI code.
+                // 旧版本运行时面板可能仍留在内存中，并保留旧的“矩形”外观。
+                // 先销毁它们，确保下一次创建时使用最新的UI代码。
                 foreach (var p in existingPanels)
                 {
                     if (p == null)
@@ -123,7 +123,7 @@ internal static class TradePanelRuntimeFactory
                         continue;
                     }
 
-                    try { UnityEngine.Object.Destroy(p.gameObject); } catch { }
+                    UnityEngine.Object.Destroy(p.gameObject);
                 }
 
                 Plugin.Logger?.LogInfo("[TradePanelRuntimeFactory] Destroyed old runtime TradePanel(s); rebuilding with latest UI.");
@@ -135,8 +135,8 @@ internal static class TradePanelRuntimeFactory
                 return null;
             }
 
-            // Find an in-game styled button template (CommonButtonWidget) to clone.
-            // Prefer extracting from vanilla prefabs to avoid accidentally picking our own old runtime buttons.
+            // 查找一个游戏内风格的按钮模板（CommonButtonWidget）用于克隆。
+            // 优先从原生prefab中提取，避免误选到我们自己旧的运行时按钮。
             CommonButtonWidget confirmTemplate = TryPickButtonTemplate(preferConfirm: true);
             CommonButtonWidget cancelTemplate = TryPickButtonTemplate(preferConfirm: false);
 
@@ -146,38 +146,20 @@ internal static class TradePanelRuntimeFactory
                 return null;
             }
 
-            // Fallback: if we can't locate a dedicated cancel template, reuse confirm template.
+            // 降级处理：如果找不到专用的取消按钮模板，就复用确认按钮模板。
             cancelTemplate ??= confirmTemplate;
 
             TextMeshProUGUI textTemplate = TryPickTextTemplate();
 
-            // Capture a lightweight visual style from the picked template (used for slot backgrounds).
-            Image templateImage = null;
-            try
-            {
-                templateImage = confirmTemplate.GetComponentInChildren<Image>(true);
-            }
-            catch
-            {
-                templateImage = null;
-            }
-
             Transform parent = preferredParent;
             if (parent == null)
             {
-                // Best-effort fallback: attach under any active Canvas so the UI can render.
-                try
-                {
-                    var canvas = UnityEngine.Object.FindObjectOfType<Canvas>(true);
-                    parent = canvas != null ? canvas.transform : null;
-                }
-                catch
-                {
-                    parent = null;
-                }
+                // 尽力降级：挂到任意激活Canvas下，确保UI可以正常渲染。
+                var canvas = UnityEngine.Object.FindObjectOfType<Canvas>(true);
+                parent = canvas?.transform;
             }
 
-            var root = new GameObject(RuntimeRootName);
+            GameObject root = new GameObject(RuntimeRootName);
             root.SetActive(false);
             if (parent != null)
             {
@@ -194,17 +176,16 @@ internal static class TradePanelRuntimeFactory
             canvasGroup.interactable = true;
             canvasGroup.blocksRaycasts = true;
 
-            // Raycast blocker.
-            // Do NOT draw a full-screen semi-transparent rectangle here; if the sprite load fails at runtime,
-            // Unity will render a plain colored quad which looks like a generic rectangle.
-            // Visuals come from the in-game MessageDialog frame we clone below.
+            // 射线阻挡层。
+            // 不要在这里绘制全屏半透明矩形；如果运行时sprite加载失败，
+            // Unity会渲染出一个纯色四边形，看起来像普通矩形遮罩。
+            // 视觉外观由下面克隆的游戏内MessageDialog边框提供。
             var blocker = root.AddComponent<Image>();
-            blocker.sprite = null;
             blocker.color = new Color(0f, 0f, 0f, 0f);
             blocker.raycastTarget = true;
 
-            // Restore the in-game dialog frame as a pure visual background.
-            // We only need its graphics/layout; all interactive content stays on root so z-order is correct.
+            // 恢复游戏内对话框边框作为纯视觉背景。
+            // 这里只需要它的图形与布局；所有可交互内容仍挂在root上，保证z顺序正确。
             TextMeshProUGUI frameTextTemplate = null;
             try
             {
@@ -235,7 +216,7 @@ internal static class TradePanelRuntimeFactory
 
                         frameTextTemplate = mainText != null ? mainText : subText;
 
-                        // Hide all built-in texts/buttons; our panel provides its own.
+                        // 隐藏内置文本和按钮；当前面板会提供自己的内容。
                         HideDialogText(mainText);
                         HideDialogText(subText);
                         HideDialogButton(dlgSingleConfirm);
@@ -245,19 +226,19 @@ internal static class TradePanelRuntimeFactory
                         dialog.enabled = false;
                     }
 
-                    // Push frame behind everything else so controls render on top.
+                    // 把边框推到最底层，确保控件绘制在上方。
                     frame.transform.SetAsFirstSibling();
                 }
             }
             catch
             {
-                // ignored — frame is cosmetic only
+                // 忽略边框构建失败；它只影响视觉效果，不影响核心功能。
             }
 
-            // All trade UI content is attached directly to root (above the frame).
+            // 所有交易UI内容都直接挂在root上（位于边框之上）。
             Transform uiParent = root.transform;
 
-            // Title / status / player names
+            // 标题 / 状态 / 玩家名称
             var title = CloneTextOrCreate(frameTextTemplate != null ? frameTextTemplate : textTemplate, uiParent, "Title");
             title.text = "交易";
             title.alignment = TextAlignmentOptions.Center;
@@ -282,23 +263,23 @@ internal static class TradePanelRuntimeFactory
             p2Name.fontSize = Mathf.Max(p2Name.fontSize, 20);
             ConfigureAnchors(p2Name.rectTransform, new Vector2(0.54f, 0.74f), new Vector2(0.92f, 0.80f));
 
-            // Trade areas
-            var p1AreaGo = new GameObject("Player1Area");
+            // 交易区域
+            GameObject p1AreaGo = new GameObject("Player1Area");
             p1AreaGo.transform.SetParent(uiParent, false);
             var p1Area = p1AreaGo.AddComponent<RectTransform>();
             ConfigureAnchors(p1Area, new Vector2(0.08f, 0.28f), new Vector2(0.46f, 0.72f));
 
-            var p2AreaGo = new GameObject("Player2Area");
+            GameObject p2AreaGo = new GameObject("Player2Area");
             p2AreaGo.transform.SetParent(uiParent, false);
             var p2Area = p2AreaGo.AddComponent<RectTransform>();
             ConfigureAnchors(p2Area, new Vector2(0.54f, 0.28f), new Vector2(0.92f, 0.72f));
 
-            // Slots: clone the in-game button widget so slots use vanilla button visuals instead of plain rectangles.
+            // 槽位：克隆游戏内按钮组件，让槽位使用原生按钮外观而不是普通矩形。
             var slotTextTemplate = frameTextTemplate != null ? frameTextTemplate : textTemplate;
             var p1Slots = CreateSlotColumn(p1Area, slotTextTemplate, confirmTemplate, 5, "P1");
             var p2Slots = CreateSlotColumn(p2Area, slotTextTemplate, confirmTemplate, 5, "P2");
 
-            // Confirm / cancel buttons at bottom.
+            // 底部的确认 / 取消按钮。
             var confirm = UnityEngine.Object.Instantiate(confirmTemplate, uiParent, false);
             confirm.name = "Confirm";
             SetButtonLabel(confirm, "确认交易");
@@ -313,19 +294,12 @@ internal static class TradePanelRuntimeFactory
             DisableTooltipBehaviours(cancel.gameObject);
             ConfigureAnchors(cancel.GetComponent<RectTransform>(), new Vector2(0.52f, 0.10f), new Vector2(0.78f, 0.18f));
 
-            // Add TradePanel and bind fields.
+            // 添加TradePanel并绑定字段。
             var panel = root.AddComponent<TradePanel>();
 
-            // Mark as runtime-created so future calls can decide whether to rebuild.
-            try
-            {
-                var marker = root.AddComponent<TradePanelRuntimeMarker>();
-                marker.Version = RuntimeUiVersion;
-            }
-            catch
-            {
-                // ignored
-            }
+            // 标记为运行时创建，便于后续调用判断是否需要重建。
+            var marker = root.AddComponent<TradePanelRuntimeMarker>();
+            marker.Version = RuntimeUiVersion;
             panel.BindRuntimeUi(
                 p1Area,
                 p2Area,
@@ -337,7 +311,7 @@ internal static class TradePanelRuntimeFactory
                 p1Name,
                 p2Name);
 
-            // Make sure Awake() can hook up button listeners.
+            // 确保Awake()能够挂接按钮监听。
             root.SetActive(true);
             root.SetActive(false);
 
@@ -364,8 +338,8 @@ internal static class TradePanelRuntimeFactory
                 return true;
             }
 
-            // Back-compat: old runtime panels had a stable root name.
-            return string.Equals(panel.gameObject != null ? panel.gameObject.name : null, RuntimeRootName, StringComparison.Ordinal);
+            // 向后兼容：旧版运行时面板使用固定的根节点名称。
+            return string.Equals(panel.gameObject?.name, RuntimeRootName, StringComparison.Ordinal);
         }
         catch
         {
@@ -431,41 +405,27 @@ internal static class TradePanelRuntimeFactory
 
     private static void HideDialogButton(Button button)
     {
-        try
+        if (button == null)
         {
-            if (button == null)
-            {
-                return;
-            }
+            return;
+        }
 
-            button.onClick.RemoveAllListeners();
-            button.gameObject.SetActive(false);
-        }
-        catch
-        {
-            // ignored
-        }
+        button.onClick.RemoveAllListeners();
+        button.gameObject.SetActive(false);
     }
 
     private static void HideDialogText(TextMeshProUGUI text)
     {
-        try
+        if (text == null)
         {
-            if (text == null)
-            {
-                return;
-            }
+            return;
+        }
 
-            text.text = string.Empty;
-            text.raycastTarget = false;
-            var c = text.color;
-            c.a = 0f;
-            text.color = c;
-        }
-        catch
-        {
-            // ignored
-        }
+        text.text = string.Empty;
+        text.raycastTarget = false;
+        var c = text.color;
+        c.a = 0f;
+        text.color = c;
     }
 
     private static T GetDialogField<T>(MessageDialog dialog, string fieldName) where T : class
@@ -491,41 +451,6 @@ internal static class TradePanelRuntimeFactory
         }
     }
 
-    private static RectTransform TryFindCommonAncestorRect(RectTransform a, RectTransform b)
-    {
-        try
-        {
-            if (a == null || b == null)
-            {
-                return null;
-            }
-
-            var ancestors = new System.Collections.Generic.HashSet<Transform>();
-            Transform t = a;
-            while (t != null)
-            {
-                ancestors.Add(t);
-                t = t.parent;
-            }
-
-            Transform u = b;
-            while (u != null)
-            {
-                if (ancestors.Contains(u))
-                {
-                    return u as RectTransform;
-                }
-                u = u.parent;
-            }
-
-            return null;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
     private static TextMeshProUGUI CloneTextOrCreate(TextMeshProUGUI template, Transform parent, string name)
     {
         TextMeshProUGUI text;
@@ -536,12 +461,12 @@ internal static class TradePanelRuntimeFactory
         }
         else
         {
-            var go = new GameObject(name);
+            GameObject go = new GameObject(name);
             go.transform.SetParent(parent, false);
             text = go.AddComponent<TextMeshProUGUI>();
         }
 
-        // Ensure rect exists.
+        // 确保存在rectTransform。
         _ = text.rectTransform;
         return text;
     }
@@ -561,18 +486,11 @@ internal static class TradePanelRuntimeFactory
 
     private static void SetButtonLabel(CommonButtonWidget button, string label)
     {
-        try
+        var tmp = button?.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (tmp != null)
         {
-            var tmp = button != null ? button.GetComponentInChildren<TextMeshProUGUI>(true) : null;
-            if (tmp != null)
-            {
-                tmp.text = label;
-                tmp.alignment = TextAlignmentOptions.Center;
-            }
-        }
-        catch
-        {
-            // ignored
+            tmp.text = label;
+            tmp.alignment = TextAlignmentOptions.Center;
         }
     }
 
@@ -580,7 +498,7 @@ internal static class TradePanelRuntimeFactory
     {
         try
         {
-            // 1) Strong preference: extract from a known vanilla UI prefab.
+            // 1) 强烈优先：从已知的原生UI prefab中提取。
             try
             {
                 var dialogPrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
@@ -614,7 +532,7 @@ internal static class TradePanelRuntimeFactory
             }
             catch
             {
-                // ignored
+                // 忽略原生prefab提取失败，继续走场景内候选回退逻辑。
             }
 
             var candidates = UnityEngine.Object.FindObjectsByType<CommonButtonWidget>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -633,39 +551,27 @@ internal static class TradePanelRuntimeFactory
                     continue;
                 }
 
-                // Avoid selecting our own runtime-generated buttons.
+                // 避免选中我们自己运行时生成的按钮。
                 if (IsUnderRuntimeTradePanel(c.transform))
                 {
                     continue;
                 }
 
-                int buttons = 0;
-                int nodes = 0;
+                int buttons = c.GetComponentsInChildren<Button>(true).Length;
+                int nodes = c.GetComponentsInChildren<Transform>(true).Length;
 
-                try { buttons = c.GetComponentsInChildren<Button>(true)?.Length ?? 0; } catch { buttons = 0; }
-                try { nodes = c.GetComponentsInChildren<Transform>(true)?.Length ?? 0; } catch { nodes = 0; }
-
-                // Prefer templates that are actually a single-button widget (avoids cloning whole bars/panels).
+                // 优先选择真正的单按钮组件模板，避免克隆整条按钮栏或整块面板。
                 if (buttons == 0)
                 {
                     continue;
                 }
 
-                // Prefer non-cancel widgets when picking the confirm style.
-                if (preferConfirm)
+                // 选择确认按钮样式时，优先避开名称中带cancel的组件。
+                if (preferConfirm
+                    && !string.IsNullOrWhiteSpace(c.name)
+                    && c.name.IndexOf("cancel", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    try
-                    {
-                        if (!string.IsNullOrWhiteSpace(c.name)
-                            && c.name.IndexOf("cancel", StringComparison.OrdinalIgnoreCase) >= 0)
-                        {
-                            continue;
-                        }
-                    }
-                    catch
-                    {
-                        // ignored
-                    }
+                    continue;
                 }
 
                 int score = (buttons * 1000) + nodes;
@@ -693,21 +599,18 @@ internal static class TradePanelRuntimeFactory
                 return null;
             }
 
-            // Prefer the closest widget that explicitly references this Button.
+            // 优先选择最近且显式引用该Button的组件。
             var widgets = target.GetComponentsInParent<CommonButtonWidget>(true);
-            if (widgets != null)
+            foreach (var w in widgets)
             {
-                foreach (var w in widgets)
+                if (w == null)
                 {
-                    if (w == null)
-                    {
-                        continue;
-                    }
+                    continue;
+                }
 
-                    if (ReferenceEquals(w.button, target))
-                    {
-                        return w;
-                    }
+                if (ReferenceEquals(w.button, target))
+                {
+                    return w;
                 }
             }
 
@@ -723,7 +626,7 @@ internal static class TradePanelRuntimeFactory
     {
         try
         {
-            // Prefer vanilla dialog prefab TMP so our cloned labels match game font/material.
+            // 优先使用原生对话框prefab里的TMP，让克隆标签沿用游戏字体与材质。
             try
             {
                 var dialogPrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
@@ -738,7 +641,7 @@ internal static class TradePanelRuntimeFactory
             }
             catch
             {
-                // ignored
+                // 忽略原生文本模板提取失败，继续回退到场景内搜索。
             }
 
             var tmps = UnityEngine.Object.FindObjectsByType<TextMeshProUGUI>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -772,172 +675,135 @@ internal static class TradePanelRuntimeFactory
 
     private static void DisableExtraButtons(CommonButtonWidget widget)
     {
-        try
+        if (widget == null)
         {
-            if (widget == null)
-            {
-                return;
-            }
-
-            Button keep = widget.button;
-            var buttons = widget.GetComponentsInChildren<Button>(true);
-            if (buttons == null || buttons.Length <= 1)
-            {
-                return;
-            }
-
-            foreach (var b in buttons)
-            {
-                if (b == null || b == keep)
-                {
-                    continue;
-                }
-
-                b.enabled = false;
-                b.interactable = false;
-            }
+            return;
         }
-        catch
+
+        Button keep = widget.button;
+        var buttons = widget.GetComponentsInChildren<Button>(true);
+        if (buttons.Length <= 1)
         {
-            // ignored
+            return;
+        }
+
+        foreach (var b in buttons)
+        {
+            if (b == null || b == keep)
+            {
+                continue;
+            }
+
+            b.enabled = false;
+            b.interactable = false;
         }
     }
 
     private static void DisableTooltipBehaviours(GameObject root)
     {
-        try
+        if (root == null)
         {
-            if (root == null)
-            {
-                return;
-            }
-
-            foreach (var behaviour in root.GetComponentsInChildren<Behaviour>(true))
-            {
-                if (behaviour == null)
-                {
-                    continue;
-                }
-
-                var name = behaviour.GetType().Name;
-                if (name != null && name.IndexOf("Tooltip", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    behaviour.enabled = false;
-                }
-            }
+            return;
         }
-        catch
+
+        foreach (var behaviour in root.GetComponentsInChildren<Behaviour>(true))
         {
-            // ignored
+            if (behaviour == null)
+            {
+                continue;
+            }
+
+            var name = behaviour.GetType().Name;
+            if (name != null && name.IndexOf("Tooltip", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                behaviour.enabled = false;
+            }
         }
     }
 
     private static TradeSlotWidget[] CreateSlotColumn(RectTransform area, TextMeshProUGUI textTemplate, CommonButtonWidget buttonTemplate, int count, string prefix)
     {
-        var slots = new TradeSlotWidget[count];
+        TradeSlotWidget[] slots = new TradeSlotWidget[count];
         for (int i = 0; i < count; i++)
         {
-            // Clone an in-game authored button widget so the slot looks like vanilla UI.
-            // Then attach TradeSlotWidget (derives from CommonButtonWidget) for card tooltip + remove behavior.
+            // 克隆游戏内制作好的按钮组件，让槽位外观保持原生UI风格。
+            // 然后再挂上TradeSlotWidget（继承自CommonButtonWidget），补上卡牌Tooltip与移除逻辑。
             var slotWidget = UnityEngine.Object.Instantiate(buttonTemplate, area, false);
             slotWidget.name = $"{prefix}_Slot_{i + 1}";
             DisableExtraButtons(slotWidget);
             DisableTooltipBehaviours(slotWidget.gameObject);
 
-            // Slot widgets must not inherit template sub-buttons/icons (they can render as a stack of X markers).
-            // Keep only the primary button object.
-            try
+            // 槽位组件不能继承模板里的子按钮和图标，否则可能堆出一串X标记。
+            // 这里只保留主按钮对象。
+            var keepBtn = slotWidget.button;
+            var buttons = slotWidget.GetComponentsInChildren<Button>(true);
+            foreach (var b in buttons)
             {
-                var keepBtn = slotWidget.button;
-                var buttons = slotWidget.GetComponentsInChildren<Button>(true);
-                if (buttons != null)
+                if (b == null || b == keepBtn)
                 {
-                    foreach (var b in buttons)
-                    {
-                        if (b == null || b == keepBtn)
-                        {
-                            continue;
-                        }
-
-                        try { UnityEngine.Object.Destroy(b.gameObject); } catch { }
-                    }
+                    continue;
                 }
 
-                // Also remove extra images/icons under the template (e.g., cancel/close icons).
-                var keepGraphic = keepBtn != null ? keepBtn.targetGraphic : null;
-                var keepImage = keepGraphic as Image;
-                var images = slotWidget.GetComponentsInChildren<Image>(true);
-                if (images != null)
+                UnityEngine.Object.Destroy(b.gameObject);
+            }
+
+            // 同时移除模板下多余的图像和图标（例如 cancel / close 图标）。
+            var keepGraphic = keepBtn?.targetGraphic;
+            Image keepImage = keepGraphic as Image;
+            var images = slotWidget.GetComponentsInChildren<Image>(true);
+            foreach (var img in images)
+            {
+                if (img == null)
                 {
-                    foreach (var img in images)
-                    {
-                        if (img == null)
-                        {
-                            continue;
-                        }
-
-                        // Keep the main background image (usually targetGraphic) and any selection border.
-                        if (keepImage != null && ReferenceEquals(img, keepImage))
-                        {
-                            continue;
-                        }
-
-                        if (string.Equals(img.gameObject.name, "selectedBorder", StringComparison.OrdinalIgnoreCase)
-                            || string.Equals(img.gameObject.name, "SelectedBorder", StringComparison.Ordinal))
-                        {
-                            continue;
-                        }
-
-                        // If it's on the same object as the kept image, keep it.
-                        if (keepImage != null && ReferenceEquals(img.gameObject, keepImage.gameObject))
-                        {
-                            continue;
-                        }
-
-                        // Otherwise remove; the slot content (card image/text) is provided by our runtime children.
-                        try { UnityEngine.Object.Destroy(img); } catch { }
-                    }
+                    continue;
                 }
-            }
-            catch
-            {
-                // ignored
-            }
 
-            // Some button templates carry default labels like "取消"/"确认".
-            // Slots should not inherit those; we provide our own Name label instead.
-            try
-            {
-                var tmps = slotWidget.GetComponentsInChildren<TextMeshProUGUI>(true);
-                if (tmps != null)
+                // 保留主背景图（通常是targetGraphic）以及选中边框。
+                if (keepImage != null && ReferenceEquals(img, keepImage))
                 {
-                    foreach (var t in tmps)
-                    {
-                        if (t == null)
-                        {
-                            continue;
-                        }
-
-                        t.text = string.Empty;
-                        t.raycastTarget = false;
-                        var c = t.color;
-                        c.a = 0f;
-                        t.color = c;
-                    }
+                    continue;
                 }
-            }
-            catch
-            {
-                // ignored
+
+                if (string.Equals(img.gameObject.name, "selectedBorder", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(img.gameObject.name, "SelectedBorder", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                // 如果它和保留图像共用同一个对象，也一并保留。
+                if (keepImage != null && ReferenceEquals(img.gameObject, keepImage.gameObject))
+                {
+                    continue;
+                }
+
+                // 其他图像全部移除；槽位内容（卡牌图像/文本）由运行时子节点提供。
+                UnityEngine.Object.Destroy(img);
             }
 
-            // Disable the original CommonButtonWidget component to avoid double pointer handling.
-            try { slotWidget.enabled = false; } catch { }
+            // 某些按钮模板自带“取消”或“确认”等默认文案。
+            // 槽位不应继承这些文案；名称文本由我们自己的Name标签提供。
+            var tmps = slotWidget.GetComponentsInChildren<TextMeshProUGUI>(true);
+            foreach (var t in tmps)
+            {
+                if (t == null)
+                {
+                    continue;
+                }
+
+                t.text = string.Empty;
+                t.raycastTarget = false;
+                var c = t.color;
+                c.a = 0f;
+                t.color = c;
+            }
+
+            // 禁用原始CommonButtonWidget，避免出现双重指针处理。
+            slotWidget.enabled = false;
 
             var slotGo = slotWidget.gameObject;
             var rt = slotGo.GetComponent<RectTransform>();
 
-            // Manual vertical positioning (avoid LayoutGroup dependencies).
+            // 手动做垂直定位，避免依赖LayoutGroup。
             float height = 1f / count;
             float top = 1f - i * height;
             float bottom = top - height;
@@ -947,18 +813,11 @@ internal static class TradePanelRuntimeFactory
             rt.offsetMax = new Vector2(0f, -4f);
 
             var slot = slotGo.AddComponent<TradeSlotWidget>();
-            // Wire the underlying UnityEngine.UI.Button from the cloned template.
-            try
-            {
-                slot.button = slotGo.GetComponentInChildren<Button>(true);
-            }
-            catch
-            {
-                slot.button = null;
-            }
+            // 连接克隆模板中的底层UnityEngine.UI.Button。
+            slot.button = slotGo.GetComponentInChildren<Button>(true);
 
-            // Optional card image surface (RawImage) for vanilla card textures.
-            var imgGo = new GameObject("CardImage");
+            // 可选的卡牌图像承载层（RawImage），用于显示原生卡牌纹理。
+            GameObject imgGo = new GameObject("CardImage");
             imgGo.transform.SetParent(slotGo.transform, false);
             var raw = imgGo.AddComponent<RawImage>();
             raw.texture = null;
@@ -970,24 +829,17 @@ internal static class TradePanelRuntimeFactory
             }
             ConfigureAnchors(rawRt, new Vector2(0.02f, 0.12f), new Vector2(0.20f, 0.88f));
 
-            // Reuse the template's label if present; otherwise clone/create one.
+            // 优先复用模板里的标签；没有的话再克隆或创建一个。
             var label = CloneTextOrCreate(textTemplate, slotGo.transform, "Name");
             label.name = "Name";
-            // Leave room for the card image.
+            // 给卡牌图像预留显示空间。
             ConfigureAnchors(label.rectTransform, new Vector2(0.22f, 0f), new Vector2(1f, 1f));
             label.alignment = TextAlignmentOptions.Center;
             label.raycastTarget = false;
 
-            try
-            {
-                var c = label.color;
-                c.a = 1f;
-                label.color = c;
-            }
-            catch
-            {
-                // ignored
-            }
+            var labelColor = label.color;
+            labelColor.a = 1f;
+            label.color = labelColor;
 
             slot.BindRuntime(label, raw);
             slot.ClearSlot();

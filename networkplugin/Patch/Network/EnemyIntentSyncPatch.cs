@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using HarmonyLib;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
@@ -49,16 +48,7 @@ public static class EnemyIntentSyncPatch
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
     private static INetworkClient TryGetNetworkClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     [HarmonyPatch(typeof(GameDirector), "Update")]
     private static class SubscribeHook

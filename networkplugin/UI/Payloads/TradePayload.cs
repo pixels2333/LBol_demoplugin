@@ -1,4 +1,4 @@
-namespace NetworkPlugin.UI.Panels;
+namespace NetworkPlugin.UI.Payloads;
 
 /// <summary>
 /// 交易面板数据类

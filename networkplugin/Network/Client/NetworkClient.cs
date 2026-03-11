@@ -562,7 +562,7 @@ public class NetworkClient : INetworkClient
         }
     }
 
-    public IPEndPoint RemoteEndPoint => _serverPeer?.EndPoint as IPEndPoint;
+    public IPEndPoint RemoteEndPoint => _serverPeer?.EndPoint;
 
 
 
@@ -735,10 +735,7 @@ public class NetworkClient : INetworkClient
         // 更新连接超时配置
         _connectionTimeout = timeoutMs;
         // 如果网络管理器已启动，同时更新其实际超时设置
-        if (_netManager != null)
-        {
-            _netManager.DisconnectTimeout = timeoutMs;
-        }
+        _netManager?.DisconnectTimeout = timeoutMs;
         Console.WriteLine($"[客户端] 连接超时已设置为 {timeoutMs}ms");
     }
 

@@ -1,4 +1,6 @@
-namespace NetworkPlugin.UI.Panels;
+using NetworkPlugin.UI.Models;
+
+namespace NetworkPlugin.UI.Payloads;
 
 /// <summary>
 /// 复活面板数据类

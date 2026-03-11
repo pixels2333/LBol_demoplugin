@@ -4,7 +4,6 @@ using HarmonyLib;
 using LBoL.Core;
 using LBoL.Core.Battle;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 
@@ -24,16 +23,7 @@ public static class ExhibitSyncPatch
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
     private static INetworkClient TryGetNetworkClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     private static bool IsConnected()
     {

@@ -39,34 +39,14 @@ public static class ExitGamePatch
     /// 捕获所有异常，防止因依赖未注册导致补丁崩溃。
     /// </summary>
     private static INetworkClient TryGetNetworkClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            // 如果解析失败，返回 null 即视为未联机。
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     /// <summary>
     /// 尝试从 DI 容器中获取 <see cref="INetworkManager"/> 实例。
     /// 捕获所有异常，保证补丁的健壮性。
     /// </summary>
     private static INetworkManager TryGetNetworkManager()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkManager>();
-        }
-        catch
-        {
-            // 解析失败则视为无网络管理器。
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkManager>();
 
     #endregion
 

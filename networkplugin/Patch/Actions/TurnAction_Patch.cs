@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using HarmonyLib;
 using LBoL.Base;
 using LBoL.Core;
@@ -16,7 +15,6 @@ using NetworkPlugin.Network.Reconnection;
 using NetworkPlugin.Utils;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.Snapshot;
-using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Actions;
 
@@ -573,7 +571,7 @@ public class TurnAction_Patch
             return [];
         }
 
-        var enemyTypes = new List<string>();
+        List<string> enemyTypes = new List<string>();
         foreach (var enemy in enemyGroup)
         {
             enemyTypes.Add(enemy?.Name ?? "Unknown");
@@ -603,7 +601,7 @@ public class TurnAction_Patch
 
     private static List<StatusEffectStateSnapshot> CaptureStatusEffects(Unit unit)
     {
-        var result = new List<StatusEffectStateSnapshot>();
+        List<StatusEffectStateSnapshot> result = new List<StatusEffectStateSnapshot>();
         if (unit == null)
         {
             return result;
@@ -703,7 +701,7 @@ public class TurnAction_Patch
 
     private static List<EnemyStateSnapshot> CaptureEnemies(BattleController battle)
     {
-        var enemies = new List<EnemyStateSnapshot>();
+        List<EnemyStateSnapshot> enemies = new List<EnemyStateSnapshot>();
         if (battle?.EnemyGroup == null)
         {
             return enemies;

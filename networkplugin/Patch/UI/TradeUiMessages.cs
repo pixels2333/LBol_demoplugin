@@ -17,28 +17,10 @@ internal static class TradeUiMessages
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
     private static ConfigManager TryGetConfig()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<ConfigManager>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<ConfigManager>();
 
     private static INetworkClient TryGetNetworkClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     public static bool IsTradeEnabledAndConnected(out string reason)
     {

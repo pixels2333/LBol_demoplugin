@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Configuration;
-using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Event;
 using NetworkPlugin.Network.Messages;
@@ -104,8 +103,6 @@ public class SynchronizationManager : ISynchronizationManager
     public SynchronizationManager(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;
-
-        // 记录同步管理器初始化完成的日志
         Plugin.Logger?.LogInfo("[SyncManager] 同步管理器初始化完成");
     }
 
@@ -118,24 +115,19 @@ public class SynchronizationManager : ISynchronizationManager
     {
         try
         {
-            // 从服务容器获取网络客户端实例
             _networkClient = _serviceProvider?.GetService<INetworkClient>();
 
-            // 验证网络客户端是否成功获取
             if (_networkClient != null)
             {
-                // 网络客户端初始化成功
                 Plugin.Logger?.LogInfo("[SyncManager] 网络客户端初始化成功");
             }
             else
             {
-                // 网络客户端不可用，运行在离线模式
                 Plugin.Logger?.LogWarning("[SyncManager] 网络客户端不可用 - 运行在离线模式");
             }
         }
         catch (Exception ex)
         {
-            // 捕获初始化过程中的异常
             Plugin.Logger?.LogError($"[SyncManager] 网络客户端初始化错误: {ex.Message}");
         }
     }
@@ -147,7 +139,6 @@ public class SynchronizationManager : ISynchronizationManager
     /// <param name="gameEvent">需要处理的游戏事件对象</param>
     public void SyncGameEventToNetwork(GameEvent gameEvent)
     {
-        // 参数验证：确保事件对象不为空
         if (gameEvent == null)
         {
             Plugin.Logger?.LogWarning("[SyncManager] 尝试处理空的游戏事件");
@@ -156,35 +147,26 @@ public class SynchronizationManager : ISynchronizationManager
 
         try
         {
-            // 检查网络连接状态
             if (!IsNetworkAvailable())
             {
-                // 网络不可用时将事件加入队列
                 Plugin.Logger?.LogDebug("[SyncManager] 网络不可用，事件加入队列");
                 _eventQueue.Enqueue(gameEvent);
                 return;
             }
 
-            // 检查事件是否需要同步
             if (!ShouldSyncEvent(gameEvent))
             {
-                // 事件被过滤规则排除，跳过同步
                 Plugin.Logger?.LogDebug($"[SyncManager] 事件 {gameEvent.EventType} 被同步规则过滤");
                 return;
             }
 
-            // 发送事件到网络进行远程同步
             SendGameEvent(gameEvent);
-
-            // 更新本地状态缓存
             UpdateLocalState(gameEvent);
 
-            // 记录事件处理完成的调试信息
             Plugin.Logger?.LogDebug($"[SyncManager] 事件处理完成: {gameEvent.EventType} 来自 {gameEvent.UserName}");
         }
         catch (Exception ex)
         {
-            // 捕获并记录处理异常，确保游戏继续运行
             Plugin.Logger?.LogError($"[SyncManager] 游戏事件处理异常 - 事件类型: {gameEvent.EventType}, 错误: {ex.Message}");
         }
     }
@@ -206,7 +188,6 @@ public class SynchronizationManager : ISynchronizationManager
 
         try
         {
-            // 验证数据格式是否正确
             if (!TryNormalizeNetworkEvent(eventData, out Dictionary<string, object> eventDict))
             {
                 Plugin.Logger?.LogWarning($"[SyncManager] 无效的网络事件数据格式: type={eventData.GetType().FullName}, head200={DescribePayloadHead200(eventData)}");
@@ -235,16 +216,13 @@ public class SynchronizationManager : ISynchronizationManager
                     key++;
                 }
 
-                // 创建网络事件缓冲区并添加到排序缓冲区
                 NetworkEventBuffer eventBuffer = new(key, eventDict);
                 _remoteEventBuffer.Add(key, eventBuffer);
             }
 
-            // 记录事件接收的调试信息
             string eventType = eventDict["EventType"].ToString();
             Plugin.Logger?.LogDebug($"[SyncManager] 接收到网络事件: {eventType}, 时间戳: {key}");
 
-            // 处理缓冲区中的事件（按时间戳顺序）
             ProcessBufferedEvents();
         }
         catch (Exception ex)
@@ -257,70 +235,61 @@ public class SynchronizationManager : ISynchronizationManager
     private static bool TryNormalizeNetworkEvent(object eventData, out Dictionary<string, object> eventDict)
     {
         eventDict = null;
+        if (eventData == null)
+            return false;
 
-        try
+        // 1) 已经是期望结构
+        if (eventData is Dictionary<string, object> dict)
         {
-            // 1) 已经是期望结构
-            if (eventData is Dictionary<string, object> dict)
+            if (dict.ContainsKey("EventType"))
             {
-                if (dict.ContainsKey("EventType"))
-                {
-                    eventDict = dict;
-                    return true;
-                }
-
-                return false;
+                eventDict = dict;
+                return true;
             }
 
-            // 2) 兼容匿名对象/DTO：{ EventType, Payload, Timestamp }
-            var t = eventData.GetType();
-            var pEventType = t.GetProperty("EventType");
-            if (pEventType == null)
-            {
-                return false;
-            }
-
-            object et = pEventType.GetValue(eventData, null);
-            if (et == null)
-            {
-                return false;
-            }
-
-            var d = new Dictionary<string, object>(StringComparer.Ordinal);
-            d["EventType"] = et;
-
-            var pPayload = t.GetProperty("Payload");
-            if (pPayload != null)
-            {
-                d["Payload"] = pPayload.GetValue(eventData, null);
-            }
-
-            var pTimestamp = t.GetProperty("Timestamp");
-            if (pTimestamp != null)
-            {
-                d["Timestamp"] = pTimestamp.GetValue(eventData, null);
-            }
-
-            eventDict = d;
-            return true;
-        }
-        catch
-        {
-            eventDict = null;
             return false;
         }
+
+        // 2) 兼容匿名对象/DTO：{ EventType, Payload, Timestamp }
+        var t = eventData.GetType();
+        var pEventType = t.GetProperty("EventType");
+        if (pEventType == null)
+        {
+            return false;
+        }
+
+        object et = pEventType.GetValue(eventData, null);
+        if (et == null)
+        {
+            return false;
+        }
+
+        Dictionary<string, object> d = new Dictionary<string, object>(StringComparer.Ordinal);
+        d["EventType"] = et;
+
+        var pPayload = t.GetProperty("Payload");
+        if (pPayload != null)
+        {
+            d["Payload"] = pPayload.GetValue(eventData, null);
+        }
+
+        var pTimestamp = t.GetProperty("Timestamp");
+        if (pTimestamp != null)
+        {
+            d["Timestamp"] = pTimestamp.GetValue(eventData, null);
+        }
+
+        eventDict = d;
+        return true;
     }
 
     private static string DescribePayloadHead200(object maybeEvent)
     {
         if (maybeEvent == null)
-        {
             return string.Empty;
-        }
 
         try
         {
-            // 优先提取 Payload 字段，避免把整个 wrapper 序列化出来。
             var t = maybeEvent.GetType();
             var pPayload = t.GetProperty("Payload");
             object payload = pPayload != null ? pPayload.GetValue(maybeEvent, null) : maybeEvent;
@@ -337,16 +306,8 @@ public class SynchronizationManager : ISynchronizationManager
         }
         catch
         {
-            try
-            {
-                string fallback = maybeEvent.ToString() ?? string.Empty;
-                fallback = fallback.Replace("\r", " ").Replace("\n", " ");
-                return fallback.Length > 200 ? fallback.Substring(0, 200) : fallback;
-            }
-            catch
-            {
-                return string.Empty;
-            }
+            string fallback = (maybeEvent.ToString() ?? string.Empty).Replace("\r", " ").Replace("\n", " ");
+            return fallback.Length > 200 ? fallback.Substring(0, 200) : fallback;
         }
     }
 
@@ -360,10 +321,8 @@ public class SynchronizationManager : ISynchronizationManager
     {
         try
         {
-            // 首先清理超时的事件
             CleanupTimeoutEvents();
 
-            // 按时间戳顺序处理所有等待处理的事件
             List<long> timestampsToRemove = [];
 
             List<KeyValuePair<long, NetworkEventBuffer>> snapshot;
@@ -377,13 +336,11 @@ public class SynchronizationManager : ISynchronizationManager
                 long timestamp = kvp.Key;
                 NetworkEventBuffer eventBuffer = kvp.Value;
 
-                // 检查事件状态和处理条件
                 if (eventBuffer.Status != NetworkEventBuffer.ProcessingStatus.Pending)
                 {
-                    continue; // 跳过非等待处理状态的事件
+                    continue;
                 }
 
-                // 检查事件是否超时
                 if (eventBuffer.IsTimeout(EventBufferTimeout))
                 {
                     Plugin.Logger?.LogWarning($"[SyncManager] 事件超时，丢弃: {eventBuffer.OriginalData["EventType"]}, 时间戳: {timestamp}");
@@ -394,31 +351,21 @@ public class SynchronizationManager : ISynchronizationManager
 
                 try
                 {
-                    // 标记事件为处理中
                     eventBuffer.Status = NetworkEventBuffer.ProcessingStatus.Processing;
-
-                    // 处理单个网络事件
                     ProcessSingleNetworkEvent(eventBuffer);
-
-                    // 标记事件为处理完成
                     eventBuffer.Status = NetworkEventBuffer.ProcessingStatus.Completed;
 
-                    // 记录处理成功日志
                     string eventType = eventBuffer.OriginalData["EventType"].ToString();
                     Plugin.Logger?.LogDebug($"[SyncManager] 事件处理成功: {eventType}, 时间戳: {timestamp}");
                 }
                 catch (Exception ex)
                 {
-                    // 事件处理失败，记录错误并跳过
                     Plugin.Logger?.LogError($"[SyncManager] 事件处理失败 - 时间戳: {timestamp}, 错误: {ex.Message}");
-
-                    // 标记事件为已丢弃，避免重复处理失败
                     eventBuffer.Status = NetworkEventBuffer.ProcessingStatus.Discarded;
                     timestampsToRemove.Add(timestamp);
                 }
             }
 
-            // 移除已处理或丢弃的事件
             lock (_remoteEventBufferLock)
             {
                 foreach (long timestamp in timestampsToRemove)
@@ -442,7 +389,6 @@ public class SynchronizationManager : ISynchronizationManager
     {
         Dictionary<string, object> eventDict = eventBuffer.OriginalData;
 
-        // 提取事件的基本信息
         string eventType = eventDict["EventType"].ToString();
         object payload = eventDict.ContainsKey("Payload") ? eventDict["Payload"] : string.Empty;
 
@@ -483,29 +429,14 @@ public class SynchronizationManager : ISynchronizationManager
 
     private static string ResolvePlayerName(object payload)
     {
-        try
+        if (payload is Dictionary<string, object> dict)
         {
-            if (payload is Dictionary<string, object> dict)
-            {
-                if (TryGetNonEmptyString(dict, "PlayerName", out string playerName))
-                {
-                    return playerName;
-                }
-
-                if (TryGetNonEmptyString(dict, "UserName", out string legacyUserName))
-                {
-                    return legacyUserName;
-                }
-
-                if (TryGetNonEmptyString(dict, "username", out string legacyUserNameLower))
-                {
-                    return legacyUserNameLower;
-                }
-            }
-        }
-        catch
-        {
-            // ignore
+            if (TryGetNonEmptyString(dict, "PlayerName", out string playerName))
+                return playerName;
+            if (TryGetNonEmptyString(dict, "UserName", out string legacyUserName))
+                return legacyUserName;
+            if (TryGetNonEmptyString(dict, "username", out string legacyUserNameLower))
+                return legacyUserNameLower;
         }
 
         return "remote";
@@ -675,7 +606,7 @@ public class SynchronizationManager : ISynchronizationManager
         string playerId = GameStateUtils.GetCurrentPlayerId();
 
         // 创建卡牌使用事件的详细数据
-        var eventData = new Dictionary<string, object>
+        Dictionary<string, object> eventData = new Dictionary<string, object>
         {
             ["CardId"] = cardId,
             ["CardName"] = cardName,
@@ -703,7 +634,7 @@ public class SynchronizationManager : ISynchronizationManager
         string playerId = GameStateUtils.GetCurrentPlayerId();
 
         // 创建法力消耗事件的详细数据
-        var eventData = new Dictionary<string, object>
+        Dictionary<string, object> eventData = new Dictionary<string, object>
         {
             ["ManaBefore"] = ConvertManaArray(manaBefore),
             ["ManaConsumed"] = ConvertManaArray(manaConsumed),
@@ -728,7 +659,7 @@ public class SynchronizationManager : ISynchronizationManager
         string playerId = GameStateUtils.GetCurrentPlayerId();
 
         // 创建 GapOptions 选项事件的详细数据
-        var eventData = new Dictionary<string, object>
+        Dictionary<string, object> eventData = new Dictionary<string, object>
         {
             ["OptionData"] = optionData ?? "",
             ["PlayerState"] = playerState ?? ""
@@ -768,7 +699,7 @@ public class SynchronizationManager : ISynchronizationManager
             _lastFullSyncRequestAtTicks = nowTicks;
 
             // 创建完整状态同步请求数据
-            var syncRequestData = new Dictionary<string, object>
+            Dictionary<string, object> syncRequestData = new Dictionary<string, object>
             {
                 ["RequestType"] = "FullSync",                       // 请求类型标识
                 ["RequestReason"] = "ManualRequest",                  // 请求原因描述
@@ -825,7 +756,7 @@ public class SynchronizationManager : ISynchronizationManager
             RequestFullSync();
 
             // 发送连接建立事件通知其他玩家
-            var connectionData = new Dictionary<string, object>
+            Dictionary<string, object> connectionData = new Dictionary<string, object>
             {
                 ["Timestamp"] = DateTime.Now.Ticks,                  // 连接建立时间戳
                 ["PlayerId"] = GameStateUtils.GetCurrentPlayerId()   // 当前玩家ID
@@ -855,7 +786,7 @@ public class SynchronizationManager : ISynchronizationManager
 
             // 发送连接丢失事件通知其他玩家
             string playerId = GameStateUtils.GetCurrentPlayerId();
-            var eventData = new Dictionary<string, object>
+            Dictionary<string, object> eventData = new Dictionary<string, object>
             {
                 ["QueuedEvents"] = _eventQueue.Count
             };

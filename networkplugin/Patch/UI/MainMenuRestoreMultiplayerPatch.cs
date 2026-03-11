@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using HarmonyLib;
 using LBoL.Core;
 using LBoL.Core.SaveData;
@@ -25,16 +24,7 @@ public static class MainMenuRestoreMultiplayerPatch
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
     private static INetworkClient TryGetNetworkClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     [HarmonyPatch(typeof(MainMenuPanel), nameof(MainMenuPanel.UI_RestoreGameClicked))]
     [HarmonyPrefix]

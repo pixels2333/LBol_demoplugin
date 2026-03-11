@@ -1,5 +1,4 @@
 // 房间消息模型：用于 Relay/房间广播的消息封装，兼容 Payload 为对象或 JSON 字符串两种形态。
-using System;
 using System.Text.Json;
 using NetworkPlugin.Utils;
 

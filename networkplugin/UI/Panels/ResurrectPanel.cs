@@ -5,11 +5,13 @@ using LBoL.Core;
 using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Widgets;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Core;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Patch.Network;
+using NetworkPlugin.UI.Models;
+using NetworkPlugin.UI.Payloads;
+using NetworkPlugin.UI.State;
 using NetworkPlugin.UI.Widgets;
 using NetworkPlugin.Utils;
 using TMPro;
@@ -88,7 +90,7 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 	/// <summary>
 	/// 当前选中的死亡玩家
 	/// </summary>
-	private DeadPlayerEntry _selectedPlayer = null;
+	private DeadPlayerEntry _selectedPlayer;
 
 	/// <summary>
 	/// 复活费用
@@ -193,16 +195,12 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		}
 
 		// 记录 self PlayerId
-		try
+		INetworkClient client = ModService.ServiceProvider?.GetService<INetworkClient>();
+		if (client != null)
 		{
-			INetworkClient client = ModService.ServiceProvider.GetService<INetworkClient>();
 			NetworkIdentityTracker.EnsureSubscribed(client);
-			_selfPlayerId = NetworkIdentityTracker.GetSelfPlayerId();
 		}
-		catch
-		{
-			_selfPlayerId = null;
-		}
+		_selfPlayerId = NetworkIdentityTracker.GetSelfPlayerId();
 
 		_pendingRequestId = null;
 
@@ -322,10 +320,7 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 	/// <param name="message">要显示的消息</param>
         private void UpdateUIStatus(string message)
         {
-                if (statusText != null)
-                {
-                        statusText.text = message;
-                }
+                statusText?.text = message;
         }
 
 	/// <summary>
@@ -423,10 +418,7 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		UpdateUIStatus($"{player.PlayerName} - {_resurrectionCost} Gold");
 
 		// 更新费用文本
-                if (costText != null)
-                {
-                        costText.text = "Resurrect.Cost".Localize() + $": {_resurrectionCost}";
-                }
+                costText?.text = "Resurrect.Cost".Localize() + $": {_resurrectionCost}";
 
 		// 检查是否有足够金币
 		bool canAfford = GameRun.Money >= _resurrectionCost;
@@ -449,10 +441,7 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 	/// </summary>
 	private void UpdateGoldDisplay()
 	{
-                if (goldAmount != null)
-                {
-                        goldAmount.text = "Resurrect.CurrentGold".Localize() + $": {GameRun.Money}";
-                }
+                goldAmount?.text = "Resurrect.CurrentGold".Localize() + $": {GameRun.Money}";
 	}
 	#endregion
 
@@ -524,49 +513,6 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 	#endregion
 
 	#region 复活执行
-	/// <summary>
-	/// 执行复活协程
-	/// 处理复活流程，包括UI更新、实际复活和网络同步
-	/// </summary>
-	private IEnumerator ExecuteResurrection()
-	{
-		// 禁用按钮以防止重复复活
-		if (resurrectButton?.button != null)
-		{
-			resurrectButton.button.interactable = false;
-		}
-
-		if (cancelButton?.button != null)
-		{
-			cancelButton.button.interactable = false;
-		}
-
-		// 更新状态文本
-		UpdateUIStatus("Resurrect.Resurrecting".Localize() + ": " + _selectedPlayer.PlayerName);
-
-		// 等待1秒
-		yield return new WaitForSeconds(1f);
-
-		// ExecuteResurrection 仅作为 UI 动画占位；v1 真正复活落地由网络广播触发。
-		yield return null;
-
-		// 等待复活完成时间
-		yield return new WaitForSeconds(ResurrectCompleteWaitTime);
-
-		// 隐藏面板
-		Hide();
-	}
-
-	/// <summary>
-	/// 复活玩家协程
-	/// 执行实际的玩家复活逻辑
-	/// </summary>
-	/// <param name="player">要复活的死亡玩家</param>
-	private IEnumerator ResurrectPlayer(DeadPlayerEntry player)
-	{
-		yield return null;
-	}
-
 	/// <summary>
 	/// 发送复活事件到网络
 	/// 将复活操作同步到其他玩家

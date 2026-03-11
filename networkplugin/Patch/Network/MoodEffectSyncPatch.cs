@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections;
 using System.Threading;
 using HarmonyLib;
-using LBoL.Base;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.Presentation.Units;
@@ -13,7 +12,6 @@ using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Patch.UI;
 using NetworkPlugin.Utils;
-using UnityEngine;
 using LBoL.Core;
 using Newtonsoft.Json.Linq;
 
@@ -328,16 +326,7 @@ public static class MoodEffectSyncPatch
     /// </summary>
     /// <returns>网络客户端实例，如果获取失败则返回null</returns>
     private static INetworkClient TryGetClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     /// <summary>
     /// 确保订阅指定网络客户端的事件

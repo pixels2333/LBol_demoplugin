@@ -48,50 +48,42 @@ namespace NetworkPlugin.Utils
 
         public static ManaGroup StringToManaGroup(string manaString)
         {
-            try
+            if (string.IsNullOrEmpty(manaString))
             {
-                if (string.IsNullOrEmpty(manaString))
-                {
-                    return ManaGroup.Empty;
-                }
-
-                string[] parts = manaString.Split(['R', 'B', 'G', 'W'], StringSplitOptions.RemoveEmptyEntries);
-
-                int red = 0, blue = 0, green = 0, white = 0;
-
-                if (parts.Length > 0)
-                {
-                    int.TryParse(parts[0], out red);
-                }
-
-                if (parts.Length > 1)
-                {
-                    int.TryParse(parts[1], out blue);
-                }
-
-                if (parts.Length > 2)
-                {
-                    int.TryParse(parts[2], out green);
-                }
-
-                if (parts.Length > 3)
-                {
-                    int.TryParse(parts[3], out white);
-                }
-
-                return new ManaGroup
-                {
-                    Red = red,
-                    Blue = blue,
-                    Green = green,
-                    White = white,
-                };
-            }
-            catch (Exception ex)
-            {
-                Plugin.Logger?.LogError($"[ManaUtils] Error parsing mana string '{manaString}': {ex.Message}");
                 return ManaGroup.Empty;
             }
+
+            string[] parts = manaString.Split(['R', 'B', 'G', 'W'], StringSplitOptions.RemoveEmptyEntries);
+
+            int red = 0, blue = 0, green = 0, white = 0;
+
+            if (parts.Length > 0)
+            {
+                int.TryParse(parts[0], out red);
+            }
+
+            if (parts.Length > 1)
+            {
+                int.TryParse(parts[1], out blue);
+            }
+
+            if (parts.Length > 2)
+            {
+                int.TryParse(parts[2], out green);
+            }
+
+            if (parts.Length > 3)
+            {
+                int.TryParse(parts[3], out white);
+            }
+
+            return new ManaGroup
+            {
+                Red = red,
+                Blue = blue,
+                Green = green,
+                White = white,
+            };
         }
 
         public static ManaGroup CalculateManaDifference(ManaGroup from, ManaGroup to)

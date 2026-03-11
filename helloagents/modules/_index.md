@@ -7,6 +7,7 @@
 | 模块 | 职责 | 状态 | 文档 |
 |------|------|------|------|
 | networkplugin | 联机同步、UI 扩展与 Harmony 补丁主模块 | 🚧 | [networkplugin.md](./networkplugin.md) |
+| ui-object-query-plugin | 本地 HTTP 驱动的 Unity UI/对象属性查询调试插件 | ✅ | [ui-object-query-plugin.md](./ui-object-query-plugin.md) |
 | networkplayer | 玩家模型、DTO 与兼容层约定 | ✅ | [networkplayer.md](./networkplayer.md) |
 | protocol | 网络事件、载荷与数据模型约定 | ✅ | [protocol.md](./protocol.md) |
 | inrun-map-progress-sync | 中途加入/断线重连的地图追赶专题文档 | 🚧 | [inrun-map-progress-sync.md](./inrun-map-progress-sync.md) |
@@ -18,6 +19,7 @@
 networkplugin → protocol
 networkplugin → networkplayer
 networkplugin → lbol
+ui-object-query-plugin → lbol
 networkplayer → protocol
 networkplayer → lbol
 inrun-map-progress-sync → networkplugin

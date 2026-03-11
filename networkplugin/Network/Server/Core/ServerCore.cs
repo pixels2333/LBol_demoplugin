@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using LiteNetLib;
-using LiteNetLib.Utils;
 using NetworkPlugin.Network.Messages;
 
 namespace NetworkPlugin.Network.Server.Core;
@@ -173,7 +172,7 @@ public sealed class ServerCore : IServerCore
         {
             lock (_lock)
             {
-                var session = new CorePeerSession
+                CorePeerSession session = new CorePeerSession
                 {
                     Peer = peer,
                     ConnectedAt = DateTime.UtcNow
