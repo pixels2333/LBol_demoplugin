@@ -4,8 +4,6 @@ using System.Text.Json;
 using HarmonyLib;
 using LBoL.Base;
 using LBoL.Core;
-using LBoL.Core.Cards;
-using LBoL.Presentation;
 using LBoL.Presentation.Units;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;

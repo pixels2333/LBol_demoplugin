@@ -4,7 +4,6 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Text.Json;
 using HarmonyLib;
 using LBoL.Core;
 using LBoL.Core.Battle;
@@ -12,7 +11,6 @@ using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.Presentation;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
@@ -42,16 +40,7 @@ public class BattleController_Patch
     /// 网络客户端（通过依赖注入获取）。
     /// </summary>
     private static INetworkClient TryGetNetworkClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     private static bool IsBattleSyncEnabled()
     {
@@ -349,7 +338,7 @@ public class BattleController_Patch
                 return;
             }
 
-            if (__instance == null || target == null)
+            if (target == null)
             {
                 return;
             }
@@ -691,7 +680,7 @@ public class BattleController_Patch
                 return;
             }
 
-            if (__instance == null || target == null)
+            if (target == null)
             {
                 return;
             }

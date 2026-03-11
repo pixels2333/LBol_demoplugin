@@ -7,6 +7,7 @@
 
 | 时间戳 | 名称 | 状态 | 路径 |
 |--------|------|------|------|
+| 202603111012 | ui-object-query-plugin | ✅完成 | [2026-03/202603111012_ui-object-query-plugin](./2026-03/202603111012_ui-object-query-plugin/) |
 | 202603061348 | networkplugin-todo-consolidation | ⚠️部分完成 | [2026-03/202603061348_networkplugin-todo-consolidation](./2026-03/202603061348_networkplugin-todo-consolidation/) |
 | 202603060931 | networkplugin-architecture-consolidation | ✅完成 | [2026-03/202603060931_networkplugin-architecture-consolidation](./2026-03/202603060931_networkplugin-architecture-consolidation/) |
 | 202601282128 | fix-endturn-gameevent-routing | ✅完成 | [2026-01/202601282128_fix-endturn-gameevent-routing](./2026-01/202601282128_fix-endturn-gameevent-routing/) |
@@ -35,6 +36,7 @@
 ## 按月归档
 
 ### 2026-03
+- [202603111012_ui-object-query-plugin](./2026-03/202603111012_ui-object-query-plugin/) - UI 运行时对象查询插件 / 已完成
 - [202603061348_networkplugin-todo-consolidation](./2026-03/202603061348_networkplugin-todo-consolidation/) - TODO 治理 / 部分完成
 - [202603060931_networkplugin-architecture-consolidation](./2026-03/202603060931_networkplugin-architecture-consolidation/) - 架构优化 / 已完成
 

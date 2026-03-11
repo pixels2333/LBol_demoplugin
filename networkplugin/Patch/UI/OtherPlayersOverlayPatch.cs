@@ -1,23 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using Cysharp.Threading.Tasks;
 using HarmonyLib;
-using LBoL.Base;
 using LBoL.Core;
-using LBoL.Core.Units;
-using LBoL.Presentation;
 using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Panels;
-using LBoL.Presentation.UI.Widgets;
 using LBoL.Presentation.Units;
-using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Configuration;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
-using NetworkPlugin.Network.Messages;
-using NetworkPlugin.Utils;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -325,7 +316,7 @@ public static partial class OtherPlayersOverlayPatch
             _ui.Entries.Remove(kv.Key);
         }
 
-        var orderedEntries = new List<AvatarEntryUi>(list.Count);
+        List<AvatarEntryUi> orderedEntries = new List<AvatarEntryUi>(list.Count);
         foreach (PlayerSummary player in list)
         {
             AvatarEntryUi entry = EnsureAvatarEntry(player.PlayerId);
@@ -411,10 +402,7 @@ public static partial class OtherPlayersOverlayPatch
 
         foreach (Graphic graphic in template.GetComponentsInChildren<Graphic>(true))
         {
-            if (graphic != null)
-            {
-                graphic.raycastTarget = false;
-            }
+            graphic?.raycastTarget = false;
         }
 
         foreach (ParticleSystem particle in template.GetComponentsInChildren<ParticleSystem>(true))
@@ -461,10 +449,7 @@ public static partial class OtherPlayersOverlayPatch
         try
         {
             Component component = Traverse.Create(panel).Field(fieldName).GetValue<Component>();
-            if (component != null)
-            {
-                component.gameObject.SetActive(false);
-            }
+            component?.gameObject.SetActive(false);
         }
         catch
         {
@@ -531,7 +516,7 @@ public static partial class OtherPlayersOverlayPatch
         statusRect.anchoredPosition = new Vector2(0f, 2f);
         statusRect.sizeDelta = new Vector2(0f, 18f);
 
-        var entry = new AvatarEntryUi
+        AvatarEntryUi entry = new AvatarEntryUi
         {
             PlayerId = playerId,
             Root = root,
@@ -682,7 +667,7 @@ public static partial class OtherPlayersOverlayPatch
     private static TextMeshProUGUI CreateTmpText(Transform parent, string name, string text, float fontSize)
     {
         // 创建文本容器
-        var go = new GameObject(name);
+        GameObject go = new GameObject(name);
         go.transform.SetParent(parent, false);
 
         // 创建并配置TextMeshProUGUI组件
@@ -826,7 +811,7 @@ public static partial class OtherPlayersOverlayPatch
         {
             // 查找第一个TextMeshProUGUI组件并获取其字体
             TextMeshProUGUI tmp = root.GetComponentInChildren<TextMeshProUGUI>(true);
-            return tmp != null ? tmp.font : null;
+            return tmp?.font;
         }
         catch
         {
@@ -845,7 +830,7 @@ public static partial class OtherPlayersOverlayPatch
         {
             // 使用Harmony的Traverse来访问私有字段
             RectTransform rect = Traverse.Create(UiManager.Instance).Field(fieldName).GetValue<RectTransform>();
-            return rect != null ? rect.transform : null;
+            return rect?.transform;
         }
         catch
         {

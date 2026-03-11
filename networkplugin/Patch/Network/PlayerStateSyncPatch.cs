@@ -35,16 +35,7 @@ public static class PlayerStateSyncPatch
     /// </summary>
     /// <returns>解析成功返回客户端，否则返回 null。</returns>
     private static INetworkClient TryGetClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     /// <summary>
     /// 判断当前是否允许发送同步事件。

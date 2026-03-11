@@ -11,7 +11,6 @@ using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Dialogs;
 using LBoL.Presentation.UI.Panels;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.RoomSync;
 using NetworkPlugin.Network.Snapshot;
@@ -225,8 +224,8 @@ public sealed class MapCatchUpOrchestrator
                     // Apply final-stage flags to keep behavior consistent with the default mode.
                     if (stages.Count >= 4)
                     {
-                        try { stages[2]?.AsNormalFinal(); } catch { }
-                        try { stages[3]?.AsTrueEndFinal(); } catch { }
+                        stages[2]?.AsNormalFinal();
+                        stages[3]?.AsTrueEndFinal();
                     }
 
                     return stages.ToArray();
@@ -406,7 +405,7 @@ public sealed class MapCatchUpOrchestrator
                     return _session;
                 }
 
-                var pairs = new List<KeyValuePair<string, string>>();
+                List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>();
                 try
                 {
                     if (snapshot?.MapState?.NodeStates != null && snapshot.MapState.NodeStates.Count > 0)

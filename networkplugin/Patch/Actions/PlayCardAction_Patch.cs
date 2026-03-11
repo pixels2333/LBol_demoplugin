@@ -1,14 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json;
 using HarmonyLib;
 using LBoL.Base;
 using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
-using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Core;
 using NetworkPlugin.Network;
@@ -182,7 +179,7 @@ public class PlayCardAction_Patch
             }
 
             // 构建“出牌开始”同步数据。
-            var cardData = new Dictionary<string, object>
+            Dictionary<string, object> cardData = new Dictionary<string, object>
             {
                 ["Timestamp"] = DateTime.Now.Ticks,
                 ["CardId"] = card.Id,
@@ -261,7 +258,7 @@ public class PlayCardAction_Patch
             }
 
             // 构建“出牌开始”同步数据（包含消耗法力）。
-            var cardData = new Dictionary<string, object>
+            Dictionary<string, object> cardData = new Dictionary<string, object>
             {
                 ["Timestamp"] = DateTime.Now.Ticks,
                 ["CardId"] = card.Id,

@@ -1,11 +1,10 @@
 using System;
 using HarmonyLib;
-using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Units;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
-using NetworkPlugin.UI.Panels;
+using NetworkPlugin.UI.State;
 
 namespace NetworkPlugin.Patch;
 

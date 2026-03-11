@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
-using LBoL.Presentation;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Utils;
@@ -14,17 +13,7 @@ public static partial class OtherPlayersOverlayPatch
     #region 网络客户端操作
 
     private static INetworkClient TryGetNetworkClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService(typeof(INetworkClient)) as INetworkClient;
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogDebug($"[OtherPlayersOverlayPatch] 获取 INetworkClient 失败: {ex.Message}");
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService(typeof(INetworkClient)) as INetworkClient;
 
     private static void EnsureSubscribed(INetworkClient client)
     {
@@ -33,16 +22,10 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
-        try
+        if (_subscribedClient != null)
         {
-            if (_subscribedClient != null)
-            {
-                _subscribedClient.OnGameEventReceived -= _onGameEventReceived;
-                _subscribedClient.OnConnectionStateChanged -= _onConnectionStateChanged;
-            }
-        }
-        catch
-        {
+            _subscribedClient.OnGameEventReceived -= _onGameEventReceived;
+            _subscribedClient.OnConnectionStateChanged -= _onConnectionStateChanged;
         }
 
         try
@@ -203,7 +186,7 @@ public static partial class OtherPlayersOverlayPatch
 
     private static void ReplacePlayersFromArray(JsonElement playersElem)
     {
-        var incoming = new Dictionary<string, PlayerSummary>();
+        Dictionary<string, PlayerSummary> incoming = new Dictionary<string, PlayerSummary>();
         foreach (JsonElement p in playersElem.EnumerateArray())
         {
             string playerId = GetString(p, "PlayerId");

@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using LBoL.Core;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Configuration;
-using NetworkPlugin.Network;
 using NetworkPlugin.Utils;
 using UnityEngine;
 
@@ -84,41 +82,13 @@ public static partial class OtherPlayersOverlayPatch
     }
 
     private static ConfigManager TryGetConfig()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<ConfigManager>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<ConfigManager>();
 
     private static bool ShouldInjectTradeDebugPlayers()
-    {
-        try
-        {
-            return TryGetConfig()?.DebugFakePlayersForTrade?.Value == true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
+        => TryGetConfig()?.DebugFakePlayersForTrade?.Value == true;
 
     private static bool IsVirtualAiDefaultEnabled()
-    {
-        try
-        {
-            var cfg = TryGetConfig();
-            return cfg?.DebugVirtualPlayerAiDefault?.Value == true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
+        => TryGetConfig()?.DebugVirtualPlayerAiDefault?.Value == true;
 
     private static void EnsureVirtualAiDefaultPlayer_NoThrow()
     {
@@ -246,7 +216,7 @@ public static partial class OtherPlayersOverlayPatch
 
             lock (_syncLock)
             {
-                var list = _players.Values
+                List<(string PlayerId, string, bool IsConnected, bool IsHost)> list = _players.Values
                     .Where(p => p != null && !string.IsNullOrWhiteSpace(p.PlayerId))
                     .OrderByDescending(p => p.IsHost)
                     .ThenByDescending(p => p.IsConnected)
@@ -281,7 +251,7 @@ public static partial class OtherPlayersOverlayPatch
 
             lock (_syncLock)
             {
-                var list = _players.Values
+                List<(string PlayerId, string, bool IsConnected, bool IsHost, int Stage, int LocationX, int LocationY, string LocationName, string CharacterId)> list = _players.Values
                     .Where(p => p != null && !string.IsNullOrWhiteSpace(p.PlayerId))
                     .OrderByDescending(p => p.IsHost)
                     .ThenByDescending(p => p.IsConnected)

@@ -44,16 +44,7 @@ public static class GameResultSyncPatch
     private static readonly Action<bool> _onConnectionStateChanged = OnConnectionStateChanged;
 
     private static INetworkClient TryGetNetworkClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     [HarmonyPatch(typeof(GameDirector), "Update")]
     private static class SubscribeHook

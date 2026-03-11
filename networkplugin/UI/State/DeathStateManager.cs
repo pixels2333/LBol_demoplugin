@@ -1,9 +1,8 @@
 using System;
 using System.Collections.Generic;
 using LBoL.Core.Units;
-using NetworkPlugin.Patch;
 
-namespace NetworkPlugin.UI.Panels;
+namespace NetworkPlugin.UI.State;
 
 /// <summary>
 /// 死亡状态管理类
@@ -79,7 +78,7 @@ public class DeathStateManager : IDisposable
     {
         if (player == null) return;
 
-        var deadInfo = new DeadPlayerInfo
+        DeadPlayerInfo deadInfo = new DeadPlayerInfo
         {
             Player = player,
             DeathTimestamp = DateTime.UtcNow.Ticks,
@@ -142,7 +141,7 @@ public class DeathStateManager : IDisposable
     /// <returns>当前所有假死玩家的列表</returns>
     public List<PlayerUnit> GetAllFakeDead()
     {
-        var result = new List<PlayerUnit>();
+        List<PlayerUnit> result = new List<PlayerUnit>();
         foreach (var deadInfo in _deadPlayers.Values)
         {
             if (deadInfo.Player != null)
@@ -184,7 +183,7 @@ public class DeathStateManager : IDisposable
             return 0;
         }
 
-        var duration = new TimeSpan(DateTime.UtcNow.Ticks - deadInfo.DeathTimestamp);
+        TimeSpan duration = new TimeSpan(DateTime.UtcNow.Ticks - deadInfo.DeathTimestamp);
         return duration.TotalSeconds;
     }
 

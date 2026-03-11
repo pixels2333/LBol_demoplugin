@@ -1,6 +1,4 @@
-using BepInEx;
 using BepInEx.Configuration;
-using System;
 
 namespace NetworkPlugin.Configuration;
 

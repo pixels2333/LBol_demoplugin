@@ -54,7 +54,6 @@ public class NetworkStatusIndicator : MonoBehaviour
         }
 
         SetupUI();
-        RegisterNetworkEvents();
         UpdateConnectionStatus();
     } // 组件启动时初始化依赖注入，设置UI和注册网络事件
 
@@ -65,54 +64,17 @@ public class NetworkStatusIndicator : MonoBehaviour
         UpdateNatStatusDisplay();
     } // 每帧更新延迟显示和连接状态
 
-    private void OnDestroy()
-    {
-        UnregisterNetworkEvents();
-    } // 组件销毁时取消注册网络事件，避免内存泄漏
-
     /// <summary>
     /// 设置UI组件
     /// </summary>
     private void SetupUI()
     {
-        if (reconnectButton != null)
-        {
-            reconnectButton.onClick.AddListener(OnReconnectButtonClicked);
-        }
+        reconnectButton?.onClick.AddListener(OnReconnectButtonClicked);
 
-        if (connectionPanel != null)
-        {
-            connectionPanel.SetActive(true);
-        }
+        connectionPanel?.SetActive(true);
 
         _lastConnectionState = ConnectionState.Disconnected;
     } // 设置UI组件，监听按钮点击事件并初始化连接状态
-
-    /// <summary>
-    /// 注册网络事件
-    /// </summary>
-    private void RegisterNetworkEvents()
-    {
-        if (_networkClient != null)
-        {
-            // _networkClient.OnConnected += OnConnected;
-            // _networkClient.OnDisconnected += OnDisconnected;
-            // _networkClient.OnPingUpdate += OnPingUpdate;
-        }
-    } // 注册网络连接事件，监听连接状态、断开连接和延迟更新事件
-
-    /// <summary>
-    /// 取消注册网络事件
-    /// </summary>
-    private void UnregisterNetworkEvents()
-    {
-        if (_networkClient != null)
-        {
-            // _networkClient.OnConnected -= OnConnected;
-            // _networkClient.OnDisconnected -= OnDisconnected;
-            // _networkClient.OnPingUpdate -= OnPingUpdate;
-        }
-    } // 取消注册网络事件，防止重复调用和内存泄漏
 
     /// <summary>
     /// 更新连接状态显示
@@ -167,10 +129,7 @@ public class NetworkStatusIndicator : MonoBehaviour
             _ => (disconnectedColor, "未知状态")
         };
 
-        if (connectionStatusIcon != null)
-        {
-            connectionStatusIcon.color = iconColor;
-        }
+        connectionStatusIcon?.color = iconColor;
 
         if (statusText != null)
         {
@@ -224,17 +183,7 @@ public class NetworkStatusIndicator : MonoBehaviour
     /// 获取延迟值
     /// </summary>
     private int GetPingValue()
-    {
-        try
-        {
-            return _networkClient?.Ping ?? 0;
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[NetworkStatusIndicator] Error getting ping: {ex.Message}");
-            return 0;
-        }
-    } // 获取网络延迟值，从网络客户端获取实际延迟或返回0
+        => _networkClient?.Ping ?? 0; // 获取网络延迟值，从网络客户端获取实际延迟或返回 0
 
     /// <summary>
     /// 更新玩家数量显示
@@ -278,21 +227,13 @@ public class NetworkStatusIndicator : MonoBehaviour
     /// </summary>
     private int GetConnectedPlayerCount()
     {
-        try
+        if (_networkClient?.IsConnected != true)
         {
-            if (_networkClient?.IsConnected != true)
-            {
-                return 0;
-            }
-
-            // 基于 PlayerListUpdate 的快照统计玩家数量（比“已连接=1”更接近真实联机房间人数）
-            return NetworkIdentityTracker.GetPlayerIdsSnapshot().Count;
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[NetworkStatusIndicator] Error getting player count: {ex.Message}");
             return 0;
         }
+
+        // 基于 PlayerListUpdate 的快照统计玩家数量，比“已连接=1”更接近真实联机房间人数。
+        return NetworkIdentityTracker.GetPlayerIdsSnapshot().Count;
     } // 获取连接的玩家数量，根据网络连接状态返回玩家数量
 
     /// <summary>
@@ -300,41 +241,32 @@ public class NetworkStatusIndicator : MonoBehaviour
     /// </summary>
     private void OnReconnectButtonClicked()
     {
+        if (_networkClient == null)
+        {
+            return;
+        }
+
+        if (_networkClient.IsConnected)
+        {
+            AddSystemLog("已处于连接状态");
+            return;
+        }
+
+        string host = Plugin.ConfigManager?.ServerIP?.Value;
+        int port = Plugin.ConfigManager?.ServerPort?.Value ?? 0;
+
+        if (string.IsNullOrWhiteSpace(host) || port <= 0)
+        {
+            AddSystemLog("重连失败：未配置 ServerIP/ServerPort");
+            return;
+        }
+
         try
         {
-            if (_networkClient != null)
-            {
-                if (_networkClient.IsConnected)
-                {
-                    AddSystemLog("已处于连接状态");
-                    return;
-                }
-
-                string host = Plugin.ConfigManager?.ServerIP?.Value;
-                int port = Plugin.ConfigManager?.ServerPort?.Value ?? 0;
-
-                if (string.IsNullOrWhiteSpace(host) || port <= 0)
-                {
-                    AddSystemLog("重连失败：未配置 ServerIP/ServerPort");
-                    return;
-                }
-
-                // 尽力启动客户端（可能已启动，异常忽略）
-                try
-                {
-                    _networkClient.Start();
-                }
-                catch
-                {
-                    // ignore
-                }
-
-                // 启用自动重连，避免按钮点击后立刻掉线导致“卡死”体验
-                _networkClient.EnableAutoReconnect(true);
-
-                _networkClient.ConnectToServer(host, port);
-                AddSystemLog($"正在尝试重新连接: {host}:{port} ...");
-            }
+            _networkClient.Start();
+            _networkClient.EnableAutoReconnect(true);
+            _networkClient.ConnectToServer(host, port);
+            AddSystemLog($"正在尝试重新连接: {host}:{port} ...");
         }
         catch (Exception ex)
         {
@@ -342,22 +274,6 @@ public class NetworkStatusIndicator : MonoBehaviour
             AddSystemLog("重连失败，请检查网络设置");
         }
     } // 处理重连按钮点击，尝试重新连接网络并记录状态
-
-    /// <summary>
-    /// 处理连接成功事件
-    /// </summary>
-    private void OnConnected()
-    {
-        AddSystemLog("连接成功");
-    } // 处理连接成功事件，记录连接成功的系统日志
-
-    /// <summary>
-    /// 处理连接断开事件
-    /// </summary>
-    private void OnDisconnected()
-    {
-        AddSystemLog("连接断开");
-    } // 处理连接断开事件，记录连接断开的系统日志
 
     /// <summary>
     /// 添加系统日志到UI
@@ -372,15 +288,8 @@ public class NetworkStatusIndicator : MonoBehaviour
     /// </summary>
     public void ShowConnectionDetails()
     {
-        try
-        {
-            string details = GenerateConnectionDetails();
-            Plugin.Logger?.LogInfo($"[NetworkStatus] Connection Details:\n{details}");
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[NetworkStatusIndicator] Error showing connection details: {ex.Message}");
-        }
+        string details = GenerateConnectionDetails();
+        Plugin.Logger?.LogInfo($"[NetworkStatus] Connection Details:\n{details}");
     } // 显示连接详情面板，生成并输出详细的网络连接信息
 
     /// <summary>
@@ -388,7 +297,7 @@ public class NetworkStatusIndicator : MonoBehaviour
     /// </summary>
     private string GenerateConnectionDetails()
     {
-        StringBuilder details = new System.Text.StringBuilder();
+        StringBuilder details = new StringBuilder();
         details.AppendLine("=== 网络连接详情 ===");
         details.AppendLine($"状态: {_lastConnectionState}");
         details.AppendLine($"延迟: {GetPingValue()}ms");

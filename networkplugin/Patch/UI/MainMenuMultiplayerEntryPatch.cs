@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using HarmonyLib;
 using LBoL.Core;
@@ -69,16 +70,7 @@ public static class MainMenuMultiplayerEntryPatch
     /// </summary>
     /// <returns>解析成功返回 <see cref="INetworkClient"/>，失败返回 null。</returns>
     private static INetworkClient TryGetNetworkClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     /// <summary>
     /// 获取配置管理器（优先从依赖注入解析，失败则回落到插件静态实例）。
@@ -664,8 +656,8 @@ public static class MainMenuMultiplayerEntryPatch
     {
         try
         {
-            var canvas = any != null ? any.GetComponentInParent<Canvas>() : null;
-            return canvas != null ? canvas.GetComponent<RectTransform>() : null;
+            var canvas = any?.GetComponentInParent<Canvas>();
+            return canvas?.GetComponent<RectTransform>();
         }
         catch
         {
@@ -680,8 +672,8 @@ public static class MainMenuMultiplayerEntryPatch
             return true;
         }
 
-        var t = new Vector3[4];
-        var c = new Vector3[4];
+        Vector3[] t = new Vector3[4];
+        Vector3[] c = new Vector3[4];
         target.GetWorldCorners(t);
         container.GetWorldCorners(c);
 
@@ -705,8 +697,8 @@ public static class MainMenuMultiplayerEntryPatch
             return;
         }
 
-        var t = new Vector3[4];
-        var c = new Vector3[4];
+        Vector3[] t = new Vector3[4];
+        Vector3[] c = new Vector3[4];
         target.GetWorldCorners(t);
         container.GetWorldCorners(c);
 
@@ -794,13 +786,13 @@ public static class MainMenuMultiplayerEntryPatch
         // 2) 反射扫描所有 Button 字段（字段名可能变）。
         try
         {
-            var fields = AccessTools.GetDeclaredFields(panel.GetType())
+            List<FieldInfo> fields = AccessTools.GetDeclaredFields(panel.GetType())
                 .Where(f => typeof(Button).IsAssignableFrom(f.FieldType))
                 .ToList();
 
             foreach (var f in fields)
             {
-                var b = f.GetValue(panel) as Button;
+                Button b = f.GetValue(panel) as Button;
                 if (b != null)
                 {
                     template = b;
@@ -820,7 +812,7 @@ public static class MainMenuMultiplayerEntryPatch
             if (buttons != null && buttons.Length > 0)
             {
                 // 过滤掉我们自己的按钮，避免自我复制。
-                var candidates = buttons
+                List<Button> candidates = buttons
                     .Where(b => b != null && b.name != MultiplayerButtonName)
                     .Where(b => b.GetComponentInChildren<TextMeshProUGUI>(true) != null)
                     .ToList();
@@ -1013,7 +1005,7 @@ public static class MainMenuMultiplayerEntryPatch
 
             _defaultFont ??= FindDefaultFont(panelTransform);
 
-            var root = new GameObject(OverlayRootName);
+            GameObject root = new GameObject(OverlayRootName);
             root.transform.SetParent(panelTransform, false);
             root.transform.SetAsLastSibling();
             _overlayRoot = root;
@@ -1063,7 +1055,7 @@ public static class MainMenuMultiplayerEntryPatch
             }
 
             // 中央容器。
-            var container = new GameObject("Container");
+            GameObject container = new GameObject("Container");
             container.transform.SetParent(root.transform, false);
             var containerRect = container.AddComponent<RectTransform>();
             containerRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -1111,7 +1103,7 @@ public static class MainMenuMultiplayerEntryPatch
                     // ignored
                 }
 
-                var gold = new Color(0.86f, 0.73f, 0.34f, 0.9f);
+                Color gold = new Color(0.86f, 0.73f, 0.34f, 0.9f);
                 CreateHorizontalRule(root.transform, "TopRule", anchorY: 0.5f, y: yAbs, height: 4f, color: gold);
                 CreateHorizontalRule(root.transform, "BottomRule", anchorY: 0.5f, y: -yAbs-60, height: 4f, color: gold);
             }
@@ -1121,7 +1113,7 @@ public static class MainMenuMultiplayerEntryPatch
             }
 
             // 标题。
-            var titleGo = new GameObject("Title");
+            GameObject titleGo = new GameObject("Title");
             titleGo.transform.SetParent(container.transform, false);
             var titleRect = titleGo.AddComponent<RectTransform>();
             titleRect.anchorMin = new Vector2(0f, 1f);
@@ -1143,7 +1135,7 @@ public static class MainMenuMultiplayerEntryPatch
             }
 
             // 说明。
-            var descGo = new GameObject("Description");
+            GameObject descGo = new GameObject("Description");
             descGo.transform.SetParent(container.transform, false);
             var descRect = descGo.AddComponent<RectTransform>();
             descRect.anchorMin = new Vector2(0f, 1f);
@@ -1165,7 +1157,7 @@ public static class MainMenuMultiplayerEntryPatch
             }
 
             // 按钮区域。
-            var buttonsGo = new GameObject("Buttons");
+            GameObject buttonsGo = new GameObject("Buttons");
             buttonsGo.transform.SetParent(container.transform, false);
             var buttonsRect = buttonsGo.AddComponent<RectTransform>();
             buttonsRect.anchorMin = new Vector2(0.5f, 0f);
@@ -1260,11 +1252,8 @@ public static class MainMenuMultiplayerEntryPatch
 
                 // 统一尺寸。
                 var r = b.GetComponent<RectTransform>();
-                if (r != null)
-                {
-                    // 用户诉求：按钮高度小一点点。
-                    r.sizeDelta = new Vector2(r.sizeDelta.x, 58f * panelScale);
-                }
+                // 用户诉求：按钮高度小一点点。
+                r?.sizeDelta = new Vector2(r.sizeDelta.x, 58f * panelScale);
             }
 
             // 最后兜底：确保容器不会超出画布。
@@ -1330,10 +1319,7 @@ public static class MainMenuMultiplayerEntryPatch
                 yield break;
             }
 
-            if (_container != null)
-            {
-                _container.localScale = new Vector3(0.92f, 0.92f, 1f);
-            }
+            _container?.localScale = new Vector3(0.92f, 0.92f, 1f);
 
             const float duration = 0.22f;
             float t = 0f;
@@ -1357,10 +1343,7 @@ public static class MainMenuMultiplayerEntryPatch
             _rootGroup.alpha = 1f;
             _rootGroup.interactable = true;
             _rootGroup.blocksRaycasts = true;
-            if (_container != null)
-            {
-                _container.localScale = Vector3.one;
-            }
+            _container?.localScale = Vector3.one;
         }
     }
 
@@ -1371,7 +1354,7 @@ public static class MainMenuMultiplayerEntryPatch
             return;
         }
 
-        var rule = new GameObject(name);
+        GameObject rule = new GameObject(name);
         rule.transform.SetParent(parent, false);
 
         var rect = rule.AddComponent<RectTransform>();
@@ -1458,10 +1441,7 @@ public static class MainMenuMultiplayerEntryPatch
     {
         try
         {
-            if (_overlayRoot != null)
-            {
-                _overlayRoot.SetActive(false);
-            }
+            _overlayRoot?.SetActive(false);
         }
         catch
         {

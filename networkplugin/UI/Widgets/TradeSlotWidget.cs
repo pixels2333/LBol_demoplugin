@@ -185,23 +185,17 @@ public class TradeSlotWidget : CommonButtonWidget
 		}
 	}
 
-	public void SetCard(Card card, System.Action<Card> removeCallback = null)
+	public void SetCard(Card card, Action<Card> removeCallback = null)
 	{
 		_currentCard = card;
 		_onRemoveCard = removeCallback;
 
 		// Avoid accumulating listeners if SetCard is called multiple times.
-		if (button != null)
-		{
-			button.onClick.RemoveListener(OnRemoveClicked);
-		}
+		button?.onClick.RemoveListener(OnRemoveClicked);
 
                 if (card != null)
                 {
-						if (cardNameText != null)
-                        {
-                                cardNameText.text = card.Name;
-                        }
+						cardNameText?.text = card.Name;
 
 			// Use the game's own card textures if available.
 			TrySetCardImage(card);
@@ -212,16 +206,10 @@ public class TradeSlotWidget : CommonButtonWidget
 			ApplyFilledVisual();
 
 			// 启用按钮交互
-			if (button != null)
-			{
-				button.interactable = true;
-			}
+			button?.interactable = true;
 
 			// 注册移除事件
-			if (button != null)
-			{
-				button.onClick.AddListener(OnRemoveClicked);
-			}
+			button?.onClick.AddListener(OnRemoveClicked);
 		}
 		else
 		{
@@ -290,10 +278,7 @@ public class TradeSlotWidget : CommonButtonWidget
                 _currentCard = null;
                 _onRemoveCard = null;
 
-                if (cardNameText != null)
-                {
-                        cardNameText.text = "";
-                }
+                cardNameText?.text = "";
                 cardIcon?.gameObject.SetActive(false);
 				try
 				{
@@ -318,10 +303,7 @@ public class TradeSlotWidget : CommonButtonWidget
 		SetSelected(false);
 		ApplyEmptyVisual();
 
-		if (lockedOverlay != null)
-		{
-			lockedOverlay.SetActive(false);
-		}
+		lockedOverlay?.SetActive(false);
 	}
 
 	public override void OnPointerEnter(PointerEventData eventData)
@@ -393,7 +375,7 @@ public class TradeSlotWidget : CommonButtonWidget
 			}
 
 			string topPanel = Singleton<GamepadNavigationManager>.Instance.GetTopPanel();
-			GameObject currentSelected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+			GameObject currentSelected = EventSystem.current?.currentSelectedGameObject;
 			panel.Show(new CardDetailPayload(RectTransform, _currentCard, false));
 			GamepadNavigationManager.SetOverrideOrigin(currentSelected, topPanel);
 		}
@@ -405,15 +387,9 @@ public class TradeSlotWidget : CommonButtonWidget
 
 	public void SetLocked(bool locked)
 	{
-		if (lockedOverlay != null)
-		{
-			lockedOverlay.SetActive(locked);
-		}
+		lockedOverlay?.SetActive(locked);
 
-		if (button != null)
-		{
-			button.interactable = !locked;
-		}
+		button?.interactable = !locked;
 	}
 
 	public void SetSelected(bool selected)
@@ -444,10 +420,7 @@ public class TradeSlotWidget : CommonButtonWidget
 			}
 		}
 
-		if (selectedBorder != null)
-		{
-			selectedBorder.gameObject.SetActive(selected);
-		}
+		selectedBorder?.gameObject.SetActive(selected);
 	}
 
 	private void OnRemoveClicked()

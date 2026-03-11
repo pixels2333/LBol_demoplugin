@@ -68,16 +68,7 @@ public static class EndTurnSyncPatch
     }
 
     private static INetworkClient TryGetNetworkClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     [HarmonyPatch(typeof(GameDirector), "Update")]
     private static class SubscribeHook
@@ -719,10 +710,7 @@ public static class EndTurnSyncPatch
             }
 
             var endTurnButton = Traverse.Create(playBoard).Field("endTurnButton").GetValue<UnityEngine.UI.Button>();
-            if (endTurnButton != null)
-            {
-                endTurnButton.interactable = false;
-            }
+            endTurnButton?.interactable = false;
         }
         catch
         {
@@ -741,10 +729,7 @@ public static class EndTurnSyncPatch
             }
 
             var endTurnButton = Traverse.Create(playBoard).Field("endTurnButton").GetValue<UnityEngine.UI.Button>();
-            if (endTurnButton != null)
-            {
-                endTurnButton.interactable = true;
-            }
+            endTurnButton?.interactable = true;
         }
         catch
         {

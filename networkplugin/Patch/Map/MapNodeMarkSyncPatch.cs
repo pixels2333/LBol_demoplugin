@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Text.Json;
 using HarmonyLib;
 using LBoL.Core;
-using LBoL.Presentation;
 using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.UI.Widgets;
@@ -84,28 +83,10 @@ public static class MapNodeMarkSyncPatch
     }
 
     private static INetworkClient TryGetClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     private static INetworkManager TryGetNetworkManager()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkManager>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkManager>();
 
     private static void EnsureSubscribed(INetworkClient client)
     {
@@ -420,10 +401,7 @@ public static class MapNodeMarkSyncPatch
                 }
 
                 List<INetworkPlayer> here = null;
-                if (playersByPos != null)
-                {
-                    playersByPos.TryGetValue(new NodePosKey(w.MapNode.X, w.MapNode.Y), out here);
-                }
+                playersByPos?.TryGetValue(new NodePosKey(w.MapNode.X, w.MapNode.Y), out here);
 
                 UpdatePlayerDots(w, here);
             }
@@ -516,10 +494,7 @@ public static class MapNodeMarkSyncPatch
         {
             bool active = i < displayCount;
             Image img = ui.Dots[i];
-            if (img != null)
-            {
-                img.enabled = active;
-            }
+            img?.enabled = active;
         }
 
         ApplyDotLayout(ui, displayCount);
@@ -533,10 +508,7 @@ public static class MapNodeMarkSyncPatch
             }
 
             Image img = ui.Dots[i];
-            if (img != null)
-            {
-                img.color = GetPlayerDotColor(p.userName);
-            }
+            img?.color = GetPlayerDotColor(p.userName);
         }
     }
 
@@ -561,7 +533,7 @@ public static class MapNodeMarkSyncPatch
         rt.anchoredPosition = Vector2.zero;
         rt.sizeDelta = new Vector2(90f, 90f);
 
-        var ui = new DotUi { Root = rt };
+        DotUi ui = new DotUi { Root = rt };
         DotUis[widget] = ui;
         go.SetActive(false);
         return ui;
@@ -591,10 +563,7 @@ public static class MapNodeMarkSyncPatch
             }
 
             RectTransform rt = img.GetComponent<RectTransform>();
-            if (rt != null)
-            {
-                rt.anchoredPosition = offsets[i];
-            }
+            rt?.anchoredPosition = offsets[i];
         }
     }
 
@@ -620,7 +589,7 @@ public static class MapNodeMarkSyncPatch
         try
         {
             const int size = 32;
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Bilinear;
 
             float r = (size - 1) * 0.5f;
@@ -653,7 +622,7 @@ public static class MapNodeMarkSyncPatch
     {
         try
         {
-            var tex = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            Texture2D tex = new Texture2D(1, 1, TextureFormat.RGBA32, false);
             tex.SetPixel(0, 0, Color.white);
             tex.Apply(false, true);
             return Sprite.Create(tex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);

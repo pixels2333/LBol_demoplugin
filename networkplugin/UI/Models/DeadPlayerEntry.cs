@@ -1,6 +1,6 @@
 using System;
 
-namespace NetworkPlugin.UI.Panels;
+namespace NetworkPlugin.UI.Models;
 
 /// <summary>
 /// 死亡玩家信息条目

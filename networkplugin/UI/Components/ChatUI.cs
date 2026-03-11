@@ -33,15 +33,13 @@ public class ChatUI : MonoBehaviour
     public float messageFadeTime = 10f;
 
     private Queue<ChatMessage> messageQueue = new();      // 存储聊天消息的队列，先进先出
-    private List<GameObject> messageObjects = [];          // 存储UI消息对象列表，用于管理和清理
+    private List<GameObject> messageObjects = [];          // 存储 UI 消息对象列表，用于管理和清理
     private Dictionary<GameObject, DateTime> messageCreatedAt = [];
-    private IServiceProvider _serviceProvider;            // 依赖注入服务提供者
     private INetworkClient _networkClient;                // 网络客户端接口，负责消息发送
 
     private void Start()
     {
-        _serviceProvider = ModService.ServiceProvider;
-        _networkClient = _serviceProvider?.GetService<INetworkClient>();
+        _networkClient = ModService.ServiceProvider?.GetService<INetworkClient>();
 
         SetupUI();
         RegisterNetworkEvents();
@@ -69,21 +67,12 @@ public class ChatUI : MonoBehaviour
             inputField.characterLimit = 200;
         }
 
-        if (sendButton != null)
-        {
-            sendButton.onClick.AddListener(OnSendButtonClicked);
-        }
+        sendButton?.onClick.AddListener(OnSendButtonClicked);
 
-        if (chatDisplay != null)
-        {
-            chatDisplay.text = "聊天系统已启用...\n";
-        }
+        chatDisplay?.text = "聊天系统已启用...\n";
 
         // 初始隐藏聊天容器
-        if (chatContainer != null)
-        {
-            chatContainer.SetActive(false);
-        }
+        chatContainer?.SetActive(false);
     }
 
     /// <summary>
@@ -117,17 +106,10 @@ public class ChatUI : MonoBehaviour
             return;
         }
 
-        try
+        ChatMessage message = TryDeserializeChatMessage(payload);
+        if (message != null)
         {
-            ChatMessage message = TryDeserializeChatMessage(payload);
-            if (message != null)
-            {
-                OnChatMessageReceived(message);
-            }
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[ChatUI] Error handling chat message: {ex.Message}");
+            OnChatMessageReceived(message);
         }
     }
 
@@ -384,27 +366,19 @@ public class ChatUI : MonoBehaviour
     /// </summary>
     private string GetCurrentPlayerId()
     {
-        try
+        string id = NetworkIdentityTracker.GetSelfPlayerId();
+        if (!string.IsNullOrWhiteSpace(id))
         {
-            string id = NetworkIdentityTracker.GetSelfPlayerId();
-            if (!string.IsNullOrWhiteSpace(id))
-            {
-                return id;
-            }
-
-            id = GameStateUtils.GetCurrentPlayerId();
-            if (!string.IsNullOrWhiteSpace(id))
-            {
-                return id;
-            }
-
-            return "Unknown_Player";
+            return id;
         }
-        catch (Exception ex)
+
+        id = GameStateUtils.GetCurrentPlayerId();
+        if (!string.IsNullOrWhiteSpace(id))
         {
-            Plugin.Logger?.LogError($"[ChatUI] Error getting player ID: {ex.Message}");
-            return "Unknown_Player";
+            return id;
         }
+
+        return "Unknown_Player";
     }
 
     /// <summary>
@@ -412,46 +386,55 @@ public class ChatUI : MonoBehaviour
     /// </summary>
     private string GetCurrentPlayerName()
     {
-        try
+        object player = GameStateUtils.GetCurrentPlayer();
+        if (player != null)
         {
-            object player = GameStateUtils.GetCurrentPlayer();
-            if (player != null)
+            string name = TryReadPlayerString(player, "userName", "UserName", "Name");
+            if (!string.IsNullOrWhiteSpace(name))
             {
-                // LBoL 的玩家对象可能有 userName/Name 等字段，优先取可读的名字
-                var prop = player.GetType().GetProperty("userName") ?? player.GetType().GetProperty("UserName") ?? player.GetType().GetProperty("Name");
-                if (prop != null && prop.PropertyType == typeof(string))
-                {
-                    string name = prop.GetValue(player) as string;
-                    if (!string.IsNullOrWhiteSpace(name))
-                    {
-                        return name;
-                    }
-                }
-
-                var fallback = player.GetType().GetProperty("ModelName") ?? player.GetType().GetProperty("Id");
-                if (fallback != null)
-                {
-                    object v = fallback.GetValue(player);
-                    if (v != null)
-                    {
-                        return v.ToString();
-                    }
-                }
+                return name;
             }
 
-            string id = NetworkIdentityTracker.GetSelfPlayerId();
-            if (!string.IsNullOrWhiteSpace(id))
+            // LBoL 的玩家对象可能有 `ModelName` / `Id` 等字段，这里用作兜底显示名。
+            string fallback = TryReadPlayerString(player, "ModelName", "Id");
+            if (!string.IsNullOrWhiteSpace(fallback))
             {
-                return id;
+                return fallback;
+            }
+        }
+
+        string id = NetworkIdentityTracker.GetSelfPlayerId();
+        return !string.IsNullOrWhiteSpace(id) ? id : "未知玩家";
+    }
+
+    private static string TryReadPlayerString(object player, params string[] propertyNames)
+    {
+        Type playerType = player.GetType();
+        foreach (string propertyName in propertyNames)
+        {
+            var property = playerType.GetProperty(propertyName);
+            if (property == null)
+            {
+                continue;
             }
 
-            return "未知玩家";
+            object value = property.GetValue(player);
+            if (value is string text && !string.IsNullOrWhiteSpace(text))
+            {
+                return text;
+            }
+
+            if (value != null)
+            {
+                string fallback = value.ToString();
+                if (!string.IsNullOrWhiteSpace(fallback))
+                {
+                    return fallback;
+                }
+            }
         }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[ChatUI] Error getting player name: {ex.Message}");
-            return "未知玩家";
-        }
+
+        return null;
     }
 
     /// <summary>
@@ -459,10 +442,7 @@ public class ChatUI : MonoBehaviour
     /// </summary>
     public void SetChatWindowVisible(bool visible)
     {
-        if (chatContainer != null)
-        {
-            chatContainer.SetActive(visible);
-        }
+        chatContainer?.SetActive(visible);
     }
 
     /// <summary>

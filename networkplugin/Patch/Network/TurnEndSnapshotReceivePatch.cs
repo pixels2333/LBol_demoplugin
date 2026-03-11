@@ -1,7 +1,6 @@
 using System;
 using System.Text.Json;
 using HarmonyLib;
-using LBoL.Core;
 using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
@@ -54,28 +53,10 @@ public static class TurnEndSnapshotReceivePatch
     }
 
     private static INetworkClient TryGetNetworkClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     private static INetworkManager TryGetNetworkManager()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkManager>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkManager>();
 
     private static void EnsureSubscribed(INetworkClient client)
     {
@@ -86,10 +67,7 @@ public static class TurnEndSnapshotReceivePatch
 
         try
         {
-            if (_subscribedClient != null)
-            {
-                _subscribedClient.OnGameEventReceived -= _onGameEventReceived;
-            }
+            _subscribedClient?.OnGameEventReceived -= _onGameEventReceived;
         }
         catch
         {

@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using DG.Tweening;
 using HarmonyLib;
 using LBoL.Base;
-using LBoL.Core;
 using LBoL.Core.GapOptions;
 using LBoL.Core.Stations;
 using LBoL.Presentation.UI;
@@ -12,13 +10,14 @@ using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.UI.Widgets;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Configuration;
-using NetworkPlugin.Core;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Patch.Network;
+using NetworkPlugin.UI.Factories;
+using NetworkPlugin.UI.Payloads;
 using NetworkPlugin.UI.Panels;
-using NetworkPlugin.Utils;
+using NetworkPlugin.UI.State;
 using UnityEngine;
 
 namespace NetworkPlugin.Patch.UI;
@@ -173,7 +172,7 @@ public class GapOptionsPanel_Patch
             object resurrectOption = CreateCustomGapOption("Resurrect", "复活", "复活已死亡的队友");
 
             // 使用Traverse工具获取必要字段
-            var traverse = Traverse.Create(panel);
+            Traverse traverse = Traverse.Create(panel);
             Transform optionsLayout = traverse.Field("optionsLayout").GetValue<Transform>();
             GapOptionWidget template = traverse.Field("template").GetValue<GapOptionWidget>();
             AssociationList<GapOptionType, Sprite> spriteTable = traverse.Field("spriteTable").GetValue<AssociationList<GapOptionType, Sprite>>();
@@ -242,7 +241,7 @@ public class GapOptionsPanel_Patch
                         return false;
                     }
 
-                    TradePanel tradePanel = GetOrCreateTradePanel(__instance != null ? __instance.transform.parent : null);
+                    TradePanel tradePanel = GetOrCreateTradePanel(__instance?.transform.parent);
                     if (tradePanel != null)
                     {
                         Traverse.Create(__instance).Method("StartCoroutine").GetValue(tradePanel.ShowTradeAsync(new TradePayload()));
@@ -269,7 +268,7 @@ public class GapOptionsPanel_Patch
                     ResurrectPanel resurrectPanel = GetOrCreateResurrectPanel();
                     if (resurrectPanel != null)
                     {
-                        var payload = new ResurrectPayload
+                        ResurrectPayload payload = new ResurrectPayload
                         {
                             DeadPlayers = DeathRegistry.GetDeadPlayersSnapshot(),
                             CanCancel = true,
@@ -537,7 +536,7 @@ public class GapOptionsPanel_Patch
             }
 
             // 没有 prefab/实例时：用运行时工厂克隆游戏 UI 模板创建（避免 AddComponent 裸创建导致空引用）。
-            panel = NetworkPlugin.UI.Panels.TradePanelRuntimeFactory.GetOrCreate(parent);
+            panel = TradePanelRuntimeFactory.GetOrCreate(parent);
             if (panel != null)
             {
                 return panel;

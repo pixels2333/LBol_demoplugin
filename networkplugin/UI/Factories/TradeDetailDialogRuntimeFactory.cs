@@ -1,15 +1,16 @@
-using System;
+using System.Collections.Generic;
 using System.Linq;
-using LBoL.Presentation;
+using HarmonyLib;
 using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Dialogs;
 using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.UI.Widgets;
+using NetworkPlugin.UI.Dialogs;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace NetworkPlugin.UI.Dialogs;
+namespace NetworkPlugin.UI.Factories;
 
 internal static class TradeDetailDialogRuntimeFactory
 {
@@ -34,23 +35,19 @@ internal static class TradeDetailDialogRuntimeFactory
             RecordCardCell cardCellTemplate = null;
             ExhibitWidget exhibitTemplate = null;
 
-            try
+            var historyPrefab = Resources.Load<GameObject>("UI/Panels/HistoryPanel");
+            if (historyPrefab != null)
             {
-                var historyPrefab = Resources.Load<GameObject>("UI/Panels/HistoryPanel");
-                if (historyPrefab != null)
-                {
-                    rowTemplate = historyPrefab.GetComponentInChildren<RecordRow>(true)?.gameObject;
-                    cardCellTemplate = historyPrefab.GetComponentInChildren<RecordCardCell>(true);
-                    exhibitTemplate = historyPrefab.GetComponentInChildren<ExhibitWidget>(true);
-                }
+                rowTemplate = historyPrefab.GetComponentInChildren<RecordRow>(true)?.gameObject;
+                cardCellTemplate = historyPrefab.GetComponentInChildren<RecordCardCell>(true);
+                exhibitTemplate = historyPrefab.GetComponentInChildren<ExhibitWidget>(true);
             }
-            catch { }
 
-            // Parent under dialog layer (private) if possible.
+            // 尽量挂到对话框层（私有字段）下。
             Transform parent = null;
             try
             {
-                var traverse = HarmonyLib.Traverse.Create(UiManager.Instance);
+                Traverse traverse = HarmonyLib.Traverse.Create(UiManager.Instance);
                 var layer = traverse.Field("dialogLayer").GetValue<RectTransform>();
                 parent = layer != null ? layer.transform : UiManager.Instance.transform;
             }
@@ -59,7 +56,7 @@ internal static class TradeDetailDialogRuntimeFactory
                 parent = UiManager.Instance.transform;
             }
 
-            var root = new GameObject("NetworkPlugin_TradeDetailDialog_v6");
+            GameObject root = new GameObject("NetworkPlugin_TradeDetailDialog_v6");
             root.SetActive(false);
             root.transform.SetParent(parent, false);
 
@@ -73,8 +70,8 @@ internal static class TradeDetailDialogRuntimeFactory
             overlay.color = new Color(0f, 0f, 0f, 0.55f);
             overlay.raycastTarget = true;
 
-            // Prefer an in-game authored dialog prefab as the main frame so visuals match vanilla.
-            // We do NOT call UiDialog.Show(); we only reuse the prefab's graphics and TMP/button styles.
+            // 优先复用游戏内现成的对话框 prefab，让外观尽量贴近原版。
+            // 这里不调用 `UiDialog.Show()`，只借用 prefab 的图形、TMP 和按钮样式。
             RectTransform panelRt = null;
             TextMeshProUGUI frameTextTemplate = null;
             CommonButtonWidget frameButtonTemplate = null;
@@ -107,7 +104,7 @@ internal static class TradeDetailDialogRuntimeFactory
 
                         frameTextTemplate = mainText != null ? mainText : subText;
 
-                        // Prioritize non-red buttons: singleConfirm -> confirm -> cancel as last resort.
+                        // 优先使用非红色按钮样式：singleConfirm -> confirm -> cancel。
                         frameButtonTemplate = TryFindButtonWidget(singleConfirm) 
                                            ?? TryFindButtonWidget(confirm) 
                                            ?? TryFindButtonWidget(cancel);
@@ -120,9 +117,9 @@ internal static class TradeDetailDialogRuntimeFactory
 
                         msg.enabled = false;
 
-                        var cancelRt = cancel != null ? cancel.GetComponent<RectTransform>() : null;
-                        panelRt = TryFindCommonAncestorRect(mainText != null ? mainText.rectTransform : null, cancelRt)
-                                  ?? TryFindCommonAncestorRect(subText != null ? subText.rectTransform : null, cancelRt)
+                        var cancelRt = cancel?.GetComponent<RectTransform>();
+                        panelRt = TryFindCommonAncestorRect(mainText?.rectTransform, cancelRt)
+                                  ?? TryFindCommonAncestorRect(subText?.rectTransform, cancelRt)
                                   ?? frameRt;
                     }
 
@@ -139,10 +136,10 @@ internal static class TradeDetailDialogRuntimeFactory
                 frameButtonTemplate = null;
             }
 
-            // Fallback if prefab is unavailable: create a simple panel (still uses in-game background sprite).
+            // 如果拿不到 prefab，就退化为一个简化面板。
             if (panelRt == null)
             {
-                var panelGo = new GameObject("Panel");
+                GameObject panelGo = new GameObject("Panel");
                 panelGo.transform.SetParent(root.transform, false);
                 panelRt = panelGo.AddComponent<RectTransform>();
                 panelRt.anchorMin = new Vector2(0.12f, 0.10f);
@@ -181,172 +178,116 @@ internal static class TradeDetailDialogRuntimeFactory
 
     private static void HideDialogText(TextMeshProUGUI tmp)
     {
-        try
+        if (tmp == null)
         {
-            if (tmp != null)
-            {
-                tmp.text = string.Empty;
-                tmp.raycastTarget = false;
-                tmp.gameObject.SetActive(false);
-            }
+            return;
         }
-        catch
-        {
-            // ignored
-        }
+
+        tmp.text = string.Empty;
+        tmp.raycastTarget = false;
+        tmp.gameObject.SetActive(false);
     }
 
     private static void HideDialogButton(Button b)
     {
-        try
+        if (b == null)
         {
-            if (b != null)
-            {
-                b.onClick.RemoveAllListeners();
-                b.gameObject.SetActive(false);
-            }
+            return;
         }
-        catch
-        {
-            // ignored
-        }
+
+        b.onClick.RemoveAllListeners();
+        b.gameObject.SetActive(false);
     }
 
     private static T GetDialogField<T>(MessageDialog dialog, string fieldName) where T : class
     {
-        try
-        {
-            if (dialog == null || string.IsNullOrWhiteSpace(fieldName))
-            {
-                return null;
-            }
-
-            var fi = typeof(MessageDialog).GetField(fieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            if (fi == null)
-            {
-                return null;
-            }
-
-            return fi.GetValue(dialog) as T;
-        }
-        catch
+        if (dialog == null || string.IsNullOrWhiteSpace(fieldName))
         {
             return null;
         }
+
+        var fi = typeof(MessageDialog).GetField(fieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        return fi?.GetValue(dialog) as T;
     }
 
     private static CommonButtonWidget TryFindButtonWidget(Button b)
     {
-        try
-        {
-            if (b == null)
-            {
-                return null;
-            }
-
-            var w = b.GetComponent<CommonButtonWidget>();
-            if (w != null)
-            {
-                return w;
-            }
-
-            return b.GetComponentInParent<CommonButtonWidget>(true);
-        }
-        catch
+        if (b == null)
         {
             return null;
         }
+
+        var w = b.GetComponent<CommonButtonWidget>();
+        return w ?? b.GetComponentInParent<CommonButtonWidget>(true);
     }
 
     private static RectTransform TryFindCommonAncestorRect(RectTransform a, RectTransform b)
     {
-        try
-        {
-            if (a == null || b == null)
-            {
-                return null;
-            }
-
-            var ancestors = new System.Collections.Generic.HashSet<Transform>();
-            Transform t = a;
-            while (t != null)
-            {
-                ancestors.Add(t);
-                t = t.parent;
-            }
-
-            Transform u = b;
-            while (u != null)
-            {
-                if (ancestors.Contains(u))
-                {
-                    return u as RectTransform;
-                }
-                u = u.parent;
-            }
-
-            return null;
-        }
-        catch
+        if (a == null || b == null)
         {
             return null;
         }
+
+        HashSet<Transform> ancestors = new HashSet<Transform>();
+        Transform t = a;
+        while (t != null)
+        {
+            ancestors.Add(t);
+            t = t.parent;
+        }
+
+        Transform u = b;
+        while (u != null)
+        {
+            if (ancestors.Contains(u))
+            {
+                return u as RectTransform;
+            }
+            u = u.parent;
+        }
+
+        return null;
     }
 
     private static CommonButtonWidget TryPickButtonTemplate()
     {
-        try
-        {
-            var candidates = UnityEngine.Object.FindObjectsByType<CommonButtonWidget>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            if (candidates == null || candidates.Length == 0)
-            {
-                return null;
-            }
-
-            CommonButtonWidget best = null;
-            int bestScore = int.MaxValue;
-
-            foreach (var c in candidates)
-            {
-                if (c == null || c.button == null)
-                {
-                    continue;
-                }
-
-                int buttons = 0;
-                int nodes = 0;
-                try { buttons = c.GetComponentsInChildren<Button>(true)?.Length ?? 0; } catch { buttons = 0; }
-                try { nodes = c.GetComponentsInChildren<Transform>(true)?.Length ?? 0; } catch { nodes = 0; }
-                if (buttons == 0)
-                {
-                    continue;
-                }
-
-                int score = (buttons * 1000) + nodes;
-                if (score < bestScore)
-                {
-                    bestScore = score;
-                    best = c;
-                }
-            }
-
-            return best;
-        }
-        catch
+        var candidates = UnityEngine.Object.FindObjectsByType<CommonButtonWidget>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        if (candidates == null || candidates.Length == 0)
         {
             return null;
         }
+
+        CommonButtonWidget best = null;
+        int bestScore = int.MaxValue;
+
+        foreach (var c in candidates)
+        {
+            if (c == null || c.button == null)
+            {
+                continue;
+            }
+
+            int buttons = c.GetComponentsInChildren<Button>(true).Length;
+            int nodes = c.GetComponentsInChildren<Transform>(true).Length;
+            if (buttons == 0)
+            {
+                continue;
+            }
+
+            int score = (buttons * 1000) + nodes;
+            if (score < bestScore)
+            {
+                bestScore = score;
+                best = c;
+            }
+        }
+
+        return best;
     }
 
     private static TextMeshProUGUI TryPickTextTemplate()
     {
-        try
-        {
-            return UnityEngine.Object.FindObjectsByType<TextMeshProUGUI>(FindObjectsInactive.Include, FindObjectsSortMode.None)?.FirstOrDefault(t => t != null);
-        }
-        catch
-        {
-            return null;
-        }
+        return UnityEngine.Object.FindObjectsByType<TextMeshProUGUI>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+            ?.FirstOrDefault(t => t != null);
     }
 }

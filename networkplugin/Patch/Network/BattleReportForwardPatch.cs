@@ -35,16 +35,7 @@ public static class BattleReportForwardPatch
 	private const int MaxForwardedKeys = 256;
 
 	private static INetworkClient TryGetNetworkClient()
-	{
-		try
-		{
-			return ServiceProvider?.GetService<INetworkClient>();
-		}
-		catch
-		{
-			return null;
-		}
-	}
+	    => ServiceProvider?.GetService<INetworkClient>();
 
 	[HarmonyTargetMethod]
 	private static MethodBase TargetMethod()
@@ -94,10 +85,7 @@ public static class BattleReportForwardPatch
 
 		try
 		{
-			if (_subscribedClient != null)
-			{
-				_subscribedClient.OnGameEventReceived -= OnGameEventReceived;
-			}
+			_subscribedClient?.OnGameEventReceived -= OnGameEventReceived;
 		}
 		catch
 		{

@@ -1,6 +1,5 @@
 using System;
 using HarmonyLib;
-using LBoL.Base;
 using LBoL.Core.Battle;
 using LBoL.Presentation.UI.Panels;
 using Microsoft.Extensions.DependencyInjection;

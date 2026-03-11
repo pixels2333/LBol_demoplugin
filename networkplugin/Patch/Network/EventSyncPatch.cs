@@ -116,10 +116,7 @@ public class EventSyncPatch
 
         try
         {
-            if (_subscribedClient != null)
-            {
-                _subscribedClient.OnGameEventReceived -= OnGameEventReceived;
-            }
+            _subscribedClient?.OnGameEventReceived -= OnGameEventReceived;
         }
         catch
         {
@@ -215,7 +212,7 @@ public class EventSyncPatch
                 if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("Options", out JsonElement optionsElem) &&
                     optionsElem.ValueKind == JsonValueKind.Array)
                 {
-                    var list = new List<DialogSync.DialogOptionData>();
+                    List<DialogSync.DialogOptionData> list = new List<DialogSync.DialogOptionData>();
                     foreach (JsonElement item in optionsElem.EnumerateArray())
                     {
                         if (item.ValueKind != JsonValueKind.Object)
@@ -258,7 +255,7 @@ public class EventSyncPatch
                     return;
                 }
 
-                var pending = new PendingSelection
+                PendingSelection pending = new PendingSelection
                 {
                     EventId = eventId,
                     OptionId = optionId,
@@ -1356,7 +1353,7 @@ public class EventSyncPatch
 
     [HarmonyPatch(typeof(VnPanel), "CoRunDialog")]
     [HarmonyPrefix]
-    public static void VnPanel_CoRunDialog_Prefix(string vnName, DialogStorage storage, global::Yarn.Library library,
+    public static void VnPanel_CoRunDialog_Prefix(string vnName, DialogStorage storage, Yarn.Library library,
         RuntimeCommandHandler extraCommandHandler, string startNode, Adventure adventure)
     {
         try
@@ -1406,8 +1403,8 @@ public class EventSyncPatch
         {
             // 通过 UI 文本提取 speaker（若无则为空）。
             string speaker = string.Empty;
-            var leftRoot = AccessTools.Field(typeof(VnPanel), "leftCharacterNameRoot")?.GetValue(__instance) as GameObject;
-            var rightRoot = AccessTools.Field(typeof(VnPanel), "rightCharacterNameRoot")?.GetValue(__instance) as GameObject;
+            GameObject leftRoot = AccessTools.Field(typeof(VnPanel), "leftCharacterNameRoot")?.GetValue(__instance) as GameObject;
+            GameObject rightRoot = AccessTools.Field(typeof(VnPanel), "rightCharacterNameRoot")?.GetValue(__instance) as GameObject;
 
             if (leftRoot != null && leftRoot.activeSelf)
             {
@@ -1775,7 +1772,7 @@ public class EventSyncPatch
             }
 
             // 只有在 optionsRoot 激活时才拦截。
-            var optionsRoot = AccessTools.Field(typeof(VnPanel), "optionsRoot")?.GetValue(__instance) as GameObject;
+            GameObject optionsRoot = AccessTools.Field(typeof(VnPanel), "optionsRoot")?.GetValue(__instance) as GameObject;
             if (optionsRoot == null || !optionsRoot.activeSelf)
             {
                 return true;

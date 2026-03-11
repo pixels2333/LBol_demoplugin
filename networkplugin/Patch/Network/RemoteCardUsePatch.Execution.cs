@@ -419,7 +419,7 @@ public static partial class RemoteCardUsePatch
 
     private static List<BattleAction> BuildReplayActions(JsonElement root, BattleController battle, PlayerUnit caster)
     {
-        var list = new List<BattleAction>();
+        List<BattleAction> list = new List<BattleAction>();
         try
         {
             if (!root.TryGetProperty("Actions", out JsonElement actionsEl) || actionsEl.ValueKind != JsonValueKind.Array)

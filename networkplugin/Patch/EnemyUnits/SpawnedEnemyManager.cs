@@ -1,5 +1,4 @@
 using System;
-using System.Text.Json;
 using HarmonyLib;
 using LBoL.Base;
 using LBoL.Core.Battle;
@@ -88,11 +87,6 @@ public static class SpawnedEnemyManager
 
             try
             {
-                if (__instance == null)
-                {
-                    return;
-                }
-
                 var client = networkClient;
                 if (client == null || !client.IsConnected)
                 {
@@ -115,7 +109,7 @@ public static class SpawnedEnemyManager
                 seed = unchecked(seed + HashStable(type?.FullName ?? string.Empty));
                 seed = unchecked(seed + (isServant ? 1UL : 0UL));
 
-                var gameRunTraverse = Traverse.Create(gameRun);
+                Traverse gameRunTraverse = Traverse.Create(gameRun);
                 var originalEnemyBattleRng = gameRunTraverse.Field("<EnemyBattleRng>k__BackingField").GetValue<RandomGen>();
                 __state = new RngSwapState(originalEnemyBattleRng, swapped: true);
 

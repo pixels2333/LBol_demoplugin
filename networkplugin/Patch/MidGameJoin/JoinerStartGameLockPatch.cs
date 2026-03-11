@@ -30,28 +30,10 @@ public static class JoinerStartGameLockPatch
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
     private static INetworkClient TryGetClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     private static MapCatchUpOrchestrator TryGetCatchUp()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<MapCatchUpOrchestrator>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<MapCatchUpOrchestrator>();
 
     // Patch the seed overload (the non-seed overload delegates to this one).
     [HarmonyPatch(typeof(LBoL.Presentation.GameMaster), nameof(LBoL.Presentation.GameMaster.StartGame),

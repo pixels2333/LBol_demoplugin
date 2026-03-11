@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using LBoL.Core.Units;
-using NetworkPlugin;
 
 namespace NetworkPlugin.Utils;
 
@@ -24,26 +23,18 @@ public static class UnitUtils
             return null;
         }
 
-        try
+        return new
         {
-            return new
-            {
-                unit.Id,
-                unit.Name,
-                Type = unit.GetType().Name,
-                unit.Hp,
-                unit.MaxHp,
-                unit.Block,
-                unit.Shield,
-                unit.IsAlive,
-                Timestamp = DateTime.Now.Ticks,
-            };
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[UnitUtils] GetUnitStatus 失败: {ex.Message}");
-            return new { Error = "GetUnitStatus failed" };
-        }
+            unit.Id,
+            unit.Name,
+            Type = unit.GetType().Name,
+            unit.Hp,
+            unit.MaxHp,
+            unit.Block,
+            unit.Shield,
+            unit.IsAlive,
+            Timestamp = DateTime.Now.Ticks,
+        };
     }
 
     /// <summary>
@@ -56,25 +47,17 @@ public static class UnitUtils
             return null;
         }
 
-        try
-        {
-            object basic = GetUnitStatus(player);
+        object basic = GetUnitStatus(player);
 
-            int? power = TryGetIntProperty(player, "Power");
-            int? maxPower = TryGetIntProperty(player, "MaxPower");
+        int? power = TryGetIntProperty(player, "Power");
+        int? maxPower = TryGetIntProperty(player, "MaxPower");
 
-            return new
-            {
-                Basic = basic,
-                Power = power,
-                MaxPower = maxPower,
-            };
-        }
-        catch (Exception ex)
+        return new
         {
-            Plugin.Logger?.LogError($"[UnitUtils] GetPlayerStatus 失败: {ex.Message}");
-            return new { Error = "GetPlayerStatus failed" };
-        }
+            Basic = basic,
+            Power = power,
+            MaxPower = maxPower,
+        };
     }
 
     /// <summary>
@@ -116,44 +99,23 @@ public static class UnitUtils
 
     private static int? TryGetIntProperty(object obj, string propertyName)
     {
-        try
-        {
-            var p = obj.GetType().GetProperty(propertyName);
-            if (p == null)
-            {
-                return null;
-            }
-
-            object v = p.GetValue(obj);
-            return v == null ? null : Convert.ToInt32(v);
-        }
-        catch
+        var p = obj.GetType().GetProperty(propertyName);
+        if (p == null)
         {
             return null;
         }
+
+        object v = p.GetValue(obj);
+        return v == null ? null : Convert.ToInt32(v);
     }
 
     private static object TryGetProperty(object obj, string propertyName)
     {
-        try
-        {
-            return obj.GetType().GetProperty(propertyName)?.GetValue(obj);
-        }
-        catch
-        {
-            return null;
-        }
+        return obj.GetType().GetProperty(propertyName)?.GetValue(obj);
     }
 
     private static object TryGetField(object obj, string fieldName)
     {
-        try
-        {
-            return obj.GetType().GetField(fieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)?.GetValue(obj);
-        }
-        catch
-        {
-            return null;
-        }
+        return obj.GetType().GetField(fieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)?.GetValue(obj);
     }
 }

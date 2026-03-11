@@ -68,16 +68,7 @@ public static class EnemyStateReceivePatch
     }
 
     private static INetworkClient TryGetNetworkClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     private static void EnsureSubscribed(INetworkClient client)
     {

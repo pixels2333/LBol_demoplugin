@@ -422,7 +422,7 @@ public class RelayServer : BaseGameServer
     private void HandleGetRoomList(NetPeer peer)
     {
         // 把每个房间的“可公开状态”序列化给客户端（不包含连接对象/不包含敏感字段）。
-        var rooms = _rooms.Values.Select(r => r.GetStatus()).ToList();
+        List<RoomStatus> rooms = _rooms.Values.Select(r => r.GetStatus()).ToList();
         SendMessageToPeer(peer, new NetworkMessage
         {
             Type = NetworkMessageTypes.RoomList,

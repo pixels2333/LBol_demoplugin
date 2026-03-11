@@ -234,7 +234,7 @@ public sealed class ReconnectionManager : IDisposable
     /// <returns>完整状态快照（失败时会返回降级但可用的快照）。</returns>
     public FullStateSnapshot CreateFullSnapshot()
     {
-        var snapshot = new FullStateSnapshot
+        FullStateSnapshot snapshot = new FullStateSnapshot
         {
             Timestamp = DateTime.UtcNow.Ticks,
             GameState = new GameStateSnapshot(),

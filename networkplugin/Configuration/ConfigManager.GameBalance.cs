@@ -1,4 +1,3 @@
-using BepInEx;
 using BepInEx.Configuration;
 using System;
 
@@ -150,17 +149,13 @@ public partial class ConfigManager
     {
         try
         {
-            if (EnemyHpMultiplier != null)
-                EnemyHpMultiplier.Value = 1.0f;
+            EnemyHpMultiplier?.Value = 1.0f;
 
-            if (EnemyDamageMultiplier != null)
-                EnemyDamageMultiplier.Value = 1.0f;
+            EnemyDamageMultiplier?.Value = 1.0f;
 
-            if (RewardGoldMultiplier != null)
-                RewardGoldMultiplier.Value = 1.0f;
+            RewardGoldMultiplier?.Value = 1.0f;
 
-            if (RewardExpMultiplier != null)
-                RewardExpMultiplier.Value = 1.0f;
+            RewardExpMultiplier?.Value = 1.0f;
         }
         catch (Exception ex)
         {

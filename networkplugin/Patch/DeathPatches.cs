@@ -1,20 +1,16 @@
 using System;
-using System.Collections.Generic;
-using System.Text.Json;
 using HarmonyLib;
-using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Utils;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Patch.UI;
-using NetworkPlugin.UI.Panels;
-using NetworkPlugin.Utils;
+using NetworkPlugin.UI.Models;
+using NetworkPlugin.UI.State;
 
 namespace NetworkPlugin.Patch;
 
@@ -98,7 +94,7 @@ public class DeathPatches
             int hpToRecover = Math.Max(1, 1 - player.Hp);
             if (hpToRecover > 0)
             {
-                var traverse = Traverse.Create(player);
+                Traverse traverse = Traverse.Create(player);
                 traverse.Method("Heal", hpToRecover).GetValue();
             }
 
@@ -138,7 +134,7 @@ public class DeathPatches
             int hpToRecover = finalHp - player.Hp;
             if (hpToRecover > 0)
             {
-                var traverse = Traverse.Create(player);
+                Traverse traverse = Traverse.Create(player);
                 traverse.Method("Heal", hpToRecover).GetValue();
             }
 

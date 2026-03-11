@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Cysharp.Threading.Tasks;
+using HarmonyLib;
 using LBoL.Core;
 using LBoL.Core.Cards;
 using LBoL.Presentation;
@@ -10,11 +11,13 @@ using LBoL.Presentation.UI.Dialogs;
 using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.UI.Widgets;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Core;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Patch.Network;
+using NetworkPlugin.UI.Factories;
 using NetworkPlugin.UI.Panels;
+using NetworkPlugin.UI.Payloads;
+using NetworkPlugin.UI.Rules;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -234,8 +237,8 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         TryUnsubscribe();
 
         // Hide pickers if open.
-        try { if (_cardPickerRoot != null) _cardPickerRoot.SetActive(false); } catch { }
-        try { if (_exhibitPickerRoot != null) _exhibitPickerRoot.SetActive(false); } catch { }
+        _cardPickerRoot?.SetActive(false);
+        _exhibitPickerRoot?.SetActive(false);
 
         ScheduleReturnToTradePanel();
     }
@@ -248,25 +251,18 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
     public void OnCancel()
     {
         // If a picker overlay is open, close it first (do not cancel the whole trade).
-        try
+        if (_cardPickerRoot != null && _cardPickerRoot.activeSelf)
         {
-            if (_cardPickerRoot != null && _cardPickerRoot.activeSelf)
-            {
-                _cardPickerRoot.SetActive(false);
-                _canvasGroup.interactable = true;
-                return;
-            }
-
-            if (_exhibitPickerRoot != null && _exhibitPickerRoot.activeSelf)
-            {
-                _exhibitPickerRoot.SetActive(false);
-                _canvasGroup.interactable = true;
-                return;
-            }
+            _cardPickerRoot.SetActive(false);
+            _canvasGroup.interactable = true;
+            return;
         }
-        catch
+
+        if (_exhibitPickerRoot != null && _exhibitPickerRoot.activeSelf)
         {
-            // ignored
+            _exhibitPickerRoot.SetActive(false);
+            _canvasGroup.interactable = true;
+            return;
         }
 
         // Back/escape closes the dialog and requests cancel.
@@ -430,10 +426,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
                         }
                     }
 
-                    if (panel != null)
-                    {
-                        panel.Show(new TradePayload());
-                    }
+                    panel?.Show(new TradePayload());
                 }
                 catch
                 {
@@ -573,7 +566,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
                 // ignored
             }
 
-            try { Hide(); } catch { }
+            Hide();
             return;
         }
 
@@ -586,7 +579,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
             // ignored
         }
 
-        try { Hide(); } catch { }
+        Hide();
     }
 
     private bool TryApplyCompletedTrade(TradeSyncPatch.TradeSessionState state, out string reason)
@@ -1044,7 +1037,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
 
         foreach (var ex in exhibits)
         {
-            var exId = ex != null ? ex.ExhibitId : null;
+            var exId = ex?.ExhibitId;
             if (string.IsNullOrEmpty(exId)) continue;
 
             var row = CloneListItem(listRoot, $"Ex_{exId}", exId, false);
@@ -1056,7 +1049,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
     {
         if (_panelRoot == null)
         {
-            var panel = transform.Find("Panel") as RectTransform;
+            RectTransform panel = transform.Find("Panel") as RectTransform;
             _panelRoot = panel != null ? panel : GetComponent<RectTransform>();
         }
 
@@ -1150,7 +1143,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
         var bgTransform = parent.Find(bgName);
         if (bgTransform == null)
         {
-            var go = new GameObject(bgName);
+            GameObject go = new GameObject(bgName);
             go.transform.SetParent(parent, false);
             go.transform.SetAsFirstSibling();
             var rt = go.AddComponent<RectTransform>();
@@ -1181,7 +1174,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
             }
 
             // Play confirm sound
-            try { AudioManager.Button(0); } catch { }
+            AudioManager.Button(0);
 
             TradeSyncPatch.RequestConfirm(_tradeId, _selfId);
             _statusText.text = "已确认，等待对方...";
@@ -1194,7 +1187,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
 
     private void OnCancelClick()
     {
-        try { AudioManager.Button(0); } catch { }
+        AudioManager.Button(0);
         OnCancel();
     }
 
@@ -1205,13 +1198,12 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
             return;
         }
 
-        int current = 0;
-        try { current = CurrentGameRun?.Money ?? 0; } catch { current = 0; }
+        int current = CurrentGameRun?.Money ?? 0;
 
         int next = Mathf.Clamp(_localMoney + delta, 0, Mathf.Min(MaxMoneyOffer, current));
         if (next != _localMoney)
         {
-            try { AudioManager.Button(0); } catch { }
+            AudioManager.Button(0);
             _localMoney = next;
             RefreshLocalUi();
             TrySendOfferUpdate();
@@ -1225,7 +1217,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
             return;
         }
 
-        try { AudioManager.Card(3); } catch { }
+        AudioManager.Card(3);
         EnsureCardPicker();
         RebuildCardPicker();
         _cardPickerRoot.SetActive(true);
@@ -1239,7 +1231,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
             return;
         }
 
-        try { AudioManager.Card(3); } catch { }
+        AudioManager.Card(3);
         EnsureExhibitPicker();
         RebuildExhibitPicker();
         _exhibitPickerRoot.SetActive(true);
@@ -1271,7 +1263,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
         // Prefer in-game MessageDialog prefab for consistent visuals.
         try
         {
-            var root = new GameObject(name);
+            GameObject root = new GameObject(name);
             root.transform.SetParent(transform, false);
             root.SetActive(false);
 
@@ -1332,7 +1324,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
 
             // Keep subText alive but invisible so prefab layout remains stable.
             RectTransform panelRect = null;
-            RectTransform subTextRect = subText != null ? subText.rectTransform : null;
+            RectTransform subTextRect = subText?.rectTransform;
             try
             {
                 if (subText != null)
@@ -1345,8 +1337,8 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
                     subText.color = c;
                 }
 
-                panelRect = TryFindCommonAncestorRect(mainText != null ? mainText.rectTransform : null,
-                    cancel != null ? cancel.GetComponent<RectTransform>() : null)
+                panelRect = TryFindCommonAncestorRect(mainText?.rectTransform,
+                    cancel?.GetComponent<RectTransform>())
                     ?? (frameRt != null ? frameRt : frame.GetComponent<RectTransform>());
             }
             catch
@@ -1407,14 +1399,8 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
             // Ensure list is not above buttons.
             try
             {
-                if (cancel != null)
-                {
-                    cancel.transform.SetAsLastSibling();
-                }
-                if (confirm != null)
-                {
-                    confirm.transform.SetAsLastSibling();
-                }
+                cancel?.transform.SetAsLastSibling();
+                confirm?.transform.SetAsLastSibling();
             }
             catch
             {
@@ -1427,7 +1413,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
         catch
         {
             // Fallback to previous runtime overlay if anything goes wrong.
-            var root = new GameObject(name);
+            GameObject root = new GameObject(name);
             root.transform.SetParent(transform, false);
             root.SetActive(false);
             var rt = root.AddComponent<RectTransform>();
@@ -1554,7 +1540,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
                 return null;
             }
 
-            var ancestors = new HashSet<Transform>();
+            HashSet<Transform> ancestors = new HashSet<Transform>();
             Transform t = a;
             while (t != null)
             {
@@ -1615,7 +1601,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
             Destroy(c.gameObject);
         }
 
-        var deck = new List<Card>();
+        List<Card> deck = new List<Card>();
         try
         {
             if (CurrentGameRun?.BaseDeck != null)
@@ -1628,7 +1614,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
             deck = new List<Card>();
         }
 
-        var selected = new HashSet<int>(_localCards.Where(c => c != null).Select(c => c.InstanceId));
+        HashSet<int> selected = new HashSet<int>(_localCards.Where(c => c != null).Select(c => c.InstanceId));
 
         foreach (var card in deck)
         {
@@ -1752,10 +1738,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
 
                 var isOn = _localExhibitIds.Contains(ex.Id);
                 var img = widget.MainImage;
-                if (img != null)
-                {
-                    img.color = isOn ? new Color(0.4f, 1f, 0.4f, 1f) : Color.white;
-                }
+                img?.color = isOn ? new Color(0.4f, 1f, 0.4f, 1f) : Color.white;
 
                 var btn = widget.gameObject.GetComponent<Button>();
                 if (btn == null) btn = widget.gameObject.AddComponent<Button>();
@@ -1806,7 +1789,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
 
         try
         {
-            var refs = _localCards
+            List<TradeSyncPatch.CardRef> refs = _localCards
                 .Where(c => c != null)
                 .Select(c => new TradeSyncPatch.CardRef
                 {
@@ -1887,7 +1870,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
 
     private CommonButtonWidget CloneListItem(Transform parent, string name, string label, bool isActive = false)
     {
-        var go = new GameObject(name);
+        GameObject go = new GameObject(name);
         go.transform.SetParent(parent, false);
         
         var rt = go.AddComponent<RectTransform>();
@@ -1929,7 +1912,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
 
         if (w == null)
         {
-            var go = new GameObject(name);
+            GameObject go = new GameObject(name);
             go.transform.SetParent(parent, false);
             var img = go.AddComponent<Image>();
             img.color = new Color(0.15f, 0.15f, 0.15f, 0.8f);
@@ -1942,7 +1925,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
         try
         {
             SetButtonText(w, label);
-            var traverse = HarmonyLib.Traverse.Create(w);
+            Traverse traverse = HarmonyLib.Traverse.Create(w);
             if (label.Contains("取消") || label.Contains("Cancel") || label.Contains("Back"))
             {
                 traverse.Field("buttonBehavior").SetValue(1); // Close behavior
@@ -1990,7 +1973,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
 
         if (t == null)
         {
-            var go = new GameObject(name);
+            GameObject go = new GameObject(name);
             go.transform.SetParent(parent, false);
             t = go.AddComponent<TextMeshProUGUI>();
         }
@@ -2011,13 +1994,13 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
         }
 
         // Fallback: lightweight runtime scroll list.
-        var root = new GameObject(name);
+        GameObject root = new GameObject(name);
         root.transform.SetParent(parent, false);
 
         var rootRt = root.AddComponent<RectTransform>();
         SetRect(rootRt, minX, minY, maxX, maxY);
 
-        var viewport = new GameObject("Viewport");
+        GameObject viewport = new GameObject("Viewport");
         viewport.transform.SetParent(root.transform, false);
         var vpRt = viewport.AddComponent<RectTransform>();
         SetRect(vpRt, 0f, 0f, 1f, 1f);
@@ -2028,7 +2011,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
         var mask = viewport.AddComponent<Mask>();
         mask.showMaskGraphic = false;
 
-        var contentGo = new GameObject("Content");
+        GameObject contentGo = new GameObject("Content");
         contentGo.transform.SetParent(viewport.transform, false);
         var cRt = contentGo.AddComponent<RectTransform>();
         cRt.anchorMin = new Vector2(0f, 1f);
@@ -2168,7 +2151,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
                 return false;
             }
 
-            var contentGo = new GameObject("Content");
+            GameObject contentGo = new GameObject("Content");
             contentGo.transform.SetParent(viewport, false);
 
             var cRt = contentGo.AddComponent<RectTransform>();
@@ -2340,10 +2323,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
 
         public void Dispose()
         {
-            if (_d != null)
-            {
-                _d._isApplyingState = _prev;
-            }
+            _d?._isApplyingState = _prev;
         }
     }
 }

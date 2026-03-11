@@ -4,7 +4,6 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Cards;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
@@ -63,7 +62,7 @@ public static class BattleCardZoneSyncPatch
         string costText = null;
         try
         {
-            costText = card != null ? card.Cost.ToString() : null;
+            costText = card?.Cost.ToString();
         }
         catch
         {

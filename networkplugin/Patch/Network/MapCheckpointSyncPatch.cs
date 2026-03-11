@@ -20,16 +20,7 @@ public static class MapCheckpointSyncPatch
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
     private static ReconnectionManager? TryGetReconnectionManager()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<ReconnectionManager>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<ReconnectionManager>();
 
     private static bool IsHostConnected()
     {

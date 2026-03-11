@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using LBoL.Base;
 using LBoL.Core;
 
-namespace NetworkPlugin.UI.Panels;
+namespace NetworkPlugin.UI.Rules;
 
 /// <summary>
 /// Exhibit trading rules: only losable exhibits can be traded, and some exhibits may be blacklisted.

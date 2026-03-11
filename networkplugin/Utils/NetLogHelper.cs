@@ -61,7 +61,7 @@ public static class NetLogHelper
         ulong fp = ComputeFnv1a64(json);
 
         // 基础信息
-        var sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder();
         sb.Append("指纹=0x");
         sb.Append(fp.ToString("x16", CultureInfo.InvariantCulture));
         sb.Append(", 长度=");

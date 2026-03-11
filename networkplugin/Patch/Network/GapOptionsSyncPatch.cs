@@ -47,10 +47,7 @@ public static class GapOptionsSyncPatch
 
 		try
 		{
-			if (_subscribedClient != null)
-			{
-				_subscribedClient.OnGameEventReceived -= OnGameEventReceived;
-			}
+			_subscribedClient?.OnGameEventReceived -= OnGameEventReceived;
 		}
 		catch
 		{

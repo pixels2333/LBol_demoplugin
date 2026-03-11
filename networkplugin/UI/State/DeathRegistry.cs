@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
+using NetworkPlugin.UI.Models;
 
-namespace NetworkPlugin.UI.Panels;
+namespace NetworkPlugin.UI.State;
 
 /// <summary>
 /// UI 层使用的“死亡玩家登记册”：从网络事件汇总死者信息，供 Gap 的复活面板展示。

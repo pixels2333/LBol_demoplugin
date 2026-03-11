@@ -47,16 +47,7 @@ public static class DebutBonusSyncPatch
     }
 
     private static INetworkClient TryGetNetworkClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     [HarmonyPatch(typeof(GameDirector), "Update")]
     private static class SubscribeHook
@@ -348,8 +339,8 @@ public static class DebutBonusSyncPatch
         int[] bonusNos = new[] { bonusNo1, bonusNo2 };
 
         // mirror Debut.RollBonus() variable writes
-        debut.Storage.SetValue("$bonusNo1", (float)bonusNos[0]);
-        debut.Storage.SetValue("$bonusNo2", (float)bonusNos[1]);
+        debut.Storage.SetValue("$bonusNo1", bonusNos[0]);
+        debut.Storage.SetValue("$bonusNo2", bonusNos[1]);
 
         string[] optionTitles = new string[6];
         for (int i = 0; i < 6; i++)
@@ -366,16 +357,16 @@ public static class DebutBonusSyncPatch
             switch (bonusNos[j])
             {
                 case 0:
-                    debut.Storage.SetValue("$tipUncommonCard", (float)(j + 3));
+                    debut.Storage.SetValue("$tipUncommonCard", j + 3);
                     break;
                 case 1:
-                    debut.Storage.SetValue("$tipRareCard", (float)(j + 3));
+                    debut.Storage.SetValue("$tipRareCard", j + 3);
                     break;
                 case 2:
-                    debut.Storage.SetValue("$tipRareExhibit", (float)(j + 3));
+                    debut.Storage.SetValue("$tipRareExhibit", j + 3);
                     break;
                 case 5:
-                    debut.Storage.SetValue("$tipTransformCard", (float)(j + 3));
+                    debut.Storage.SetValue("$tipTransformCard", j + 3);
                     break;
             }
         }

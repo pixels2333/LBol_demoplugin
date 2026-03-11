@@ -7,7 +7,6 @@ using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Utils;
 using NetworkPlugin.Network.Messages;
-using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -157,10 +156,7 @@ public static class TradeSyncPatch
 
         try
         {
-            if (_subscribedClient != null)
-            {
-                _subscribedClient.OnGameEventReceived -= OnGameEventReceived;
-            }
+            _subscribedClient?.OnGameEventReceived -= OnGameEventReceived;
         }
         catch
         {
@@ -187,16 +183,7 @@ public static class TradeSyncPatch
     }
 
     public static INetworkClient TryGetClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     public static void RequestStartTrade(string tradeId, string playerAId, string playerBId, int maxTradeSlots)
     {
@@ -824,7 +811,7 @@ public static class TradeSyncPatch
     {
         try
         {
-            var state = new TradeSessionState
+            TradeSessionState state = new TradeSessionState
             {
                 TradeId = GetString(root, "TradeId"),
                 PlayerAId = GetString(root, "PlayerAId"),
@@ -890,7 +877,7 @@ public static class TradeSyncPatch
             // 新格式：字符串数组
             if (arr.ValueKind == JsonValueKind.Array)
             {
-                var list = new List<ExhibitRef>();
+                List<ExhibitRef> list = new List<ExhibitRef>();
                 foreach (var e in arr.EnumerateArray())
                 {
                     string id = e.ValueKind == JsonValueKind.String ? e.GetString() : e.GetRawText();
@@ -918,7 +905,7 @@ public static class TradeSyncPatch
 
     private static List<ExhibitRef> ParseExhibitArray(JsonElement root, string property)
     {
-        var list = new List<ExhibitRef>();
+        List<ExhibitRef> list = new List<ExhibitRef>();
         try
         {
             if (!root.TryGetProperty(property, out JsonElement arr) || arr.ValueKind != JsonValueKind.Array)
@@ -1002,7 +989,7 @@ public static class TradeSyncPatch
         }
 
         // ParseOfferArray already removes empty CardId and dedupes by instance-id/card-id.
-        var clean = offer
+        List<CardRef> clean = offer
             .Where(c => c != null && !string.IsNullOrWhiteSpace(c.CardId))
             .ToList();
 

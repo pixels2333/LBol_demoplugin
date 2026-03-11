@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Cysharp.Threading.Tasks;
 using HarmonyLib;
-using LBoL.Base;
 using LBoL.Core;
 using LBoL.Core.Units;
 using LBoL.Presentation;
@@ -12,7 +11,6 @@ using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.UI.Widgets;
 using LBoL.Presentation.Units;
 using NetworkPlugin.Network.Client;
-using NetworkPlugin.Utils;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -66,7 +64,7 @@ public static partial class OtherPlayersOverlayPatch
 
         _remoteCharactersRoot.gameObject.SetActive(true);
 
-        var alive = new HashSet<string>(remotePlayers.Select(p => p.PlayerId));
+        HashSet<string> alive = new HashSet<string>(remotePlayers.Select(p => p.PlayerId));
         foreach (string existingId in _remoteCharacters.Keys.ToList())
         {
             if (!alive.Contains(existingId))
@@ -182,13 +180,7 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
-        try
-        {
-            unit.Initialize();
-        }
-        catch
-        {
-        }
+        unit.Initialize();
 
         GameObject container = new($"RemotePlayer_{player.PlayerId}");
         container.transform.SetParent(_remoteCharactersRoot, false);
@@ -233,91 +225,60 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
-        try
-        {
-            if (view.BoxCollider != null)
-            {
-                view.BoxCollider.enabled = false;
-            }
-        }
-        catch
-        {
-        }
+        view.BoxCollider?.enabled = false;
 
         try
         {
             Collider2D circle = Traverse.Create(view).Field("_circleCollider").GetValue<Collider2D>();
-            if (circle != null)
-            {
-                circle.enabled = false;
-            }
+            circle?.enabled = false;
         }
         catch
         {
         }
 
-        try
+        Collider selector = view.SelectorCollider;
+        if (selector != null)
         {
-            Collider selector = view.SelectorCollider;
-            if (selector != null)
-            {
-                selector.enabled = false;
-                selector.gameObject.SetActive(false);
-            }
-        }
-        catch
-        {
+            selector.enabled = false;
+            selector.gameObject.SetActive(false);
         }
     }
 
-    internal static IReadOnlyList<UnitView> SnapshotRemoteCharacterUnitViews()
+    internal static IEnumerable<UnitView> SnapshotRemoteCharacterUnitViews()
     {
-        try
-        {
-            if (_remoteCharacters.Count == 0)
-            {
-                return Array.Empty<UnitView>();
-            }
-
-            var list = new List<UnitView>(_remoteCharacters.Count);
-            foreach (RemoteCharacterView rc in _remoteCharacters.Values)
-            {
-                if (rc?.View == null || rc.Root == null || !rc.Root.activeInHierarchy)
-                {
-                    continue;
-                }
-
-                list.Add(rc.View);
-            }
-            return list;
-        }
-        catch
+        if (_remoteCharacters.Count == 0)
         {
             return Array.Empty<UnitView>();
         }
+
+        List<UnitView> list = new List<UnitView>(_remoteCharacters.Count);
+        foreach (RemoteCharacterView rc in _remoteCharacters.Values)
+        {
+            if (rc?.View == null || rc.Root == null || !rc.Root.activeInHierarchy)
+            {
+                continue;
+            }
+
+            list.Add(rc.View);
+        }
+        return list;
     }
 
     internal static void SetRemoteCharacterTargetingEnabled(bool enabled)
     {
-        try
+        if (_remoteCharacters.Count == 0)
         {
-            if (_remoteCharacters.Count == 0)
-            {
-                return;
-            }
-
-            foreach (RemoteCharacterView rc in _remoteCharacters.Values)
-            {
-                if (rc?.View == null)
-                {
-                    continue;
-                }
-
-                SetSelectorColliderEnabled(rc.View, enabled);
-            }
+            return;
         }
-        catch
+
+        foreach (RemoteCharacterView rc in _remoteCharacters.Values)
         {
+            if (rc?.View == null)
+            {
+                continue;
+            }
+
+            SetSelectorColliderEnabled(rc.View, enabled);
         }
     }
 
@@ -381,16 +342,10 @@ public static partial class OtherPlayersOverlayPatch
             return false;
         }
 
-        try
+        if (_remoteCharacters.TryGetValue(playerId, out RemoteCharacterView rc) && rc?.View != null && rc.Root != null && rc.Root.activeInHierarchy)
         {
-            if (_remoteCharacters.TryGetValue(playerId, out RemoteCharacterView rc) && rc?.View != null && rc.Root != null && rc.Root.activeInHierarchy)
-            {
-                view = rc.View;
-                return true;
-            }
-        }
-        catch
-        {
+            view = rc.View;
+            return true;
         }
 
         view = null;
@@ -404,28 +359,19 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
-        try
+        Collider selector = view.SelectorCollider;
+        if (selector == null)
         {
-            Collider selector = view.SelectorCollider;
-            if (selector == null)
-            {
-                return;
-            }
+            return;
+        }
 
-            selector.enabled = enabled;
-            selector.gameObject.SetActive(enabled);
-        }
-        catch
-        {
-        }
+        selector.enabled = enabled;
+        selector.gameObject.SetActive(enabled);
     }
 
     private static void HideRemoteCharacters()
     {
-        if (_remoteCharactersRoot != null)
-        {
-            _remoteCharactersRoot.gameObject.SetActive(false);
-        }
+        _remoteCharactersRoot?.gameObject.SetActive(false);
     }
 
     private static void ClearRemoteCharacters()
@@ -580,7 +526,7 @@ public static partial class OtherPlayersOverlayPatch
 
         _mapIconsRoot.gameObject.SetActive(true);
 
-        var alive = new HashSet<string>();
+        HashSet<string> alive = new HashSet<string>();
         foreach (var group in players.GroupBy(p => (X: p.LocationX, Y: p.LocationY)))
         {
             int x = group.Key.X;
@@ -682,7 +628,7 @@ public static partial class OtherPlayersOverlayPatch
         labelRect.anchoredPosition = Vector2.zero;
         labelRect.sizeDelta = new Vector2(0f, 16f);
 
-        var icon = new MapIconUi
+        MapIconUi icon = new MapIconUi
         {
             Root = root,
             RootRect = rootRect,
@@ -744,10 +690,7 @@ public static partial class OtherPlayersOverlayPatch
 
     private static void HideAllMapIcons()
     {
-        if (_mapIconsRoot != null)
-        {
-            _mapIconsRoot.gameObject.SetActive(false);
-        }
+        _mapIconsRoot?.gameObject.SetActive(false);
     }
 
     private static void ClearMapIcons()

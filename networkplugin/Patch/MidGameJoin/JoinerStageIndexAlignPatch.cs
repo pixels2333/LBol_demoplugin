@@ -33,28 +33,10 @@ public static class JoinerStageIndexAlignPatch
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
     private static INetworkClient TryGetClient()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<INetworkClient>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>();
 
     private static MapCatchUpOrchestrator TryGetCatchUp()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<MapCatchUpOrchestrator>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => ServiceProvider?.GetService<MapCatchUpOrchestrator>();
 
     [HarmonyPatch(typeof(GameRunController), nameof(GameRunController.EnterNextStage))]
     [HarmonyPrefix]
@@ -62,11 +44,6 @@ public static class JoinerStageIndexAlignPatch
     {
         try
         {
-            if (__instance == null)
-            {
-                return;
-            }
-
             INetworkClient client = TryGetClient();
             if (client == null || !client.IsConnected)
             {
