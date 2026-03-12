@@ -3,10 +3,6 @@ using System.Linq;
 using HarmonyLib;
 using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.Units;
-using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Configuration;
-using NetworkPlugin.Network;
-using NetworkPlugin.Network.Client;
 using NetworkPlugin.UI.Factories;
 using NetworkPlugin.UI.Payloads;
 using NetworkPlugin.UI.Panels;
@@ -25,8 +21,6 @@ namespace NetworkPlugin.Patch.UI;
 public static class ShopTradeIconPatch
 {
     private const string TradeButtonLabelText = "玩家交易";
-
-    private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
     private enum TradeUiUpdateState
     {
@@ -61,7 +55,7 @@ public static class ShopTradeIconPatch
 
     private static ShopPanel _cachedShopPanel;
 
-    // Throttle spammy logs since this patch runs every frame via GameDirector.Update.
+    // 该补丁每帧都会通过 GameDirector.Update 运行，因此需要节流高频日志。
     private static TradeUiUpdateState _lastState;
     private static bool _hasLastState;
     private static float _nextStateLogTime;
@@ -92,7 +86,7 @@ public static class ShopTradeIconPatch
         {
             if (_ui?.Root != null)
             {
-                // Shop is closing; destroy the injected UI to avoid leaking objects.
+                // 商店即将关闭，销毁注入的 UI，避免残留对象泄漏。
                 CleanupUi();
             }
 
@@ -109,10 +103,6 @@ public static class ShopTradeIconPatch
             Plugin.Logger?.LogError($"[ShopTradeIcon] ShopPanel.OnHiding 处理失败：{ex.Message}\n{ex.StackTrace}");
         }
     }
-
-    private static INetworkClient TryGetNetworkClient() => ServiceProvider?.GetService<INetworkClient>();
-
-    private static ConfigManager TryGetConfig() => ServiceProvider?.GetService<ConfigManager>();
 
     private static bool IsTradeEnabledAndConnected()
     {
@@ -136,23 +126,13 @@ public static class ShopTradeIconPatch
         }
     }
 
-    private static bool ShouldShow(ShopPanel shopPanel)
-    {
-        if (shopPanel == null || !shopPanel.IsVisible)
-        {
-            return false;
-        }
-
-        return IsTradeEnabledAndConnected();
-    }
-
     [HarmonyPatch(typeof(GameDirector), "Update")]
     [HarmonyPostfix]
     private static void GameDirector_Update_Postfix()
     {
         try
         {
-            // Lightweight watchdog: only when shop is currently visible.
+            // 轻量级看门狗：只在商店当前可见时刷新。
             var shopPanel = _cachedShopPanel;
             if (shopPanel == null)
             {
@@ -187,16 +167,13 @@ public static class ShopTradeIconPatch
             return;
         }
 
-        // Avoid doing heavy work every frame.
+        // 避免每帧都执行重建之类的重操作。
         if (_ui == null || _ui.Root == null || _ui.ShopPanel != shopPanel)
         {
             EnsureUi(shopPanel);
         }
-        
-        if (_ui != null && _ui.Root != null)
-        {
-            _ui.Root.SetActive(true);
-        }
+
+        _ui?.Root?.SetActive(true);
 
         SetUiVisible(true);
     }
@@ -679,7 +656,7 @@ public static class ShopTradeIconPatch
         }
         catch
         {
-            // ignored
+            // 忽略清理阶段的异常，避免影响商店关闭流程。
         }
         finally
         {
@@ -705,14 +682,14 @@ public static class ShopTradeIconPatch
 
         try
         {
-            // Layout rule requested by user:
-            // - The available boundary is defined by the LEFT button's left edge and the RIGHT button's right edge.
-            // - Pack three buttons left->mid->right in one row with spacing.
-            // - Allow scaling below 0.8 (no minimum), never upscale.
+            // 用户要求的布局规则：
+            // - 可用边界由左侧按钮的左边缘和右侧按钮的右边缘共同定义。
+            // - 将三个按钮按 left -> mid -> right 排成一行，并保留间距。
+            // - 允许缩放低于 0.8（不设最小值），但绝不放大。
 
             float gap = Mathf.Max(0f, spacingX);
 
-            // Prefer rect.width for rendered width; fall back to sizeDelta when rect is not ready.
+            // 优先使用 rect.width 作为实际渲染宽度；若 rect 尚未就绪，再回退到 sizeDelta。
             float leftW0 = Mathf.Abs(left.rect.width);
             float midW0 = Mathf.Abs(mid.rect.width);
             float rightW0 = Mathf.Abs(right.rect.width);
@@ -724,12 +701,12 @@ public static class ShopTradeIconPatch
             float midH = mid.sizeDelta.y;
             float rightH = right.sizeDelta.y;
 
-            // Copy struct parameters to locals first.
-            // Some analyzers mis-report member access on parameters named like Harmony patch args.
+            // 先把 struct 参数复制到局部变量。
+            // 某些分析器会误报与 Harmony 补丁参数同名的成员访问。
             Vector2 leftOrig = leftOriginal;
             Vector2 rightOrig = rightOriginal;
 
-            // Convert center-based anchors to edge-based boundaries.
+            // 把基于中心点的锚点换算为基于边缘的边界。
             float L = leftOrig.x - leftW0 * 0.5f;
             float R = rightOrig.x + rightW0 * 0.5f;
 
@@ -756,7 +733,7 @@ public static class ShopTradeIconPatch
             float midW = midW0 * s;
             float rightW = rightW0 * s;
 
-            // Apply widths via sizeDelta.x while preserving sign.
+            // 通过 sizeDelta.x 应用宽度，同时保留原有符号方向。
             left.sizeDelta = new Vector2(Mathf.Sign(left.sizeDelta.x == 0 ? 1f : left.sizeDelta.x) * leftW, leftH);
             mid.sizeDelta = new Vector2(Mathf.Sign(mid.sizeDelta.x == 0 ? 1f : mid.sizeDelta.x) * midW, midH);
             right.sizeDelta = new Vector2(Mathf.Sign(right.sizeDelta.x == 0 ? 1f : right.sizeDelta.x) * rightW, rightH);

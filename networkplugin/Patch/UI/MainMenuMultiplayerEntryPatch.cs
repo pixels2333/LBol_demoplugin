@@ -77,16 +77,7 @@ public static class MainMenuMultiplayerEntryPatch
     /// </summary>
     /// <returns>配置管理器实例。</returns>
     private static ConfigManager TryGetConfig()
-    {
-        try
-        {
-            return ServiceProvider?.GetService<ConfigManager>() ?? Plugin.ConfigManager;
-        }
-        catch
-        {
-            return Plugin.ConfigManager;
-        }
-    }
+        => ServiceProvider?.GetService<ConfigManager>() ?? Plugin.ConfigManager;
 
     #endregion
 
@@ -211,7 +202,7 @@ public static class MainMenuMultiplayerEntryPatch
         // 如果上次缓存的按钮已被销毁（UnityEngine.Object 特殊 null 语义），则清理引用并重新创建。
         if (_multiplayerButton == null)
         {
-            // keep going and attempt to create
+            // 继续向下执行，尝试重新创建按钮。
         }
         else
         {
@@ -1327,7 +1318,7 @@ public static class MainMenuMultiplayerEntryPatch
             {
                 t += Time.unscaledDeltaTime;
                 float p = Mathf.Clamp01(t / duration);
-                // easeOutCubic
+                // easeOutCubic 缓动曲线
                 float e = 1f - Mathf.Pow(1f - p, 3f);
 
                 _rootGroup.alpha = e;
@@ -1394,7 +1385,7 @@ public static class MainMenuMultiplayerEntryPatch
                 return;
             }
 
-            // TMP
+            // TMP 文本组件
             var labels = button.GetComponentsInChildren<TMP_Text>(true);
             if (labels != null)
             {
@@ -1413,7 +1404,7 @@ public static class MainMenuMultiplayerEntryPatch
                 }
             }
 
-            // legacy UI.Text
+            // 传统 UI.Text 组件
             var legacyTexts = button.GetComponentsInChildren<Text>(true);
             if (legacyTexts != null)
             {
@@ -1439,14 +1430,7 @@ public static class MainMenuMultiplayerEntryPatch
 
     private static void HideOverlay()
     {
-        try
-        {
-            _overlayRoot?.SetActive(false);
-        }
-        catch
-        {
-            // ignored
-        }
+        _overlayRoot?.SetActive(false);
     }
 
     private static TMP_FontAsset FindDefaultFont(Transform any)
@@ -1498,10 +1482,10 @@ public static class MainMenuMultiplayerEntryPatch
             port = 7777;
         }
 
-        // If there is a local save, offer a reconnection flow:
-        // 1) connect
-        // 2) restore local save
-        // 3) request host full snapshot and catch up (mid-game join)
+        // 如果存在本地存档，则提供重连继续流程：
+        // 1) 先建立连接
+        // 2) 再恢复本地存档
+        // 3) 向房主请求完整快照并做追赶（mid-game join）
         GameRunSaveData save = null;
         try
         {
@@ -1795,8 +1779,8 @@ public static class MainMenuMultiplayerEntryPatch
             yield break;
         }
 
-        // Wait for handshake (Welcome/PlayerListUpdate) so MidGameJoin has selfId/hostId.
-        // This avoids RequestJoin failing immediately after a fresh connect.
+        // 等待握手消息（Welcome/PlayerListUpdate）到达，让 MidGameJoin 拿到 selfId/hostId。
+        // 这样可以避免刚连接成功就立刻 RequestJoin 失败。
         NetworkPlugin.Network.MidGameJoin.MidGameJoinManager mgrHandshake = null;
         try
         {
@@ -1831,7 +1815,7 @@ public static class MainMenuMultiplayerEntryPatch
             yield return null;
         }
 
-        // 1) Restore local save (main thread)
+        // 1) 在主线程恢复本地存档
         try
         {
             Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 联机已连接，开始本地恢复存档。");
@@ -1851,7 +1835,7 @@ public static class MainMenuMultiplayerEntryPatch
             yield break;
         }
 
-        // Wait until the restored run is created so catch-up won't mistakenly prompt StartGamePanel.
+        // 等到恢复后的 GameRun 真正创建完成，避免追赶流程误弹 StartGamePanel。
         float runStart = Time.realtimeSinceStartup;
         const float runTimeoutSeconds = 8f;
         while (Time.realtimeSinceStartup - runStart < runTimeoutSeconds)
@@ -1874,10 +1858,10 @@ public static class MainMenuMultiplayerEntryPatch
             yield return null;
         }
 
-        // 2) Ask host for FullSnapshot and catch up.
-        // RoomId is currently not exposed in the UI; use a deterministic placeholder.
-        // Host/joiner must share the same string.
-        // Also wait for hostId to become available (PlayerListUpdate) before sending the join request.
+        // 2) 向房主请求 FullSnapshot 并执行追赶。
+        // RoomId 当前没有暴露到 UI，因此先使用一个确定性的占位字符串。
+        // Host 和 joiner 必须使用同一个字符串。
+        // 另外还要等 hostId 通过 PlayerListUpdate 可用后，再发送 join 请求。
         yield return null;
         yield return null;
 

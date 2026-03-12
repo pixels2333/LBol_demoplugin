@@ -17,6 +17,8 @@
 ### Trade（交易同步）
 - Host 权威会话：`networkplugin/Patch/Network/TradeSyncPatch.cs` 维护 `TradeSessionState` 并广播。
 - Client UI：`networkplugin/UI/Panels/TradePanel.cs` 仅联机可用，完成后仅对本地 `GameRun` 落地。
+- `networkplugin/UI/Factories/TradePanelRuntimeFactory.cs` 与 `networkplugin/UI/Widgets/TradeSlotWidget.cs` 当前约定为：常规 Unity UI 访问（按钮、图片、`FindObjectsByType`、模板克隆、Tooltip 显隐）默认直接走主路径，不再用静默 `try-catch` 包裹；仅对外部资源装载或重连类边界行为保留必要异常兜底。
+- `networkplugin/UI/Panels/TradePanel.cs` 与 `networkplugin/UI/Dialogs/TradeDetailDialog.cs` 当前约定为：按钮回调、列表重建、文本刷新、TradePanel/Dialog 间的常规返回链路默认直接执行；仅对交易结算、取消请求、异步回跳和原生 overlay 构建外层保留必要异常保护。
 
 #### TradePanel partner picker（选择交易对象）
 - 交易对象选择弹层在运行时克隆游戏内 `UI/Dialogs/MessageDialog` 作为窗口框架，并复用 `UI/Panels/HistoryPanel` 的 `ScrollRect + RecordRow` 构建列表。

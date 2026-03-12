@@ -1380,13 +1380,9 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             }
 
             // 确保取消按钮在列表上方。
-            try
+            if (cancel != null)
             {
-                cancel?.transform.SetAsLastSibling();
-            }
-            catch
-            {
-                // 忽略
+                cancel.transform.SetAsLastSibling();
             }
 
             // 验证标签创建成功。
@@ -1408,16 +1404,9 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             {
                 _partnerPickerBuildError = "构建交易对象选择界面时发生异常";
             }
-            try
+            if (_partnerPickerRoot != null)
             {
-                if (_partnerPickerRoot != null)
-                {
-                    Destroy(_partnerPickerRoot);
-                }
-            }
-            catch
-            {
-                // 忽略
+                Destroy(_partnerPickerRoot);
             }
             _partnerPickerRoot = null;
         }
@@ -1467,53 +1456,40 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private static T GetDialogField<T>(MessageDialog dialog, string fieldName) where T : class
     {
-        try
-        {
-            if (dialog == null || string.IsNullOrWhiteSpace(fieldName))
-            {
-                return null;
-            }
-
-            FieldInfo fi = typeof(MessageDialog).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
-            if (fi == null)
-            {
-                return null;
-            }
-
-            return fi.GetValue(dialog) as T;
-        }
-        catch
+        if (dialog == null || string.IsNullOrWhiteSpace(fieldName))
         {
             return null;
         }
+
+        FieldInfo fi = typeof(MessageDialog).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+        if (fi == null)
+        {
+            return null;
+        }
+
+        return fi.GetValue(dialog) as T;
     }
 
     private static T GetPrivateFieldValue<T>(object target, string fieldName) where T : class
     {
-        try
-        {
-            if (target == null || string.IsNullOrWhiteSpace(fieldName))
-            {
-                return null;
-            }
-
-            Type t = target.GetType();
-            while (t != null)
-            {
-                FieldInfo fi = t.GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                if (fi != null)
-                {
-                    return fi.GetValue(target) as T;
-                }
-                t = t.BaseType;
-            }
-
-            return null;
-        }
-        catch
+        if (target == null || string.IsNullOrWhiteSpace(fieldName))
         {
             return null;
         }
+
+        Type t = target.GetType();
+        while (t != null)
+        {
+            FieldInfo fi = t.GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (fi != null)
+            {
+                return fi.GetValue(target) as T;
+            }
+
+            t = t.BaseType;
+        }
+
+        return null;
     }
 
     private static RectTransform TryFindCommonAncestorRect(RectTransform a, RectTransform b)

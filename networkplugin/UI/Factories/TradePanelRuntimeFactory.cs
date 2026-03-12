@@ -23,27 +23,14 @@ internal static class TradePanelRuntimeFactory
         try
         {
             // 复用现有的TradePanel实例（仅保留一个激活实例，避免界面堆叠）。
-            TradePanel[] existingPanels = null;
-            try
-            {
-                existingPanels = UnityEngine.Object.FindObjectsByType<TradePanel>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            }
-            catch
-            {
-                existingPanels = null;
-            }
+            TradePanel[] existingPanels = UnityEngine.Object.FindObjectsByType<TradePanel>(FindObjectsInactive.Include, FindObjectsSortMode.None);
 
-            if (existingPanels != null && existingPanels.Length > 0)
+            if (existingPanels.Length > 0)
             {
                 // 如果存在非运行时创建（prefab已绑定）的TradePanel，则优先复用它。
                 TradePanel prefabPanel = null;
                 foreach (var p in existingPanels)
                 {
-                    if (p == null)
-                    {
-                        continue;
-                    }
-
                     if (!IsRuntimeCreatedPanel(p))
                     {
                         prefabPanel = p;
@@ -55,11 +42,6 @@ internal static class TradePanelRuntimeFactory
                 TradePanel currentRuntime = null;
                 foreach (var p in existingPanels)
                 {
-                    if (p == null)
-                    {
-                        continue;
-                    }
-
                     if (IsCurrentRuntimePanel(p))
                     {
                         currentRuntime = p;
@@ -71,21 +53,14 @@ internal static class TradePanelRuntimeFactory
                 {
                     foreach (var p in existingPanels)
                     {
-                        if (p == null || ReferenceEquals(p, prefabPanel))
+                        if (ReferenceEquals(p, prefabPanel))
                         {
                             continue;
                         }
 
-                        try
+                        if (IsRuntimeCreatedPanel(p))
                         {
-                            if (IsRuntimeCreatedPanel(p))
-                            {
-                                p.gameObject.SetActive(false);
-                            }
-                        }
-                        catch
-                        {
-                            // 忽略单个旧面板的停用失败，继续处理其他实例。
+					p.gameObject.SetActive(false);
                         }
                     }
 
@@ -97,7 +72,7 @@ internal static class TradePanelRuntimeFactory
                 {
                     foreach (var p in existingPanels)
                     {
-                        if (p == null || ReferenceEquals(p, currentRuntime))
+                        if (ReferenceEquals(p, currentRuntime))
                         {
                             continue;
                         }
@@ -113,11 +88,6 @@ internal static class TradePanelRuntimeFactory
                 // 先销毁它们，确保下一次创建时使用最新的UI代码。
                 foreach (var p in existingPanels)
                 {
-                    if (p == null)
-                    {
-                        continue;
-                    }
-
                     if (!IsRuntimeCreatedPanel(p))
                     {
                         continue;
@@ -326,76 +296,55 @@ internal static class TradePanelRuntimeFactory
 
     private static bool IsRuntimeCreatedPanel(TradePanel panel)
     {
-        try
-        {
-            if (panel == null)
-            {
-                return false;
-            }
-
-            if (panel.GetComponent<TradePanelRuntimeMarker>() != null)
-            {
-                return true;
-            }
-
-            // 向后兼容：旧版运行时面板使用固定的根节点名称。
-            return string.Equals(panel.gameObject?.name, RuntimeRootName, StringComparison.Ordinal);
-        }
-        catch
+        if (panel == null)
         {
             return false;
         }
+
+        if (panel.GetComponent<TradePanelRuntimeMarker>() != null)
+        {
+            return true;
+        }
+
+        // 向后兼容：旧版运行时面板使用固定的根节点名称。
+        return string.Equals(panel.gameObject.name, RuntimeRootName, StringComparison.Ordinal);
     }
 
     private static bool IsCurrentRuntimePanel(TradePanel panel)
     {
-        try
-        {
-            if (panel == null)
-            {
-                return false;
-            }
-
-            var marker = panel.GetComponent<TradePanelRuntimeMarker>();
-            if (marker == null)
-            {
-                return false;
-            }
-
-            return string.Equals(marker.Version, RuntimeUiVersion, StringComparison.Ordinal);
-        }
-        catch
+        if (panel == null)
         {
             return false;
         }
+
+        var marker = panel.GetComponent<TradePanelRuntimeMarker>();
+        if (marker == null)
+        {
+            return false;
+        }
+
+        return string.Equals(marker.Version, RuntimeUiVersion, StringComparison.Ordinal);
     }
 
     private static bool IsUnderRuntimeTradePanel(Transform t)
     {
-        try
+        Transform cur = t;
+        while (cur != null)
         {
-            Transform cur = t;
-            while (cur != null)
+            if (string.Equals(cur.name, RuntimeRootName, StringComparison.Ordinal))
             {
-                if (string.Equals(cur.name, RuntimeRootName, StringComparison.Ordinal))
-                {
-                    return true;
-                }
-
-                if (cur.GetComponent<TradePanelRuntimeMarker>() != null)
-                {
-                    return true;
-                }
-
-                cur = cur.parent;
+                return true;
             }
 
-            return false;
+            if (cur.GetComponent<TradePanelRuntimeMarker>() != null)
+            {
+                return true;
+            }
+
+            cur = cur.parent;
         }
-        catch
-        {
-            return false;
-        }
+
+        return false;
     }
 
     internal sealed class TradePanelRuntimeMarker : MonoBehaviour
@@ -430,25 +379,18 @@ internal static class TradePanelRuntimeFactory
 
     private static T GetDialogField<T>(MessageDialog dialog, string fieldName) where T : class
     {
-        try
-        {
-            if (dialog == null || string.IsNullOrWhiteSpace(fieldName))
-            {
-                return null;
-            }
-
-            FieldInfo fi = typeof(MessageDialog).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
-            if (fi == null)
-            {
-                return null;
-            }
-
-            return fi.GetValue(dialog) as T;
-        }
-        catch
+        if (dialog == null || string.IsNullOrWhiteSpace(fieldName))
         {
             return null;
         }
+
+        FieldInfo fi = typeof(MessageDialog).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+        if (fi == null)
+        {
+            return null;
+        }
+
+        return fi.GetValue(dialog) as T;
     }
 
     private static TextMeshProUGUI CloneTextOrCreate(TextMeshProUGUI template, Transform parent, string name)
@@ -499,44 +441,38 @@ internal static class TradePanelRuntimeFactory
         try
         {
             // 1) 强烈优先：从已知的原生UI prefab中提取。
-            try
+            var dialogPrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
+            if (dialogPrefab != null)
             {
-                var dialogPrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
-                if (dialogPrefab != null)
+                var dialog = dialogPrefab.GetComponent<MessageDialog>();
+                if (dialog != null)
                 {
-                    var dialog = dialogPrefab.GetComponent<MessageDialog>();
-                    if (dialog != null)
+                    Button btn;
+                    if (preferConfirm)
                     {
-                        Button btn;
-                        if (preferConfirm)
+                        btn = GetDialogField<Button>(dialog, "singleConfirmButton")
+                           ?? GetDialogField<Button>(dialog, "confirmButton");
+                    }
+                    else
+                    {
+                        btn = GetDialogField<Button>(dialog, "cancelButton")
+                           ?? GetDialogField<Button>(dialog, "confirmButton")
+                           ?? GetDialogField<Button>(dialog, "singleConfirmButton");
+                    }
+
+                    if (btn != null)
+                    {
+                        var w = TryResolveCommonButtonWidget(btn);
+                        if (w != null)
                         {
-                            btn = GetDialogField<Button>(dialog, "singleConfirmButton")
-                               ?? GetDialogField<Button>(dialog, "confirmButton");
-                        }
-                        else
-                        {
-                            btn = GetDialogField<Button>(dialog, "cancelButton")
-                               ?? GetDialogField<Button>(dialog, "confirmButton")
-                               ?? GetDialogField<Button>(dialog, "singleConfirmButton");
-                        }
-                        if (btn != null)
-                        {
-                            var w = TryResolveCommonButtonWidget(btn);
-                            if (w != null)
-                            {
-                                return w;
-                            }
+                            return w;
                         }
                     }
                 }
             }
-            catch
-            {
-                // 忽略原生prefab提取失败，继续走场景内候选回退逻辑。
-            }
 
             var candidates = UnityEngine.Object.FindObjectsByType<CommonButtonWidget>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            if (candidates == null || candidates.Length == 0)
+            if (candidates.Length == 0)
             {
                 return null;
             }
@@ -592,34 +528,22 @@ internal static class TradePanelRuntimeFactory
 
     private static CommonButtonWidget TryResolveCommonButtonWidget(Button target)
     {
-        try
-        {
-            if (target == null)
-            {
-                return null;
-            }
-
-            // 优先选择最近且显式引用该Button的组件。
-            var widgets = target.GetComponentsInParent<CommonButtonWidget>(true);
-            foreach (var w in widgets)
-            {
-                if (w == null)
-                {
-                    continue;
-                }
-
-                if (ReferenceEquals(w.button, target))
-                {
-                    return w;
-                }
-            }
-
-            return target.GetComponentInParent<CommonButtonWidget>(true);
-        }
-        catch
+        if (target == null)
         {
             return null;
         }
+
+        // 优先选择最近且显式引用该 Button 的组件。
+        var widgets = target.GetComponentsInParent<CommonButtonWidget>(true);
+        foreach (var w in widgets)
+        {
+            if (ReferenceEquals(w.button, target))
+            {
+                return w;
+            }
+        }
+
+        return target.GetComponentInParent<CommonButtonWidget>(true);
     }
 
     private static TextMeshProUGUI TryPickTextTemplate()
@@ -627,25 +551,18 @@ internal static class TradePanelRuntimeFactory
         try
         {
             // 优先使用原生对话框prefab里的TMP，让克隆标签沿用游戏字体与材质。
-            try
+            var dialogPrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
+            if (dialogPrefab != null)
             {
-                var dialogPrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
-                if (dialogPrefab != null)
+                var tmp = dialogPrefab.GetComponentInChildren<TextMeshProUGUI>(true);
+                if (tmp != null)
                 {
-                    var tmp = dialogPrefab.GetComponentInChildren<TextMeshProUGUI>(true);
-                    if (tmp != null)
-                    {
-                        return tmp;
-                    }
+                    return tmp;
                 }
-            }
-            catch
-            {
-                // 忽略原生文本模板提取失败，继续回退到场景内搜索。
             }
 
             var tmps = UnityEngine.Object.FindObjectsByType<TextMeshProUGUI>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            if (tmps == null || tmps.Length == 0)
+            if (tmps.Length == 0)
             {
                 return null;
             }

@@ -5,6 +5,15 @@
 ## [Unreleased]
 
 ### 重构
+- **[networkplugin]**: 精简 `networkplugin/UI` 下的过度防御性实现，聚焦交易 UI 热点与状态组件。
+	- `UI/Widgets/TradeSlotWidget.cs`：删除常规按钮/Tooltip/详情面板流程上的静默 `try-catch`，保留 `TrySetCardImage` 的必要兜底；同时收缩重复判空并将保留注释统一为中文。
+	- `UI/Factories/TradePanelRuntimeFactory.cs`：删除 `FindObjectsByType`、按钮模板解析、运行时面板识别等常规路径上的多余 `try-catch` 与部分重复 null 守卫，保留最外层构建失败兜底。
+	- `UI/Panels/TradePanel.cs`：继续清理 partner picker / 运行时 dialog 辅助路径上的静默 `try-catch` 与反射 helper 冗余保护，保留交易会话初始化、网络请求和资源构建外层兜底。
+	- `UI/Dialogs/TradeDetailDialog.cs`：清理 UI 主路径、返回 TradePanel、列表重建与按钮回调中的过度 `try-catch`，保留交易结算、取消请求、异步回跳和原生 overlay 构建外层的关键保护。
+	- `UI/Components/NetworkStatusIndicator.cs`：删除空转分支与未使用字段，保留重连时的关键异常处理。
+	- `UI/Widgets/DeadPlayerEntryWidget.cs`：收敛重复背景解析逻辑。
+	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj -v minimal -p:LangVersion=preview` 通过（248 warnings，0 errors）。
+
 - **[networkplugin]**: 第二批防御性代码简化——移除 `networkplugin/` 中大量不必要的 try-catch、冗余 null 守卫与过度防御性封装，共涉及 14 个文件：
   - `TradeSyncPatch`、`ExitGamePatch`、`NetworkIdentityTracker`：`TryGetClient/TryGetNetworkClient/TryGetNetworkManager` 改为表达式体。
   - `AiDefaultMimicLocalAnimationPatch`：`IsEnabled/IsNetworkConnected` 改为表达式体；`Postfix` 中内层 `Singleton<GameDirector>.Instance?.PlayerUnitView` try-catch 删除（null-conditional 已足够）。
