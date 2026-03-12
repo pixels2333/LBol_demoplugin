@@ -55,9 +55,7 @@ public static class ExitGamePatch
     /// 只要存在网络客户端且 <c>IsConnected == true</c> 即视为联机中。
     /// </summary>
     private static bool IsMultiplayerConnected()
-    {
-        return TryGetNetworkClient()?.IsConnected == true;
-    }
+        => TryGetNetworkClient()?.IsConnected == true;
 
     /// <summary>
     /// 尝试判断本地客户端是否为房主（Host）。

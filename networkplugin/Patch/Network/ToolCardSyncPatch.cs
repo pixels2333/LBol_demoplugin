@@ -21,6 +21,9 @@ public static class ToolCardSyncPatch
 {
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
+    private static INetworkClient TryGetNetworkClient()
+        => ServiceProvider?.GetService<INetworkClient>();
+
     private static bool ShouldSync(BattleController battle)
     {
         if (battle == null)
@@ -35,7 +38,7 @@ public static class ToolCardSyncPatch
     {
         try
         {
-            var networkClient = ServiceProvider?.GetService<INetworkClient>();
+            INetworkClient networkClient = TryGetNetworkClient();
             if (networkClient == null || !networkClient.IsConnected)
             {
                 return;

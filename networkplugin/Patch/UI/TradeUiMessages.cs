@@ -16,24 +16,21 @@ internal static class TradeUiMessages
 {
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
-    private static ConfigManager TryGetConfig()
-        => ServiceProvider?.GetService<ConfigManager>();
 
-    private static INetworkClient TryGetNetworkClient()
-        => ServiceProvider?.GetService<INetworkClient>();
 
     public static bool IsTradeEnabledAndConnected(out string reason)
     {
         reason = null;
 
-        var config = TryGetConfig();
+        var serviceProvider = ServiceProvider;
+        var config = serviceProvider?.GetService<ConfigManager>();
         if (config?.AllowTrading?.Value != true)
         {
             reason = "交易功能已在配置中禁用。";
             return false;
         }
 
-        var client = TryGetNetworkClient();
+        var client = serviceProvider?.GetService<INetworkClient>();
         if (client == null || !client.IsConnected)
         {
             reason = "交易不可用（未连接到服务器）。";
@@ -50,8 +47,7 @@ internal static class TradeUiMessages
             return;
         }
 
-        TopMessagePanel panel = UiManager.GetPanel<TopMessagePanel>();
-        panel?.ShowMessage(message);
+        UiManager.GetPanel<TopMessagePanel>()?.ShowMessage(message);
     }
 
     public static void ShowTradePanelMissing()

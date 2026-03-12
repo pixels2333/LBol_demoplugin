@@ -19,6 +19,9 @@ public static class EnergySyncPatch
 {
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
+    private static INetworkClient TryGetNetworkClient()
+        => ServiceProvider?.GetService<INetworkClient>();
+
     private static bool ShouldSync(BattleController battle)
     {
         if (battle == null)
@@ -34,7 +37,7 @@ public static class EnergySyncPatch
     {
         try
         {
-            var networkClient = ServiceProvider?.GetService<INetworkClient>();
+            INetworkClient networkClient = TryGetNetworkClient();
             if (networkClient == null || !networkClient.IsConnected)
             {
                 return;
@@ -73,6 +76,21 @@ public static class EnergySyncPatch
             ManaBefore = SnapshotMana(before),
             ManaAfter = SnapshotMana(after),
             Detail = detail
+        };
+
+    private static object BuildTurnManaPayload(BattleController battle, ManaGroup before, ManaGroup after, ManaGroup requested, ManaGroup applied)
+        => new
+        {
+            Timestamp = DateTime.Now.Ticks,
+            EventType = NetworkMessageTypes.TurnManaCalculated,
+            PlayerId = GameStateUtils.GetCurrentPlayerId(),
+            ExtraTurnManaBefore = SnapshotMana(before),
+            ExtraTurnManaAfter = SnapshotMana(after),
+            Requested = SnapshotMana(requested),
+            Applied = SnapshotMana(applied),
+            TurnManaNow = SnapshotMana(battle.TurnMana),
+            LockedTurnManaNow = SnapshotMana(battle.LockedTurnMana),
+            BaseTurnManaNow = SnapshotMana(battle.BaseTurnMana)
         };
 
     [HarmonyPatch(typeof(BattleController), "GainMana")]
@@ -336,19 +354,7 @@ public static class EnergySyncPatch
                     return;
                 }
 
-                var payload = new
-                {
-                    Timestamp = DateTime.Now.Ticks,
-                    EventType = NetworkMessageTypes.TurnManaCalculated,
-                    PlayerId = GameStateUtils.GetCurrentPlayerId(),
-                    ExtraTurnManaBefore = SnapshotMana(__state),
-                    ExtraTurnManaAfter = SnapshotMana(after),
-                    Requested = SnapshotMana(group),
-                    Applied = SnapshotMana(__result),
-                    TurnManaNow = SnapshotMana(__instance.TurnMana),
-                    LockedTurnManaNow = SnapshotMana(__instance.LockedTurnMana),
-                    BaseTurnManaNow = SnapshotMana(__instance.BaseTurnMana)
-                };
+                object payload = BuildTurnManaPayload(__instance, __state, after, group, __result);
 
                 SendGameEvent(NetworkMessageTypes.TurnManaCalculated, payload);
             }
@@ -397,19 +403,7 @@ public static class EnergySyncPatch
                     return;
                 }
 
-                var payload = new
-                {
-                    Timestamp = DateTime.Now.Ticks,
-                    EventType = NetworkMessageTypes.TurnManaCalculated,
-                    PlayerId = GameStateUtils.GetCurrentPlayerId(),
-                    ExtraTurnManaBefore = SnapshotMana(__state),
-                    ExtraTurnManaAfter = SnapshotMana(after),
-                    Requested = SnapshotMana(group),
-                    Applied = SnapshotMana(__result),
-                    TurnManaNow = SnapshotMana(__instance.TurnMana),
-                    LockedTurnManaNow = SnapshotMana(__instance.LockedTurnMana),
-                    BaseTurnManaNow = SnapshotMana(__instance.BaseTurnMana)
-                };
+                object payload = BuildTurnManaPayload(__instance, __state, after, group, __result);
 
                 SendGameEvent(NetworkMessageTypes.TurnManaCalculated, payload);
             }

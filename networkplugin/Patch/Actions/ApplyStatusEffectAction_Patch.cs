@@ -31,12 +31,12 @@ public class ApplyStatusEffectAction_Patch
     /// <summary>
     /// 依赖注入服务提供者（用于解析网络/配置服务）。
     /// </summary>
-    private static IServiceProvider serviceProvider => ModService.ServiceProvider;
+    private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
     /// <summary>
     /// 配置管理器（用于判断是否启用状态效果同步）。
     /// </summary>
-    private static ConfigManager ConfigManager => serviceProvider?.GetService<ConfigManager>();
+    private static ConfigManager ConfigManager => ServiceProvider?.GetService<ConfigManager>();
 
     #endregion
 
@@ -63,84 +63,36 @@ public class ApplyStatusEffectAction_Patch
     {
         try
         {
-            // 配置未开启时不发送。
-            if (ConfigManager?.EnableStatusEffectSync?.Value != true)
+            // 配置未开启或当前处于远端出牌管线时不发送。
+            if (!ShouldBroadcastStatusEffect())
             {
                 return;
             }
 
-            // 远程出牌管线中的动作由远端驱动，本地不应再次广播。
-            if (RemoteCardUsePatch.IsInRemoteCardPipeline)
+            // 解析同步管理器和网络玩家。
+            if (!TryGetSyncContext(out ISynchronizationManager syncManager, out INetworkPlayer player))
             {
                 return;
             }
-
-            // 解析同步管理器。
-            ISynchronizationManager syncManager = GetSyncManager();
-            if (syncManager == null)
-            {
-                return;
-            }
-
-            // 解析网络管理器。
-            INetworkManager networkManager = GetNetworkManager();
-            if (networkManager == null)
-            {
-                return;
-            }
-
-            INetworkPlayer player = networkManager.GetSelf();
 
             // 构建状态效果应用同步数据。
-            Dictionary<string, object> statusData = new()
-            {
-                ["UserName"] = player.userName,
-                ["Timestamp"] = DateTime.Now.Ticks,
-                ["ActionType"] = "ApplyStatusEffect",
-                ["StatusEffectType"] = statusEffectType?.Name ?? "Unknown",
-                ["StatusEffectFullName"] = statusEffectType?.FullName ?? "Unknown",
-                ["TargetId"] = target?.Id ?? "",
-                ["TargetName"] = target?.Name ?? "Unknown",
-                ["Level"] = level ?? 0,
-                ["Duration"] = duration ?? 0,
-                ["Count"] = count ?? 0,
-                ["Limit"] = limit ?? 0,
-                ["OccupationTime"] = occupationTime,
-                ["StartAutoDecreasing"] = startAutoDecreasing,
-            };
+            Dictionary<string, object> statusData = CreateStatusData(
+                player,
+                "ApplyStatusEffect",
+                statusEffectType,
+                target,
+                level,
+                duration,
+                count,
+                limit,
+                occupationTime,
+                startAutoDecreasing,
+                includeCount: true);
 
-            // 补充目标当前已有的状态效果列表（便于远端校验）。
-            if (target != null && target.StatusEffects != null)
-            {
-                List<Dictionary<string, object>> existingStatusEffects = new();
-                foreach (var statusEffect in target.StatusEffects)
-                {
-                    if (statusEffect == null)
-                    {
-                        continue;
-                    }
-
-                    existingStatusEffects.Add(new Dictionary<string, object>
-                    {
-                        ["StatusType"] = statusEffect.GetType().Name,
-                        ["Level"] = statusEffect.Level,
-                        ["Duration"] = statusEffect.Duration,
-                        ["Count"] = statusEffect.Count,
-                    });
-                }
-
-                statusData["ExistingStatusEffects"] = existingStatusEffects;
-                statusData["ExistingStatusCount"] = target.StatusEffects.Count;
-            }
+            AppendExistingStatusEffects(statusData, target);
 
             // 组装事件并发送。
-            GameEvent gameEvent = GameEventManager.CreateEvent(
-                NetworkMessageTypes.OnStatusEffectApplied.ToString(),
-                player.userName,
-                statusData
-            );
-
-            syncManager.SendGameEvent(gameEvent);
+            SendStatusEffectEvent(syncManager, player.userName, statusData);
 
             Plugin.Logger?.LogInfo(
                 $"[StatusEffectSync] 应用状态效果: {statusEffectType?.Name} -> {target?.Name} (等级: {level}, 持续: {duration}, 数量: {count})");
@@ -176,96 +128,42 @@ public class ApplyStatusEffectAction_Patch
     {
         try
         {
-            // 配置未开启时不发送。
-            if (ConfigManager?.EnableStatusEffectSync?.Value != true)
+            // 配置未开启或当前处于远端出牌管线时不发送。
+            if (!ShouldBroadcastStatusEffect())
             {
                 return;
             }
 
-            // 远程出牌管线中的动作由远端驱动，本地不应再次广播。
-            if (RemoteCardUsePatch.IsInRemoteCardPipeline)
+            // 解析同步管理器和网络玩家。
+            if (!TryGetSyncContext(out ISynchronizationManager syncManager, out INetworkPlayer player))
             {
                 return;
             }
-
-            // 解析同步管理器。
-            ISynchronizationManager syncManager = GetSyncManager();
-            if (syncManager == null)
-            {
-                return;
-            }
-
-            // 解析网络管理器。
-            INetworkManager networkManager = GetNetworkManager();
-            if (networkManager == null)
-            {
-                return;
-            }
-
-            INetworkPlayer player = networkManager.GetSelf();
 
             Type statusEffectType = typeof(T);
 
             // 构建泛型状态效果应用同步数据。
-            Dictionary<string, object> statusData = new()
-            {
-                ["UserName"] = player.userName,
-                ["Timestamp"] = DateTime.Now.Ticks,
-                ["ActionType"] = "ApplyStatusEffectGeneric",
-                ["StatusEffectType"] = statusEffectType.Name,
-                ["StatusEffectFullName"] = statusEffectType.FullName ?? "Unknown",
-                ["GenericArgument"] = typeof(T).Name,
-                ["TargetId"] = target?.Id ?? "",
-                ["TargetName"] = target?.Name ?? "Unknown",
-                ["TargetType"] = target?.GetType().Name ?? "Unknown",
-                ["Level"] = level ?? 0,
-                ["Duration"] = duration ?? 0,
-                ["Limit"] = limit ?? 0,
-                ["OccupationTime"] = occupationTime,
-                ["StartAutoDecreasing"] = startAutoDecreasing,
-            };
+            Dictionary<string, object> statusData = CreateStatusData(
+                player,
+                "ApplyStatusEffectGeneric",
+                statusEffectType,
+                target,
+                level,
+                duration,
+                count,
+                limit,
+                occupationTime,
+                startAutoDecreasing,
+                includeCount: false);
 
-            // 补充目标当前已有的状态效果列表。
-            if (target != null && target.StatusEffects != null)
-            {
-                List<Dictionary<string, object>> existingStatusEffects = new();
-                foreach (var statusEffect in target.StatusEffects)
-                {
-                    if (statusEffect == null)
-                    {
-                        continue;
-                    }
+            statusData["GenericArgument"] = statusEffectType.Name;
+            statusData["TargetType"] = target?.GetType().Name ?? "Unknown";
 
-                    existingStatusEffects.Add(new Dictionary<string, object>
-                    {
-                        ["StatusType"] = statusEffect.GetType().Name,
-                        ["Level"] = statusEffect.Level,
-                        ["Duration"] = statusEffect.Duration,
-                        ["Count"] = statusEffect.Count,
-                    });
-                }
-
-                statusData["ExistingStatusEffects"] = existingStatusEffects;
-                statusData["ExistingStatusCount"] = target.StatusEffects.Count;
-            }
-
-            // 粗略判断增益/减益类别（用于远端 UI 或统计）。
-            if (typeof(T).GetInterfaces().Any(i => i.Name.Contains("IBuff") || i.Name.Contains("IDebuff")))
-            {
-                statusData["EffectCategory"] = typeof(T).GetInterfaces()
-                    .Where(i => i.Name.Contains("IBuff") || i.Name.Contains("IDebuff"))
-                    .Select(i => i.Name)
-                    .FirstOrDefault() ?? "Unknown";
-            }
+            AppendExistingStatusEffects(statusData, target);
+            AppendEffectCategory(statusData, statusEffectType);
 
             // 组装事件并发送。
-            GameEvent gameEvent = GameEventManager.CreateEvent(
-                NetworkMessageTypes.OnStatusEffectApplied.ToString(),
-                player.userName,
-                statusData
-            );
-
-            syncManager.SendGameEvent(gameEvent);
+            SendStatusEffectEvent(syncManager, player.userName, statusData);
 
             Plugin.Logger?.LogInfo(
                 $"[StatusEffectSync] 应用泛型状态效果: {typeof(T).Name} -> {target?.Name} (等级: {level}, 持续: {duration}, 数量: {count})");
@@ -281,6 +179,135 @@ public class ApplyStatusEffectAction_Patch
     #region 辅助方法
 
     /// <summary>
+    /// 判断当前是否允许广播状态效果同步。
+    /// </summary>
+    /// <returns>允许发送时返回 true。</returns>
+    private static bool ShouldBroadcastStatusEffect()
+    {
+        return ConfigManager?.EnableStatusEffectSync?.Value == true
+            && !RemoteCardUsePatch.IsInRemoteCardPipeline;
+    }
+
+    /// <summary>
+    /// 创建状态效果同步数据的公共字段。
+    /// </summary>
+    /// <param name="player">当前本地网络玩家。</param>
+    /// <param name="actionType">动作类型标识。</param>
+    /// <param name="statusEffectType">状态效果类型。</param>
+    /// <param name="target">目标单位。</param>
+    /// <param name="level">等级。</param>
+    /// <param name="duration">持续回合。</param>
+    /// <param name="count">层数/次数。</param>
+    /// <param name="limit">上限。</param>
+    /// <param name="occupationTime">动作占用时间。</param>
+    /// <param name="startAutoDecreasing">是否开始自动衰减。</param>
+    /// <param name="includeCount">是否写入 Count 字段。</param>
+    /// <returns>初始化完成的同步数据字典。</returns>
+    private static Dictionary<string, object> CreateStatusData(
+        INetworkPlayer player,
+        string actionType,
+        Type statusEffectType,
+        Unit target,
+        int? level,
+        int? duration,
+        int? count,
+        int? limit,
+        float occupationTime,
+        bool startAutoDecreasing,
+        bool includeCount)
+    {
+        Dictionary<string, object> statusData = new()
+        {
+            ["UserName"] = player.userName,
+            ["Timestamp"] = DateTime.Now.Ticks,
+            ["ActionType"] = actionType,
+            ["StatusEffectType"] = statusEffectType?.Name ?? "Unknown",
+            ["StatusEffectFullName"] = statusEffectType?.FullName ?? "Unknown",
+            ["TargetId"] = target?.Id ?? "",
+            ["TargetName"] = target?.Name ?? "Unknown",
+            ["Level"] = level ?? 0,
+            ["Duration"] = duration ?? 0,
+            ["Limit"] = limit ?? 0,
+            ["OccupationTime"] = occupationTime,
+            ["StartAutoDecreasing"] = startAutoDecreasing,
+        };
+
+        if (includeCount)
+        {
+            statusData["Count"] = count ?? 0;
+        }
+
+        return statusData;
+    }
+
+    /// <summary>
+    /// 补充目标当前已有的状态效果列表。
+    /// </summary>
+    /// <param name="statusData">待写入的同步数据。</param>
+    /// <param name="target">目标单位。</param>
+    private static void AppendExistingStatusEffects(Dictionary<string, object> statusData, Unit target)
+    {
+        if (target?.StatusEffects == null)
+        {
+            return;
+        }
+
+        List<Dictionary<string, object>> existingStatusEffects = new();
+        foreach (StatusEffect statusEffect in target.StatusEffects)
+        {
+            if (statusEffect == null)
+            {
+                continue;
+            }
+
+            existingStatusEffects.Add(new Dictionary<string, object>
+            {
+                ["StatusType"] = statusEffect.GetType().Name,
+                ["Level"] = statusEffect.Level,
+                ["Duration"] = statusEffect.Duration,
+                ["Count"] = statusEffect.Count,
+            });
+        }
+
+        statusData["ExistingStatusEffects"] = existingStatusEffects;
+        statusData["ExistingStatusCount"] = target.StatusEffects.Count;
+    }
+
+    /// <summary>
+    /// 粗略判断状态效果类别（用于远端 UI 或统计）。
+    /// </summary>
+    /// <param name="statusData">待写入的同步数据。</param>
+    /// <param name="statusEffectType">状态效果类型。</param>
+    private static void AppendEffectCategory(Dictionary<string, object> statusData, Type statusEffectType)
+    {
+        string effectCategory = statusEffectType.GetInterfaces()
+            .Select(interfaceType => interfaceType.Name)
+            .FirstOrDefault(name => name.Contains("IBuff") || name.Contains("IDebuff"));
+
+        if (effectCategory != null)
+        {
+            statusData["EffectCategory"] = effectCategory;
+        }
+    }
+
+    /// <summary>
+    /// 组装并发送状态效果同步事件。
+    /// </summary>
+    /// <param name="syncManager">同步管理器。</param>
+    /// <param name="userName">发送方用户名。</param>
+    /// <param name="statusData">同步数据。</param>
+    private static void SendStatusEffectEvent(ISynchronizationManager syncManager, string userName, Dictionary<string, object> statusData)
+    {
+        GameEvent gameEvent = GameEventManager.CreateEvent(
+            NetworkMessageTypes.OnStatusEffectApplied.ToString(),
+            userName,
+            statusData
+        );
+
+        syncManager.SendGameEvent(gameEvent);
+    }
+
+    /// <summary>
     /// 获取同步管理器。
     /// </summary>
     /// <returns>解析成功返回实例，否则返回 null。</returns>
@@ -288,8 +315,8 @@ public class ApplyStatusEffectAction_Patch
     {
         try
         {
-            Plugin.LogSynchronizationManagerResolveFromPatch(nameof(ApplyStatusEffectAction_Patch), serviceProvider);
-            return serviceProvider?.GetService<ISynchronizationManager>();
+            Plugin.LogSynchronizationManagerResolveFromPatch(nameof(ApplyStatusEffectAction_Patch), ServiceProvider);
+            return ServiceProvider?.GetService<ISynchronizationManager>();
         }
         catch
         {
@@ -305,7 +332,7 @@ public class ApplyStatusEffectAction_Patch
     {
         try
         {
-            return serviceProvider?.GetService<INetworkManager>();
+            return ServiceProvider?.GetService<INetworkManager>();
         }
         catch
         {
@@ -314,66 +341,29 @@ public class ApplyStatusEffectAction_Patch
     }
 
     /// <summary>
-    /// 获取状态效果的显示名称（尽力从特性中提取）。
+    /// 尝试解析发送状态效果同步事件所需的上下文。
     /// </summary>
-    /// <param name="statusEffectType">状态效果类型。</param>
-    /// <returns>显示名称。</returns>
-    private static string GetStatusEffectDisplayName(Type statusEffectType)
+    /// <param name="syncManager">同步管理器。</param>
+    /// <param name="player">当前本地网络玩家。</param>
+    /// <returns>同步管理器和网络管理器都解析成功时返回 true。</returns>
+    private static bool TryGetSyncContext(out ISynchronizationManager syncManager, out INetworkPlayer player)
     {
-        if (statusEffectType == null)
+        syncManager = GetSyncManager();
+        if (syncManager == null)
         {
-            return "Unknown";
-        }
-
-        // 尝试获取带有 Name/DisplayName 属性的特性。
-        object displayAttribute = statusEffectType.GetCustomAttributes(false)
-            .FirstOrDefault(attr => attr.GetType().Name.Contains("Display") || attr.GetType().Name.Contains("Name"));
-
-        if (displayAttribute != null)
-        {
-            var nameProperty = displayAttribute.GetType().GetProperty("Name") ??
-                               displayAttribute.GetType().GetProperty("DisplayName");
-            if (nameProperty != null && nameProperty.GetValue(displayAttribute) is string name)
-            {
-                return name;
-            }
-        }
-
-        return statusEffectType.Name;
-    }
-
-    /// <summary>
-    /// 判断状态效果是否为增益（仅基于命名/接口的启发式判断）。
-    /// </summary>
-    /// <param name="statusEffectType">状态效果类型。</param>
-    /// <returns>是增益返回 true，否则 false。</returns>
-    private static bool IsBuffEffect(Type statusEffectType)
-    {
-        if (statusEffectType == null)
-        {
+            player = null;
             return false;
         }
 
-        return statusEffectType.Name.Contains("Buff")
-               || statusEffectType.Name.Contains("Boost")
-               || statusEffectType.GetInterfaces().Any(i => i.Name.Contains("IBuff"));
-    }
-
-    /// <summary>
-    /// 判断状态效果是否为减益（仅基于命名/接口的启发式判断）。
-    /// </summary>
-    /// <param name="statusEffectType">状态效果类型。</param>
-    /// <returns>是减益返回 true，否则 false。</returns>
-    private static bool IsDebuffEffect(Type statusEffectType)
-    {
-        if (statusEffectType == null)
+        INetworkManager networkManager = GetNetworkManager();
+        if (networkManager == null)
         {
+            player = null;
             return false;
         }
 
-        return statusEffectType.Name.Contains("Debuff")
-               || statusEffectType.Name.Contains("Negative")
-               || statusEffectType.GetInterfaces().Any(i => i.Name.Contains("IDebuff"));
+        player = networkManager.GetSelf();
+        return true;
     }
 
     #endregion
