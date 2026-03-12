@@ -67,6 +67,31 @@ public static class EndTurnSyncPatch
         }
     }
 
+    private static void ResetLocalTurnState()
+    {
+        lock (_syncLock)
+        {
+            _endedPlayers.Clear();
+            _localEndedTurn = false;
+            _allowEndTurn = false;
+            _pendingBattleId = null;
+            _pendingRound = -1;
+            _lastConfirmedBattleId = null;
+            _lastConfirmedRound = -1;
+        }
+    }
+
+    private static bool AllowActionBeforeTurnEnds(ref bool __result)
+    {
+        if (!LocalEndedTurn)
+        {
+            return true;
+        }
+
+        __result = false;
+        return false;
+    }
+
     private static INetworkClient TryGetNetworkClient()
         => ServiceProvider?.GetService<INetworkClient>();
 
@@ -135,14 +160,8 @@ public static class EndTurnSyncPatch
             _selfPlayerId = null;
             _selfIsHost = false;
             _activePlayerIds = new HashSet<string>(StringComparer.Ordinal);
-            _endedPlayers.Clear();
-            _localEndedTurn = false;
-            _allowEndTurn = false;
-            _pendingBattleId = null;
-            _pendingRound = -1;
-            _lastConfirmedBattleId = null;
-            _lastConfirmedRound = -1;
         }
+        ResetLocalTurnState();
 
         // If we disconnected while the local gate was holding the UI, release it.
         ForceEnableEndTurnButton();
@@ -753,16 +772,7 @@ public static class EndTurnSyncPatch
                     return;
                 }
 
-                lock (_syncLock)
-                {
-                    _endedPlayers.Clear();
-                    _localEndedTurn = false;
-                    _allowEndTurn = false;
-                    _pendingBattleId = null;
-                    _pendingRound = -1;
-                    _lastConfirmedBattleId = null;
-                    _lastConfirmedRound = -1;
-                }
+                ResetLocalTurnState();
 
                 ForceEnableEndTurnButton();
             }
@@ -786,16 +796,7 @@ public static class EndTurnSyncPatch
                     return;
                 }
 
-                lock (_syncLock)
-                {
-                    _endedPlayers.Clear();
-                    _localEndedTurn = false;
-                    _allowEndTurn = false;
-                    _pendingBattleId = null;
-                    _pendingRound = -1;
-                    _lastConfirmedBattleId = null;
-                    _lastConfirmedRound = -1;
-                }
+                ResetLocalTurnState();
             }
             catch
             {
@@ -817,16 +818,7 @@ public static class EndTurnSyncPatch
                     return;
                 }
 
-                lock (_syncLock)
-                {
-                    _endedPlayers.Clear();
-                    _localEndedTurn = false;
-                    _allowEndTurn = false;
-                    _pendingBattleId = null;
-                    _pendingRound = -1;
-                    _lastConfirmedBattleId = null;
-                    _lastConfirmedRound = -1;
-                }
+                ResetLocalTurnState();
             }
             catch
             {
@@ -932,13 +924,7 @@ public static class EndTurnSyncPatch
         [HarmonyPrefix]
         public static bool Prefix(ref bool __result)
         {
-            if (!LocalEndedTurn)
-            {
-                return true;
-            }
-
-            __result = false;
-            return false;
+            return AllowActionBeforeTurnEnds(ref __result);
         }
     }
 
@@ -948,13 +934,7 @@ public static class EndTurnSyncPatch
         [HarmonyPrefix]
         public static bool Prefix(ref bool __result)
         {
-            if (!LocalEndedTurn)
-            {
-                return true;
-            }
-
-            __result = false;
-            return false;
+            return AllowActionBeforeTurnEnds(ref __result);
         }
     }
 
@@ -964,13 +944,7 @@ public static class EndTurnSyncPatch
         [HarmonyPrefix]
         public static bool Prefix(ref bool __result)
         {
-            if (!LocalEndedTurn)
-            {
-                return true;
-            }
-
-            __result = false;
-            return false;
+            return AllowActionBeforeTurnEnds(ref __result);
         }
     }
 
@@ -980,13 +954,7 @@ public static class EndTurnSyncPatch
         [HarmonyPrefix]
         public static bool Prefix(ref bool __result)
         {
-            if (!LocalEndedTurn)
-            {
-                return true;
-            }
-
-            __result = false;
-            return false;
+            return AllowActionBeforeTurnEnds(ref __result);
         }
     }
 
@@ -996,13 +964,7 @@ public static class EndTurnSyncPatch
         [HarmonyPrefix]
         public static bool Prefix(ref bool __result)
         {
-            if (!LocalEndedTurn)
-            {
-                return true;
-            }
-
-            __result = false;
-            return false;
+            return AllowActionBeforeTurnEnds(ref __result);
         }
     }
 

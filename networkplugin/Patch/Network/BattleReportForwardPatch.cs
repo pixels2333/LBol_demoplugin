@@ -95,7 +95,6 @@ public static class BattleReportForwardPatch
 		try
 		{
 			client.OnGameEventReceived += OnGameEventReceived;
-
 			lock (SyncLock)
 			{
 				_subscribedClient = client;
@@ -114,19 +113,9 @@ public static class BattleReportForwardPatch
 
 	private static void OnGameEventReceived(string eventType, object payload)
 	{
-		if (string.IsNullOrWhiteSpace(eventType))
-		{
-			return;
-		}
-
-		// 只处理 Report，避免转发 Broadcast 造成循环。
-		if (!eventType.EndsWith("Report", StringComparison.Ordinal))
-		{
-			return;
-		}
-
-		// 仅转发 BattlePlayer*Report（避免误转发其他模块的 Report）。
-		if (!eventType.StartsWith("BattlePlayer", StringComparison.Ordinal))
+		if (string.IsNullOrWhiteSpace(eventType) ||
+		    !eventType.EndsWith("Report", StringComparison.Ordinal) ||
+		    !eventType.StartsWith("BattlePlayer", StringComparison.Ordinal))
 		{
 			return;
 		}
@@ -221,14 +210,15 @@ public static class BattleReportForwardPatch
 		return false;
 	}
 
+	private static bool TryGetProperty(JsonElement root, string prop, out JsonElement element)
+	{
+		element = default;
+		return root.ValueKind == JsonValueKind.Object && root.TryGetProperty(prop, out element);
+	}
+
 	private static string TryGetString(JsonElement root, string prop)
 	{
-		if (root.ValueKind != JsonValueKind.Object)
-		{
-			return null;
-		}
-
-		if (!root.TryGetProperty(prop, out JsonElement el))
+		if (!TryGetProperty(root, prop, out JsonElement el))
 		{
 			return null;
 		}
@@ -238,12 +228,7 @@ public static class BattleReportForwardPatch
 
 	private static long? TryGetLong(JsonElement root, string prop)
 	{
-		if (root.ValueKind != JsonValueKind.Object)
-		{
-			return null;
-		}
-
-		if (!root.TryGetProperty(prop, out JsonElement el))
+		if (!TryGetProperty(root, prop, out JsonElement el))
 		{
 			return null;
 		}

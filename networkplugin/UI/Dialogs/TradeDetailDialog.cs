@@ -25,25 +25,13 @@ using UnityEngine.UI;
 
 namespace NetworkPlugin.UI.Dialogs;
 
-// Runtime-created dialog; we avoid relying on prefabs so this works in mod context.
+// 运行时创建的 dialog，不依赖 prefab 预绑定，因此在 mod 环境里也能工作。
 public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActionHandler
 {
     private const int MaxMoneyOffer = 99999;
 
     private static GameRunController CurrentGameRun
-    {
-        get
-        {
-            try
-            {
-                return Singleton<GameMaster>.Instance?.CurrentGameRun;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-    }
+        => Singleton<GameMaster>.Instance?.CurrentGameRun;
 
     private CanvasGroup _canvasGroup;
 
@@ -54,11 +42,11 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
     private RecordCardCell _cardCellTemplate;
     private ExhibitWidget _exhibitTemplate;
 
-    // Header
+    // 头部区域
     private TextMeshProUGUI _titleText;
     private TextMeshProUGUI _statusText;
 
-    // Local offer controls
+    // 本地报价控件
     private TextMeshProUGUI _localCardsTitle;
     private Transform _localCardsList;
     private Transform _localExhibitsList;
@@ -70,18 +58,18 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
     private CommonButtonWidget _moneyMinusButton;
     private CommonButtonWidget _moneyPlusButton;
 
-    // Remote offer display
+    // 对方报价展示
     private TextMeshProUGUI _remoteCardsTitle;
     private Transform _remoteCardsList;
     private Transform _remoteExhibitsList;
     private TextMeshProUGUI _remoteMoneyText;
     private TextMeshProUGUI _remoteExhibitsText;
 
-    // Footer
+    // 底部按钮
     private CommonButtonWidget _confirmButton;
     private CommonButtonWidget _cancelButton;
 
-    // Payload/session
+    // Payload / 会话状态
     private TradeDetailPayload _payload;
     private string _tradeId;
     private string _selfId;
@@ -96,12 +84,12 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
     private long _lastPreparingHandledTimestamp;
     private TradeSyncPatch.TradeStatus? _lastStatus;
 
-    // Local offer state
+    // 本地报价状态
     private readonly List<Card> _localCards = new List<Card>();
     private int _localMoney;
     private readonly HashSet<string> _localExhibitIds = new HashSet<string>(StringComparer.Ordinal);
 
-    // Pickers
+    // 选择器弹层
     private GameObject _cardPickerRoot;
     private GameObject _exhibitPickerRoot;
 
@@ -164,20 +152,13 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
         _canvasGroup.interactable = true;
 
-        try
+        if (UiManager.IsInitialized)
         {
-            if (UiManager.IsInitialized)
-            {
-                UiManager.PushActionHandler(this);
-                _actionHandlerPushed = true;
-            }
-        }
-        catch
-        {
-            _actionHandlerPushed = false;
+            UiManager.PushActionHandler(this);
+            _actionHandlerPushed = true;
         }
 
-        // Start session and request a snapshot so we can render both sides.
+        // 启动会话并请求快照，这样两侧报价都能立即渲染出来。
         TradeSyncPatch.RequestStartTrade(_tradeId, _selfId, _partnerId, _maxSlots);
         TradeSyncPatch.RequestSnapshot(_tradeId, _selfId);
 
@@ -206,7 +187,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             }
             catch
             {
-                // ignored
+                // 忽略
             }
             finally
             {
@@ -214,8 +195,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             }
         }
 
-        // If the dialog is dismissed without an explicit cancel/complete, request cancel to avoid
-        // leaving a server-side session dangling.
+        // 如果 dialog 不是在明确取消/完成的情况下关闭，补发一次取消请求，避免服务端会话悬空。
         if (!_completionApplied
             && !_cancelRequested
             && !string.IsNullOrWhiteSpace(_tradeId)
@@ -236,7 +216,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
         TryUnsubscribe();
 
-        // Hide pickers if open.
+        // 如果选择器还开着，一并关掉。
         _cardPickerRoot?.SetActive(false);
         _exhibitPickerRoot?.SetActive(false);
 
@@ -250,7 +230,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
     public void OnCancel()
     {
-        // If a picker overlay is open, close it first (do not cancel the whole trade).
+        // 如果选择器弹层还开着，先只关闭弹层，不取消整场交易。
         if (_cardPickerRoot != null && _cardPickerRoot.activeSelf)
         {
             _cardPickerRoot.SetActive(false);
@@ -265,7 +245,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             return;
         }
 
-        // Back/escape closes the dialog and requests cancel.
+        // Back / Escape 关闭 dialog，并向服务端发取消请求。
         if (_completionApplied)
         {
             Hide();
@@ -287,39 +267,25 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
     private bool TryEnsureNetworkConnected()
     {
-        try
+        var client = ModService.ServiceProvider.GetService<INetworkClient>();
+        if (client == null || !client.IsConnected)
         {
-            var client = ModService.ServiceProvider.GetService<INetworkClient>();
-            if (client == null || !client.IsConnected)
-            {
-                TryShowTopMessage("交易仅在联机模式下可用。");
-                return false;
-            }
-
-            TradeSyncPatch.EnsureSubscribed(client);
-            return true;
-        }
-        catch
-        {
+            TryShowTopMessage("交易仅在联机模式下可用。");
             return false;
         }
+
+        TradeSyncPatch.EnsureSubscribed(client);
+        return true;
     }
 
     private void TryShowTopMessage(string message)
     {
-        try
+        if (!UiManager.IsInitialized)
         {
-            if (!UiManager.IsInitialized)
-            {
-                return;
-            }
+            return;
+        }
 
-            UiManager.GetPanel<TopMessagePanel>().ShowMessage(message);
-        }
-        catch
-        {
-            // ignored
-        }
+        UiManager.GetPanel<TopMessagePanel>().ShowMessage(message);
     }
 
     private void EnsureSubscribed()
@@ -346,142 +312,76 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
     private void ScheduleReturnToTradePanel()
     {
-        // User choice: after the dialog closes (cancel or completed), return to TradePanel and show partner picker.
-        // Schedule to avoid input stack / layout conflicts during dialog OnHiding.
-        try
+        // 按当前需求，dialog 关闭后返回 TradePanel，并重新显示 partner picker。
+        // 延后一帧执行，避免和 dialog 的 OnHiding 产生输入栈/布局冲突。
+        long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        if (_lastReturnToTradePanelTimestamp > 0 && now - _lastReturnToTradePanelTimestamp < 450)
         {
-            // Throttle to prevent rapid open/close loops (e.g., ESC spam).
-            long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            if (_lastReturnToTradePanelTimestamp > 0 && now - _lastReturnToTradePanelTimestamp < 450)
-            {
-                return;
-            }
-            _lastReturnToTradePanelTimestamp = now;
+            return;
+        }
+        _lastReturnToTradePanelTimestamp = now;
 
-            // Only return when still connected; otherwise this can cause a noisy loop of "trade not available".
+        // 仅在仍处于联机状态时回到 TradePanel，避免不断弹“交易不可用”。
+        var client = ModService.ServiceProvider.GetService<INetworkClient>();
+        if (client == null || !client.IsConnected)
+        {
+            return;
+        }
+
+        UniTask.Void(async () =>
+        {
             try
             {
-                var client = ModService.ServiceProvider.GetService<INetworkClient>();
-                if (client == null || !client.IsConnected)
+                await UniTask.NextFrame();
+
+                if (!UiManager.IsInitialized || !TryGetReturnContextParent(out Transform contextParent))
                 {
                     return;
                 }
+
+                TradePanel panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>()
+                    ?? TradePanelRuntimeFactory.GetOrCreate(contextParent);
+                if (panel == null)
+                {
+                    return;
+                }
+
+                if (contextParent != null)
+                {
+                    // 已存在面板时尽量挂回当前上下文。
+                    panel.transform.SetParent(contextParent, false);
+                }
+
+                panel.Show(new TradePayload());
             }
             catch
             {
-                return;
+                // 忽略
             }
-
-            UniTask.Void(async () =>
-            {
-                try
-                {
-                    await UniTask.NextFrame();
-                }
-                catch
-                {
-                    // ignored
-                }
-
-                try
-                {
-                    if (!UiManager.IsInitialized)
-                    {
-                        return;
-                    }
-
-                    // Only allow returning to TradePanel while in Shop or Gap UI contexts.
-                    if (!TryGetReturnContextParent(out Transform contextParent))
-                    {
-                        return;
-                    }
-
-                    TradePanel panel = null;
-                    try
-                    {
-panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
-                    }
-                    catch
-                    {
-                        panel = null;
-                    }
-
-                    if (panel == null)
-                    {
-                        panel = TradePanelRuntimeFactory.GetOrCreate(contextParent);
-                    }
-                    else
-                    {
-                        // Re-parent existing panel to the desired context (best effort).
-                        try
-                        {
-                            if (contextParent != null)
-                            {
-                                panel.transform.SetParent(contextParent, false);
-                            }
-                        }
-                        catch
-                        {
-                            // ignored
-                        }
-                    }
-
-                    panel?.Show(new TradePayload());
-                }
-                catch
-                {
-                    // ignored
-                }
-            });
-        }
-        catch
-        {
-            // ignored
-        }
+        });
     }
 
     private static bool TryGetReturnContextParent(out Transform parent)
     {
         parent = null;
-        try
-        {
-            // Prefer shop context.
-            try
-            {
-                var shop = UiManager.GetPanel<ShopPanel>();
-                if (shop != null && shop.IsVisible && shop.transform != null)
-                {
-                    parent = shop.transform.parent != null ? shop.transform.parent : shop.transform;
-                    return parent != null;
-                }
-            }
-            catch
-            {
-                // ignored
-            }
 
-            // Fallback to gap context.
-            try
-            {
-                var gap = UiManager.GetPanel<GapOptionsPanel>();
-                if (gap != null && gap.IsVisible && gap.transform != null)
-                {
-                    parent = gap.transform.parent != null ? gap.transform.parent : gap.transform;
-                    return parent != null;
-                }
-            }
-            catch
-            {
-                // ignored
-            }
-
-            return false;
-        }
-        catch
+        // 优先回到商店上下文。
+        var shop = UiManager.GetPanel<ShopPanel>();
+        if (shop != null && shop.IsVisible && shop.transform != null)
         {
-            parent = null;
-            return false;
+            parent = shop.transform.parent != null ? shop.transform.parent : shop.transform;
+            return parent != null;
         }
+
+        // 回退到 Gap 上下文。
+        var gap = UiManager.GetPanel<GapOptionsPanel>();
+        if (gap != null && gap.IsVisible && gap.transform != null)
+        {
+            parent = gap.transform.parent != null ? gap.transform.parent : gap.transform;
+            return parent != null;
+        }
+
+        return false;
     }
 
     private void OnTradeStateUpdated(TradeSyncPatch.TradeSessionState state)
@@ -557,27 +457,13 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
         if (!TryApplyCompletedTrade(state, out string reason))
         {
             _statusText.text = reason;
-            try
-            {
-                await UniTask.Delay(TimeSpan.FromSeconds(1.6));
-            }
-            catch
-            {
-                // ignored
-            }
+            await UniTask.Delay(TimeSpan.FromSeconds(1.6));
 
             Hide();
             return;
         }
 
-        try
-        {
-            await UniTask.Delay(TimeSpan.FromSeconds(1.2));
-        }
-        catch
-        {
-            // ignored
-        }
+        await UniTask.Delay(TimeSpan.FromSeconds(1.2));
 
         Hide();
     }
@@ -823,19 +709,12 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
 
     private Card TryFindDeckCard(TradeSyncPatch.CardRef cardRef)
     {
-        try
-        {
-            if (cardRef == null || cardRef.InstanceId < 0)
-            {
-                return null;
-            }
-
-            return CurrentGameRun?.GetDeckCardByInstanceId(cardRef.InstanceId);
-        }
-        catch
+        if (cardRef == null || cardRef.InstanceId < 0)
         {
             return null;
         }
+
+        return CurrentGameRun?.GetDeckCardByInstanceId(cardRef.InstanceId);
     }
 
     private void TryHandlePreparing(TradeSyncPatch.TradeSessionState state)
@@ -887,16 +766,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
             }
         }
 
-        int currentMoney;
-        try
-        {
-            currentMoney = CurrentGameRun?.Money ?? 0;
-        }
-        catch
-        {
-            TradeSyncPatch.RequestPrepareResult(_tradeId, _selfId, false, "MoneyCheckFailed");
-            return;
-        }
+        int currentMoney = CurrentGameRun?.Money ?? 0;
 
         if (myMoney < 0 || myMoney > currentMoney)
         {
@@ -916,15 +786,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
                     return;
                 }
 
-                Exhibit owned = null;
-                try
-                {
-                    owned = run?.Player?.Exhibits?.FirstOrDefault(e => e != null && string.Equals(e.Id, id, StringComparison.Ordinal));
-                }
-                catch
-                {
-                    owned = null;
-                }
+                Exhibit owned = run?.Player?.Exhibits?.FirstOrDefault(e => e != null && string.Equals(e.Id, id, StringComparison.Ordinal));
 
                 if (owned == null)
                 {
@@ -952,49 +814,35 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
 
     private void RefreshLocalUi()
     {
-        try
-        {
-            _localMoneyText.text = $"金币: {_localMoney}";
-            _localExhibitsText.text = $"遗物: {_localExhibitIds.Count}";
+        _localMoneyText.text = $"金币: {_localMoney}";
+        _localExhibitsText.text = $"遗物: {_localExhibitIds.Count}";
 
-            RebuildCardList(_localCardsList, _localCards, isLocal: true);
-            RebuildExhibitList(_localExhibitsList, _localExhibitIds.ToList(), isLocal: true);
-        }
-        catch
-        {
-            // ignored
-        }
+        RebuildCardList(_localCardsList, _localCards, isLocal: true);
+        RebuildExhibitList(_localExhibitsList, _localExhibitIds.ToList(), isLocal: true);
     }
 
     private void RefreshRemoteUi(TradeSyncPatch.TradeSessionState state)
     {
-        try
+        if (state == null)
         {
-            if (state == null)
-            {
-                _remoteMoneyText.text = "金币: 0";
-                _remoteExhibitsText.text = "遗物: 0";
-                RebuildCardList(_remoteCardsList, (List<TradeSyncPatch.CardRef>)null, isLocal: false);
-                RebuildExhibitList(_remoteExhibitsList, (List<string>)null, isLocal: false);
-                return;
-            }
-
-            bool localIsA = string.Equals(state.PlayerAId, _selfId, StringComparison.Ordinal);
-
-            int theirMoney = localIsA ? state.MoneyB : state.MoneyA;
-            List<TradeSyncPatch.ExhibitRef> theirEx = localIsA ? state.ExhibitsB : state.ExhibitsA;
-
-            _remoteMoneyText.text = $"金币: {Mathf.Max(0, theirMoney)}";
-            _remoteExhibitsText.text = $"遗物: {theirEx?.Count ?? 0}";
-
-            var theirCards = localIsA ? state.OfferB : state.OfferA;
-            RebuildCardList(_remoteCardsList, theirCards, isLocal: false);
-            RebuildExhibitList(_remoteExhibitsList, theirEx, isLocal: false);
+            _remoteMoneyText.text = "金币: 0";
+            _remoteExhibitsText.text = "遗物: 0";
+            RebuildCardList(_remoteCardsList, (List<TradeSyncPatch.CardRef>)null, isLocal: false);
+            RebuildExhibitList(_remoteExhibitsList, (List<string>)null, isLocal: false);
+            return;
         }
-        catch
-        {
-            // ignored
-        }
+
+        bool localIsA = string.Equals(state.PlayerAId, _selfId, StringComparison.Ordinal);
+
+        int theirMoney = localIsA ? state.MoneyB : state.MoneyA;
+        List<TradeSyncPatch.ExhibitRef> theirEx = localIsA ? state.ExhibitsB : state.ExhibitsA;
+
+        _remoteMoneyText.text = $"金币: {Mathf.Max(0, theirMoney)}";
+        _remoteExhibitsText.text = $"遗物: {theirEx?.Count ?? 0}";
+
+        var theirCards = localIsA ? state.OfferB : state.OfferA;
+        RebuildCardList(_remoteCardsList, theirCards, isLocal: false);
+        RebuildExhibitList(_remoteExhibitsList, theirEx, isLocal: false);
     }
 
     private void RebuildExhibitList(Transform listRoot, List<string> exhibitIds, bool isLocal)
@@ -1074,7 +922,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
         _localExhibitsList = CreateScrollList(_panelRoot, "LocalExhibits", 0.06f, 0.35f, 0.46f, 0.53f);
         AddListBackground(_localExhibitsList);
 
-        // Controls moved near items
+        // 操作按钮放到报价区域附近，减少来回移动视线。
         _addCardButton = CloneButton(_panelRoot, "AddCard", "+ 卡牌");
         SetRect(_addCardButton.GetComponent<RectTransform>(), 0.06f, 0.28f, 0.18f, 0.33f);
         _addCardButton.button.onClick.RemoveAllListeners();
@@ -1138,7 +986,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
         if (listRoot == null || listRoot.parent == null) return;
         var parent = listRoot.parent;
         
-        // Find or create a background object behind the scroll rect.
+        // 在 ScrollRect 背后补一个背景对象，没有就创建。
         var bgName = "ListBg_" + listRoot.name;
         var bgTransform = parent.Find(bgName);
         if (bgTransform == null)
@@ -1153,7 +1001,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
             rt.offsetMax = new Vector2(4, 4);
             
             var img = go.AddComponent<Image>();
-            img.color = new Color(0f, 0f, 0f, 0.35f); // Simple semi-transparent dark box
+            img.color = new Color(0f, 0f, 0f, 0.35f); // 简单的半透明深色底。
         }
     }
 
@@ -1173,7 +1021,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
                 return;
             }
 
-            // Play confirm sound
+            // 播放确认音效。
             AudioManager.Button(0);
 
             TradeSyncPatch.RequestConfirm(_tradeId, _selfId);
@@ -1181,7 +1029,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
         }
         catch
         {
-            // ignored
+            // 忽略
         }
     }
 
@@ -1260,7 +1108,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
 
     private GameObject CreateFullOverlay(string name, string titleText)
     {
-        // Prefer in-game MessageDialog prefab for consistent visuals.
+        // 优先复用游戏内 MessageDialog prefab，保证视觉风格一致。
         try
         {
             GameObject root = new GameObject(name);
@@ -1273,7 +1121,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
 
-            // Transparent blocker so clicks don't pass through even if prefab mask fails.
+            // 透明遮罩层，避免 prefab 的 mask 失效时点击穿透到底层。
             var blocker = root.AddComponent<Image>();
             blocker.color = new Color(0f, 0f, 0f, 0f);
             blocker.raycastTarget = true;
@@ -1322,37 +1170,29 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
                 mainText.color = c;
             }
 
-            // Keep subText alive but invisible so prefab layout remains stable.
+            // 保留 subText 参与布局，但把它隐藏掉，避免 prefab 排版塌掉。
             RectTransform panelRect = null;
             RectTransform subTextRect = subText?.rectTransform;
-            try
+            if (subText != null)
             {
-                if (subText != null)
-                {
-                    subText.gameObject.SetActive(true);
-                    subText.text = string.Empty;
-                    subText.raycastTarget = false;
-                    var c = subText.color;
-                    c.a = 0f;
-                    subText.color = c;
-                }
+                subText.gameObject.SetActive(true);
+                subText.text = string.Empty;
+                subText.raycastTarget = false;
+                var c = subText.color;
+                c.a = 0f;
+                subText.color = c;
+            }
 
-                panelRect = TryFindCommonAncestorRect(mainText?.rectTransform,
-                    cancel?.GetComponent<RectTransform>())
-                    ?? (frameRt != null ? frameRt : frame.GetComponent<RectTransform>());
-            }
-            catch
-            {
-                panelRect = frameRt != null ? frameRt : frame.GetComponent<RectTransform>();
-                subTextRect = null;
-            }
+            panelRect = TryFindCommonAncestorRect(mainText?.rectTransform,
+                cancel?.GetComponent<RectTransform>())
+                ?? (frameRt != null ? frameRt : frame.GetComponent<RectTransform>());
 
             if (panelRect == null)
             {
                 panelRect = rt;
             }
 
-            // Place list in the center region.
+            // 把列表放到中间区域。
             var list = CreateScrollList(panelRect, "List", 0.10f, 0.18f, 0.90f, 0.86f);
             _ = list.gameObject.AddComponent<PickerListTag>();
 
@@ -1363,15 +1203,8 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
                 SetButtonLabel(cancel, "取消");
                 cancel.onClick.AddListener(() =>
                 {
-                    try
-                    {
-                        root.SetActive(false);
-                        _canvasGroup.interactable = true;
-                    }
-                    catch
-                    {
-                        // ignored
-                    }
+                    root.SetActive(false);
+                    _canvasGroup.interactable = true;
                 });
             }
 
@@ -1382,29 +1215,21 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
                 SetButtonLabel(confirm, "确定");
                 confirm.onClick.AddListener(() =>
                 {
-                    try
-                    {
-                        root.SetActive(false);
-                        _canvasGroup.interactable = true;
-                        RefreshLocalUi();
-                        TrySendOfferUpdate();
-                    }
-                    catch
-                    {
-                        // ignored
-                    }
+                    root.SetActive(false);
+                    _canvasGroup.interactable = true;
+                    RefreshLocalUi();
+                    TrySendOfferUpdate();
                 });
             }
 
-            // Ensure list is not above buttons.
-            try
+            // 确保列表不会压在按钮上面。
+            if (cancel != null)
             {
-                cancel?.transform.SetAsLastSibling();
-                confirm?.transform.SetAsLastSibling();
+                cancel.transform.SetAsLastSibling();
             }
-            catch
+            if (confirm != null)
             {
-                // ignored
+                confirm.transform.SetAsLastSibling();
             }
 
             dialog.enabled = false;
@@ -1412,7 +1237,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
         }
         catch
         {
-            // Fallback to previous runtime overlay if anything goes wrong.
+            // 如果构建原生风格 overlay 失败，就回退到旧的运行时实现。
             GameObject root = new GameObject(name);
             root.transform.SetParent(transform, false);
             root.SetActive(false);
@@ -1470,100 +1295,73 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
 
     private static void HideDialogButton(Button b)
     {
-        try
+        if (b == null)
         {
-            if (b == null)
-            {
-                return;
-            }
+            return;
+        }
 
-            b.onClick.RemoveAllListeners();
-            b.gameObject.SetActive(false);
-        }
-        catch
-        {
-            // ignored
-        }
+        b.onClick.RemoveAllListeners();
+        b.gameObject.SetActive(false);
     }
 
     private static T GetDialogField<T>(MessageDialog dialog, string fieldName) where T : class
     {
-        try
-        {
-            if (dialog == null || string.IsNullOrWhiteSpace(fieldName))
-            {
-                return null;
-            }
-
-            var fi = typeof(MessageDialog).GetField(fieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            if (fi == null)
-            {
-                return null;
-            }
-
-            return fi.GetValue(dialog) as T;
-        }
-        catch
+        if (dialog == null || string.IsNullOrWhiteSpace(fieldName))
         {
             return null;
         }
+
+        var fi = typeof(MessageDialog).GetField(fieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        if (fi == null)
+        {
+            return null;
+        }
+
+        return fi.GetValue(dialog) as T;
     }
 
     private static void SetButtonLabel(Button button, string label)
     {
-        try
+        if (button == null)
         {
-            if (button == null)
-            {
-                return;
-            }
-
-            var tmp = button.GetComponentInChildren<TextMeshProUGUI>(true);
-            if (tmp != null)
-            {
-                tmp.text = label;
-                tmp.alignment = TextAlignmentOptions.Center;
-            }
+            return;
         }
-        catch
+
+        var tmp = button.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (tmp != null)
         {
-            // ignored
+            tmp.text = label;
+            tmp.alignment = TextAlignmentOptions.Center;
         }
     }
 
     private static RectTransform TryFindCommonAncestorRect(RectTransform a, RectTransform b)
     {
-        try
-        {
-            if (a == null || b == null)
-            {
-                return null;
-            }
-
-            HashSet<Transform> ancestors = new HashSet<Transform>();
-            Transform t = a;
-            while (t != null)
-            {
-                ancestors.Add(t);
-                t = t.parent;
-            }
-
-            Transform u = b;
-            while (u != null)
-            {
-                if (ancestors.Contains(u))
-                {
-                    return u as RectTransform;
-                }
-                u = u.parent;
-            }
-
-            return null;
-        }
-        catch
+        if (a == null || b == null)
         {
             return null;
         }
+
+        HashSet<Transform> ancestors = new HashSet<Transform>();
+        Transform t = a;
+        while (t != null)
+        {
+            ancestors.Add(t);
+            t = t.parent;
+        }
+
+        Transform u = b;
+        while (u != null)
+        {
+            if (ancestors.Contains(u))
+            {
+                return u as RectTransform;
+            }
+
+            u = u.parent;
+        }
+
+        return null;
     }
 
     private sealed class PickerListTag : MonoBehaviour
@@ -1585,7 +1383,7 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
 
         var container = tag.transform;
         
-        // Use Grid Layout for cards to match game library feel
+        // 卡牌列表改用 Grid Layout，更接近游戏原生卡库的观看方式。
         var vlg = container.GetComponent<VerticalLayoutGroup>();
         if (vlg != null) DestroyImmediate(vlg);
         
@@ -1601,18 +1399,11 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
             Destroy(c.gameObject);
         }
 
-        List<Card> deck = new List<Card>();
-        try
-        {
-            if (CurrentGameRun?.BaseDeck != null)
-            {
-                deck = CurrentGameRun.BaseDeck.Where(c => c != null).OrderBy(c => c.Name).ToList();
-            }
-        }
-        catch
-        {
-            deck = new List<Card>();
-        }
+        List<Card> deck = CurrentGameRun?.BaseDeck?
+            .Where(c => c != null)
+            .OrderBy(c => c.Name)
+            .ToList()
+            ?? new List<Card>();
 
         HashSet<int> selected = new HashSet<int>(_localCards.Where(c => c != null).Select(c => c.InstanceId));
 
@@ -1640,9 +1431,9 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
                         return;
                     }
 
-                    AudioManager.Card(3); // Card click sound
+                    AudioManager.Card(3); // 卡牌点击音效。
                     _localCards.Add(card);
-                    RebuildCardPicker(); // Refresh to remove from list
+                    RebuildCardPicker(); // 立即刷新，把刚选中的卡牌移出列表。
                 }));
             }
             else
@@ -1683,13 +1474,13 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
 
         var container = tag.transform;
         
-        // Use Grid Layout for exhibits
+        // 遗物列表也使用 Grid Layout，和原生展示方式更接近。
         var vlg = container.GetComponent<VerticalLayoutGroup>();
         if (vlg != null) DestroyImmediate(vlg);
         
         var glg = container.GetComponent<GridLayoutGroup>();
         if (glg == null) glg = container.gameObject.AddComponent<GridLayoutGroup>();
-        glg.cellSize = new Vector2(100, 100); // Exhibits are square
+        glg.cellSize = new Vector2(100, 100); // 遗物格子保持方形。
         glg.spacing = new Vector2(20, 20);
         glg.padding = new RectOffset(20, 20, 20, 20);
         glg.childAlignment = TextAnchor.UpperLeft;
@@ -1699,21 +1490,11 @@ panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>();
             Destroy(c.gameObject);
         }
 
-        List<Exhibit> tradable = new List<Exhibit>();
-        try
-        {
-            if (CurrentGameRun?.Player?.Exhibits != null)
-            {
-                tradable = CurrentGameRun.Player.Exhibits
-                    .Where(TradeExhibitRules.IsTradable)
-                    .OrderBy(e => e.Name)
-                    .ToList();
-            }
-        }
-        catch
-        {
-            tradable = new List<Exhibit>();
-        }
+        List<Exhibit> tradable = CurrentGameRun?.Player?.Exhibits?
+            .Where(TradeExhibitRules.IsTradable)
+            .OrderBy(e => e.Name)
+            .ToList()
+            ?? new List<Exhibit>();
 
         if (tradable.Count == 0)
         {

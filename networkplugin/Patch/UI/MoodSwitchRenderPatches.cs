@@ -30,7 +30,7 @@ public static class MoodSwitchRenderPatches
 
     private static readonly HashSet<string> MoodEffectNames = new(StringComparer.OrdinalIgnoreCase)
     {
-        // Koishi moods
+        // Koishi 的 Mood 循环特效
         "ChaowoLoop", // MoodPeace
         "BenwoLoop",  // MoodPassion
         "DunwuLoop",  // MoodEpiphany
@@ -42,16 +42,7 @@ public static class MoodSwitchRenderPatches
     }
 
     private static bool IsConnected()
-    {
-        try
-        {
-            return NetworkClient?.IsConnected == true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
+        => NetworkClient?.IsConnected == true;
 
     [HarmonyPatch(typeof(UnitView), nameof(UnitView.TryPlayEffectLoop))]
     [HarmonyPrefix]
@@ -92,4 +83,3 @@ public static class MoodSwitchRenderPatches
         return false;
     }
 }
-

@@ -27,7 +27,7 @@ public static class ExhibitSyncPatch
 
     private static bool IsConnected()
     {
-        var client = TryGetNetworkClient();
+        INetworkClient client = TryGetNetworkClient();
         return client != null && client.IsConnected;
     }
 
@@ -53,14 +53,12 @@ public static class ExhibitSyncPatch
                     return;
                 }
 
-                // 当前仅对“变化(Bianhua)”做定向修复：它在 EnemyDied 时触发 GainManaAction，
-                // 行为上最接近 Together in Spire 中 GremlinHorn 的“击杀回能”。
                 if (!string.Equals(__instance.Id, "Bianhua", StringComparison.Ordinal))
                 {
                     return;
                 }
 
-                var battle = __instance.Battle;
+                BattleController battle = __instance.Battle;
                 if (battle == null || battle.BattleShouldEnd || !HasAliveEnemies(battle))
                 {
                     return;

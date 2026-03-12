@@ -17,6 +17,8 @@
 ### Trade（交易同步）
 - Host 权威会话：`networkplugin/Patch/Network/TradeSyncPatch.cs` 维护 `TradeSessionState` 并广播。
 - Client UI：`networkplugin/UI/Panels/TradePanel.cs` 仅联机可用，完成后仅对本地 `GameRun` 落地。
+- `networkplugin/UI/Factories/TradePanelRuntimeFactory.cs` 与 `networkplugin/UI/Widgets/TradeSlotWidget.cs` 当前约定为：常规 Unity UI 访问（按钮、图片、`FindObjectsByType`、模板克隆、Tooltip 显隐）默认直接走主路径，不再用静默 `try-catch` 包裹；仅对外部资源装载或重连类边界行为保留必要异常兜底。
+- `networkplugin/UI/Panels/TradePanel.cs` 与 `networkplugin/UI/Dialogs/TradeDetailDialog.cs` 当前约定为：按钮回调、列表重建、文本刷新、TradePanel/Dialog 间的常规返回链路默认直接执行；仅对交易结算、取消请求、异步回跳和原生 overlay 构建外层保留必要异常保护。
 
 #### TradePanel partner picker（选择交易对象）
 - 交易对象选择弹层在运行时克隆游戏内 `UI/Dialogs/MessageDialog` 作为窗口框架，并复用 `UI/Panels/HistoryPanel` 的 `ScrollRect + RecordRow` 构建列表。
@@ -41,7 +43,14 @@
 - 商店入口：`networkplugin/Patch/UI/ShopTradeIconPatch.cs`。
 - `ShopTradeIconPatch` 在克隆 `CardService` 按钮样式后，仅解析并更新交易按钮的主标题文本；只有未命中 `TMP_Text` 时才回退到 legacy `Text`，并在 fallback/异常层级时输出 hierarchy 日志。
 - `ShopTradeIconPatch` 现会为 `CardService` / `ReturnButton` 原生容器保存 `anchoredPosition/sizeDelta/localScale/localPosition` 快照，并在隐藏或异常清理时完整恢复，避免商店场景残留布局漂移。
+- `ShopTradeIconPatch` 当前约定为：商店按钮定位、Tooltip 组件禁用、TradePanel 打开等常规 UI 主路径直接执行；仅对 `Traverse` 反射字段读取、运行时克隆/清理及原生布局恢复保留必要异常兜底，不再保留未接线的浮动按钮与手工三按钮布局死代码。
 - 两者通过 `networkplugin/Patch/UI/TradeUiMessages.cs` 统一“未连接/配置禁用/缺少 TradePanel 实例”等提示。
+
+### Patch 清理约定
+- `networkplugin/Patch/UI/TradeUiMessages.cs` 当前约定为：配置读取、网络连接判定与顶部提示走直接主路径，不再包一层重复的 `TryGet*` helper；只有真正跨服务解析的边界才额外保留保护。
+- `networkplugin/Patch/UI/ExitGamePatch.cs` 当前约定为：联机状态判断、主菜单按钮隐藏等普通 UI 分支直接执行；仅对 Host 身份反射判断、断开联机/清玩家列表、退出弹窗与回主菜单流程保留必要保护。
+- `networkplugin/Patch/UI/PlayerTargeterPatch.cs` 当前约定为：远端玩家单体选中主路径直接走鼠标命中与 proxy 绑定；仅对 `TargetSelector` 私有字段反射读取继续保留 try-catch。
+- `networkplugin/Patch/EnemyUnits/SpawnedEnemyManager.cs` 当前约定为：敌人生成同步的核心边界是 RNG 交换/恢复与网络广播发送；常规结果判空与种子组装逻辑应保持简洁，避免在 Harmony 主路径堆叠重复 null 守卫。
 
 #### 主菜单多人入口（多人游戏）
 

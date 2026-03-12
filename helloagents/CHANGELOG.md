@@ -5,6 +5,36 @@
 ## [Unreleased]
 
 ### 重构
+- **[networkplugin]**: 等价简化 `networkplugin/Patch/Network` 下的首批热点补丁，聚焦重复 helper 与重复上传/接收结构的收敛，不改事件语义与 Harmony 守卫。
+	- `Patch/Network/BattleCardZonePatch.cs`、`EnergySyncPatch.cs`、`ToolCardSyncPatch.cs`：统一网络客户端解析 helper，收敛重复 `SendGameEvent(...)` 前置解析路径。
+	- `Patch/Network/EnergySyncPatch.cs`：提取回合额外法力快照 payload 构建逻辑，消除 `GainTurnMana` / `LoseTurnMana` 的重复匿名对象结构。
+	- `Patch/Network/RoomStateSyncPatch.cs`：提取房间快照上传前置判定，收敛 `StartBattle` / `RequestEndPlayerTurn` / `EndBattle` 三处重复的本地战斗与连接检查。
+	- `Patch/Network/TurnStartSnapshotReceivePatch.cs`、`TurnEndSnapshotReceivePatch.cs`：提取发送者解析 helper，并在 `TurnEnd` 接收端收敛法力数组归一化逻辑。
+	- `Patch/Network/BattleReportForwardPatch.cs`、`DebutBonusSyncPatch.cs`、`EnemyStateReceivePatch.cs`、`GameResultSyncPatch.cs`、`GapOptionsSyncPatch.cs`、`MapCheckpointSyncPatch.cs`、`RoomEntrySyncPatch.cs`：继续收敛重复的订阅状态更新、连接/主机判断、JSON 字段读取和 checkpoint 标记小流程，保持原有发包、接包和落地行为不变。
+	- `Patch/Network/EndTurnSyncPatch.cs`、`EventSyncPatch.cs`：只提取真正高频复用的重复段，分别收敛回合状态重置/结束后动作拦截，以及事件同步里反复出现的联网客户端获取判断，避免继续出现“小 helper 过多”的问题。
+	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj -v minimal -p:LangVersion=preview` 通过（246 warnings，0 errors）。
+
+- **[networkplugin]**: 等价简化 `networkplugin/Patch/Actions/ApplyStatusEffectAction_Patch.cs`，提取状态效果同步补丁中重复的广播判定、事件载荷构建、现有状态列表附加与事件发送逻辑，保持非泛型/泛型补丁入口、事件字段和日志语义不变。
+	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj -v minimal -p:LangVersion=preview` 通过（245 warnings，0 errors）。
+
+- **[networkplugin]**: 启动 `networkplugin/Patch` 目录的中等强度防御性代码清理，先收敛第一批高收益热点文件。
+	- `Patch/UI/ShopTradeIconPatch.cs`：删除未使用的白底纹理/浮动按钮/三按钮手工布局死代码；将商店按钮父节点与原生按钮解析收敛为小型 helper；去掉 Tooltip 清理与 TradePanel 打开主路径上的静默 `try-catch`，保留商店 UI 克隆、反射字段读取、按钮清理恢复等真实边界保护。
+	- `Patch/UI/TradeUiMessages.cs`：移除重复 `TryGetConfig/TryGetNetworkClient` 包装，直接复用 `ServiceProvider` 解析配置与网络客户端，保留 UI 顶部提示与缺失面板提示行为不变。
+	- `Patch/UI/ExitGamePatch.cs`：将联机状态判断改为直接主路径；提炼 `TryClearAllPlayers(...)` 与按钮字段解析 helper，移除主菜单刷新补丁外层的空转 `try-catch`，保留反射判断 Host、断开联机、弹窗显示与回主菜单流程的边界保护。
+	- `Patch/UI/PlayerTargeterPatch.cs`：移除 `UpdateSingleEnemy` 上包住整个目标选择主路径的静默 `try-catch`，保留 `_targetType` / `_activeHand` / `_activeUs` / `_activeDoll` 等反射取值处的必要保护。
+	- `Patch/EnemyUnits/SpawnedEnemyManager.cs`：提炼 `TryRestoreEnemyBattleRng(...)`，收敛生成后恢复 RNG 的 finally 逻辑；去掉生成结果广播主路径上的重复 null 守卫，保留 RNG 交换/恢复与广播发送失败日志等必要边界保护。
+	- `Patch/UI/OtherPlayersOverlayPatch.cs`：补齐 `ConfigManager`、`INetworkPlayer` 与 `GetService<T>()` 扩展所需命名空间引用，恢复当前工作区构建能力。
+	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj -v minimal -p:LangVersion=preview` 通过（245 warnings，0 errors）。
+
+- **[networkplugin]**: 精简 `networkplugin/UI` 下的过度防御性实现，聚焦交易 UI 热点与状态组件。
+	- `UI/Widgets/TradeSlotWidget.cs`：删除常规按钮/Tooltip/详情面板流程上的静默 `try-catch`，保留 `TrySetCardImage` 的必要兜底；同时收缩重复判空并将保留注释统一为中文。
+	- `UI/Factories/TradePanelRuntimeFactory.cs`：删除 `FindObjectsByType`、按钮模板解析、运行时面板识别等常规路径上的多余 `try-catch` 与部分重复 null 守卫，保留最外层构建失败兜底。
+	- `UI/Panels/TradePanel.cs`：继续清理 partner picker / 运行时 dialog 辅助路径上的静默 `try-catch` 与反射 helper 冗余保护，保留交易会话初始化、网络请求和资源构建外层兜底。
+	- `UI/Dialogs/TradeDetailDialog.cs`：清理 UI 主路径、返回 TradePanel、列表重建与按钮回调中的过度 `try-catch`，保留交易结算、取消请求、异步回跳和原生 overlay 构建外层的关键保护。
+	- `UI/Components/NetworkStatusIndicator.cs`：删除空转分支与未使用字段，保留重连时的关键异常处理。
+	- `UI/Widgets/DeadPlayerEntryWidget.cs`：收敛重复背景解析逻辑。
+	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj -v minimal -p:LangVersion=preview` 通过（248 warnings，0 errors）。
+
 - **[networkplugin]**: 第二批防御性代码简化——移除 `networkplugin/` 中大量不必要的 try-catch、冗余 null 守卫与过度防御性封装，共涉及 14 个文件：
   - `TradeSyncPatch`、`ExitGamePatch`、`NetworkIdentityTracker`：`TryGetClient/TryGetNetworkClient/TryGetNetworkManager` 改为表达式体。
   - `AiDefaultMimicLocalAnimationPatch`：`IsEnabled/IsNetworkConnected` 改为表达式体；`Postfix` 中内层 `Singleton<GameDirector>.Instance?.PlayerUnitView` try-catch 删除（null-conditional 已足够）。

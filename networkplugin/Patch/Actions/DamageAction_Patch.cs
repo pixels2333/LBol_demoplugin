@@ -30,7 +30,7 @@ public class DamageAction_Patch
     /// <summary>
     /// 依赖注入服务提供者（用于解析网络相关服务）。
     /// </summary>
-    private static IServiceProvider serviceProvider => ModService.ServiceProvider;
+    private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
     #endregion
 
@@ -47,7 +47,7 @@ public class DamageAction_Patch
     /// <param name="gunType">武器类型。</param>
     [HarmonyPatch(typeof(DamageAction), MethodType.Constructor, typeof(Unit), typeof(IEnumerable<Unit>), typeof(DamageInfo), typeof(string), typeof(GunType))]
     [HarmonyPostfix]
-    public static void Constructor1_Postfix(DamageAction __instance, Unit source, IEnumerable<Unit> targets, DamageInfo damageInfo, string gunName, GunType gunType)
+    public static void MultiTargetConstructor_Postfix(DamageAction __instance, Unit source, IEnumerable<Unit> targets, DamageInfo damageInfo, string gunName, GunType gunType)
     {
         try
         {
@@ -58,20 +58,11 @@ public class DamageAction_Patch
             }
 
             // 解析同步管理器。
-            ISynchronizationManager syncManager = GetSyncManager();
-            if (syncManager == null)
-            {
-                return;
-            }
-
             // 解析网络管理器。
-            INetworkManager networkManager = GetNetworkManager();
-            if (networkManager == null)
+            if (!TryGetSyncContext(out ISynchronizationManager syncManager, out INetworkPlayer player))
             {
                 return;
             }
-
-            INetworkPlayer player = networkManager.GetSelf();
 
             // 只同步“玩家造成的伤害”，避免把敌人内部结算也广播出去。
             if (source is not PlayerUnit)
@@ -132,7 +123,7 @@ public class DamageAction_Patch
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[DamageSync] Constructor1_Postfix 错误: {ex.Message}");
+            Plugin.Logger?.LogError($"[DamageSync] MultiTargetConstructor_Postfix 错误: {ex.Message}");
         }
     }
 
@@ -147,7 +138,7 @@ public class DamageAction_Patch
     /// <param name="gunType">武器类型。</param>
     [HarmonyPatch(typeof(DamageAction), MethodType.Constructor, typeof(Unit), typeof(Unit), typeof(DamageInfo), typeof(string), typeof(GunType))]
     [HarmonyPostfix]
-    public static void Constructor2_Postfix(DamageAction __instance, Unit source, Unit unit, DamageInfo damageInfo, string gunName, GunType gunType)
+    public static void SingleTargetConstructor_Postfix(DamageAction __instance, Unit source, Unit unit, DamageInfo damageInfo, string gunName, GunType gunType)
     {
         try
         {
@@ -158,20 +149,11 @@ public class DamageAction_Patch
             }
 
             // 解析同步管理器。
-            ISynchronizationManager syncManager = GetSyncManager();
-            if (syncManager == null)
-            {
-                return;
-            }
-
             // 解析网络管理器。
-            INetworkManager networkManager = GetNetworkManager();
-            if (networkManager == null)
+            if (!TryGetSyncContext(out ISynchronizationManager syncManager, out INetworkPlayer player))
             {
                 return;
             }
-
-            INetworkPlayer player = networkManager.GetSelf();
 
             // 只同步“玩家造成的伤害”。
             if (source is not PlayerUnit)
@@ -214,7 +196,7 @@ public class DamageAction_Patch
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[DamageSync] Constructor2_Postfix 错误: {ex.Message}");
+            Plugin.Logger?.LogError($"[DamageSync] SingleTargetConstructor_Postfix 错误: {ex.Message}");
         }
     }
 
@@ -370,8 +352,8 @@ public class DamageAction_Patch
     {
         try
         {
-            Plugin.LogSynchronizationManagerResolveFromPatch(nameof(DamageAction_Patch), serviceProvider);
-            return serviceProvider?.GetService<ISynchronizationManager>();
+            Plugin.LogSynchronizationManagerResolveFromPatch(nameof(DamageAction_Patch), ServiceProvider);
+            return ServiceProvider?.GetService<ISynchronizationManager>();
         }
         catch
         {
@@ -387,12 +369,38 @@ public class DamageAction_Patch
     {
         try
         {
-            return serviceProvider?.GetService<INetworkManager>();
+            return ServiceProvider?.GetService<INetworkManager>();
         }
         catch
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// 尝试解析发送伤害同步事件所需的上下文。
+    /// </summary>
+    /// <param name="syncManager">同步管理器。</param>
+    /// <param name="player">当前本地网络玩家。</param>
+    /// <returns>同步管理器和网络管理器都解析成功时返回 true。</returns>
+    private static bool TryGetSyncContext(out ISynchronizationManager syncManager, out INetworkPlayer player)
+    {
+        syncManager = GetSyncManager();
+        if (syncManager == null)
+        {
+            player = null;
+            return false;
+        }
+
+        INetworkManager networkManager = GetNetworkManager();
+        if (networkManager == null)
+        {
+            player = null;
+            return false;
+        }
+
+        player = networkManager.GetSelf();
+        return true;
     }
 
     #endregion

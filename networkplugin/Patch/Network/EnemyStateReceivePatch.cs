@@ -31,6 +31,18 @@ public static class EnemyStateReceivePatch
     private static readonly object _lock = new();
     private static readonly Dictionary<string, PendingState> _pendingByEnemyKey = new(StringComparer.Ordinal);
 
+    private static INetworkClient TryGetNetworkClient()
+        => ServiceProvider?.GetService<INetworkClient>();
+
+    private static void SetSubscriptionState(INetworkClient client, bool subscribed)
+    {
+        _subscribedClient = subscribed ? client : null;
+        _subscribed = subscribed;
+    }
+
+    private static bool IsSelfHost()
+        => NetworkIdentityTracker.GetSelfIsHost();
+
     private sealed class PendingState
     {
         public long Timestamp;
@@ -58,7 +70,7 @@ public static class EnemyStateReceivePatch
                 NetworkIdentityTracker.EnsureSubscribed(client);
             }
 
-            if (__instance == null || __instance.Battle == null || NetworkIdentityTracker.GetSelfIsHost())
+            if (__instance == null || __instance.Battle == null || IsSelfHost())
             {
                 return;
             }
@@ -66,9 +78,6 @@ public static class EnemyStateReceivePatch
             TryApplyPendingToEnemy(__instance);
         }
     }
-
-    private static INetworkClient TryGetNetworkClient()
-        => ServiceProvider?.GetService<INetworkClient>();
 
     private static void EnsureSubscribed(INetworkClient client)
     {
@@ -94,13 +103,11 @@ public static class EnemyStateReceivePatch
         {
             client.OnGameEventReceived += _onGameEventReceived;
             client.OnConnectionStateChanged += _onConnectionStateChanged;
-            _subscribedClient = client;
-            _subscribed = true;
+            SetSubscriptionState(client, true);
         }
         catch
         {
-            _subscribedClient = null;
-            _subscribed = false;
+            SetSubscriptionState(null, false);
         }
     }
 
@@ -362,6 +369,12 @@ public static class EnemyStateReceivePatch
         return false;
     }
 
+    private static bool TryGetProperty(JsonElement root, string name, out JsonElement element)
+    {
+        element = default;
+        return root.ValueKind == JsonValueKind.Object && root.TryGetProperty(name, out element);
+    }
+
     private static string GetString(JsonElement root, string name)
     {
         try
@@ -380,7 +393,7 @@ public static class EnemyStateReceivePatch
     {
         try
         {
-            if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty(name, out JsonElement el))
+            if (!TryGetProperty(root, name, out JsonElement el))
             {
                 return false;
             }
@@ -404,7 +417,7 @@ public static class EnemyStateReceivePatch
         value = default;
         try
         {
-            if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty(name, out JsonElement el))
+            if (!TryGetProperty(root, name, out JsonElement el))
             {
                 return false;
             }
@@ -427,7 +440,7 @@ public static class EnemyStateReceivePatch
         value = default;
         try
         {
-            if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty(name, out JsonElement el))
+            if (!TryGetProperty(root, name, out JsonElement el))
             {
                 return false;
             }

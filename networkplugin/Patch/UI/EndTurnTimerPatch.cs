@@ -48,17 +48,7 @@ public class EndTurnTimerPatch
     /// 判断当前是否已经连接到联机服务。
     /// </summary>
     private static bool IsNetworkConnected()
-    {
-        try
-        {
-            INetworkClient networkClient = serviceProvider?.GetService<INetworkClient>(); // 从 DI 拉取网络客户端
-            return networkClient?.IsConnected == true; // 安全判空后返回连接状态
-        }
-        catch
-        {
-            return false;
-        }
-    }
+        => serviceProvider?.GetService<INetworkClient>()?.IsConnected == true;
 
     /// <summary>
     /// 通过反射获取当前 PlayBoard 上的战斗实例。
@@ -179,24 +169,17 @@ public class EndTurnTimerPatch
     [HarmonyPostfix]
     public static void BattleController_StartPlayerTurn_Postfix(BattleController __instance)
     {
-        try
+        if (!IsNetworkConnected()) // 仅在联网时启用倒计时逻辑
         {
-            if (!IsNetworkConnected()) // 仅在联网时启用倒计时逻辑
-            {
-                return;
-            }
-
-            if (TurnTimeLimitSeconds <= 0f) // 配置为 0/负数则跳过
-            {
-                return;
-            }
-
-            ResetTimer();
+            return;
         }
-        catch (Exception ex)
+
+        if (TurnTimeLimitSeconds <= 0f) // 配置为 0/负数则跳过
         {
-            Plugin.Logger?.LogError($"[EndTurnTimerPatch] BattleController_StartPlayerTurn_Postfix 错误: {ex}");
+            return;
         }
+
+        ResetTimer();
     }
 
     /// <summary>

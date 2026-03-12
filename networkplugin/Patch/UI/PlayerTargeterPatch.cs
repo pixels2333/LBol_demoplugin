@@ -46,17 +46,7 @@ public static class PlayerTargeterPatch
     }
 
     private static bool IsConnected()
-    {
-        try
-        {
-            INetworkClient client = ServiceProvider?.GetService<INetworkClient>();
-            return client?.IsConnected == true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
+        => ServiceProvider?.GetService<INetworkClient>()?.IsConnected == true;
 
     private static bool ShouldEnable(TargetType targetType)
         => IsConnected() && targetType == TargetType.SingleEnemy;
@@ -91,7 +81,7 @@ public static class PlayerTargeterPatch
         }
         catch
         {
-            // ignored
+            // 忽略反射失败，继续尝试其他目标来源。
         }
 
         try
@@ -105,7 +95,7 @@ public static class PlayerTargeterPatch
         }
         catch
         {
-            // ignored
+            // 忽略反射失败，继续尝试其他目标来源。
         }
 
         try
@@ -115,7 +105,7 @@ public static class PlayerTargeterPatch
         }
         catch
         {
-            // ignored
+            // 忽略反射失败，继续尝试其他目标来源。
         }
     }
 
@@ -123,72 +113,50 @@ public static class PlayerTargeterPatch
     [HarmonyPostfix]
     private static void TargetSelector_UpdateSingleEnemy_Postfix(TargetSelector __instance)
     {
-        try
+        if (__instance == null)
         {
-            if (__instance == null)
+            return;
+        }
+
+        TargetType targetType = GetTargetType(__instance);
+        if (!ShouldEnable(targetType))
+        {
+            return;
+        }
+
+        Mouse mouse = Mouse.current;
+        if (mouse == null)
+        {
+            return;
+        }
+
+        Vector2 screenPosition = mouse.position.ReadValue();
+        if (screenPosition == Vector2.zero)
+        {
+            return;
+        }
+
+        Ray ray = CameraController.MainCamera.ScreenPointToRay(screenPosition);
+        bool selected = false;
+        foreach (UnitView remote in OtherPlayersOverlayPatch.SnapshotRemoteCharacterUnitViews())
+        {
+            bool hit = !selected && remote.SelectorCollider != null &&
+                remote.SelectorCollider.Raycast(ray, out _, float.PositiveInfinity);
+
+            remote.SelectingVisible = hit;
+            if (hit)
             {
-                return;
-            }
-
-            TargetType targetType = GetTargetType(__instance);
-            if (!ShouldEnable(targetType))
-            {
-                return;
-            }
-
-            Mouse mouse = Mouse.current;
-            if (mouse == null)
-            {
-                return;
-            }
-
-            Vector2 screenPosition = mouse.position.ReadValue();
-            if (screenPosition == Vector2.zero)
-            {
-                return;
-            }
-
-            Ray ray = CameraController.MainCamera.ScreenPointToRay(screenPosition);
-            bool selected = false;
-            foreach (UnitView remote in OtherPlayersOverlayPatch.SnapshotRemoteCharacterUnitViews())
-            {
-                if (remote == null)
-                {
-                    continue;
-                }
-
-                bool hit = false;
-                try
-                {
-                    if (!selected && remote.SelectorCollider != null)
-                    {
-                        hit = remote.SelectorCollider.Raycast(ray, out _, float.PositiveInfinity);
-                    }
-                }
-                catch
-                {
-                    hit = false;
-                }
-
-                remote.SelectingVisible = hit;
-                if (hit)
-                {
-                    selected = true;
-                }
-            }
-
-            if (selected && OtherPlayersOverlayPatch.TryGetPointedRemotePlayer(screenPosition, out string playerId, out string playerName))
-            {
-                RemotePlayerProxyEnemy proxy = GetOrCreateProxyTarget(playerId, playerName);
-                if (proxy != null)
-                {
-                    SetPendingTarget(__instance, proxy);
-                }
+                selected = true;
             }
         }
-        catch
+
+        if (selected && OtherPlayersOverlayPatch.TryGetPointedRemotePlayer(screenPosition, out string playerId, out string playerName))
         {
-            // ignored
+            RemotePlayerProxyEnemy proxy = GetOrCreateProxyTarget(playerId, playerName);
+            if (proxy != null)
+            {
+                SetPendingTarget(__instance, proxy);
+            }
         }
     }
 
@@ -196,52 +164,39 @@ public static class PlayerTargeterPatch
     [HarmonyPrefix]
     private static bool TargetSelector_GetPointedEnemy_Prefix(Vector2 screenPosition, ref EnemyUnit __result)
     {
-        try
-        {
-            if (!IsConnected())
-            {
-                return true;
-            }
-
-            if (!OtherPlayersOverlayPatch.TryGetPointedRemotePlayer(screenPosition, out string playerId, out string playerName))
-            {
-                return true;
-            }
-
-            RemotePlayerProxyEnemy proxy = GetOrCreateProxyTarget(playerId, playerName);
-            if (proxy == null)
-            {
-                return true;
-            }
-
-            __result = proxy;
-            return false;
-        }
-        catch
+        if (!IsConnected())
         {
             return true;
         }
+
+        if (!OtherPlayersOverlayPatch.TryGetPointedRemotePlayer(screenPosition, out string playerId, out string playerName))
+        {
+            return true;
+        }
+
+        RemotePlayerProxyEnemy proxy = GetOrCreateProxyTarget(playerId, playerName);
+        if (proxy == null)
+        {
+            return true;
+        }
+
+        __result = proxy;
+        return false;
     }
 
     [HarmonyPatch(typeof(TargetSelector), nameof(TargetSelector.EnableSelector), typeof(HandCard))]
     [HarmonyPostfix]
     private static void TargetSelector_EnableSelector_Hand_Postfix(HandCard hand)
     {
-        try
+        TargetType? targetType = hand?.Card?.Config?.TargetType;
+        if (targetType == null)
         {
-            if (hand?.Card?.Config?.TargetType == null)
-            {
-                return;
-            }
-
-            if (ShouldEnable(hand.Card.Config.TargetType.Value))
-            {
-                OtherPlayersOverlayPatch.SetRemoteCharacterTargetingEnabled(true);
-            }
+            return;
         }
-        catch
+
+        if (ShouldEnable(targetType.Value))
         {
-            // ignored
+            OtherPlayersOverlayPatch.SetRemoteCharacterTargetingEnabled(true);
         }
     }
 
@@ -249,21 +204,14 @@ public static class PlayerTargeterPatch
     [HarmonyPostfix]
     private static void TargetSelector_EnableSelector_Us_Postfix(UltimateSkill us)
     {
-        try
+        if (us == null)
         {
-            if (us == null)
-            {
-                return;
-            }
-
-            if (ShouldEnable(us.TargetType))
-            {
-                OtherPlayersOverlayPatch.SetRemoteCharacterTargetingEnabled(true);
-            }
+            return;
         }
-        catch
+
+        if (ShouldEnable(us.TargetType))
         {
-            // ignored
+            OtherPlayersOverlayPatch.SetRemoteCharacterTargetingEnabled(true);
         }
     }
 
@@ -271,21 +219,14 @@ public static class PlayerTargeterPatch
     [HarmonyPostfix]
     private static void TargetSelector_EnableSelector_Doll_Postfix(Doll doll)
     {
-        try
+        if (doll == null)
         {
-            if (doll == null)
-            {
-                return;
-            }
-
-            if (ShouldEnable(doll.TargetType))
-            {
-                OtherPlayersOverlayPatch.SetRemoteCharacterTargetingEnabled(true);
-            }
+            return;
         }
-        catch
+
+        if (ShouldEnable(doll.TargetType))
         {
-            // ignored
+            OtherPlayersOverlayPatch.SetRemoteCharacterTargetingEnabled(true);
         }
     }
 
@@ -293,22 +234,15 @@ public static class PlayerTargeterPatch
     [HarmonyPrefix]
     private static void TargetSelector_DisableSelector_Prefix()
     {
-        try
+        if (!IsConnected())
         {
-            if (!IsConnected())
-            {
-                return;
-            }
-
-            OtherPlayersOverlayPatch.SetRemoteCharacterTargetingEnabled(false);
-            foreach (UnitView remote in OtherPlayersOverlayPatch.SnapshotRemoteCharacterUnitViews())
-            {
-                remote?.SelectingVisible = false;
-            }
+            return;
         }
-        catch
+
+        OtherPlayersOverlayPatch.SetRemoteCharacterTargetingEnabled(false);
+        foreach (UnitView remote in OtherPlayersOverlayPatch.SnapshotRemoteCharacterUnitViews())
         {
-            // ignored
+            remote.SelectingVisible = false;
         }
     }
 }

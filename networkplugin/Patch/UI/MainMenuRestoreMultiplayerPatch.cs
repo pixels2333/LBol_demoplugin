@@ -26,6 +26,19 @@ public static class MainMenuRestoreMultiplayerPatch
     private static INetworkClient TryGetNetworkClient()
         => ServiceProvider?.GetService<INetworkClient>();
 
+    private static void RestoreSinglePlayer(GameRunSaveData save, string logMessage, string errorMessage)
+    {
+        try
+        {
+            Plugin.Logger?.LogInfo(logMessage);
+            GameMaster.RestoreGameRun(save);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"{errorMessage}: {ex.Message}");
+        }
+    }
+
     [HarmonyPatch(typeof(MainMenuPanel), nameof(MainMenuPanel.UI_RestoreGameClicked))]
     [HarmonyPrefix]
     public static bool MainMenuPanel_UI_RestoreGameClicked_Prefix()
@@ -75,28 +88,10 @@ public static class MainMenuRestoreMultiplayerPatch
                         {
                             Plugin.Logger?.LogError($"[继续游戏] 作为房主继续失败: {ex.Message}");
                             // 降级：至少尝试单人继续。
-                            try
-                            {
-                                GameMaster.RestoreGameRun(save);
-                            }
-                            catch
-                            {
-                                // ignored
-                            }
+                            RestoreSinglePlayer(save, "[继续游戏] 房主继续失败，回退为单人继续", "[继续游戏] 回退为单人继续失败");
                         }
                     },
-                    OnCancel = () =>
-                    {
-                        try
-                        {
-                            Plugin.Logger?.LogInfo("[继续游戏] 用户选择：单人继续");
-                            GameMaster.RestoreGameRun(save);
-                        }
-                        catch (Exception ex)
-                        {
-                            Plugin.Logger?.LogError($"[继续游戏] 单人继续失败: {ex.Message}");
-                        }
-                    },
+                    OnCancel = () => RestoreSinglePlayer(save, "[继续游戏] 用户选择：单人继续", "[继续游戏] 单人继续失败"),
                 }
             );
 

@@ -45,6 +45,23 @@ public static class SpawnedEnemyManager
         return new SuppressBroadcastScope();
     }
 
+    private static void TryRestoreEnemyBattleRng(BattleController battleController, in RngSwapState state)
+    {
+        if (!state.Swapped || battleController?.GameRun == null)
+        {
+            return;
+        }
+
+        try
+        {
+            Traverse.Create(battleController.GameRun).Field("<EnemyBattleRng>k__BackingField").SetValue(state.OriginalEnemyBattleRng);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[SpawnedEnemyManager] Failed to restore EnemyBattleRng: {ex.Message}");
+        }
+    }
+
     private static ulong HashStable(string value)
     {
         if (string.IsNullOrEmpty(value))
@@ -102,6 +119,7 @@ public static class SpawnedEnemyManager
                 // 仅在“生成敌人”这段窗口内，临时固定 EnemyBattleRng，尽量减少对其它随机行为的影响。
                 // Seed 由 RootSeed + 关键参数 + 计数器组成：只要各端 RootSeed 与生成顺序一致即可确定性复现。
                 ulong seed = gameRun.RootSeed;
+                int spawnerRootIndex = spawner?.RootIndex ?? 0;
                 seed = unchecked(seed + (ulong)(rootIndex + 1));
                 seed = unchecked(seed + (ulong)(EnemySpawnCount + 1));
                 seed = unchecked(seed + (ulong)(spawner?.RootIndex ?? 0));
@@ -192,17 +210,7 @@ public static class SpawnedEnemyManager
             }
             finally
             {
-                try
-                {
-                    if (__state.Swapped && __instance?.GameRun != null)
-                    {
-                        Traverse.Create(__instance.GameRun).Field("<EnemyBattleRng>k__BackingField").SetValue(__state.OriginalEnemyBattleRng);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Plugin.Logger?.LogError($"[SpawnedEnemyManager] Failed to restore EnemyBattleRng: {ex.Message}");
-                }
+                TryRestoreEnemyBattleRng(__instance, in __state);
             }
         }
     }

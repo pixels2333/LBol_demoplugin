@@ -9,31 +9,28 @@ using NetworkPlugin.Network.Client;
 namespace NetworkPlugin.Patch.UI;
 
 /// <summary>
-/// Shared, consistent user-facing messages for Trade entry points.
-/// Keep strings centralized so GapOptions and Shop button behave the same.
+/// 统一管理 Trade 入口的用户提示文案。
+/// 保持字符串集中定义，确保 GapOptions 和 Shop 按钮行为一致。
 /// </summary>
 internal static class TradeUiMessages
 {
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
-    private static ConfigManager TryGetConfig()
-        => ServiceProvider?.GetService<ConfigManager>();
 
-    private static INetworkClient TryGetNetworkClient()
-        => ServiceProvider?.GetService<INetworkClient>();
 
     public static bool IsTradeEnabledAndConnected(out string reason)
     {
         reason = null;
 
-        var config = TryGetConfig();
+        var serviceProvider = ServiceProvider;
+        var config = serviceProvider?.GetService<ConfigManager>();
         if (config?.AllowTrading?.Value != true)
         {
             reason = "交易功能已在配置中禁用。";
             return false;
         }
 
-        var client = TryGetNetworkClient();
+        var client = serviceProvider?.GetService<INetworkClient>();
         if (client == null || !client.IsConnected)
         {
             reason = "交易不可用（未连接到服务器）。";
@@ -45,19 +42,12 @@ internal static class TradeUiMessages
 
     public static void ShowTopMessage(string message)
     {
-        try
+        if (!UiManager.IsInitialized)
         {
-            if (!UiManager.IsInitialized)
-            {
-                return;
-            }
+            return;
+        }
 
-            UiManager.GetPanel<TopMessagePanel>().ShowMessage(message);
-        }
-        catch
-        {
-            // ignored
-        }
+        UiManager.GetPanel<TopMessagePanel>()?.ShowMessage(message);
     }
 
     public static void ShowTradePanelMissing()

@@ -10,8 +10,8 @@ using NetworkPlugin.Network.Client;
 namespace NetworkPlugin.Patch.UI;
 
 /// <summary>
-/// Debug-only: when enabled, mirrors the local player's battle animations to the virtual remote player (PlayerId=aidefault).
-/// This helps validate the "remote player" render path in battle without a real network peer.
+/// 仅用于调试：启用后，把本地玩家的战斗动画镜像到虚拟远程玩家（PlayerId=aidefault）。
+/// 这样可以在没有真实网络对端时验证“远程玩家”渲染路径。
 /// </summary>
 [HarmonyPatch]
 internal static class AiDefaultMimicLocalAnimationPatch
@@ -28,63 +28,55 @@ internal static class AiDefaultMimicLocalAnimationPatch
     }
 
     private static bool IsNetworkConnected()
-    {
-        var client = ServiceProvider?.GetService<INetworkClient>();
-        return client != null && client.IsConnected;
-    }
+        => ServiceProvider?.GetService<INetworkClient>()?.IsConnected == true;
 
     [HarmonyPatch(typeof(UnitView), "PlayAnimation", typeof(string))]
     [HarmonyPostfix]
     private static void UnitView_PlayAnimation_Postfix(UnitView __instance, string animationName)
     {
+        if (_isMirroring)
+        {
+            return;
+        }
+
+        if (!IsEnabled())
+        {
+            return;
+        }
+
+        // 避免影响真实联机对局。
+        if (IsNetworkConnected())
+        {
+            return;
+        }
+
+        UnitView local = Singleton<GameDirector>.Instance?.PlayerUnitView;
+        if (local == null || __instance == null)
+        {
+            return;
+        }
+
+        // 避免调试角色看起来像是承受了双倍受击动画。
+        if (string.Equals(animationName, "hit", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        // 只镜像本地玩家自己的 UnitView 动画。
+        if (!ReferenceEquals(__instance, local))
+        {
+            return;
+        }
+
+        if (!OtherPlayersOverlayPatch.TryGetRemoteCharacterUnitView("aidefault", out UnitView remote))
+        {
+            return;
+        }
+
+        _isMirroring = true;
         try
         {
-            if (_isMirroring)
-            {
-                return;
-            }
-
-            if (!IsEnabled())
-            {
-                return;
-            }
-
-            // Avoid affecting real multiplayer sessions.
-            if (IsNetworkConnected())
-            {
-                return;
-            }
-
-            var local = Singleton<GameDirector>.Instance?.PlayerUnitView;
-
-            if (local == null || __instance == null)
-            {
-                return;
-            }
-
-            // Keep the debug avatar from looking like it is taking double damage.
-            if (string.Equals(animationName, "hit", StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
-
-            // Only mirror from the local player's UnitView.
-            if (!ReferenceEquals(__instance, local))
-            {
-                return;
-            }
-
-            if (!OtherPlayersOverlayPatch.TryGetRemoteCharacterUnitView("aidefault", out UnitView remote) || remote == null)
-            {
-                return;
-            }
-
-            _isMirroring = true;
             remote.PlayAnimation(animationName);
-        }
-        catch
-        {
-            // ignored
         }
         finally
         {

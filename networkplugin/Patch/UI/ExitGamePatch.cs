@@ -36,14 +36,12 @@ public static class ExitGamePatch
 
     /// <summary>
     /// 尝试从 DI 容器中获取 <see cref="INetworkClient"/> 实例。
-    /// 捕获所有异常，防止因依赖未注册导致补丁崩溃。
     /// </summary>
     private static INetworkClient TryGetNetworkClient()
         => ServiceProvider?.GetService<INetworkClient>();
 
     /// <summary>
     /// 尝试从 DI 容器中获取 <see cref="INetworkManager"/> 实例。
-    /// 捕获所有异常，保证补丁的健壮性。
     /// </summary>
     private static INetworkManager TryGetNetworkManager()
         => ServiceProvider?.GetService<INetworkManager>();
@@ -57,9 +55,7 @@ public static class ExitGamePatch
     /// 只要存在网络客户端且 <c>IsConnected == true</c> 即视为联机中。
     /// </summary>
     private static bool IsMultiplayerConnected()
-    {
-        return TryGetNetworkClient()?.IsConnected == true;
-    }
+        => TryGetNetworkClient()?.IsConnected == true;
 
     /// <summary>
     /// 尝试判断本地客户端是否为房主（Host）。
@@ -82,7 +78,7 @@ public static class ExitGamePatch
                 "IsHost",
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
             );
-            if (prop?.PropertyType == typeof(bool))
+            if (prop != null && prop.PropertyType == typeof(bool))
             {
                 return (bool)prop.GetValue(client);
             }
@@ -92,7 +88,7 @@ public static class ExitGamePatch
                 "IsHost",
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
             );
-            if (field?.FieldType == typeof(bool))
+            if (field != null && field.FieldType == typeof(bool))
             {
                 return (bool)field.GetValue(client);
             }
@@ -385,16 +381,16 @@ public static class ExitGamePatch
         if (!IsMultiplayerConnected())
             return true;
 
-        // In multiplayer, QuitGame should come from our explicit UI flows (which already run
-        // DisconnectAndReturnToMainMenu). If the game calls QuitGame internally (or due to an
-        // unrelated event), redirecting it here can cause surprising disconnects (e.g. right after EndTurn).
-        // Prefer to ignore and log a diagnostic to help track the caller.
+        // 在联机模式下，QuitGame 应该只由我们明确的 UI 流程触发，
+        // 因为这些流程已经执行了 DisconnectAndReturnToMainMenu。
+        // 如果游戏内部因为其他事件调用 QuitGame（例如 EndTurn 之后），
+        // 在这里重定向会带来意外断线或误退回主菜单，因此优先忽略并记录诊断日志。
         int count = ++_quitGameInterceptCount;
         Plugin.Logger?.LogWarning(
             $"[退出/返回主菜单] 拦截到 GameMaster.QuitGame 调用（第{count}次）。为避免误断线/误退回主菜单，本次已忽略。"
         );
 
-        // Stack trace is useful to identify the unexpected call site; keep it bounded.
+        // 调用栈有助于定位异常来源，但只在前几次记录，避免日志刷屏。
         if (count <= 3)
         {
             try
@@ -403,7 +399,7 @@ public static class ExitGamePatch
             }
             catch
             {
-                // ignore
+                // 忽略日志写入失败。
             }
         }
 

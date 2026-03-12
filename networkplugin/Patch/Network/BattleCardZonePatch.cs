@@ -24,6 +24,13 @@ public static class BattleCardZoneSyncPatch
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider; // 游戏启动时初始化，整局对战内保持稳定
 
     /// <summary>
+    /// 获取网络客户端。
+    /// </summary>
+    /// <returns>解析成功返回网络客户端，否则返回 null。</returns>
+    private static INetworkClient TryGetNetworkClient()
+        => ServiceProvider?.GetService<INetworkClient>();
+
+    /// <summary>
     /// 发送一条战斗相关的游戏事件到网络层。
     /// </summary>
     /// <param name="eventType">事件类型标识，通常来自 <see cref="NetworkMessageTypes"/>。</param>
@@ -33,7 +40,7 @@ public static class BattleCardZoneSyncPatch
         try
         {
             // 从 ServiceProvider 中解析出网络客户端
-            var networkClient = ServiceProvider?.GetService<INetworkClient>();
+            INetworkClient networkClient = TryGetNetworkClient();
             if (networkClient == null || !networkClient.IsConnected)
             {
                 // 没有客户端或未连接时，不做任何同步
