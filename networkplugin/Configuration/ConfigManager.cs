@@ -27,6 +27,9 @@ public partial class ConfigManager
         // 绑定功能开关配置
         BindFeatureToggles(configFile);
 
+        // 绑定 UI 配置
+        BindUiSettings(configFile);
+
         // 绑定性能参数配置
         BindPerformanceSettings(configFile);
 
