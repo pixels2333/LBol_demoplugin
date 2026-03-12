@@ -19,6 +19,9 @@ public static class MapCheckpointSyncPatch
 {
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
+    private static INetworkClient TryGetNetworkClient()
+        => ServiceProvider?.GetService<INetworkClient>();
+
     private static ReconnectionManager? TryGetReconnectionManager()
         => ServiceProvider?.GetService<ReconnectionManager>();
 
@@ -39,6 +42,16 @@ public static class MapCheckpointSyncPatch
         {
             return false;
         }
+    }
+
+    private static void TryMarkCheckpoint(string reason, GameRunController? run)
+    {
+        if (!IsHostConnected())
+        {
+            return;
+        }
+
+        TryGetReconnectionManager()?.MarkMapCheckpoint(reason, TryBuildCurrentNodeKey(run));
     }
 
     private static string? TryBuildCurrentNodeKey(GameRunController? run)
@@ -67,12 +80,7 @@ public static class MapCheckpointSyncPatch
         {
             try
             {
-                if (!IsHostConnected())
-                {
-                    return;
-                }
-
-                TryGetReconnectionManager()?.MarkMapCheckpoint("next_stage", TryBuildCurrentNodeKey(__instance));
+                TryMarkCheckpoint("next_stage", __instance);
             }
             catch
             {
@@ -95,12 +103,7 @@ public static class MapCheckpointSyncPatch
                     return;
                 }
 
-                if (!IsHostConnected())
-                {
-                    return;
-                }
-
-                TryGetReconnectionManager()?.MarkMapCheckpoint("station_finish", TryBuildCurrentNodeKey(__instance?.GameRun));
+                TryMarkCheckpoint("station_finish", __instance?.GameRun);
             }
             catch
             {
@@ -117,13 +120,8 @@ public static class MapCheckpointSyncPatch
         {
             try
             {
-                if (!IsHostConnected())
-                {
-                    return;
-                }
-
                 GameRunController? run = GameStateUtils.GetCurrentGameRun();
-                TryGetReconnectionManager()?.MarkMapCheckpoint("reward_closed", TryBuildCurrentNodeKey(run));
+                TryMarkCheckpoint("reward_closed", run);
             }
             catch
             {
@@ -140,13 +138,8 @@ public static class MapCheckpointSyncPatch
         {
             try
             {
-                if (!IsHostConnected())
-                {
-                    return;
-                }
-
                 GameRunController? run = GameStateUtils.GetCurrentGameRun();
-                TryGetReconnectionManager()?.MarkMapCheckpoint("shop_after_buying", TryBuildCurrentNodeKey(run));
+                TryMarkCheckpoint("shop_after_buying", run);
             }
             catch
             {
@@ -163,13 +156,8 @@ public static class MapCheckpointSyncPatch
         {
             try
             {
-                if (!IsHostConnected())
-                {
-                    return;
-                }
-
                 GameRunController? run = GameStateUtils.GetCurrentGameRun();
-                TryGetReconnectionManager()?.MarkMapCheckpoint("gap_option_selected", TryBuildCurrentNodeKey(run));
+                TryMarkCheckpoint("gap_option_selected", run);
             }
             catch
             {

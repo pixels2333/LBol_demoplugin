@@ -262,14 +262,6 @@ public static class DebutBonusSyncPatch
         return client != null && client.IsConnected;
     }
 
-    private static bool IsSelfHost()
-    {
-        lock (_syncLock)
-        {
-            return _selfIsHost;
-        }
-    }
-
     [HarmonyPatch(typeof(Debut), nameof(Debut.RollBonus))]
     private static class Debut_RollBonus_Sync
     {
@@ -288,7 +280,13 @@ public static class DebutBonusSyncPatch
                     return;
                 }
 
-                if (IsSelfHost())
+                bool isSelfHost;
+                lock (_syncLock)
+                {
+                    isSelfHost = _selfIsHost;
+                }
+
+                if (isSelfHost)
                 {
                     if (!TryGetFloat(__instance.Storage, "$bonusNo1", out float b1f) ||
                         !TryGetFloat(__instance.Storage, "$bonusNo2", out float b2f))

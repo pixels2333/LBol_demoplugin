@@ -143,6 +143,18 @@ public class EventSyncPatch
         }
     }
 
+    private static bool TryGetConnectedClient(out INetworkClient networkClient)
+    {
+        networkClient = null;
+        if (serviceProvider == null)
+        {
+            return false;
+        }
+
+        networkClient = serviceProvider.GetService<INetworkClient>();
+        return networkClient != null && networkClient.IsConnected;
+    }
+
     private static void OnGameEventReceived(string eventType, object payload)
     {
         // 只处理本补丁关心的消息。
@@ -315,13 +327,7 @@ public class EventSyncPatch
     {
         try
         {
-            if (serviceProvider == null)
-            {
-                return;
-            }
-
-            var client = serviceProvider.GetService<INetworkClient>();
-            if (client == null || !client.IsConnected)
+            if (!TryGetConnectedClient(out INetworkClient client))
             {
                 return;
             }
@@ -562,15 +568,7 @@ public class EventSyncPatch
         {
             try
             {
-                // 服务未就绪时跳过。
-                if (serviceProvider == null)
-                {
-                    return;
-                }
-
-                // 客户端未连接不发送。
-                var networkClient = serviceProvider.GetService<INetworkClient>();
-                if (networkClient == null || !networkClient.IsConnected)
+                if (!TryGetConnectedClient(out INetworkClient networkClient))
                 {
                     return;
                 }
@@ -623,13 +621,7 @@ public class EventSyncPatch
         {
             try
             {
-                if (serviceProvider == null)
-                {
-                    return;
-                }
-
-                var networkClient = serviceProvider.GetService<INetworkClient>();
-                if (networkClient == null || !networkClient.IsConnected)
+                if (!TryGetConnectedClient(out INetworkClient networkClient))
                 {
                     return;
                 }
@@ -672,13 +664,7 @@ public class EventSyncPatch
         {
             try
             {
-                if (serviceProvider == null)
-                {
-                    return;
-                }
-
-                var networkClient = serviceProvider.GetService<INetworkClient>();
-                if (networkClient == null || !networkClient.IsConnected)
+                if (!TryGetConnectedClient(out INetworkClient networkClient))
                 {
                     return;
                 }
@@ -732,13 +718,7 @@ public class EventSyncPatch
         {
             try
             {
-                if (serviceProvider == null)
-                {
-                    return;
-                }
-
-                var networkClient = serviceProvider.GetService<INetworkClient>();
-                if (networkClient == null || !networkClient.IsConnected)
+                if (!TryGetConnectedClient(out INetworkClient networkClient))
                 {
                     return;
                 }
@@ -779,13 +759,7 @@ public class EventSyncPatch
         {
             try
             {
-                if (serviceProvider == null)
-                {
-                    return;
-                }
-
-                var networkClient = serviceProvider.GetService<INetworkClient>();
-                if (networkClient == null || !networkClient.IsConnected)
+                if (!TryGetConnectedClient(out INetworkClient networkClient))
                 {
                     return;
                 }
@@ -856,13 +830,7 @@ public class EventSyncPatch
         {
             try
             {
-                if (serviceProvider == null)
-                {
-                    return;
-                }
-
-                var networkClient = serviceProvider.GetService<INetworkClient>();
-                if (networkClient == null || !networkClient.IsConnected)
+                if (!TryGetConnectedClient(out INetworkClient networkClient))
                 {
                     return;
                 }
@@ -902,13 +870,7 @@ public class EventSyncPatch
         {
             try
             {
-                if (serviceProvider == null)
-                {
-                    return;
-                }
-
-                var networkClient = serviceProvider.GetService<INetworkClient>();
-                if (networkClient == null || !networkClient.IsConnected)
+                if (!TryGetConnectedClient(out INetworkClient networkClient))
                 {
                     return;
                 }
@@ -944,13 +906,7 @@ public class EventSyncPatch
         {
             try
             {
-                if (serviceProvider == null)
-                {
-                    return;
-                }
-
-                var networkClient = serviceProvider.GetService<INetworkClient>();
-                if (networkClient == null || !networkClient.IsConnected)
+                if (!TryGetConnectedClient(out INetworkClient networkClient))
                 {
                     return;
                 }
@@ -1219,13 +1175,7 @@ public class EventSyncPatch
         {
             try
             {
-                if (serviceProvider == null)
-                {
-                    return;
-                }
-
-                var networkClient = serviceProvider.GetService<INetworkClient>();
-                if (networkClient == null || !networkClient.IsConnected)
+                if (!TryGetConnectedClient(out INetworkClient networkClient))
                 {
                     return;
                 }

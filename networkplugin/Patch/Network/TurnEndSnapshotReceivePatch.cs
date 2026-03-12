@@ -158,6 +158,7 @@ public static class TurnEndSnapshotReceivePatch
                 {
                     fixedMana[i] = mana[i];
                 }
+
                 mana = fixedMana;
             }
 

@@ -50,8 +50,6 @@ public static class ShopTradeIconPatch
 
     private static TradeButtonUi _ui;
     private static TMP_FontAsset _defaultFont;
-    private static Sprite _whiteSprite;
-    private static Texture2D _whiteTexture;
 
     private static ShopPanel _cachedShopPanel;
 
@@ -194,20 +192,8 @@ public static class ShopTradeIconPatch
             return;
         }
 
-        // 直接读取 ShopPanel.shopBoard 字段作为统一父节点，确保与 cardServiceButton、returnButton 严格同级
-        Transform barParent = null;
-        try
-        {
-            var shopBoardGo = Traverse.Create(shopPanel).Field("shopBoard").GetValue<GameObject>();
-            if (shopBoardGo != null)
-            {
-                barParent = shopBoardGo.transform;
-            }
-        }
-        catch
-        {
-            barParent = null;
-        }
+        // 直接读取 ShopPanel.shopBoard 字段作为统一父节点，确保与 cardServiceButton、returnButton 严格同级。
+        Transform barParent = TryGetShopBoardTransform(shopPanel);
 
         if (barParent == null)
         {
@@ -471,16 +457,18 @@ public static class ShopTradeIconPatch
         }
 
         string lowerName = name.ToLowerInvariant();
-        return lowerName.Contains("label") || lowerName.Contains("text") || lowerName.Contains("title");
+        return lowerName is "label" or "text" or "title"
+            || lowerName.Contains("label")
+            || lowerName.Contains("text")
+            || lowerName.Contains("title");
     }
 
     private static int GetTransformDepth(Transform transform)
     {
         int depth = 0;
-        while (transform != null)
+        for (Transform current = transform; current != null; current = current.parent)
         {
             depth++;
-            transform = transform.parent;
         }
 
         return depth;
@@ -488,17 +476,45 @@ public static class ShopTradeIconPatch
 
     private static void CleanTooltipComponents(GameObject go)
     {
-        try
+        foreach (var behaviour in go.GetComponentsInChildren<Behaviour>(true))
         {
-            foreach (var b in go.GetComponentsInChildren<Behaviour>(true))
+            if (behaviour == null)
             {
-                if (b != null && b.GetType().Name.IndexOf("Tooltip", StringComparison.OrdinalIgnoreCase) >= 0)
-                    b.enabled = false;
+                continue;
+            }
+
+            bool isTooltipComponent = behaviour.GetType().Name.IndexOf("Tooltip", StringComparison.OrdinalIgnoreCase) >= 0;
+            if (isTooltipComponent)
+            {
+                behaviour.enabled = false;
             }
         }
-        catch { }
     }
 
+
+    private static Transform TryGetShopBoardTransform(ShopPanel shopPanel)
+    {
+        try
+        {
+            return Traverse.Create(shopPanel).Field("shopBoard").GetValue<GameObject>()?.transform;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static Button TryGetShopButton(ShopPanel shopPanel, string fieldName)
+    {
+        try
+        {
+            return Traverse.Create(shopPanel).Field(fieldName).GetValue<Button>();
+        }
+        catch
+        {
+            return null;
+        }
+    }
 
     private static bool TryGetShopButtons(ShopPanel shopPanel, out Button cardServiceButton, out Button returnButton)
     {
@@ -512,23 +528,15 @@ public static class ShopTradeIconPatch
 
         try
         {
-            cardServiceButton = Traverse.Create(shopPanel).Field("cardServiceButton").GetValue<Button>();
+            var traverse = Traverse.Create(shopPanel);
+            cardServiceButton = traverse.Field("cardServiceButton").GetValue<Button>();
+            returnButton = traverse.Field("returnButton").GetValue<Button>();
+            return cardServiceButton != null && returnButton != null;
         }
         catch
         {
-            cardServiceButton = null;
+            return false;
         }
-
-        try
-        {
-            returnButton = Traverse.Create(shopPanel).Field("returnButton").GetValue<Button>();
-        }
-        catch
-        {
-            returnButton = null;
-        }
-
-        return cardServiceButton != null && returnButton != null;
     }
 
     private static void BuildFloatingButton(ShopPanel shopPanel, Transform parent)
@@ -546,7 +554,6 @@ public static class ShopTradeIconPatch
         rect.anchoredPosition = new Vector2(-20f, -20f);
 
         var bg = root.AddComponent<Image>();
-        bg.sprite = GetWhiteSprite();
         bg.color = new Color(0f, 0f, 0f, 0.55f);
 
         var button = root.AddComponent<Button>();
@@ -563,7 +570,6 @@ public static class ShopTradeIconPatch
         iconRect.anchoredPosition = new Vector2(10f, 0f);
 
         var iconImg = iconGo.AddComponent<Image>();
-        iconImg.sprite = TryLoadTradeSprite() ?? GetWhiteSprite();
         iconImg.preserveAspect = true;
         iconImg.color = Color.white;
 
@@ -598,65 +604,34 @@ public static class ShopTradeIconPatch
     {
         try
         {
-            if (_ui != null)
+            if (_ui == null)
+            {
+                return;
+            }
+
+            RestoreButtonContainerState(_ui.CardServiceButton, _ui.CardServiceOriginalAnchoredPosition,
+                _ui.CardServiceOriginalSizeDelta, _ui.CardServiceOriginalScale, _ui.CardServiceOriginalLocalPosition,
+                "CardService");
+
+            RestoreButtonContainerState(_ui.ReturnButton, _ui.ReturnOriginalAnchoredPosition,
+                _ui.ReturnOriginalSizeDelta, _ui.ReturnOriginalScale, _ui.ReturnOriginalLocalPosition,
+                "ReturnButton");
+
+            if (_ui.Root != null)
             {
                 try
                 {
-                    // 恢复原生 CardService 容器属性
-                    if (_ui.CardServiceButton != null)
-                    {
-                        RectTransform ct = _ui.CardServiceButton.transform.parent as RectTransform;
-                        if (ct != null)
-                        {
-                            ct.anchoredPosition = _ui.CardServiceOriginalAnchoredPosition;
-                            ct.sizeDelta     = _ui.CardServiceOriginalSizeDelta;
-                            ct.localScale    = _ui.CardServiceOriginalScale;
-                            ct.localPosition = _ui.CardServiceOriginalLocalPosition;
-                        }
-                    }
+                    UnityEngine.Object.Destroy(_ui.Root);
                 }
                 catch (Exception ex)
                 {
-                    Plugin.Logger?.LogDebug($"[ShopTradeIcon] 恢复 CardService 属性时忽略错误: {ex.Message}");
-                }
-
-                try
-                {
-                    // 恢复原生 ReturnButton 容器属性
-                    if (_ui.ReturnButton != null)
-                    {
-                        RectTransform rt = _ui.ReturnButton.transform.parent as RectTransform;
-                        if (rt != null)
-                        {
-                            rt.anchoredPosition = _ui.ReturnOriginalAnchoredPosition;
-                            rt.sizeDelta     = _ui.ReturnOriginalSizeDelta;
-                            rt.localScale    = _ui.ReturnOriginalScale;
-                            rt.localPosition = _ui.ReturnOriginalLocalPosition;
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Plugin.Logger?.LogDebug($"[ShopTradeIcon] 恢复 ReturnButton 属性时忽略错误: {ex.Message}");
-                }
-
-                try
-                {
-                    // 销毁注入的交易按钮
-                    if (_ui.Root != null)
-                    {
-                        UnityEngine.Object.Destroy(_ui.Root);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Plugin.Logger?.LogDebug($"[ShopTradeIcon] Cleanup 过程中忽略小错误: {ex.Message}");
+                    Plugin.Logger?.LogDebug($"[ShopTradeIcon] 销毁交易按钮时出错: {ex.Message}");
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // 忽略清理阶段的异常，避免影响商店关闭流程。
+            Plugin.Logger?.LogDebug($"[ShopTradeIcon] Cleanup 过程中出错: {ex.Message}");
         }
         finally
         {
@@ -664,124 +639,32 @@ public static class ShopTradeIconPatch
         }
     }
 
-    private static void ApplyThreeButtonLayout_NoReparent(
-        RectTransform left,
-        RectTransform mid,
-        RectTransform right,
-        Vector2 leftOriginal,
-        Vector2 rightOriginal,
-        float marginX,
-        float paddingX,
-        float spacingX,
-        float scale)
+    private static void RestoreButtonContainerState(Button button, Vector2 anchoredPosition, Vector2 sizeDelta,
+        Vector3 localScale, Vector3 localPosition, string buttonName)
     {
-        if (left == null || mid == null || right == null)
+        if (button == null)
         {
             return;
         }
 
         try
         {
-            // 用户要求的布局规则：
-            // - 可用边界由左侧按钮的左边缘和右侧按钮的右边缘共同定义。
-            // - 将三个按钮按 left -> mid -> right 排成一行，并保留间距。
-            // - 允许缩放低于 0.8（不设最小值），但绝不放大。
-
-            float gap = Mathf.Max(0f, spacingX);
-
-            // 优先使用 rect.width 作为实际渲染宽度；若 rect 尚未就绪，再回退到 sizeDelta。
-            float leftW0 = Mathf.Abs(left.rect.width);
-            float midW0 = Mathf.Abs(mid.rect.width);
-            float rightW0 = Mathf.Abs(right.rect.width);
-            if (leftW0 <= 1e-3f) leftW0 = Mathf.Abs(left.sizeDelta.x);
-            if (midW0 <= 1e-3f) midW0 = Mathf.Abs(mid.sizeDelta.x);
-            if (rightW0 <= 1e-3f) rightW0 = Mathf.Abs(right.sizeDelta.x);
-
-            float leftH = left.sizeDelta.y;
-            float midH = mid.sizeDelta.y;
-            float rightH = right.sizeDelta.y;
-
-            // 先把 struct 参数复制到局部变量。
-            // 某些分析器会误报与 Harmony 补丁参数同名的成员访问。
-            Vector2 leftOrig = leftOriginal;
-            Vector2 rightOrig = rightOriginal;
-
-            // 把基于中心点的锚点换算为基于边缘的边界。
-            float L = leftOrig.x - leftW0 * 0.5f;
-            float R = rightOrig.x + rightW0 * 0.5f;
-
-            float y = (leftOrig.y + rightOrig.y) * 0.5f;
-
-            float have = (R - L) - (marginX * 2f) - (paddingX * 2f);
-            if (have <= 1e-3f)
+            RectTransform container = button.transform.parent as RectTransform;
+            if (container != null)
             {
-                return;
+                container.anchoredPosition = anchoredPosition;
+                container.sizeDelta = sizeDelta;
+                container.localScale = localScale;
+                container.localPosition = localPosition;
             }
-
-            float need = leftW0 + midW0 + rightW0 + gap * 2f;
-            if (need <= 1e-3f)
-            {
-                return;
-            }
-
-            float s = have / need;
-            if (float.IsNaN(s) || float.IsInfinity(s)) s = 1f;
-            s = Mathf.Min(1f, s);
-            if (s < 1e-5f) s = 1e-5f;
-
-            float leftW = leftW0 * s;
-            float midW = midW0 * s;
-            float rightW = rightW0 * s;
-
-            // 通过 sizeDelta.x 应用宽度，同时保留原有符号方向。
-            left.sizeDelta = new Vector2(Mathf.Sign(left.sizeDelta.x == 0 ? 1f : left.sizeDelta.x) * leftW, leftH);
-            mid.sizeDelta = new Vector2(Mathf.Sign(mid.sizeDelta.x == 0 ? 1f : mid.sizeDelta.x) * midW, midH);
-            right.sizeDelta = new Vector2(Mathf.Sign(right.sizeDelta.x == 0 ? 1f : right.sizeDelta.x) * rightW, rightH);
-
-            float startX = L + marginX + paddingX;
-            float leftCenterX = startX + leftW * 0.5f;
-            float midCenterX = leftCenterX + leftW * 0.5f + gap + midW * 0.5f;
-            float rightCenterX = midCenterX + midW * 0.5f + gap + rightW * 0.5f;
-
-            left.anchoredPosition = new Vector2(leftCenterX, y);
-            mid.anchoredPosition = new Vector2(midCenterX, y);
-            right.anchoredPosition = new Vector2(rightCenterX, y);
-
-            // ===== 详细日志输出：按钮位置、大小、间隙等属性 =====
-            Plugin.Logger?.LogInfo(
-                $"[ShopTradeIcon] ========== 三按钮布局计算结果 ==========\n" +
-                $"【按钮原始宽度】\n" +
-                $"  左侧按钮(卡牌服务): {leftW0:F2}\n" +
-                $"  中间按钮(交易):     {midW0:F2}\n" +
-                $"  右侧按钮(返回):     {rightW0:F2}\n" +
-                $"【按钮高度】\n" +
-                $"  左侧: {leftH:F2}, 中间: {midH:F2}, 右侧: {rightH:F2}\n" +
-                $"【边界信息】\n" +
-                $"  左边界(L): {L:F2}, 右边界(R): {R:F2}\n" +
-                $"【空间计算】\n" +
-                $"  可用宽度(have): {have:F2}\n" +
-                $"  需要宽度(need): {need:F2}\n" +
-                $"  缩放因子(s):    {s:F4}\n" +
-                $"【缩放后的宽度】\n" +
-                $"  左侧: {leftW:F2}, 中间: {midW:F2}, 右侧: {rightW:F2}\n" +
-                $"【间隙和位置】\n" +
-                $"  间隙宽度(gap): {gap:F2}\n" +
-                $"  Y坐标(y):      {y:F2}\n" +
-                $"【最终中心坐标】\n" +
-                $"  左侧(卡牌服务): ({leftCenterX:F2}, {y:F2})\n" +
-                $"  中间(交易):     ({midCenterX:F2}, {y:F2})\n" +
-                $"  右侧(返回):     ({rightCenterX:F2}, {y:F2})\n" +
-                $"【相邻按钮间距】\n" +
-                $"  左→中: {midCenterX - leftCenterX - leftW * 0.5f - midW * 0.5f:F2}\n" +
-                $"  中→右: {rightCenterX - midCenterX - midW * 0.5f - rightW * 0.5f:F2}\n" +
-                $"========================================"
-            );
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[ShopTradeIcon] 手动三按钮布局失败: {ex.Message}");
+            Plugin.Logger?.LogDebug($"[ShopTradeIcon] 恢复 {buttonName} 属性时出错: {ex.Message}");
         }
     }
+
+
 
     private static void SetUiVisible(bool visible)
     {
@@ -795,16 +678,25 @@ public static class ShopTradeIconPatch
 
     private static void TryStripLocalizationComponents(GameObject root)
     {
-        if (root == null) return;
-
-        foreach (var b in root.GetComponentsInChildren<MonoBehaviour>(true))
+        if (root == null)
         {
-            if (b == null) continue;
-            string n = b.GetType().Name;
-            if (n.IndexOf("localiz", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                n.IndexOf("locale", StringComparison.OrdinalIgnoreCase) >= 0)
+            return;
+        }
+
+        foreach (var behaviour in root.GetComponentsInChildren<MonoBehaviour>(true))
+        {
+            if (behaviour == null)
             {
-                UnityEngine.Object.Destroy(b);
+                continue;
+            }
+
+            string typeName = behaviour.GetType().Name;
+            bool isLocalizationComponent = typeName.IndexOf("localiz", StringComparison.OrdinalIgnoreCase) >= 0
+                || typeName.IndexOf("locale", StringComparison.OrdinalIgnoreCase) >= 0;
+
+            if (isLocalizationComponent)
+            {
+                UnityEngine.Object.Destroy(behaviour);
             }
         }
     }
@@ -817,20 +709,7 @@ public static class ShopTradeIconPatch
         return tmp?.font;
     }
 
-    private static Sprite GetWhiteSprite()
-    {
-        if (_whiteSprite != null)
-        {
-            return _whiteSprite;
-        }
 
-        _whiteTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
-        _whiteTexture.SetPixel(0, 0, Color.white);
-        _whiteTexture.Apply(false, true);
-
-        _whiteSprite = Sprite.Create(_whiteTexture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
-        return _whiteSprite;
-    }
 
     private static Sprite TryLoadTradeSprite()
         => Resources.Load<Sprite>("UI/Icons/TradeIcon") ?? Resources.Load<Sprite>("UI/Icons/DefaultIcon");
@@ -855,15 +734,8 @@ public static class ShopTradeIconPatch
 
             if (tradePanel != null)
             {
-                try
-                {
-                    tradePanel.Show(new TradePayload());
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    Plugin.Logger?.LogWarning($"[ShopTradeIcon] TradePanel.Show failed: {ex.Message}");
-                }
+                tradePanel.Show(new TradePayload());
+                return;
             }
 
             TradeUiMessages.ShowTradePanelMissing();

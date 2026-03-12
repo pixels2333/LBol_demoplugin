@@ -38,7 +38,7 @@ public static class RoomEntrySyncPatch
                     return;
                 }
 
-                var client = ServiceProvider?.GetService<INetworkClient>();
+                INetworkClient client = ServiceProvider?.GetService<INetworkClient>();
                 if (client == null || !client.IsConnected)
                 {
                     return;
@@ -58,7 +58,7 @@ public static class RoomEntrySyncPatch
 
                 try
                 {
-                    var reconnection = ServiceProvider?.GetService<ReconnectionManager>();
+                    ReconnectionManager reconnection = ServiceProvider?.GetService<ReconnectionManager>();
                     string nodeKey = $"{node.Act}:{node.X}:{node.Y}:{node.StationType}";
                     reconnection?.MarkMapCheckpoint("enter_node", nodeKey);
                 }

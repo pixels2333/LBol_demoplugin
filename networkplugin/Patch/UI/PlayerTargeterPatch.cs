@@ -113,57 +113,50 @@ public static class PlayerTargeterPatch
     [HarmonyPostfix]
     private static void TargetSelector_UpdateSingleEnemy_Postfix(TargetSelector __instance)
     {
-        try
+        if (__instance == null)
         {
-            if (__instance == null)
-            {
-                return;
-            }
+            return;
+        }
 
-            TargetType targetType = GetTargetType(__instance);
-            if (!ShouldEnable(targetType))
-            {
-                return;
-            }
+        TargetType targetType = GetTargetType(__instance);
+        if (!ShouldEnable(targetType))
+        {
+            return;
+        }
 
-            Mouse mouse = Mouse.current;
-            if (mouse == null)
-            {
-                return;
-            }
+        Mouse mouse = Mouse.current;
+        if (mouse == null)
+        {
+            return;
+        }
 
-            Vector2 screenPosition = mouse.position.ReadValue();
-            if (screenPosition == Vector2.zero)
-            {
-                return;
-            }
+        Vector2 screenPosition = mouse.position.ReadValue();
+        if (screenPosition == Vector2.zero)
+        {
+            return;
+        }
 
-            Ray ray = CameraController.MainCamera.ScreenPointToRay(screenPosition);
-            bool selected = false;
-            foreach (UnitView remote in OtherPlayersOverlayPatch.SnapshotRemoteCharacterUnitViews())
-            {
-                bool hit = !selected && remote.SelectorCollider != null &&
-                    remote.SelectorCollider.Raycast(ray, out _, float.PositiveInfinity);
+        Ray ray = CameraController.MainCamera.ScreenPointToRay(screenPosition);
+        bool selected = false;
+        foreach (UnitView remote in OtherPlayersOverlayPatch.SnapshotRemoteCharacterUnitViews())
+        {
+            bool hit = !selected && remote.SelectorCollider != null &&
+                remote.SelectorCollider.Raycast(ray, out _, float.PositiveInfinity);
 
-                remote.SelectingVisible = hit;
-                if (hit)
-                {
-                    selected = true;
-                }
-            }
-
-            if (selected && OtherPlayersOverlayPatch.TryGetPointedRemotePlayer(screenPosition, out string playerId, out string playerName))
+            remote.SelectingVisible = hit;
+            if (hit)
             {
-                RemotePlayerProxyEnemy proxy = GetOrCreateProxyTarget(playerId, playerName);
-                if (proxy != null)
-                {
-                    SetPendingTarget(__instance, proxy);
-                }
+                selected = true;
             }
         }
-        catch
+
+        if (selected && OtherPlayersOverlayPatch.TryGetPointedRemotePlayer(screenPosition, out string playerId, out string playerName))
         {
-            // 忽略目标指示失败，避免影响原版选择器流程。
+            RemotePlayerProxyEnemy proxy = GetOrCreateProxyTarget(playerId, playerName);
+            if (proxy != null)
+            {
+                SetPendingTarget(__instance, proxy);
+            }
         }
     }
 

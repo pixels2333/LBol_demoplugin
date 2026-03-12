@@ -28,6 +28,29 @@ public static class RoomStateSyncPatch
     private static INetworkClient TryGetClient()
         => ServiceProvider?.GetService<INetworkClient>();
 
+    private static bool ShouldUploadRoomState(BattleController battle, out string roomKey)
+    {
+        roomKey = null;
+        if (battle == null)
+        {
+            return false;
+        }
+
+        INetworkClient client = TryGetClient();
+        if (client == null || !client.IsConnected)
+        {
+            return false;
+        }
+
+        if (battle.Player == null || battle.Player != GameStateUtils.GetCurrentPlayer())
+        {
+            return false;
+        }
+
+        roomKey = RoomSyncManager.GetLastEnteredRoomKey();
+        return !string.IsNullOrWhiteSpace(roomKey);
+    }
+
     [HarmonyPatch(typeof(GameMap), nameof(GameMap.EnterNode))]
     private static class GameMap_EnterNode_RequestRoomState
     {
@@ -78,25 +101,7 @@ public static class RoomStateSyncPatch
         {
             try
             {
-                if (__instance == null)
-                {
-                    return;
-                }
-
-                var client = TryGetClient();
-                if (client == null || !client.IsConnected)
-                {
-                    return;
-                }
-
-                // 仅同步本地玩家的战斗。
-                if (__instance.Player == null || __instance.Player != GameStateUtils.GetCurrentPlayer())
-                {
-                    return;
-                }
-
-                string roomKey = RoomSyncManager.GetLastEnteredRoomKey();
-                if (string.IsNullOrWhiteSpace(roomKey))
+                if (!ShouldUploadRoomState(__instance, out string roomKey))
                 {
                     return;
                 }
@@ -122,24 +127,7 @@ public static class RoomStateSyncPatch
         {
             try
             {
-                if (__instance == null)
-                {
-                    return;
-                }
-
-                var client = TryGetClient();
-                if (client == null || !client.IsConnected)
-                {
-                    return;
-                }
-
-                if (__instance.Player == null || __instance.Player != GameStateUtils.GetCurrentPlayer())
-                {
-                    return;
-                }
-
-                string roomKey = RoomSyncManager.GetLastEnteredRoomKey();
-                if (string.IsNullOrWhiteSpace(roomKey))
+                if (!ShouldUploadRoomState(__instance, out string roomKey))
                 {
                     return;
                 }
@@ -162,24 +150,7 @@ public static class RoomStateSyncPatch
         {
             try
             {
-                if (__instance == null)
-                {
-                    return;
-                }
-
-                var client = TryGetClient();
-                if (client == null || !client.IsConnected)
-                {
-                    return;
-                }
-
-                if (__instance.Player == null || __instance.Player != GameStateUtils.GetCurrentPlayer())
-                {
-                    return;
-                }
-
-                string roomKey = RoomSyncManager.GetLastEnteredRoomKey();
-                if (string.IsNullOrWhiteSpace(roomKey))
+                if (!ShouldUploadRoomState(__instance, out string roomKey))
                 {
                     return;
                 }
