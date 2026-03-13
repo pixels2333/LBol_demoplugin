@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using HarmonyLib;
 using LBoL.Presentation.Units;
@@ -30,6 +31,8 @@ public static class TurnStartSnapshotReceivePatch
     private static bool _subscribed;
     private static INetworkClient _subscribedClient;
     private static readonly Action<string, object> _onGameEventReceived = OnGameEventReceived;
+    private static readonly object _cacheLock = new();
+    private static readonly Dictionary<string, TurnStartStateSnapshot> _lastTurnStartByPlayer = new(StringComparer.Ordinal);
 
     [HarmonyPatch(typeof(GameDirector), "Update")]
     private static class SubscribeHook
@@ -105,6 +108,11 @@ public static class TurnStartSnapshotReceivePatch
             if (string.IsNullOrWhiteSpace(senderId))
             {
                 senderId = "unknown";
+            }
+
+            lock (_cacheLock)
+            {
+                _lastTurnStartByPlayer[senderId] = snapshot;
             }
 
             // 尝试将快照落地到远端玩家对象（如果存在）。
@@ -193,6 +201,23 @@ public static class TurnStartSnapshotReceivePatch
         catch
         {
             return false;
+        }
+    }
+
+    /// <summary>
+    /// 获取最近一次收到的回合开始快照（用于 UI/调试）。
+    /// </summary>
+    public static bool TryGetLastTurnStart(string playerId, out TurnStartStateSnapshot snapshot)
+    {
+        snapshot = null;
+        if (string.IsNullOrWhiteSpace(playerId))
+        {
+            return false;
+        }
+
+        lock (_cacheLock)
+        {
+            return _lastTurnStartByPlayer.TryGetValue(playerId, out snapshot);
         }
     }
 }

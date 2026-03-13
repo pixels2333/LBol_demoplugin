@@ -12,6 +12,12 @@ public static partial class OtherPlayersOverlayPatch
 {
     #region 玩家缓存与位置快照
 
+    private static readonly (string PlayerId, string PlayerName)[] VirtualAiDebugPlayers =
+    {
+        ("aidefault", "AI Default"),
+        ("aidefault2", "AI Default 2"),
+    };
+
     internal static string ResolveDisplayName(string playerId, string preferredName = null, bool isLocal = false)
     {
         string preferred = NormalizeDisplayName(preferredName, playerId);
@@ -90,6 +96,12 @@ public static partial class OtherPlayersOverlayPatch
     private static bool IsVirtualAiDefaultEnabled()
         => TryGetConfig()?.DebugVirtualPlayerAiDefault?.Value == true;
 
+    private static bool IsVirtualAiDebugPlayerId(string playerId)
+        => !string.IsNullOrWhiteSpace(playerId) && VirtualAiDebugPlayers.Any(p => string.Equals(p.PlayerId, playerId, StringComparison.Ordinal));
+
+    private static string GetVirtualAiDebugPlayerName(string playerId)
+        => VirtualAiDebugPlayers.FirstOrDefault(p => string.Equals(p.PlayerId, playerId, StringComparison.Ordinal)).PlayerName;
+
     private static void EnsureVirtualAiDefaultPlayer_NoThrow()
     {
         try
@@ -98,13 +110,13 @@ public static partial class OtherPlayersOverlayPatch
             {
                 lock (_syncLock)
                 {
-                    _players.Remove("aidefault");
+                    foreach (var debugPlayer in VirtualAiDebugPlayers)
+                    {
+                        _players.Remove(debugPlayer.PlayerId);
+                    }
                 }
                 return;
             }
-
-            string characterId = GetFallbackCharacterId();
-            string name = "AI Default";
 
             int stage = -1;
             int x = -1;
@@ -144,26 +156,42 @@ public static partial class OtherPlayersOverlayPatch
 
             lock (_syncLock)
             {
-                if (!_players.TryGetValue("aidefault", out PlayerSummary p) || p == null)
+                for (int i = 0; i < VirtualAiDebugPlayers.Length; i++)
                 {
-                    p = new PlayerSummary { PlayerId = "aidefault" };
-                    _players["aidefault"] = p;
-                }
+                    var debugPlayer = VirtualAiDebugPlayers[i];
+                    if (!_players.TryGetValue(debugPlayer.PlayerId, out PlayerSummary p) || p == null)
+                    {
+                        p = new PlayerSummary { PlayerId = debugPlayer.PlayerId };
+                        _players[debugPlayer.PlayerId] = p;
+                    }
 
-                p.PlayerName = name;
-                p.IsConnected = true;
-                p.IsHost = false;
-                p.CharacterId = characterId;
-                p.Stage = stage;
-                p.LocationX = x;
-                p.LocationY = y;
-                p.LocationName = locName;
-                p.LastUpdateTime = Time.unscaledTime;
+                    p.PlayerName = debugPlayer.PlayerName;
+                    p.IsConnected = true;
+                    p.IsHost = false;
+                    p.CharacterId = GetVirtualAiDebugCharacterId(i);
+                    p.Stage = stage;
+                    p.LocationX = x;
+                    p.LocationY = y;
+                    p.LocationName = locName;
+                    p.LastUpdateTime = Time.unscaledTime;
+                }
             }
         }
         catch
         {
         }
+    }
+
+    private static string GetVirtualAiDebugCharacterId(int index)
+    {
+        string fallback = GetFallbackCharacterId();
+        if (index <= 0)
+        {
+            return fallback;
+        }
+
+        string[] candidates = { "Reimu", "Marisa", "Sakuya", "Koishi", fallback };
+        return candidates.FirstOrDefault(candidate => !string.IsNullOrWhiteSpace(candidate) && !string.Equals(candidate, fallback, StringComparison.OrdinalIgnoreCase)) ?? fallback;
     }
 
     private static void InjectTradeDebugPlayersDetailed(List<(string PlayerId, string PlayerName, bool IsConnected, bool IsHost, int Stage, int LocationX, int LocationY, string LocationName, string CharacterId)> list)
@@ -187,11 +215,14 @@ public static partial class OtherPlayersOverlayPatch
                 loc = selfLocName;
             }
         }
-        string characterId = GetFallbackCharacterId();
 
-        if (list.All(p => !string.Equals(p.PlayerId, "aidefault", StringComparison.Ordinal)))
+        for (int i = 0; i < VirtualAiDebugPlayers.Length; i++)
         {
-            list.Add(("aidefault", "AI Default", true, false, stage, x, y, loc, characterId));
+            var debugPlayer = VirtualAiDebugPlayers[i];
+            if (list.All(p => !string.Equals(p.PlayerId, debugPlayer.PlayerId, StringComparison.Ordinal)))
+            {
+                list.Add((debugPlayer.PlayerId, debugPlayer.PlayerName, true, false, stage, x, y, loc, GetVirtualAiDebugCharacterId(i)));
+            }
         }
     }
 
@@ -202,9 +233,12 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
-        if (list.All(p => !string.Equals(p.PlayerId, "aidefault", StringComparison.Ordinal)))
+        foreach (var debugPlayer in VirtualAiDebugPlayers)
         {
-            list.Add(("aidefault", "AI Default", true, false));
+            if (list.All(p => !string.Equals(p.PlayerId, debugPlayer.PlayerId, StringComparison.Ordinal)))
+            {
+                list.Add((debugPlayer.PlayerId, debugPlayer.PlayerName, true, false));
+            }
         }
     }
 

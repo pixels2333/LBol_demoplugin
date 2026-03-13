@@ -1555,6 +1555,12 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 string loc = IsShopLikeLocation(selfLocName) ? selfLocName : "Trade";
                 players.Add(("aidefault", "AI Default", true, false, selfStage, selfX, selfY, loc, null));
             }
+
+            if (players.All(p => !string.Equals(p.PlayerId, "aidefault2", StringComparison.Ordinal)))
+            {
+                string loc = IsShopLikeLocation(selfLocName) ? selfLocName : "Trade";
+                players.Add(("aidefault2", "AI Default 2", true, false, selfStage, selfX, selfY, loc, null));
+            }
         }
 
             List<(string PlayerId, string PlayerName, bool IsConnected, bool IsHost, int Stage, int LocationX, int LocationY, string LocationName, string CharacterId)> connectedOthers = players
@@ -1660,9 +1666,9 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         HidePartnerPickerOverlay();
 
         // 已连接：进行实际的 host 驱动会话。离线/本地调试：保持本地 UI（不发送网络请求）。
-        if (IsLocalDebugTradeAllowed() && string.Equals(partnerPlayerId, "aidefault", StringComparison.Ordinal))
+        if (IsLocalDebugTradeAllowed() && (string.Equals(partnerPlayerId, "aidefault", StringComparison.Ordinal) || string.Equals(partnerPlayerId, "aidefault2", StringComparison.Ordinal)))
         {
-            // 即使已连接，选择 aidefault 也允许启动纯本地 UI 测试会话。
+            // 即使已连接，选择本地调试虚拟玩家也允许启动纯本地 UI 测试会话。
             _localDebugTradeMode = true;
             PopulateLocalDebugRemoteOffer();
             EnsureOfferEditorOverlay();
@@ -1670,7 +1676,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             EnsureExhibitPickerOverlay();
             SetTradeDetailsVisible(true);
             cancelButton?.gameObject.SetActive(_canCancel);
-            UpdateUIStatus("本地调试交易：AI Default（不走服务器）");
+            UpdateUIStatus($"本地调试交易：{partnerPlayerName}（不走服务器）");
             return;
         }
 
