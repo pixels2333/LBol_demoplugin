@@ -6,11 +6,10 @@ using HarmonyLib;
 using LBoL.Core;
 using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Panels;
+using LBoL.Presentation.UI.Widgets;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Configuration;
 using LBoL.Presentation.Units;
-using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Configuration;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.NetworkPlayer;
@@ -35,21 +34,19 @@ public static partial class OtherPlayersOverlayPatch
 
     private const float AvatarEntryBaseWidth = 260f;
     private const float AvatarEntryBaseHeight = 224f;
-    private const float AvatarVisualSize = 112f;
+    private const float AvatarVisualSize = 230f;
+    private const float AvatarMaskDiameterScale = 1f;
+    private const float AvatarImageScale = 1.6f;
     private const float AvatarEntrySpacing = 12f;
     private const float OverlayRootWidth = 280f;
     private const float OverlayRootTopPadding = 8f;
     private const float OverlayRootBottomPadding = 12f;
     private const float AvatarPanelScale = 0.7f;
-    private const float AvatarPanelOffsetY = -10f;
-    private const float SkillImageOffsetX = -1f;
-    private const float SkillImageOffsetY = -5f;
-    private const float SkillImageScale = 1.03f;
-    private static readonly Vector2 BackgroundAnchoredPosition = new(0f, -2f);
-    private static readonly Vector3 BackgroundLocalScale = new(0.92f, 0.92f, 1f);
-    private static readonly Vector2 HealthBarAnchoredPosition = new(0f, 54f);
-    private static readonly Vector3 HealthBarLocalScale = new(0.39f, 0.39f, 1f);
+    private const float AvatarPanelOffsetY = 0f;
+    private static readonly Vector3 HealthBarLocalPosition = new(330f, -460f, 0f);
+    private static readonly Vector3 HealthBarLocalScale = new(0.7f, 0.7f, 1f);
     private const float RuntimeLayoutEpsilon = 0.01f;
+    private static readonly Vector3 OverlayRootLocalPosition = new(1360f, 900f, 0f);
 
     /// <summary>获取依赖注入容器</summary>
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
@@ -89,6 +86,12 @@ public static partial class OtherPlayersOverlayPatch
 
     /// <summary>角色头像缓存（CharacterId -> Sprite）</summary>
     private static readonly Dictionary<string, Sprite> _avatarCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>缓存的圆形遮罩Sprite</summary>
+    private static Sprite _circleMaskSprite;
+
+    /// <summary>缓存的圆形遮罩纹理</summary>
+    private static Texture2D _circleMaskTexture;
 
     /// <summary>游戏事件接收委托（用于事件订阅）</summary>
     private static readonly Action<string, object> _onGameEventReceived = OnGameEventReceived;
@@ -248,32 +251,42 @@ public static partial class OtherPlayersOverlayPatch
 
         GameObject root = new("NetworkPlugin_OtherPlayersOverlay");
         root.transform.SetParent(parent, false);
+        root.transform.localPosition = OverlayRootLocalPosition;
 
         RectTransform rootRect = root.AddComponent<RectTransform>();
-        rootRect.anchorMin = new Vector2(1f, 1f);
-        rootRect.anchorMax = new Vector2(1f, 1f);
-        rootRect.pivot = new Vector2(1f, 1f);
-        rootRect.anchoredPosition = Vector2.zero;
         rootRect.sizeDelta = new Vector2(OverlayRootWidth, AvatarEntryBaseHeight + OverlayRootTopPadding + OverlayRootBottomPadding);
 
         GameObject entriesRootGo = new("EntriesRoot");
         entriesRootGo.transform.SetParent(root.transform, false);
         RectTransform entriesRect = entriesRootGo.AddComponent<RectTransform>();
-        entriesRect.anchorMin = new Vector2(1f, 1f);
-        entriesRect.anchorMax = new Vector2(1f, 1f);
-        entriesRect.pivot = new Vector2(1f, 1f);
-        entriesRect.anchoredPosition = new Vector2(0f, -OverlayRootTopPadding);
-        entriesRect.sizeDelta = new Vector2(OverlayRootWidth, AvatarEntryBaseHeight);
 
         _ui = new OverlayUi
         {
             Root = root,
             RootRect = rootRect,
             EntriesRoot = entriesRect,
-            RootLayoutState = CaptureRectLayoutState(rootRect),
-            EntriesRootLayoutState = CaptureRectLayoutState(entriesRect),
+            RootLayoutState = new RectLayoutState(),
+            EntriesRootLayoutState = new RectLayoutState(),
             Entries = new Dictionary<string, AvatarEntryUi>(StringComparer.Ordinal)
         };
+
+        ApplyRuntimeEditableRectLayout(rootRect, _ui.RootLayoutState, rect =>
+        {
+            rect.anchorMin = new Vector2(1f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(1f, 1f);
+            rect.localPosition = OverlayRootLocalPosition;
+            rect.sizeDelta = new Vector2(OverlayRootWidth, AvatarEntryBaseHeight + OverlayRootTopPadding + OverlayRootBottomPadding);
+        });
+
+        ApplyRuntimeEditableRectLayout(entriesRect, _ui.EntriesRootLayoutState, rect =>
+        {
+            rect.anchorMin = new Vector2(1f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(1f, 1f);
+            rect.localPosition = new Vector3(0f, -OverlayRootTopPadding, 0f);
+            rect.sizeDelta = new Vector2(OverlayRootWidth, AvatarEntryBaseHeight);
+        });
 
         root.SetActive(false);
     }
@@ -457,49 +470,12 @@ public static partial class OtherPlayersOverlayPatch
             SetUltimateVisualFieldActive(panel, "lightParticle", false);
         }
 
-        ConfigureAvatarTemplateVisuals(template);
-
         CanvasGroup group = GetOrAddCanvasGroup(template);
         if (group != null)
         {
             group.alpha = 1f;
             group.blocksRaycasts = false;
             group.interactable = false;
-        }
-    }
-
-    private static void ConfigureAvatarTemplateVisuals(GameObject template)
-    {
-        if (template == null)
-        {
-            return;
-        }
-
-        Transform bg = template.transform.Find("Root/Bg");
-        Transform skillImage = template.transform.Find("Root/SkillImage");
-
-        if (bg != null)
-        {
-            bg.SetAsFirstSibling();
-            SetGraphicTreeAlpha(bg, 1f);
-
-            if (bg is RectTransform bgRect)
-            {
-                bgRect.anchoredPosition = BackgroundAnchoredPosition;
-                bgRect.localScale = BackgroundLocalScale;
-            }
-        }
-
-        if (skillImage != null)
-        {
-            skillImage.SetAsLastSibling();
-            SetGraphicTreeAlpha(skillImage, 1f);
-
-            if (skillImage is RectTransform skillImageRect)
-            {
-                skillImageRect.anchoredPosition = new Vector2(SkillImageOffsetX, SkillImageOffsetY);
-                skillImageRect.localScale = new Vector3(SkillImageScale, SkillImageScale, 1f);
-            }
         }
     }
 
@@ -663,7 +639,7 @@ public static partial class OtherPlayersOverlayPatch
         rect.anchorMin = new Vector2(0.5f, 0f);
         rect.anchorMax = new Vector2(0.5f, 0f);
         rect.pivot = new Vector2(0.5f, 0f);
-        rect.anchoredPosition = HealthBarAnchoredPosition;
+        rect.localPosition = HealthBarLocalPosition;
         rect.localScale = HealthBarLocalScale;
         rect.localEulerAngles = Vector3.zero;
     }
@@ -677,6 +653,7 @@ public static partial class OtherPlayersOverlayPatch
 
         if (_ui.Entries.TryGetValue(playerId, out AvatarEntryUi existing) && existing?.Root != null)
         {
+            EnsureCircularAvatarApplied(existing);
             return existing;
         }
 
@@ -705,7 +682,8 @@ public static partial class OtherPlayersOverlayPatch
         visualRect.anchoredPosition = new Vector2(0f, AvatarPanelOffsetY);
         visualRect.localScale = new Vector3(AvatarPanelScale, AvatarPanelScale, 1f);
 
-        Image avatar = TryGetAvatarImageFromTemplate(visual) ?? CreateFallbackAvatarVisual(visual.transform);
+        Image templateAvatar = TryGetAvatarImageFromTemplate(visual);
+        Image avatar = CreateCircularAvatarVisual(visual.transform, templateAvatar);
         avatar.raycastTarget = false;
         avatar.preserveAspect = true;
 
@@ -758,9 +736,15 @@ public static partial class OtherPlayersOverlayPatch
             Root = root,
             RootRect = rootRect,
             RootLayoutState = CaptureRectLayoutState(rootRect),
+            VisualRect = visualRect,
+            VisualLayoutState = CaptureRectLayoutState(visualRect),
             Avatar = avatar,
             Name = name,
+            NameRect = nameRect,
+            NameLayoutState = CaptureRectLayoutState(nameRect),
             Status = status,
+            StatusRect = statusRect,
+            StatusLayoutState = CaptureRectLayoutState(statusRect),
             VisualGroup = GetOrAddCanvasGroup(visual),
             PowerText = powerText,
             Gauge1 = TryGetUltimateField<Image>(panel, "gauge1"),
@@ -771,13 +755,35 @@ public static partial class OtherPlayersOverlayPatch
             Gauge3FontColor = TryGetUltimateColorField(panel, "gauge3FontColor", Color.white),
             HealthRoot = healthRoot,
             HealthRootRect = healthRootRect,
+            HealthRootLayoutState = CaptureRectLayoutState(healthRootRect),
             HealthWidget = healthWidget,
             HealthBar = healthBar,
             HealthGroup = healthGroup,
         };
 
+        ApplyRuntimeEditableAvatarEntryStaticLayout(entry);
+        EnsureCircularAvatarApplied(entry);
         _ui.Entries[playerId] = entry;
         return entry;
+    }
+
+    private static void EnsureCircularAvatarApplied(AvatarEntryUi entry)
+    {
+        if (entry?.VisualRect == null)
+        {
+            return;
+        }
+
+        Image templateAvatar = TryGetAvatarImageFromTemplate(entry.VisualRect.gameObject);
+        Image avatar = CreateCircularAvatarVisual(entry.VisualRect.transform, templateAvatar);
+        if (avatar == null)
+        {
+            return;
+        }
+
+        avatar.raycastTarget = false;
+        avatar.preserveAspect = true;
+        entry.Avatar = avatar;
     }
 
     private static Image TryGetAvatarImageFromTemplate(GameObject visual)
@@ -833,6 +839,150 @@ public static partial class OtherPlayersOverlayPatch
         return image;
     }
 
+    private static Image CreateCircularAvatarVisual(Transform parent, Image templateAvatar)
+    {
+        if (parent == null)
+        {
+            return null;
+        }
+
+        RectTransform sourceRect = templateAvatar != null ? templateAvatar.rectTransform : null;
+        Transform maskParent = sourceRect?.parent ?? parent;
+        Vector2 sourceSize = ResolveAvatarVisualSize(templateAvatar, sourceRect);
+        float maskDiameter = Mathf.Min(sourceSize.x, sourceSize.y) * AvatarMaskDiameterScale;
+
+        Transform existingMaskTransform = maskParent.Find("AvatarMask");
+        GameObject maskGo = existingMaskTransform != null ? existingMaskTransform.gameObject : new GameObject("AvatarMask");
+        if (existingMaskTransform == null)
+        {
+            maskGo.transform.SetParent(maskParent, false);
+        }
+
+        RectTransform maskRect = maskGo.GetComponent<RectTransform>();
+        if (maskRect == null)
+        {
+            maskRect = maskGo.AddComponent<RectTransform>();
+        }
+
+        maskRect.anchorMin = new Vector2(0.5f, 0.5f);
+        maskRect.anchorMax = new Vector2(0.5f, 0.5f);
+        maskRect.pivot = new Vector2(0.5f, 0.5f);
+        maskRect.localPosition = sourceRect != null ? sourceRect.localPosition : Vector3.zero;
+        maskRect.localScale = Vector3.one;
+        maskRect.localEulerAngles = sourceRect != null ? sourceRect.localEulerAngles : Vector3.zero;
+
+        maskRect.sizeDelta = new Vector2(maskDiameter, maskDiameter);
+
+        Image maskImage = maskGo.GetComponent<Image>();
+        if (maskImage == null)
+        {
+            maskImage = maskGo.AddComponent<Image>();
+        }
+
+        maskImage.sprite = GetCircleMaskSprite();
+        maskImage.color = Color.white;
+        maskImage.raycastTarget = false;
+        maskImage.preserveAspect = true;
+
+        Mask mask = maskGo.GetComponent<Mask>();
+        if (mask == null)
+        {
+            mask = maskGo.AddComponent<Mask>();
+        }
+
+        mask.showMaskGraphic = false;
+
+        Transform existingAvatarTransform = maskGo.transform.Find("AvatarImage");
+        GameObject avatarGo = existingAvatarTransform != null ? existingAvatarTransform.gameObject : new GameObject("AvatarImage");
+        if (existingAvatarTransform == null)
+        {
+            avatarGo.transform.SetParent(maskGo.transform, false);
+        }
+
+        RectTransform avatarRect = avatarGo.GetComponent<RectTransform>();
+        if (avatarRect == null)
+        {
+            avatarRect = avatarGo.AddComponent<RectTransform>();
+        }
+
+        avatarRect.anchorMin = new Vector2(0.5f, 0.5f);
+        avatarRect.anchorMax = new Vector2(0.5f, 0.5f);
+        avatarRect.pivot = new Vector2(0.5f, 0.5f);
+        avatarRect.anchoredPosition = Vector2.zero;
+        avatarRect.sizeDelta = sourceSize * AvatarImageScale;
+        avatarRect.localScale = Vector3.one;
+        avatarRect.localEulerAngles = Vector3.zero;
+
+        Image avatarImage = avatarGo.GetComponent<Image>();
+        if (avatarImage == null)
+        {
+            avatarImage = avatarGo.AddComponent<Image>();
+        }
+
+        avatarImage.sprite = templateAvatar != null ? templateAvatar.sprite : GetWhiteSprite();
+        avatarImage.color = templateAvatar != null ? templateAvatar.color : Color.white;
+        avatarImage.raycastTarget = false;
+        avatarImage.preserveAspect = true;
+
+        if (templateAvatar != null)
+        {
+            templateAvatar.enabled = false;
+        }
+
+        return avatarImage;
+    }
+
+    private static void CopyRectTransform(RectTransform source, RectTransform target)
+    {
+        if (source == null || target == null)
+        {
+            return;
+        }
+
+        target.anchorMin = source.anchorMin;
+        target.anchorMax = source.anchorMax;
+        target.pivot = source.pivot;
+        target.anchoredPosition = source.anchoredPosition;
+        target.sizeDelta = source.sizeDelta;
+        target.localScale = source.localScale;
+        target.localEulerAngles = source.localEulerAngles;
+    }
+
+    private static Vector2 ResolveAvatarVisualSize(Image templateAvatar, RectTransform sourceRect)
+    {
+        Sprite sprite = templateAvatar != null ? templateAvatar.sprite : null;
+        if (sprite != null)
+        {
+            float baseSize = AvatarVisualSize * 0.85f;
+            Rect spriteRect = sprite.rect;
+            if (spriteRect.width > RuntimeLayoutEpsilon && spriteRect.height > RuntimeLayoutEpsilon)
+            {
+                float aspect = spriteRect.width / spriteRect.height;
+                if (aspect >= 1f)
+                {
+                    return new Vector2(baseSize, baseSize / aspect);
+                }
+
+                return new Vector2(baseSize * aspect, baseSize);
+            }
+        }
+
+        if (sourceRect != null &&
+            Approximately(sourceRect.anchorMin, sourceRect.anchorMax))
+        {
+            Vector2 rectSize = sourceRect.rect.size;
+            float width = rectSize.x > RuntimeLayoutEpsilon ? rectSize.x : Mathf.Abs(sourceRect.sizeDelta.x);
+            float height = rectSize.y > RuntimeLayoutEpsilon ? rectSize.y : Mathf.Abs(sourceRect.sizeDelta.y);
+            if (width > RuntimeLayoutEpsilon && height > RuntimeLayoutEpsilon)
+            {
+                return new Vector2(width, height);
+            }
+        }
+
+        float fallbackSize = AvatarVisualSize * 0.85f;
+        return new Vector2(fallbackSize, fallbackSize);
+    }
+
     private static void ApplyAvatarEntry(AvatarEntryUi entry, PlayerSummary player)
     {
         if (entry == null || player == null || entry.Root == null)
@@ -840,6 +990,7 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
+        ApplyRuntimeEditableAvatarEntryStaticLayout(entry);
         entry.Root.SetActive(true);
 
         bool isConnected = player.IsConnected;
@@ -1057,7 +1208,54 @@ public static partial class OtherPlayersOverlayPatch
                 rect.localScale = Vector3.one;
                 rect.anchoredPosition = new Vector2(0f, -i * (AvatarEntryBaseHeight + AvatarEntrySpacing));
             });
+
+            ApplyRuntimeEditableAvatarEntryStaticLayout(entry);
         }
+    }
+
+    private static void ApplyRuntimeEditableAvatarEntryStaticLayout(AvatarEntryUi entry)
+    {
+        if (entry == null)
+        {
+            return;
+        }
+
+        ApplyRuntimeEditableRectLayout(entry.VisualRect, entry.VisualLayoutState, rect =>
+        {
+            rect.anchorMin = new Vector2(0.5f, 1f);
+            rect.anchorMax = new Vector2(0.5f, 1f);
+            rect.pivot = new Vector2(0.5f, 1f);
+            rect.anchoredPosition = new Vector2(0f, AvatarPanelOffsetY);
+            rect.localScale = new Vector3(AvatarPanelScale, AvatarPanelScale, 1f);
+        });
+
+        ApplyRuntimeEditableRectLayout(entry.NameRect, entry.NameLayoutState, rect =>
+        {
+            rect.anchorMin = new Vector2(0f, 0f);
+            rect.anchorMax = new Vector2(1f, 0f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.anchoredPosition = new Vector2(0f, 30f);
+            rect.sizeDelta = new Vector2(-8f, 20f);
+        });
+
+        ApplyRuntimeEditableRectLayout(entry.StatusRect, entry.StatusLayoutState, rect =>
+        {
+            rect.anchorMin = new Vector2(0f, 0f);
+            rect.anchorMax = new Vector2(1f, 0f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.anchoredPosition = new Vector2(0f, 10f);
+            rect.sizeDelta = new Vector2(-8f, 18f);
+        });
+
+        ApplyRuntimeEditableRectLayout(entry.HealthRootRect, entry.HealthRootLayoutState, rect =>
+        {
+            rect.anchorMin = new Vector2(0.5f, 0f);
+            rect.anchorMax = new Vector2(0.5f, 0f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.localPosition = HealthBarLocalPosition;
+            rect.localScale = HealthBarLocalScale;
+            rect.localEulerAngles = Vector3.zero;
+        });
     }
 
     /// <summary>
@@ -1123,8 +1321,6 @@ public static partial class OtherPlayersOverlayPatch
             _ui.RootRect.SetParent(parentRect, false);
         }
 
-        (float offsetX, float offsetY) = GetOverlayRightOffsets();
-
         float height = entryCount * AvatarEntryBaseHeight + Mathf.Max(0, entryCount - 1) * AvatarEntrySpacing + OverlayRootTopPadding + OverlayRootBottomPadding;
 
         ApplyRuntimeEditableRectLayout(_ui.RootRect, _ui.RootLayoutState, rect =>
@@ -1132,38 +1328,20 @@ public static partial class OtherPlayersOverlayPatch
             rect.anchorMin = new Vector2(1f, 1f);
             rect.anchorMax = new Vector2(1f, 1f);
             rect.pivot = new Vector2(1f, 1f);
-            rect.anchoredPosition = new Vector2(offsetX, offsetY);
+            rect.localPosition = OverlayRootLocalPosition;
             rect.sizeDelta = new Vector2(OverlayRootWidth, height);
         });
 
-        if (_ui.EntriesRoot != null)
+        ApplyRuntimeEditableRectLayout(_ui.EntriesRoot, _ui.EntriesRootLayoutState, rect =>
         {
-            ApplyRuntimeEditableRectLayout(_ui.EntriesRoot, _ui.EntriesRootLayoutState, rect =>
-            {
-                rect.anchorMin = new Vector2(1f, 1f);
-                rect.anchorMax = new Vector2(1f, 1f);
-                rect.pivot = new Vector2(1f, 1f);
-                rect.anchoredPosition = new Vector2(0f, -OverlayRootTopPadding);
-                rect.sizeDelta = new Vector2(OverlayRootWidth, height - OverlayRootTopPadding - OverlayRootBottomPadding);
-            });
-        }
+            rect.anchorMin = new Vector2(1f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(1f, 1f);
+            rect.localPosition = new Vector3(0f, -OverlayRootTopPadding, 0f);
+            rect.sizeDelta = new Vector2(OverlayRootWidth, height - OverlayRootTopPadding - OverlayRootBottomPadding);
+        });
 
         return true;
-    }
-
-    private static (float X, float Y) GetOverlayRightOffsets()
-    {
-        try
-        {
-            ConfigManager cfg = TryGetConfig();
-            float x = cfg?.OtherPlayersOverlayRightOffsetX?.Value ?? -24f;
-            float y = cfg?.OtherPlayersOverlayRightOffsetY?.Value ?? -144f;
-            return (x, y);
-        }
-        catch
-        {
-            return (-24f, -144f);
-        }
     }
 
     private static string BuildStatusText(string playerId, bool isConnected)
@@ -1402,6 +1580,7 @@ public static partial class OtherPlayersOverlayPatch
             AnchorMin = rect.anchorMin,
             AnchorMax = rect.anchorMax,
             Pivot = rect.pivot,
+            LocalPosition = rect.localPosition,
             AnchoredPosition = rect.anchoredPosition,
             SizeDelta = rect.sizeDelta,
             LocalScale = rect.localScale,
@@ -1442,6 +1621,7 @@ public static partial class OtherPlayersOverlayPatch
         state.AnchorMin = rect.anchorMin;
         state.AnchorMax = rect.anchorMax;
         state.Pivot = rect.pivot;
+        state.LocalPosition = rect.localPosition;
         state.AnchoredPosition = rect.anchoredPosition;
         state.SizeDelta = rect.sizeDelta;
         state.LocalScale = rect.localScale;
@@ -1458,6 +1638,7 @@ public static partial class OtherPlayersOverlayPatch
         return !Approximately(rect.anchorMin, state.AnchorMin) ||
                !Approximately(rect.anchorMax, state.AnchorMax) ||
                !Approximately(rect.pivot, state.Pivot) ||
+             !Approximately(rect.localPosition, state.LocalPosition) ||
                !Approximately(rect.anchoredPosition, state.AnchoredPosition) ||
                !Approximately(rect.sizeDelta, state.SizeDelta) ||
                !Approximately(rect.localScale, state.LocalScale) ||
@@ -1508,6 +1689,34 @@ public static partial class OtherPlayersOverlayPatch
         // 从纹理创建Sprite
         _whiteSprite = Sprite.Create(_whiteTexture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
         return _whiteSprite;
+    }
+
+    private static Sprite GetCircleMaskSprite()
+    {
+        if (_circleMaskSprite != null)
+        {
+            return _circleMaskSprite;
+        }
+
+        const int size = 128;
+        const float radius = (size - 1) * 0.5f;
+        const float center = radius;
+
+        _circleMaskTexture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float dx = x - center;
+                float dy = y - center;
+                bool inside = dx * dx + dy * dy <= radius * radius;
+                _circleMaskTexture.SetPixel(x, y, inside ? Color.white : Color.clear);
+            }
+        }
+
+        _circleMaskTexture.Apply(false, true);
+        _circleMaskSprite = Sprite.Create(_circleMaskTexture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
+        return _circleMaskSprite;
     }
 
     #endregion
@@ -1572,6 +1781,7 @@ public static partial class OtherPlayersOverlayPatch
         public Vector2 AnchorMin { get; set; }
         public Vector2 AnchorMax { get; set; }
         public Vector2 Pivot { get; set; }
+        public Vector3 LocalPosition { get; set; }
         public Vector2 AnchoredPosition { get; set; }
         public Vector2 SizeDelta { get; set; }
         public Vector3 LocalScale { get; set; }
@@ -1584,9 +1794,15 @@ public static partial class OtherPlayersOverlayPatch
         public GameObject Root { get; set; }
         public RectTransform RootRect { get; set; }
         public RectLayoutState RootLayoutState { get; set; }
+        public RectTransform VisualRect { get; set; }
+        public RectLayoutState VisualLayoutState { get; set; }
         public Image Avatar { get; set; }
         public TextMeshProUGUI Name { get; set; }
+        public RectTransform NameRect { get; set; }
+        public RectLayoutState NameLayoutState { get; set; }
         public TextMeshProUGUI Status { get; set; }
+        public RectTransform StatusRect { get; set; }
+        public RectLayoutState StatusLayoutState { get; set; }
         public CanvasGroup VisualGroup { get; set; }
         public TextMeshProUGUI PowerText { get; set; }
         public Image Gauge1 { get; set; }
@@ -1597,6 +1813,7 @@ public static partial class OtherPlayersOverlayPatch
         public Color Gauge3FontColor { get; set; }
         public GameObject HealthRoot { get; set; }
         public RectTransform HealthRootRect { get; set; }
+        public RectLayoutState HealthRootLayoutState { get; set; }
         public UnitStatusWidget HealthWidget { get; set; }
         public HealthBar HealthBar { get; set; }
         public CanvasGroup HealthGroup { get; set; }
