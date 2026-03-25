@@ -8,6 +8,9 @@ namespace MyFirstPlugin;
 
 [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
 [BepInProcess("LBoL.exe")]
+/// <summary>
+/// LBoL 皮肤插件主入口，负责加载自定义角色皮肤（Spine 骨骼动画）并应用 Harmony 补丁。
+/// </summary>
 public class Plugin : BaseUnityPlugin
 {
     internal static new ManualLogSource Logger;
@@ -16,6 +19,9 @@ public class Plugin : BaseUnityPlugin
 
     // Token: 0x04000002 RID: 2
     // internal static ManualLogSource log;
+    /// <summary>
+    /// BepInEx 插件初始化入口，加载 Logger、初始化 SpineLoader 和补丁，并应用所有 Harmony 补丁。
+    /// </summary>
     private void Awake()
     {
         // Plugin startup logic
@@ -39,6 +45,9 @@ public class Plugin : BaseUnityPlugin
             Logger?.LogError($"Error during plugin initialization: {ex}");
         }
     }
+    /// <summary>
+    /// 插件销毁时的清理逻辑，记录插件卸载日志。
+    /// </summary>
     private void OnDestroy()
     {
         Logger = base.Logger;

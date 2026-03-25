@@ -1,31 +1,25 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Base\\LBoL.Base.csproj": {}
+    "/home/runner/work/LBol_demoplugin/LBol_demoplugin/lbol/LBoL.Base/LBoL.Base.csproj": {}
   },
   "projects": {
-    "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Base\\LBoL.Base.csproj": {
+    "/home/runner/work/LBol_demoplugin/LBol_demoplugin/lbol/LBoL.Base/LBoL.Base.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Base\\LBoL.Base.csproj",
+        "projectUniqueName": "/home/runner/work/LBol_demoplugin/LBol_demoplugin/lbol/LBoL.Base/LBoL.Base.csproj",
         "projectName": "LBoL.Base",
-        "projectPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Base\\LBoL.Base.csproj",
-        "packagesPath": "C:\\Users\\oft-Enginner PC\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Base\\obj\\",
+        "projectPath": "/home/runner/work/LBol_demoplugin/LBol_demoplugin/lbol/LBoL.Base/LBoL.Base.csproj",
+        "packagesPath": "/tmp/codeql-scratch-86e355d6bd1fb9fc/dbs/csharp/working/packages",
+        "outputPath": "/home/runner/work/LBol_demoplugin/LBol_demoplugin/lbol/LBoL.Base/obj/",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "E:\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\oft-Enginner PC\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "/home/runner/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net40"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -44,7 +38,7 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "9.0.300"
+        "SdkAnalysisLevel": "10.0.100"
       },
       "frameworks": {
         "net40": {
@@ -57,7 +51,7 @@
               "autoReferenced": true
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.307\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/10.0.102/RuntimeIdentifierGraph.json"
         }
       }
     }

@@ -10,11 +10,21 @@ using Spine.Unity;
 using UnityEngine;
 
 
+/// <summary>
+/// Spine 骨骼动画加载器，负责从文件系统动态加载 Spine 动画资源并替换游戏中的角色动画。
+/// </summary>
 public class SpineLoader
 {
     // 从指定路径加载Spine动画
 
     internal static ManualLogSource Logger;
+    /// <summary>
+    /// 从文件路径加载 Spine 骨骼动画，并将其应用到指定的 SkeletonAnimation 组件。
+    /// </summary>
+    /// <param name="animator">目标 SkeletonAnimation 组件，动画将应用至此组件。</param>
+    /// <param name="jsonPath">Spine JSON 骨骼数据文件路径。</param>
+    /// <param name="atlasPath">Spine Atlas 图集描述文件路径。</param>
+    /// <param name="texturepath">纹理图片文件路径。</param>
     public static void LoadSpineAnimation(SkeletonAnimation animator, string jsonPath, string atlasPath, string texturepath)
     {
         Logger.LogInfo($"加载Spine动画: JSON路径: {jsonPath}, Atlas路径: {atlasPath}");
@@ -154,6 +164,12 @@ public class SpineLoader
     }
 
     // 从Resources目录加载Spine动画
+    /// <summary>
+    /// 从 Unity Resources 目录加载 Spine 动画资源并应用到指定组件。
+    /// </summary>
+    /// <param name="animator">目标 SkeletonAnimation 组件。</param>
+    /// <param name="jsonResourcePath">Resources 目录下的骨骼数据资源路径。</param>
+    /// <param name="atlasResourcePath">Resources 目录下的 Atlas 资源路径（当前未使用）。</param>
     public void LoadSpineAnimationFromResources(SkeletonAnimation animator, string jsonResourcePath, string atlasResourcePath)
     {
         // 从Resources加载资源

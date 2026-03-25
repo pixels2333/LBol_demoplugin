@@ -10,6 +10,9 @@ namespace NetworkPlugin;
 
 [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
 [BepInProcess("LBoL.exe")]
+/// <summary>
+/// LBoL 网络联机插件主入口，负责初始化依赖注入容器、注册网络服务并应用 Harmony 补丁。
+/// </summary>
 public class Plugin : BaseUnityPlugin
 {
     internal static new ManualLogSource Logger;
@@ -22,6 +25,9 @@ public class Plugin : BaseUnityPlugin
 
     private static readonly Harmony harmony = PluginInfo.harmony;
 
+    /// <summary>
+    /// BepInEx 插件初始化入口，配置依赖注入服务容器并加载 Harmony 补丁。
+    /// </summary>
     private void Awake()
     {
 
@@ -70,6 +76,10 @@ public class Plugin : BaseUnityPlugin
         harmony.PatchAll();
         Logger.LogInfo("补丁已加载");
     }
+    /// <summary>
+    /// 配置依赖注入服务，注册 Logger、网络管理器和网络客户端。
+    /// </summary>
+    /// <param name="services">依赖注入服务集合。</param>
     private void ConfigureServices(IServiceCollection services)
     {
         // 注册你的服务接口和实现
@@ -83,11 +93,17 @@ public class Plugin : BaseUnityPlugin
     
     }
 
+    /// <summary>
+    /// 每帧更新逻辑，可用于轮询网络事件或执行周期性操作。
+    /// </summary>
     void Update()
     {
         // 可以在这里或任何其他地方使用service
         // service?.AnotherMethod();
     }
+    /// <summary>
+    /// 插件销毁时的清理逻辑，释放依赖注入服务提供者资源。
+    /// </summary>
     void OnDestroy()
     {
         // 如果_serviceProvider实现了IDisposable（通常会的），应该在这里进行Dispose

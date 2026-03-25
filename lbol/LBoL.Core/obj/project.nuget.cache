@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "rs3VUvQq7IY=",
+  "dgSpecHash": "u0iaL5q4Zbs=",
   "success": true,
-  "projectFilePath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\lbol\\LBoL.Core\\LBoL.Core.csproj",
+  "projectFilePath": "/home/runner/work/LBol_demoplugin/LBol_demoplugin/lbol/LBoL.Core/LBoL.Core.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\oft-Enginner PC\\.nuget\\packages\\microsoft.netframework.referenceassemblies\\1.0.3\\microsoft.netframework.referenceassemblies.1.0.3.nupkg.sha512",
-    "C:\\Users\\oft-Enginner PC\\.nuget\\packages\\microsoft.netframework.referenceassemblies.net40\\1.0.3\\microsoft.netframework.referenceassemblies.net40.1.0.3.nupkg.sha512"
+    "/tmp/codeql-scratch-86e355d6bd1fb9fc/dbs/csharp/working/packages/microsoft.netframework.referenceassemblies/1.0.3/microsoft.netframework.referenceassemblies.1.0.3.nupkg.sha512",
+    "/tmp/codeql-scratch-86e355d6bd1fb9fc/dbs/csharp/working/packages/microsoft.netframework.referenceassemblies.net40/1.0.3/microsoft.netframework.referenceassemblies.net40.1.0.3.nupkg.sha512"
   ],
   "logs": []
 }

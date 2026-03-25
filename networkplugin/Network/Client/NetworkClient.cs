@@ -124,6 +124,12 @@ public class NetworkClient : INetworkClient
 
 
 
+    /// <summary>
+    /// 向服务器发送带有指定请求头的泛型数据，支持 float、double、long、int、string 和 bool 类型。
+    /// </summary>
+    /// <typeparam name="T">请求数据类型。</typeparam>
+    /// <param name="requestHeader">请求头标识字符串。</param>
+    /// <param name="requestdata">要发送的请求数据。</param>
     public void SendRequest<T>(string requestHeader, T requestdata)
     {
         if (IsConnected)

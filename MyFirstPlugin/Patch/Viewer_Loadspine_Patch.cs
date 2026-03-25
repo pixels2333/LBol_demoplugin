@@ -12,6 +12,9 @@ namespace MyFirstPlugin.Patch;
 
 
 [HarmonyPatch]
+/// <summary>
+/// Harmony 补丁类，拦截 UnitView.SetAnimation 方法，为特定角色（Koishi）替换 Spine 骨骼动画。
+/// </summary>
 public class Viewer_Loadspine_Patch
 {
 
@@ -26,6 +29,13 @@ public class Viewer_Loadspine_Patch
     [HarmonyPostfix]
     // 注入原始方法的参数，以便在 Postfix 中使用或了解上下文
     // Harmony 会通过参数名称（区分大小写）进行匹配
+    /// <summary>
+    /// UnitView.SetAnimation 方法的后缀补丁，检测目标模型并加载自定义 Spine 动画。
+    /// </summary>
+    /// <param name="__instance">被补丁拦截的 UnitView 实例。</param>
+    /// <param name="order">原始动画指令名称。</param>
+    /// <param name="speed">动画播放速度。</param>
+    /// <param name="stop">是否停止当前动画。</param>
     public static void OnSetAnimationPostfix(UnitView __instance, string order, float speed, bool stop)
     {
         try

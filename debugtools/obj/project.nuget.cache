@@ -1,8 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "vUhDVdVOKEE=",
+  "dgSpecHash": "rpejaqd+x+U=",
   "success": true,
-  "projectFilePath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\debugtools\\debugtools.csproj",
-  "expectedPackageFiles": [],
+  "projectFilePath": "/home/runner/work/LBol_demoplugin/LBol_demoplugin/debugtools/debugtools.csproj",
+  "expectedPackageFiles": [
+    "/tmp/codeql-scratch-86e355d6bd1fb9fc/dbs/csharp/working/packages/microsoft.netcore.app.ref/9.0.12/microsoft.netcore.app.ref.9.0.12.nupkg.sha512",
+    "/tmp/codeql-scratch-86e355d6bd1fb9fc/dbs/csharp/working/packages/microsoft.aspnetcore.app.ref/9.0.12/microsoft.aspnetcore.app.ref.9.0.12.nupkg.sha512",
+    "/tmp/codeql-scratch-86e355d6bd1fb9fc/dbs/csharp/working/packages/microsoft.netcore.app.host.linux-x64/9.0.12/microsoft.netcore.app.host.linux-x64.9.0.12.nupkg.sha512"
+  ],
   "logs": []
 }

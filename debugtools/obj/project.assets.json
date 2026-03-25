@@ -8,31 +8,24 @@
     "net9.0": []
   },
   "packageFolders": {
-    "C:\\Users\\oft-Enginner PC\\.nuget\\packages\\": {},
-    "E:\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+    "/tmp/codeql-scratch-86e355d6bd1fb9fc/dbs/csharp/working/packages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\debugtools\\debugtools.csproj",
+      "projectUniqueName": "/home/runner/work/LBol_demoplugin/LBol_demoplugin/debugtools/debugtools.csproj",
       "projectName": "debugtools",
-      "projectPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\debugtools\\debugtools.csproj",
-      "packagesPath": "C:\\Users\\oft-Enginner PC\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\debugtools\\obj\\",
+      "projectPath": "/home/runner/work/LBol_demoplugin/LBol_demoplugin/debugtools/debugtools.csproj",
+      "packagesPath": "/tmp/codeql-scratch-86e355d6bd1fb9fc/dbs/csharp/working/packages",
+      "outputPath": "/home/runner/work/LBol_demoplugin/LBol_demoplugin/debugtools/obj/",
       "projectStyle": "PackageReference",
-      "fallbackFolders": [
-        "E:\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-      ],
       "configFilePaths": [
-        "C:\\Users\\oft-Enginner PC\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        "/home/runner/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net9.0"
       ],
       "sources": {
-        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -51,7 +44,7 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "9.0.300"
+      "SdkAnalysisLevel": "10.0.100"
     },
     "frameworks": {
       "net9.0": {
@@ -67,12 +60,26 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
+        "downloadDependencies": [
+          {
+            "name": "Microsoft.AspNetCore.App.Ref",
+            "version": "[9.0.12, 9.0.12]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Host.linux-x64",
+            "version": "[9.0.12, 9.0.12]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Ref",
+            "version": "[9.0.12, 9.0.12]"
+          }
+        ],
         "frameworkReferences": {
           "Microsoft.NETCore.App": {
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.307/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/10.0.102/PortableRuntimeIdentifierGraph.json"
       }
     }
   }
