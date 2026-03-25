@@ -1,3 +1,5 @@
 .claude/
 lbol/**/bin
 lbol/**/obj
+debugtools/**/bin
+debugtools/**/obj
