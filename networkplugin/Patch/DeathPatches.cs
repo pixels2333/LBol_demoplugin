@@ -1,9 +1,11 @@
 using System;
+using System.Linq;
 using HarmonyLib;
 using LBoL.Core.Battle;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
+using NetworkPlugin.Configuration;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Utils;
@@ -48,6 +50,16 @@ public class DeathPatches
     private static INetworkClient NetworkClient => ServiceProvider?.GetRequiredService<INetworkClient>();
 
     /// <summary>
+    /// 联机玩家管理器。
+    /// </summary>
+    private static INetworkManager NetworkManager => ServiceProvider?.GetService<INetworkManager>();
+
+    /// <summary>
+    /// 配置管理器。
+    /// </summary>
+    private static ConfigManager ConfigManager => ServiceProvider?.GetService<ConfigManager>() ?? Plugin.ConfigManager;
+
+    /// <summary>
     /// 在“从网络落地”的场景下抑制再次向网络广播，避免回环/重复消息。
     /// </summary>
     public static bool SuppressNetworkSync { get; set; }
@@ -71,6 +83,75 @@ public class DeathPatches
 
         // 联机：已死 + 不允许真死 => 假死。
         return player != null && player.IsDead && !AllowRealDeath;
+    }
+
+    /// <summary>
+    /// 获取本地玩家在死亡登记册中的唯一标识。
+    /// </summary>
+    /// <param name="player">本地玩家。</param>
+    /// <returns>优先返回网络 PlayerId，取不到时回退到本地单位 Id。</returns>
+    private static string ResolveLocalPlayerRegistryId(PlayerUnit player)
+    {
+        string playerId = null;
+
+        try
+        {
+            NetworkIdentityTracker.EnsureSubscribed(NetworkClient);
+            playerId = NetworkIdentityTracker.GetSelfPlayerId();
+        }
+        catch
+        {
+            // ignored
+        }
+
+        if (!string.IsNullOrWhiteSpace(playerId))
+        {
+            return playerId;
+        }
+
+        return player?.Id;
+    }
+
+    /// <summary>
+    /// 判断当前联机房间是否已全员死亡。
+    /// </summary>
+    /// <param name="localPlayer">本地玩家。</param>
+    /// <returns>已知玩家全部处于死亡状态时返回 true。</returns>
+    private static bool AreAllKnownPlayersDead(PlayerUnit localPlayer)
+    {
+        if (localPlayer == null)
+        {
+            return false;
+        }
+
+        int totalPlayers = Math.Max(1, NetworkManager?.GetPlayerCount() ?? 1);
+        var deadPlayerIds = DeathRegistry
+            .GetDeadPlayersSnapshot()
+            .Select(entry => entry.PlayerId)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.Ordinal)
+            .ToHashSet(StringComparer.Ordinal);
+
+        if (localPlayer.IsDead)
+        {
+            string localPlayerId = ResolveLocalPlayerRegistryId(localPlayer);
+            if (!string.IsNullOrWhiteSpace(localPlayerId))
+            {
+                deadPlayerIds.Add(localPlayerId);
+            }
+        }
+
+        return deadPlayerIds.Count >= totalPlayers;
+    }
+
+    /// <summary>
+    /// 判断战斗中的敌人是否已经全部被解决。
+    /// </summary>
+    /// <param name="battle">战斗控制器。</param>
+    /// <returns>敌人全部死亡、逃跑或仅剩仆从时返回 true。</returns>
+    private static bool AreAllEnemiesResolved(BattleController battle)
+    {
+        return battle?.EnemyGroup != null && battle.EnemyGroup.All(enemy => enemy.IsDead || enemy.IsEscaped || enemy.IsServant);
     }
 
     #endregion
@@ -503,11 +584,29 @@ public class DeathPatches
 
             var player = __instance.Player;
 
-            // 假死（已死但不允许真死）时，战斗不应结束。
+            // 假死（已死但不允许真死）时：
+            // - 若已全员死亡，放行真死与原版失败收口；
+            // - 若敌人已清空，放行战斗结束，后续由 LeaveBattle 前自动复活接管；
+            // - 仅在“敌人仍存活且队友还有活人”时继续战斗。
             if (player.IsDead && !AllowRealDeath)
             {
+                if (AreAllKnownPlayersDead(player))
+                {
+                    SetAllowRealDeath(true);
+                    __result = true;
+                    Plugin.Logger?.LogInfo("[DeathPatch] 已判定全员死亡，放行原版失败结算");
+                    return;
+                }
+
+                if (AreAllEnemiesResolved(__instance))
+                {
+                    __result = true;
+                    Plugin.Logger?.LogDebug("[DeathPatch] 敌人已全部解决，放行战斗结束以执行战后自动复活");
+                    return;
+                }
+
                 __result = false;
-                Plugin.Logger?.LogDebug("[DeathPatch] 玩家处于假死，战斗继续");
+                Plugin.Logger?.LogDebug("[DeathPatch] 玩家处于假死且队友仍在战斗，继续战斗");
             }
         }
         catch (Exception ex)
@@ -570,8 +669,51 @@ public class DeathPatches
     /// <param name="allow">是否允许真死。</param>
     public static void SetAllowRealDeath(bool allow)
     {
+        if (AllowRealDeath == allow)
+        {
+            return;
+        }
+
         AllowRealDeath = allow;
         Plugin.Logger?.LogInfo($"[DeathPatch] AllowRealDeath 设置为: {allow}");
+    }
+
+    /// <summary>
+    /// 判断战斗结束后是否应为本地玩家执行自动复活。
+    /// </summary>
+    /// <param name="player">本地玩家。</param>
+    /// <returns>需要自动复活时返回 true。</returns>
+    public static bool ShouldAutoReviveAfterBattle(PlayerUnit player)
+    {
+        if (player == null || !player.IsDead)
+        {
+            return false;
+        }
+
+        if (NetworkClient == null || !NetworkClient.IsConnected)
+        {
+            return false;
+        }
+
+        bool allPlayersDead = AreAllKnownPlayersDead(player);
+        SetAllowRealDeath(allPlayersDead);
+        return !allPlayersDead;
+    }
+
+    /// <summary>
+    /// 计算战斗结束自动复活的目标生命值。
+    /// </summary>
+    /// <param name="player">本地玩家。</param>
+    /// <returns>复活后的目标生命值。</returns>
+    public static int CalculateConfiguredAutoReviveHp(PlayerUnit player)
+    {
+        if (player == null)
+        {
+            return 1;
+        }
+
+        return ConfigManager?.CalculateBattleAutoReviveHp(player.MaxHp)
+            ?? Math.Max(1, (int)Math.Ceiling(player.MaxHp * 0.1d));
     }
 
     /// <summary>

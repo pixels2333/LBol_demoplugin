@@ -13,6 +13,7 @@ using LBoL.Presentation.Units;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.NetworkPlayer;
+using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -33,7 +34,9 @@ public static partial class OtherPlayersOverlayPatch
     #region 常量和字段
 
     private const float AvatarEntryBaseWidth = 260f;
-    private const float AvatarEntryBaseHeight = 224f;
+    // `RemotePlayerHealthBar` 当前被放在条目根节点的更低位置，
+    // 因此条目本身的高度也必须覆盖这部分可视范围，否则后续条目会压到它们上面。
+    private const float AvatarEntryBaseHeight = 520f;
     private const float AvatarVisualSize = 230f;
     private const float AvatarMaskDiameterScale = 1f;
     private const float AvatarImageScale = 1.6f;
@@ -45,7 +48,13 @@ public static partial class OtherPlayersOverlayPatch
     private const float AvatarPanelOffsetY = 0f;
     private static readonly Vector3 HealthBarLocalPosition = new(330f, -460f, 0f);
     private static readonly Vector3 HealthBarLocalScale = new(0.7f, 0.7f, 1f);
+    private static readonly Vector3 PlayerNameLocalPosition = new(280f, -380f, 0f);
+    private static readonly Vector3 PlayerNameLocalScale = new(4.3f, 4.3f, 1f);
+    private static readonly Vector2 PlayerNameSize = new(AvatarEntryBaseWidth - 8f, 18f);
+    private const float PlayerNameFontSize = 13f;
     private const float RuntimeLayoutEpsilon = 0.01f;
+    private const float OverlayDebugLogInterval = 0.5f;
+    private const float OverlayUiRefreshInterval = 0.2f;
     private static readonly Vector3 OverlayRootLocalPosition = new(1360f, 900f, 0f);
 
     /// <summary>获取依赖注入容器</summary>
@@ -62,6 +71,9 @@ public static partial class OtherPlayersOverlayPatch
 
     /// <summary>默认字体资源（缓存）</summary>
     private static TMP_FontAsset _defaultFont;
+
+    /// <summary>是否已记录过缺失默认字体警告（避免刷屏）</summary>
+    private static bool _missingFontWarningLogged;
 
     /// <summary>当前订阅的网络客户端</summary>
     private static INetworkClient _subscribedClient;
@@ -84,6 +96,9 @@ public static partial class OtherPlayersOverlayPatch
     /// <summary>地图面板中远程玩家图标缓存（PlayerId -> Icon）</summary>
     private static readonly Dictionary<string, MapIconUi> _mapIcons = new();
 
+    /// <summary>地图节点级图标容器缓存（MapNodeWidget -> Root）</summary>
+    private static readonly Dictionary<MapNodeWidget, RectTransform> _mapNodeIconsRoots = new();
+
     /// <summary>角色头像缓存（CharacterId -> Sprite）</summary>
     private static readonly Dictionary<string, Sprite> _avatarCache = new(StringComparer.OrdinalIgnoreCase);
 
@@ -98,6 +113,21 @@ public static partial class OtherPlayersOverlayPatch
 
     /// <summary>连接状态变化委托（用于事件订阅）</summary>
     private static readonly Action<bool> _onConnectionStateChanged = OnConnectionStateChanged;
+
+    /// <summary>Overlay 调试日志节流时间</summary>
+    private static float _nextOverlayDebugLogTime;
+
+    /// <summary>上一次 Overlay 调试摘要</summary>
+    private static string _lastOverlayDebugSummary;
+
+    /// <summary>Overlay UI 下次允许刷新的时间</summary>
+    private static float _nextOverlayRefreshTime;
+
+    /// <summary>Overlay UI 是否需要强制刷新</summary>
+    private static bool _overlayUiDirty = true;
+
+    /// <summary>上一次用于判定UI刷新的数据签名</summary>
+    private static string _lastOverlayRenderSignature;
 
     #endregion
 
@@ -115,18 +145,21 @@ public static partial class OtherPlayersOverlayPatch
         {
             // 从依赖注入容器获取当前网络客户端实例
             INetworkClient client = TryGetNetworkClient();
+            bool hideRemoteInGap = IsInGapStationContext();
             if (client == null)
             {
                 // 没有网络客户端时：若启用虚拟玩家，则仍允许远程渲染；否则按原逻辑隐藏。
                 EnsureVirtualAiDefaultPlayer_NoThrow();
-                if (!IsVirtualAiDefaultEnabled())
+                if (hideRemoteInGap || !IsVirtualAiDefaultEnabled())
                 {
                     HideUi();
+                    MarkOverlayUiDirty();
                     HideRemoteCharacters();
                     return;
                 }
 
                 HideUi();
+                MarkOverlayUiDirty();
                 EnsureRemoteCharacters();
                 UpdateRemoteCharactersLayout();
                 return;
@@ -149,14 +182,16 @@ public static partial class OtherPlayersOverlayPatch
             if (!client.IsConnected)
             {
                 EnsureVirtualAiDefaultPlayer_NoThrow();
-                if (!IsVirtualAiDefaultEnabled())
+                if (hideRemoteInGap || !IsVirtualAiDefaultEnabled())
                 {
                     HideUi();
+                    MarkOverlayUiDirty();
                     HideRemoteCharacters();
                     return;
                 }
 
                 HideUi();
+                MarkOverlayUiDirty();
                 EnsureRemoteCharacters();
                 UpdateRemoteCharactersLayout();
                 return;
@@ -167,6 +202,16 @@ public static partial class OtherPlayersOverlayPatch
             if (UiManager.Instance == null || UiManager.IsShowingLoading || UiManager.IsBlockingInput)
             {
                 HideUi();
+                MarkOverlayUiDirty();
+                HideRemoteCharacters();
+                return;
+            }
+
+            if (hideRemoteInGap)
+            {
+                // 休息房间保持原版观感：不渲染其他玩家 Spine 与名字 Overlay。
+                HideUi();
+                MarkOverlayUiDirty();
                 HideRemoteCharacters();
                 return;
             }
@@ -174,11 +219,15 @@ public static partial class OtherPlayersOverlayPatch
             if (IsBattleOverlayActive())
             {
                 EnsureUi();
-                RefreshUi();
+                if (ShouldRefreshOverlayUi())
+                {
+                    RefreshUi();
+                }
             }
             else
             {
                 HideUi();
+                MarkOverlayUiDirty();
             }
 
             // 渲染远程玩家“角色实体”（战斗场景）
@@ -247,7 +296,7 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
-        _defaultFont ??= FindDefaultFont(parent);
+        EnsureDefaultFont(parent);
 
         GameObject root = new("NetworkPlugin_OtherPlayersOverlay");
         root.transform.SetParent(parent, false);
@@ -269,6 +318,11 @@ public static partial class OtherPlayersOverlayPatch
             EntriesRootLayoutState = new RectLayoutState(),
             Entries = new Dictionary<string, AvatarEntryUi>(StringComparer.Ordinal)
         };
+
+        LogOverlayDebug($"EnsureUi 创建 Root: path={GetTransformPath(root.transform)}, rootRect={DescribeRect(rootRect)}, entriesRect={DescribeRect(entriesRect)}, defaultFont={_defaultFont?.name ?? "<null>"}", force: true);
+
+        DestroyChildIfExists(entriesRect, "RemotePlayerAvatarTemplate");
+        DestroyChildIfExists(entriesRect, "RemotePlayerHealthBarTemplate");
 
         ApplyRuntimeEditableRectLayout(rootRect, _ui.RootLayoutState, rect =>
         {
@@ -293,6 +347,8 @@ public static partial class OtherPlayersOverlayPatch
 
     private static void RefreshUi()
     {
+        EnsureVirtualAiDefaultPlayer_NoThrow();
+
         List<PlayerSummary> list;
         lock (_syncLock)
         {
@@ -305,8 +361,11 @@ public static partial class OtherPlayersOverlayPatch
                 .ToList();
         }
 
+        LogOverlayPlayersSnapshot("RefreshUi-AfterFilter", list);
+
         if (list.Count == 0)
         {
+            LogOverlayDebug($"RefreshUi 列表为空，隐藏 Overlay: self={_selfPlayerId ?? "<null>"}", force: true);
             HideUi();
             return;
         }
@@ -314,11 +373,13 @@ public static partial class OtherPlayersOverlayPatch
         EnsureUi();
         if (_ui?.Root == null)
         {
+            LogOverlayDebug("RefreshUi 中止：_ui.Root 为空", force: true);
             return;
         }
 
         if (!TryAttachUiToTopRight(list.Count))
         {
+            LogOverlayDebug($"RefreshUi 中止：TryAttachUiToTopRight 失败，entryCount={list.Count}", force: true);
             HideUi();
             return;
         }
@@ -326,6 +387,7 @@ public static partial class OtherPlayersOverlayPatch
         EnsureAvatarTemplate();
         if (_ui.AvatarTemplate == null)
         {
+            LogOverlayDebug("RefreshUi 中止：AvatarTemplate 为空", force: true);
             HideUi();
             return;
         }
@@ -365,12 +427,14 @@ public static partial class OtherPlayersOverlayPatch
 
         if (orderedEntries.Count == 0)
         {
+            LogOverlayDebug("RefreshUi 中止：orderedEntries 为空", force: true);
             HideUi();
             return;
         }
 
         if (!TryAttachUiToTopRight(orderedEntries.Count))
         {
+            LogOverlayDebug($"RefreshUi 中止：第二次 TryAttachUiToTopRight 失败，entryCount={orderedEntries.Count}", force: true);
             HideUi();
             return;
         }
@@ -384,6 +448,92 @@ public static partial class OtherPlayersOverlayPatch
         {
             _ui.Root.SetActive(false);
         }
+    }
+
+    private static bool ShouldRefreshOverlayUi()
+    {
+        float now = Time.unscaledTime;
+        if (_overlayUiDirty)
+        {
+            _overlayUiDirty = false;
+            _nextOverlayRefreshTime = now + OverlayUiRefreshInterval;
+            _lastOverlayRenderSignature = BuildOverlayRenderSignature();
+            return true;
+        }
+
+        if (now < _nextOverlayRefreshTime)
+        {
+            return false;
+        }
+
+        _nextOverlayRefreshTime = now + OverlayUiRefreshInterval;
+        string signature = BuildOverlayRenderSignature();
+        if (string.Equals(signature, _lastOverlayRenderSignature, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        _lastOverlayRenderSignature = signature;
+        return true;
+    }
+
+    private static void MarkOverlayUiDirty()
+    {
+        _overlayUiDirty = true;
+        _nextOverlayRefreshTime = 0f;
+        _lastOverlayRenderSignature = null;
+    }
+
+    private static string BuildOverlayRenderSignature()
+    {
+        EnsureVirtualAiDefaultPlayer_NoThrow();
+
+        List<PlayerSummary> players;
+        lock (_syncLock)
+        {
+            players = _players.Values
+                .Where(p => p != null && !string.IsNullOrWhiteSpace(p.PlayerId))
+                .Where(p => string.IsNullOrWhiteSpace(_selfPlayerId) || !string.Equals(p.PlayerId, _selfPlayerId, StringComparison.Ordinal))
+                .OrderByDescending(p => p.IsHost)
+                .ThenByDescending(p => p.IsConnected)
+                .ThenBy(p => p.PlayerName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        if (players.Count == 0)
+        {
+            return "<empty>";
+        }
+
+        StringBuilder sb = new StringBuilder(players.Count * 96);
+        for (int i = 0; i < players.Count; i++)
+        {
+            PlayerSummary player = players[i];
+            sb.Append(player.PlayerId ?? "");
+            sb.Append('|').Append(player.PlayerName ?? "");
+            sb.Append('|').Append(player.IsConnected ? '1' : '0');
+            sb.Append('|').Append(player.IsHost ? '1' : '0');
+            sb.Append('|').Append(player.CharacterId ?? "");
+
+            if (TryGetRemoteBattleState(player, out RemoteBattleState battleState))
+            {
+                sb.Append('|').Append(battleState.Health);
+                sb.Append('/').Append(battleState.MaxHealth);
+                sb.Append('|').Append(battleState.Shield);
+                sb.Append('|').Append(battleState.Block);
+                sb.Append('|').Append(battleState.CurrentPower);
+                sb.Append('/').Append(battleState.PowerPerLevel);
+                sb.Append('/').Append(battleState.MaxPowerLevel);
+            }
+            else
+            {
+                sb.Append("|<nobs>");
+            }
+
+            sb.Append(';');
+        }
+
+        return sb.ToString();
     }
 
     #endregion
@@ -426,8 +576,9 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
-        GameObject template = UnityEngine.Object.Instantiate(source, _ui.EntriesRoot, false);
+        GameObject template = UnityEngine.Object.Instantiate(source);
         template.name = "RemotePlayerAvatarTemplate";
+        template.hideFlags = HideFlags.HideAndDontSave;
         PrepareAvatarTemplate(template);
         template.SetActive(false);
         _ui.AvatarTemplate = template;
@@ -568,8 +719,9 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
-        GameObject template = UnityEngine.Object.Instantiate(sourceWidget.gameObject, _ui.EntriesRoot, false);
+        GameObject template = UnityEngine.Object.Instantiate(sourceWidget.gameObject);
         template.name = "RemotePlayerHealthBarTemplate";
+        template.hideFlags = HideFlags.HideAndDontSave;
         PrepareHealthBarTemplate(template);
         template.SetActive(false);
         _ui.HealthBarTemplate = template;
@@ -644,6 +796,22 @@ public static partial class OtherPlayersOverlayPatch
         rect.localEulerAngles = Vector3.zero;
     }
 
+    private static void ConfigurePlayerNameRect(RectTransform rect)
+    {
+        if (rect == null)
+        {
+            return;
+        }
+
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.localPosition = PlayerNameLocalPosition;
+        rect.sizeDelta = PlayerNameSize;
+        rect.localScale = PlayerNameLocalScale;
+        rect.localEulerAngles = Vector3.zero;
+    }
+
     private static AvatarEntryUi EnsureAvatarEntry(string playerId)
     {
         if (_ui == null || _ui.EntriesRoot == null || _ui.AvatarTemplate == null || string.IsNullOrWhiteSpace(playerId))
@@ -653,7 +821,9 @@ public static partial class OtherPlayersOverlayPatch
 
         if (_ui.Entries.TryGetValue(playerId, out AvatarEntryUi existing) && existing?.Root != null)
         {
+            EnsureStatusRemoved(existing);
             EnsureCircularAvatarApplied(existing);
+            LogOverlayDebug($"EnsureAvatarEntry 复用现有条目: playerId={playerId}, root={DescribeGameObject(existing.Root)}, name={DescribeGameObject(existing.PlayerNameLabel?.gameObject)}, health={DescribeGameObject(existing.HealthRoot)}");
             return existing;
         }
 
@@ -690,28 +860,6 @@ public static partial class OtherPlayersOverlayPatch
         UltimateSkillPanel panel = visual.GetComponent<UltimateSkillPanel>();
         TextMeshProUGUI powerText = TryGetUltimateField<TextMeshProUGUI>(panel, "powerText");
 
-        TextMeshProUGUI name = CreateTmpText(root.transform, "Name", playerId, 15f);
-        name.alignment = TextAlignmentOptions.Center;
-        RectTransform nameRect = name.GetComponent<RectTransform>();
-        nameRect.anchorMin = new Vector2(0f, 0f);
-        nameRect.anchorMax = new Vector2(1f, 0f);
-        nameRect.pivot = new Vector2(0.5f, 0f);
-        nameRect.anchoredPosition = new Vector2(0f, 30f);
-        nameRect.sizeDelta = new Vector2(-8f, 20f);
-        name.enableWordWrapping = false;
-        name.overflowMode = TextOverflowModes.Ellipsis;
-
-        TextMeshProUGUI status = CreateTmpText(root.transform, "Status", "在线", 13f);
-        status.alignment = TextAlignmentOptions.Center;
-        RectTransform statusRect = status.GetComponent<RectTransform>();
-        statusRect.anchorMin = new Vector2(0f, 0f);
-        statusRect.anchorMax = new Vector2(1f, 0f);
-        statusRect.pivot = new Vector2(0.5f, 0f);
-        statusRect.anchoredPosition = new Vector2(0f, 10f);
-        statusRect.sizeDelta = new Vector2(-8f, 18f);
-        status.enableWordWrapping = false;
-        status.overflowMode = TextOverflowModes.Ellipsis;
-
         GameObject healthRoot = null;
         RectTransform healthRootRect = null;
         UnitStatusWidget healthWidget = null;
@@ -730,6 +878,16 @@ public static partial class OtherPlayersOverlayPatch
             healthGroup = GetOrAddCanvasGroup(healthRoot);
         }
 
+        TextMeshProUGUI status = null;
+        RectTransform statusRect = null;
+        Transform playerNameParent = root.transform;
+        TextMeshProUGUI playerNameLabel = CreateTmpText(playerNameParent, "PlayerNameLabel", ResolveDisplayName(playerId), PlayerNameFontSize);
+        playerNameLabel.alignment = TextAlignmentOptions.Center;
+        playerNameLabel.enableWordWrapping = false;
+        playerNameLabel.overflowMode = TextOverflowModes.Ellipsis;
+        RectTransform playerNameRect = playerNameLabel.rectTransform;
+        ConfigurePlayerNameRect(playerNameRect);
+
         AvatarEntryUi entry = new AvatarEntryUi
         {
             PlayerId = playerId,
@@ -739,12 +897,12 @@ public static partial class OtherPlayersOverlayPatch
             VisualRect = visualRect,
             VisualLayoutState = CaptureRectLayoutState(visualRect),
             Avatar = avatar,
-            Name = name,
-            NameRect = nameRect,
-            NameLayoutState = CaptureRectLayoutState(nameRect),
             Status = status,
             StatusRect = statusRect,
             StatusLayoutState = CaptureRectLayoutState(statusRect),
+            PlayerNameLabel = playerNameLabel,
+            PlayerNameRect = playerNameRect,
+            PlayerNameLayoutState = CaptureRectLayoutState(playerNameRect),
             VisualGroup = GetOrAddCanvasGroup(visual),
             PowerText = powerText,
             Gauge1 = TryGetUltimateField<Image>(panel, "gauge1"),
@@ -759,12 +917,37 @@ public static partial class OtherPlayersOverlayPatch
             HealthWidget = healthWidget,
             HealthBar = healthBar,
             HealthGroup = healthGroup,
+            LastDebugSnapshot = null,
         };
 
+        EnsureStatusRemoved(entry);
         ApplyRuntimeEditableAvatarEntryStaticLayout(entry);
         EnsureCircularAvatarApplied(entry);
         _ui.Entries[playerId] = entry;
+        LogOverlayDebug($"EnsureAvatarEntry 创建条目: playerId={playerId}, root={DescribeGameObject(root)}, health={DescribeGameObject(healthRoot)}, nameParent={GetTransformPath(playerNameParent)}, name={DescribeGameObject(playerNameLabel.gameObject)}, nameRect={DescribeRect(playerNameRect)}", force: true);
         return entry;
+    }
+
+    private static void EnsureStatusRemoved(AvatarEntryUi entry)
+    {
+        if (entry?.Root == null)
+        {
+            return;
+        }
+
+        if (entry.Status != null)
+        {
+            UnityEngine.Object.Destroy(entry.Status.gameObject);
+            entry.Status = null;
+            entry.StatusRect = null;
+            entry.StatusLayoutState = new RectLayoutState();
+        }
+        else
+        {
+            DestroyChildIfExists(entry.Root.transform, "Status");
+        }
+
+        DestroyChildIfExists(entry.Root.transform, "Name");
     }
 
     private static void EnsureCircularAvatarApplied(AvatarEntryUi entry)
@@ -990,18 +1173,13 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
-        ApplyRuntimeEditableAvatarEntryStaticLayout(entry);
         entry.Root.SetActive(true);
 
         bool isConnected = player.IsConnected;
-        string hostTag = player.IsHost ? " [房主]" : string.Empty;
+        bool connectedStateChanged = entry.LastAppliedIsConnected != isConnected;
+        bool avatarCharacterChanged = !string.Equals(entry.LastAppliedCharacterId, player.CharacterId, StringComparison.OrdinalIgnoreCase);
         string displayName = ResolveDisplayName(player.PlayerId, player.PlayerName);
-
-        if (entry.Name != null)
-        {
-            entry.Name.text = $"{displayName}{hostTag}";
-            entry.Name.color = isConnected ? Color.white : new Color(0.78f, 0.78f, 0.78f, 1f);
-        }
+        bool displayNameChanged = !string.Equals(entry.LastAppliedDisplayName, displayName, StringComparison.Ordinal);
 
         if (entry.Status != null)
         {
@@ -1011,9 +1189,44 @@ public static partial class OtherPlayersOverlayPatch
 
         if (entry.Avatar != null)
         {
-            entry.Avatar.sprite = TryGetAvatarSprite(player.CharacterId) ?? GetWhiteSprite();
-            entry.Avatar.color = isConnected ? Color.white : new Color(0.55f, 0.55f, 0.55f, 0.95f);
+            if (avatarCharacterChanged || entry.Avatar.sprite == null)
+            {
+                entry.Avatar.sprite = TryGetAvatarSprite(player.CharacterId) ?? GetWhiteSprite();
+            }
+
+            if (connectedStateChanged)
+            {
+                entry.Avatar.color = isConnected ? Color.white : new Color(0.55f, 0.55f, 0.55f, 0.95f);
+            }
         }
+
+        if (entry.PlayerNameLabel != null)
+        {
+            if (entry.PlayerNameLabel.font == null)
+            {
+                TMP_FontAsset fallbackFont = EnsureDefaultFont(entry.Root?.transform);
+                if (fallbackFont != null)
+                {
+                    entry.PlayerNameLabel.font = fallbackFont;
+                }
+            }
+
+            if (displayNameChanged)
+            {
+                entry.PlayerNameLabel.text = displayName;
+            }
+
+            if (connectedStateChanged)
+            {
+                entry.PlayerNameLabel.color = isConnected ? Color.white : new Color(0.72f, 0.72f, 0.72f, 0.96f);
+            }
+        }
+
+        entry.LastAppliedCharacterId = player.CharacterId;
+        entry.LastAppliedDisplayName = displayName;
+        entry.LastAppliedIsConnected = isConnected;
+
+        LogAvatarEntryDebug(entry, player, "ApplyAvatarEntry");
 
         ApplyBattleState(entry, player, isConnected);
     }
@@ -1022,29 +1235,31 @@ public static partial class OtherPlayersOverlayPatch
     {
         bool hasBattleState = TryGetRemoteBattleState(player, out RemoteBattleState battleState);
 
-        if (entry.VisualGroup != null)
-        {
-            entry.VisualGroup.alpha = 1f;
-        }
-
-        if (entry.HealthGroup != null)
-        {
-            entry.HealthGroup.alpha = 1f;
-        }
-
         if (hasBattleState)
         {
+            if (entry.LastAppliedHasBattleState != true && entry.HealthRoot != null)
+            {
+                entry.HealthRoot.SetActive(true);
+            }
+
             ApplyPowerCharge(entry, battleState, isConnected);
             ApplyHealthBar(entry, battleState);
+            entry.LastAppliedHasBattleState = true;
             return;
         }
 
-        if (entry.HealthRoot != null)
+        if (entry.LastAppliedHasBattleState != false)
         {
-            entry.HealthRoot.SetActive(false);
+            if (entry.HealthRoot != null)
+            {
+                entry.HealthRoot.SetActive(false);
+            }
+
+            ClearPowerCharge(entry);
+            entry.HasInitializedHealthBar = false;
         }
 
-        ClearPowerCharge(entry);
+        entry.LastAppliedHasBattleState = false;
     }
 
     private static void ApplyPowerCharge(AvatarEntryUi entry, RemoteBattleState battleState, bool isConnected)
@@ -1159,11 +1374,6 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
-        if (entry.HealthRoot != null && !entry.HealthRoot.activeSelf)
-        {
-            entry.HealthRoot.SetActive(true);
-        }
-
         int maxHealth = Mathf.Max(1, battleState.MaxHealth);
         int health = Mathf.Clamp(battleState.Health, 0, maxHealth);
         int shield = Mathf.Max(0, battleState.Shield);
@@ -1208,8 +1418,6 @@ public static partial class OtherPlayersOverlayPatch
                 rect.localScale = Vector3.one;
                 rect.anchoredPosition = new Vector2(0f, -i * (AvatarEntryBaseHeight + AvatarEntrySpacing));
             });
-
-            ApplyRuntimeEditableAvatarEntryStaticLayout(entry);
         }
     }
 
@@ -1229,15 +1437,6 @@ public static partial class OtherPlayersOverlayPatch
             rect.localScale = new Vector3(AvatarPanelScale, AvatarPanelScale, 1f);
         });
 
-        ApplyRuntimeEditableRectLayout(entry.NameRect, entry.NameLayoutState, rect =>
-        {
-            rect.anchorMin = new Vector2(0f, 0f);
-            rect.anchorMax = new Vector2(1f, 0f);
-            rect.pivot = new Vector2(0.5f, 0f);
-            rect.anchoredPosition = new Vector2(0f, 30f);
-            rect.sizeDelta = new Vector2(-8f, 20f);
-        });
-
         ApplyRuntimeEditableRectLayout(entry.StatusRect, entry.StatusLayoutState, rect =>
         {
             rect.anchorMin = new Vector2(0f, 0f);
@@ -1245,6 +1444,16 @@ public static partial class OtherPlayersOverlayPatch
             rect.pivot = new Vector2(0.5f, 0f);
             rect.anchoredPosition = new Vector2(0f, 10f);
             rect.sizeDelta = new Vector2(-8f, 18f);
+        });
+
+        ApplyRuntimeEditableRectLayout(entry.PlayerNameRect, entry.PlayerNameLayoutState, rect =>
+        {
+            if (entry.Root != null && rect.parent != entry.Root.transform)
+            {
+                rect.SetParent(entry.Root.transform, false);
+            }
+
+            ConfigurePlayerNameRect(rect);
         });
 
         ApplyRuntimeEditableRectLayout(entry.HealthRootRect, entry.HealthRootLayoutState, rect =>
@@ -1279,12 +1488,149 @@ public static partial class OtherPlayersOverlayPatch
         tmp.color = Color.white;
         tmp.raycastTarget = false;  // 不阻挡射线检测
 
-        // 应用默认字体（如果已缓存）
-        if (_defaultFont != null)
+        // 应用默认字体（优先缓存，失败时自动回退到 TMP 全局默认字体）
+        TMP_FontAsset font = EnsureDefaultFont(parent);
+        if (font != null)
         {
-            tmp.font = _defaultFont;
+            tmp.font = font;
+        }
+        else if (!_missingFontWarningLogged)
+        {
+            _missingFontWarningLogged = true;
+            Plugin.Logger?.LogWarning("[OtherPlayersOverlayDebug] PlayerNameLabel 未找到可用 TMP 字体，文本可能不可见。");
         }
         return tmp;
+    }
+
+    private static void LogOverlayPlayersSnapshot(string stage, List<PlayerSummary> filteredPlayers)
+    {
+        try
+        {
+            List<string> rawPlayers;
+            lock (_syncLock)
+            {
+                rawPlayers = _players.Values
+                    .Where(p => p != null && !string.IsNullOrWhiteSpace(p.PlayerId))
+                    .OrderBy(p => p.PlayerId, StringComparer.Ordinal)
+                    .Select(FormatPlayerSummary)
+                    .ToList();
+            }
+
+            List<string> filtered = filteredPlayers?
+                .Where(p => p != null)
+                .Select(FormatPlayerSummary)
+                .ToList() ?? new List<string>();
+
+            string summary = $"{stage}; self={_selfPlayerId ?? "<null>"}; battleActive={IsBattleOverlayActive()}; uiRoot={DescribeGameObject(_ui?.Root)}; raw=[{string.Join(" | ", rawPlayers)}]; filtered=[{string.Join(" | ", filtered)}]";
+            LogOverlayDebug(summary);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogWarning($"[OtherPlayersOverlayDebug] 记录玩家快照失败: {ex.Message}");
+        }
+    }
+
+    private static void LogAvatarEntryDebug(AvatarEntryUi entry, PlayerSummary player, string stage)
+    {
+        if (entry == null)
+        {
+            return;
+        }
+
+        string snapshot = $"{stage}; playerId={player?.PlayerId ?? entry.PlayerId}; playerName={player?.PlayerName ?? "<null>"}; root={DescribeGameObject(entry.Root)}; health={DescribeGameObject(entry.HealthRoot)}; name={DescribeGameObject(entry.PlayerNameLabel?.gameObject)}; nameParent={GetTransformPath(entry.PlayerNameRect?.parent)}; nameRect={DescribeRect(entry.PlayerNameRect)}; nameFont={entry.PlayerNameLabel?.font?.name ?? "<null>"}; nameText={entry.PlayerNameLabel?.text ?? "<null>"}";
+        if (string.Equals(entry.LastDebugSnapshot, snapshot, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        entry.LastDebugSnapshot = snapshot;
+        LogOverlayDebug(snapshot, force: true);
+    }
+
+    private static bool IsOverlayDebugLoggingEnabled()
+    {
+        try
+        {
+            return Plugin.ConfigManager?.DebugOtherPlayersOverlay?.Value == true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void LogOverlayDebug(string message, bool force = false)
+    {
+        if (string.IsNullOrWhiteSpace(message) || Plugin.Logger == null || !IsOverlayDebugLoggingEnabled())
+        {
+            return;
+        }
+
+        try
+        {
+            float now = Time.unscaledTime;
+            if (!force && string.Equals(message, _lastOverlayDebugSummary, StringComparison.Ordinal) && now < _nextOverlayDebugLogTime)
+            {
+                return;
+            }
+
+            _lastOverlayDebugSummary = message;
+            _nextOverlayDebugLogTime = now + OverlayDebugLogInterval;
+            Plugin.Logger.LogInfo($"[OtherPlayersOverlayDebug] {message}");
+        }
+        catch
+        {
+        }
+    }
+
+    private static string FormatPlayerSummary(PlayerSummary player)
+    {
+        if (player == null)
+        {
+            return "<null-player>";
+        }
+
+        string displayName = ResolveDisplayName(player.PlayerId, player.PlayerName);
+        return $"{player.PlayerId}/{displayName}/conn={player.IsConnected}/host={player.IsHost}/char={player.CharacterId ?? "<null>"}/loc=({player.Stage},{player.LocationX},{player.LocationY},{player.LocationName ?? "<null>"})";
+    }
+
+    private static string DescribeGameObject(GameObject gameObject)
+    {
+        if (gameObject == null)
+        {
+            return "<null-go>";
+        }
+
+        return $"{GetTransformPath(gameObject.transform)} activeSelf={gameObject.activeSelf} activeInHierarchy={gameObject.activeInHierarchy}";
+    }
+
+    private static string DescribeRect(RectTransform rect)
+    {
+        if (rect == null)
+        {
+            return "<null-rect>";
+        }
+
+        return $"anchorMin={rect.anchorMin} anchorMax={rect.anchorMax} pivot={rect.pivot} local={rect.localPosition} anchored={rect.anchoredPosition} size={rect.sizeDelta} scale={rect.localScale}";
+    }
+
+    private static string GetTransformPath(Transform transform)
+    {
+        if (transform == null)
+        {
+            return "<null-transform>";
+        }
+
+        List<string> parts = new List<string>();
+        Transform current = transform;
+        while (current != null)
+        {
+            parts.Add(current.name);
+            current = current.parent;
+        }
+
+        parts.Reverse();
+        return string.Join("/", parts);
     }
 
     #region 工具方法
@@ -1463,6 +1809,50 @@ public static partial class OtherPlayersOverlayPatch
     }
 
     /// <summary>
+    /// 确保可用的 TMP 默认字体（按优先级依次尝试：场景现有字体 -> TMP 全局默认字体 -> Unity内置 LiberationSans SDF）
+    /// </summary>
+    /// <param name="searchRoot">用于查找场景现有字体的根节点</param>
+    /// <returns>可用字体；若仍不可用则返回 null</returns>
+    private static TMP_FontAsset EnsureDefaultFont(Transform searchRoot)
+    {
+        if (_defaultFont != null)
+        {
+            return _defaultFont;
+        }
+
+        if (searchRoot != null)
+        {
+            _defaultFont = FindDefaultFont(searchRoot);
+        }
+
+        if (_defaultFont == null)
+        {
+            try
+            {
+                _defaultFont = TMP_Settings.defaultFontAsset;
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+
+        if (_defaultFont == null)
+        {
+            try
+            {
+                _defaultFont = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+
+        return _defaultFont;
+    }
+
+    /// <summary>
     /// 查找默认字体资源（从父容器的现有文本中提取）
     /// </summary>
     /// <param name="root">搜索根节点</param>
@@ -1509,6 +1899,20 @@ public static partial class OtherPlayersOverlayPatch
 
         CanvasGroup group = gameObject.GetComponent<CanvasGroup>();
         return group ?? gameObject.AddComponent<CanvasGroup>();
+    }
+
+    private static void DestroyChildIfExists(Transform parent, string childName)
+    {
+        if (parent == null || string.IsNullOrWhiteSpace(childName))
+        {
+            return;
+        }
+
+        Transform child = parent.Find(childName);
+        if (child != null)
+        {
+            UnityEngine.Object.Destroy(child.gameObject);
+        }
     }
 
     private static T TryGetUltimateField<T>(UltimateSkillPanel panel, string fieldName) where T : class
@@ -1797,12 +2201,12 @@ public static partial class OtherPlayersOverlayPatch
         public RectTransform VisualRect { get; set; }
         public RectLayoutState VisualLayoutState { get; set; }
         public Image Avatar { get; set; }
-        public TextMeshProUGUI Name { get; set; }
-        public RectTransform NameRect { get; set; }
-        public RectLayoutState NameLayoutState { get; set; }
         public TextMeshProUGUI Status { get; set; }
         public RectTransform StatusRect { get; set; }
         public RectLayoutState StatusLayoutState { get; set; }
+        public TextMeshProUGUI PlayerNameLabel { get; set; }
+        public RectTransform PlayerNameRect { get; set; }
+        public RectLayoutState PlayerNameLayoutState { get; set; }
         public CanvasGroup VisualGroup { get; set; }
         public TextMeshProUGUI PowerText { get; set; }
         public Image Gauge1 { get; set; }
@@ -1825,6 +2229,11 @@ public static partial class OtherPlayersOverlayPatch
         public int LastShield { get; set; } = int.MinValue;
         public int LastBlock { get; set; } = int.MinValue;
         public bool HasInitializedHealthBar { get; set; }
+        public string LastDebugSnapshot { get; set; }
+        public string LastAppliedCharacterId { get; set; }
+        public string LastAppliedDisplayName { get; set; }
+        public bool? LastAppliedIsConnected { get; set; }
+        public bool? LastAppliedHasBattleState { get; set; }
     }
 }
     #endregion

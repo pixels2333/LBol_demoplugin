@@ -62,6 +62,7 @@ public static partial class OtherPlayersOverlayPatch
         _selfPlayerId = null;
         ClearRemoteCharacters();
         ClearMapIcons();
+        MarkOverlayUiDirty();
     }
 
     private static void OnGameEventReceived(string eventType, object payload)
@@ -134,6 +135,8 @@ public static partial class OtherPlayersOverlayPatch
                 LastUpdateTime = Time.unscaledTime,
             };
         }
+
+        MarkOverlayUiDirty();
     }
 
     private static void HandleHostChanged(JsonElement root)
@@ -151,6 +154,8 @@ public static partial class OtherPlayersOverlayPatch
                 kv.Value.IsHost = kv.Key == newHostId;
             }
         }
+
+        MarkOverlayUiDirty();
     }
 
     private static void HandleWelcome(JsonElement root)
@@ -182,6 +187,7 @@ public static partial class OtherPlayersOverlayPatch
 
         RemoveRemoteCharacter(playerId);
         HideMapIcon(playerId);
+        MarkOverlayUiDirty();
     }
 
     private static void ReplacePlayersFromArray(JsonElement playersElem)
@@ -219,6 +225,8 @@ public static partial class OtherPlayersOverlayPatch
                 _players[kv.Key] = kv.Value;
             }
         }
+
+        MarkOverlayUiDirty();
     }
 
     #endregion

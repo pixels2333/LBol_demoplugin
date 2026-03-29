@@ -4,6 +4,67 @@
 
 ## [Unreleased]
 
+### 新增
+- **[networkplugin]**: 新增“战斗胜利后自动复活死亡玩家”规则，统一覆盖普通战斗房与随机事件展开的战斗，并在全员死亡时放行原版失败结算。
+	- 方案: [202603211900_networkplugin-postbattle-auto-revive](archive/2026-03/202603211900_networkplugin-postbattle-auto-revive/)
+	- 决策: networkplugin-postbattle-auto-revive#D001(自动复活挂在 LeaveBattle 前), networkplugin-postbattle-auto-revive#D002(全员死亡判定优先复用 DeathRegistry)
+	- `Configuration/ConfigManager.GameBalance.cs`：新增 `BattleAutoReviveHpPercent` 配置项，默认值 10，并提供统一的战后自动复活血量计算 helper。
+	- `Patch/DeathPatches.cs`：收紧 `BattleShouldEnd` 的假死拦截条件，仅在“敌人仍存活且并非全员死亡”时继续战斗；敌人清空时放行胜利收尾，全员死亡时放行原版失败。
+	- `Patch/BattleEndAutoRevivePatch.cs`：在 `GameRunController.LeaveBattle(...)` 前按配置比例自动复活本地死亡玩家，继续复用现有 `OnPlayerResurrected` 同步链路。
+	- 验证：`dotnet build "networkplugin/NetWorkPlugin.csproj" -v minimal` 通过（260 warnings，0 errors）。
+
+### 变更
+- **[networkplugin]**: 调整 Gap 扩展按钮策略：保留原版按钮，同时额外新增“交易”和“治疗”两个按钮。
+	- `Patch/UI/GapOptionsPanel_Patch.cs`：在保留原版喝茶/治疗等选项的前提下，同时注入 Trade 与 Treat 两个运行时选项；两者均克隆原版 `GapOptionWidget` 模板并使用喝茶同款图标样式，仅修改文案为“交易”“治疗”。
+	- 补充修复：`GapOptionsPanel_Patch` 原先缺少类级别 `[HarmonyPatch]`，在当前 `Plugin.ApplyHarmonyPatchesSafely(...)` 只扫描“类型上显式标注 HarmonyPatch”的机制下，导致类内 `OnShowing/OptionClicked/OnLocalizeChanged` 方法实际上没有被注册；现已补上类级特性，并新增注入/跳过原因日志，便于运行时确认是否进入补丁。
+	- 补充修复：`GetOrCreateTradePanel()` / `GetOrCreateResurrectPanel()` 原先通过 `Traverse.CreateWithType(...).Method("GetPanel")` 反射调用泛型 `UiManager.GetPanel<T>()`，运行时点击交易按钮会抛出 `ContainsGenericParameters` 异常；现已改为强类型 `UiManager.GetPanel<TradePanel>()` / `UiManager.GetPanel<ResurrectPanel>()`，并保留场景实例与运行时工厂 fallback。
+	- 交互调整：Gap 中点击“交易”时不再执行 `SelectedAndHide()`，交易结束后仍保留 Gap 站点供玩家继续选择喝茶/修行等原版选项；点击“治疗”时仍保持原有结算逻辑，会像喝茶一样进入下一关选择阶段。
+	- UI 调整：休息房间（Gap）内不再渲染其他玩家的远端 Spine 角色与名字 Overlay，保持与原版“仅渲染自己”一致；地图图标保持原有显示逻辑不变。
+	- 补充修复：交易按钮点击后 `Traverse.Create(__instance).Method("StartCoroutine")` 在 `GapOptionsPanel` 上无法解析重载并触发 `cannot get method value without method`；现已改为强类型 `__instance.StartCoroutine(...)` 直接启动交易/治疗协程。
+	- 补充修复：治疗流程改为“先显示治疗选择面板，面板结束后再执行 `SelectedAndHide()`”；不再在点击治疗按钮瞬间直接结算站点。并为 `aidefault` / `aidefault2` 虚拟调试玩家补充可治疗血量回退，确保可在治疗面板中选择。
+	- 补充修复：当 `UiManager.GetPanel<ResurrectPanel>()` 不可用时，新增 `ResurrectPanelRuntimeFactory` 自动构建运行时治疗面板（玩家列表 + 治疗/取消按钮），避免“治疗面板不可用”。
+	- UI 重构：治疗面板运行时列表改为复用交易面板成熟方案（`MessageDialog + HistoryPanel + RecordRow`），列表风格与交互对齐交易面板，不再使用简化纵向条目布局。
+	- 稳定性修复：`ResurrectPanel` 清理旧条目时会保留 `deadPlayerEntryTemplate`，避免模板在 `OnShowing` 期间被误删导致无法实例化玩家列表。
+	- 兜底增强：运行时治疗面板优先复用 `MessageDialog` 自带确认/取消按钮，不再依赖外部按钮模板存在；并在治疗面板获取失败时输出详细诊断日志（UiManager/场景/运行时工厂路径）。
+	- 可用性增强：`HistoryPanel` 资源缺失时会回退尝试场景中的 `HistoryPanel` 实例；若仍无法挂载交易同款列表，则自动回退到简化列表 UI，避免“治疗面板不可用”。
+	- 候选源修正：治疗候选列表改为合并 Overlay 快照与 `INetworkManager.GetAllPlayers()`，并强制补入 `aidefault` / `aidefault2` 这类 AI 模拟玩家，确保治疗面板能看到 AI 目标。
+	- 显示修复：治疗候选名字新增虚拟 AI 显式映射（`aidefault`→`AI Default`、`aidefault2`→`AI Default 2`），并在 `DeadPlayerEntryWidget` 的 `RecordRow` 路径增加名称/信息文本回填，确保治疗列表稳定显示模拟 AI 玩家名。
+	- 渲染修复：治疗列表条目实例化后强制 `SetActive(true)`，并新增 `DeadPlayerEntryWidget.EnsureRuntimeBindings()` 自动补绑文本组件（含 `RecordRow` 回退），避免运行时模板字段未绑定导致名字不显示。
+	- 诊断日志：新增 `治疗候选构建完成` 与 `渲染治疗条目` 调试日志，用于区分“候选数据缺失”与“UI 渲染缺失”路径。
+	- 流程修正：仅当治疗成功完成（收到 `OnGapHealResult`）时才触发 `GapOptionsPanel.SelectedAndHide()` 进入下一节点；取消治疗仅关闭面板，不再推进节点。
+	- 稳定性修复：治疗入口改为优先强制使用运行时治疗面板，避免误用场景内旧面板触发 `MessageDialog.OnCancel` 空引用。
+	- 按钮隔离：运行时治疗面板不再复用 `MessageDialog` 原生按钮，改为独立克隆确认/取消按钮并重绑事件，避免旧回调残留导致取消时空引用。
+	- `Patch/UI/RuntimeGapOption.cs`：恢复 `RuntimeTreatGapOption`，与 `RuntimeTradeGapOption` 一起提供运行时按钮文本与说明。
+	- 点击行为：交易按钮继续打开 `TradePanel`；治疗按钮继续打开现有治疗面板流程（`ResurrectPanel` + 治疗候选列表）。
+	- 验证：`dotnet build "networkplugin/NetWorkPlugin.csproj" -v minimal` 通过（252 warnings，0 errors）。
+
+- **[networkplugin]**: 按需求修正 Gap 扩展按钮行为：保留原版治疗/喝茶按钮，不再注入自定义治疗按钮，仅额外新增“交易”按钮。
+	- `Patch/UI/GapOptionsPanel_Patch.cs`：移除 `AddTreatOption` 与自定义治疗点击拦截，避免覆盖原版 Gap 按钮行为。
+	- `Patch/UI/RuntimeGapOption.cs`：删除不再使用的 `RuntimeTreatGapOption`，仅保留交易按钮运行时选项类型。
+	- 验证：`dotnet build "networkplugin/NetWorkPlugin.csproj" -v minimal` 通过（260 warnings，0 errors）。
+
+- **[networkplugin]**: 修复 Gap 房间扩展出来的“交易/治疗”按钮不显示问题。
+	- 根因：`Patch/UI/GapOptionsPanel_Patch.cs` 之前把匿名对象传给 `GapOptionWidget.SetOption(GapOption option, Sprite sprite)`，没有按原版 UI 需要的真实 `GapOption` 类型绑定，导致额外按钮无法正确显示。
+	- 修复：新增 `Patch/UI/RuntimeGapOption.cs`，提供运行时 `GapOption` 子类；`GapOptionsPanel_Patch` 改为用真实 `GapOption` 绑定交易/治疗按钮，并在控件本地化刷新后强制恢复按钮文案“交易”/“治疗”。
+	- 验证：`dotnet build "networkplugin/NetWorkPlugin.csproj" -v minimal` 通过（260 warnings，0 errors）。
+
+- **[networkplugin]**: 将 Gap 里的 `ResurrectPanel` 交互改为“治疗面板”，用于给指定玩家回复 20% 最大生命值。
+	- `Patch/UI/GapOptionsPanel_Patch.cs`：将休息点扩展选项从“复活”改为“治疗”，并按联机玩家快照构建可治疗目标列表。
+	- `UI/Panels/ResurrectPanel.cs`、`UI/Widgets/DeadPlayerEntryWidget.cs`、`UI/Payloads/ResurrectPayload.cs`、`UI/Models/DeadPlayerEntry.cs`：面板展示改为当前生命/治疗量视图，不再扣金币，支持直接选择未满血玩家执行治疗。
+	- `Patch/Network/ResurrectSyncPatch.cs`、`Network/Messages/NetworkMessageTypes.cs`：新增 `OnGapHealRequest` / `OnGapPlayerHealed` / `OnGapHealFailed` 消息流，由 Host 裁决目标治疗结果并广播，各端同步更新目标 HP 缓存，目标本人本地落地治疗。
+	- 验证：`dotnet build "networkplugin/NetWorkPlugin.csproj" -v minimal` 通过（260 warnings，0 errors）。
+
+- **[networkplugin]**: 将 `Patch/Map/MapNodeMarkSyncPatch.cs` 的“共享右键标记”方案替换为“地图节点投票 + 房主裁决”方案（参考 STS2 的多人节点选择流程）。
+	- 交互：右键节点改为提交玩家投票，不再本地切换 bool 标记。
+	- 同步：新增 `OnMapNodeVoteCast`（投票提交）与 `OnMapNodeVoteResult`（房主裁决广播）消息流。
+	- 裁决：房主在“已知玩家全部投票”后随机从候选票中选出结果并广播。
+	- 落地：收到裁决结果后清空本轮投票状态，地图上展示候选/结果高亮，并尝试进入裁决节点。
+	- 可视：地图节点圆点不再只读取投票参与者，同时合并 `OtherPlayersOverlayPatch.SnapshotPlayersDetailed()` 的当前位置玩家；启用虚拟 AI 调试玩家时，`aidefault` / `aidefault2` 也会按圆点显示在对应地图节点上。
+	- 兜底：当本地玩家尚未写入 Overlay 位置缓存时，`SnapshotPlayersDetailed()` 与 `MapNodeMarkSyncPatch` 会回退到当前 `VisitingNode` 坐标补本地玩家位置，避免地图节点圆点整轮缺失。
+	- 层级：`OtherPlayersOverlayViewRegistry.UpdateMapIcons(...)` 现将 `NetworkPlugin_RemotePlayerIcons` 作为节点级容器创建到对应 `MapNodeWidget` 下，远程玩家地图图标不再统一挂在 `nodeHolder` 根层；同时节点容器与每个图标都会 `SetAsLastSibling()`，保证显示在对应节点层级最上面。
+	- 协议：`Network/Messages/NetworkMessageTypes.cs` 新增 `OnMapNodeVoteCast`、`OnMapNodeVoteResult` 常量。
+	- 验证：`dotnet build d:/programme/LBol_demoplugin/networkplugin/NetWorkPlugin.csproj -v minimal -p:LangVersion=preview` 与 `dotnet build "networkplugin/NetWorkPlugin.csproj" -v minimal` 均通过（260 warnings，0 errors）。
+
 ### 重构
 - **[networkplugin]**: 等价简化 `networkplugin/Patch/Network` 下的首批热点补丁，聚焦重复 helper 与重复上传/接收结构的收敛，不改事件语义与 Harmony 守卫。
 	- `Patch/Network/BattleCardZonePatch.cs`、`EnergySyncPatch.cs`、`ToolCardSyncPatch.cs`：统一网络客户端解析 helper，收敛重复 `SendGameEvent(...)` 前置解析路径。

@@ -42,6 +42,12 @@ public partial class ConfigManager
     /// </summary>
     public ConfigEntry<bool> DebugVirtualPlayerAiDefault { get; private set; }
 
+    /// <summary>
+    /// 调试：开启 OtherPlayersOverlay 的高频诊断日志。
+    /// 默认关闭，避免在 GameDirector.Update() 的刷新路径中持续刷屏。
+    /// </summary>
+    public ConfigEntry<bool> DebugOtherPlayersOverlay { get; private set; }
+
     #endregion
 
     /// <summary>
@@ -111,6 +117,13 @@ public partial class ConfigManager
             "DebugVirtualPlayerAiDefault",
             false,
             "调试：生成虚拟远程玩家(aidefault)，用于离线测试远程玩家渲染与交易面板"
+        );
+
+        DebugOtherPlayersOverlay = configFile.Bind(
+            "General.Toggles",
+            "DebugOtherPlayersOverlay",
+            false,
+            "调试：开启 OtherPlayersOverlay 的高频诊断日志（默认关闭，避免日志刷屏）"
         );
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json;
+using HarmonyLib;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
@@ -12,11 +13,10 @@ using NetworkPlugin.Utils;
 namespace NetworkPlugin.Patch.Network;
 
 /// <summary>
-/// Gap 复活同步补丁：
-/// - 客户端发起 OnResurrectRequest。
-/// - Host 校验并广播 OnPlayerResurrected（或 OnResurrectFailed）。
-/// - 所有客户端收到广播后：仅 TargetPlayerId == self.playerId 的客户端执行本地复活落地。
-/// - 发起者扣费：仅在成功广播后本地扣费；失败则提示（等价退款）。
+/// Gap 治疗同步补丁：
+/// - 客户端发起 OnGapHealRequest。
+/// - Host 校验并广播 OnGapPlayerHealed（或 OnGapHealFailed）。
+/// - 所有客户端收到广播后：更新目标玩家缓存；仅目标本人执行本地治疗落地。
 /// </summary>
 public static class ResurrectSyncPatch
 {
@@ -79,7 +79,10 @@ public static class ResurrectSyncPatch
             return;
         }
 
-        if (eventType != NetworkMessageTypes.OnResurrectRequest &&
+        if (eventType != NetworkMessageTypes.OnGapHealRequest &&
+            eventType != NetworkMessageTypes.OnGapPlayerHealed &&
+            eventType != NetworkMessageTypes.OnGapHealFailed &&
+            eventType != NetworkMessageTypes.OnResurrectRequest &&
             eventType != NetworkMessageTypes.OnPlayerResurrected &&
             eventType != NetworkMessageTypes.OnResurrectFailed &&
             eventType != NetworkMessageTypes.OnPlayerDeathStatusChanged)
@@ -97,14 +100,17 @@ public static class ResurrectSyncPatch
             case NetworkMessageTypes.OnPlayerDeathStatusChanged:
                 HandleDeathStatusChanged(root);
                 return;
+            case NetworkMessageTypes.OnGapHealRequest:
             case NetworkMessageTypes.OnResurrectRequest:
-                HandleResurrectRequest(root);
+                HandleGapHealRequest(root);
                 return;
+            case NetworkMessageTypes.OnGapPlayerHealed:
             case NetworkMessageTypes.OnPlayerResurrected:
-                HandleResurrected(root);
+                HandleGapHealed(root);
                 return;
+            case NetworkMessageTypes.OnGapHealFailed:
             case NetworkMessageTypes.OnResurrectFailed:
-                HandleResurrectFailed(root);
+                HandleGapHealFailed(root);
                 return;
         }
     }
@@ -146,7 +152,7 @@ public static class ResurrectSyncPatch
         DeathRegistry.UpsertDeadPlayer(entry);
     }
 
-    private static void HandleResurrectRequest(JsonElement root)
+    private static void HandleGapHealRequest(JsonElement root)
     {
         // 仅 Host 处理请求并广播结果。
         if (!NetworkIdentityTracker.GetSelfIsHost())
@@ -157,92 +163,76 @@ public static class ResurrectSyncPatch
         string requestId = GetString(root, "RequestId") ?? string.Empty;
         string requesterPlayerId = GetString(root, "RequesterPlayerId");
         string targetPlayerId = GetString(root, "TargetPlayerId");
-        int cost = GetInt(root, "Cost", 0);
 
         if (string.IsNullOrWhiteSpace(requesterPlayerId) || string.IsNullOrWhiteSpace(targetPlayerId))
         {
-            BroadcastFailed(requestId, requesterPlayerId, "InvalidRequest");
+            BroadcastHealFailed(requestId, requesterPlayerId, "InvalidRequest");
             return;
         }
 
-        // 校验：目标必须仍在死亡登记册中。
-        if (!DeathRegistry.TryGetDeadPlayer(targetPlayerId, out DeadPlayerEntry dead) || dead == null || !dead.CanResurrect)
+        if (!TryResolveTargetVitals(targetPlayerId, out int currentHp, out int maxHp))
         {
-            BroadcastFailed(requestId, requesterPlayerId, "TargetNotDeadOrCannotResurrect");
+            BroadcastHealFailed(requestId, requesterPlayerId, "TargetNotFound");
             return;
         }
 
-        // 复活 HP = Cost/2（至少 1，且不超过 MaxHp；MaxHp 不存在时不做上限）。
-        int maxHp = dead.MaxHp;
-        int hp = Math.Max(1, cost / 2);
-        if (maxHp > 0)
+        int healAmount = CalculateHealingAmount(maxHp);
+        int finalHp = Math.Min(maxHp, Math.Max(0, currentHp) + healAmount);
+        if (finalHp <= currentHp)
         {
-            hp = Math.Min(hp, maxHp);
+            BroadcastHealFailed(requestId, requesterPlayerId, "TargetAlreadyFullHealth");
+            return;
         }
 
-        // Host 广播结果：所有客户端都会收到，但只有目标自己会落地复活。
         try
         {
             INetworkClient client = ServiceProvider?.GetService<INetworkClient>();
             if (client == null)
             {
-                BroadcastFailed(requestId, requesterPlayerId, "NoNetworkClient");
+                BroadcastHealFailed(requestId, requesterPlayerId, "NoNetworkClient");
                 return;
             }
 
-            client.SendGameEventData(NetworkMessageTypes.OnPlayerResurrected, new
+            client.SendGameEventData(NetworkMessageTypes.OnGapPlayerHealed, new
             {
                 RequestId = requestId,
                 RequesterPlayerId = requesterPlayerId,
                 TargetPlayerId = targetPlayerId,
-                Cost = cost,
-                ResurrectionHp = hp,
+                HealAmount = healAmount,
+                ResultHp = finalHp,
+                MaxHp = maxHp,
                 Timestamp = DateTime.UtcNow.Ticks,
             });
 
-            // 同时把登记册里该目标移除，避免重复复活。
-            DeathRegistry.MarkAlive(targetPlayerId);
+            UpdateKnownPlayerVitals(targetPlayerId, finalHp, maxHp);
         }
         catch
         {
-            BroadcastFailed(requestId, requesterPlayerId, "BroadcastFailed");
+            BroadcastHealFailed(requestId, requesterPlayerId, "BroadcastFailed");
         }
     }
 
-    private static void HandleResurrected(JsonElement root)
+    private static void HandleGapHealed(JsonElement root)
     {
         string requestId = GetString(root, "RequestId") ?? string.Empty;
         string requesterPlayerId = GetString(root, "RequesterPlayerId");
-        // 兼容：旧 payload 可能只有 PlayerId。
         string targetPlayerId = GetString(root, "TargetPlayerId") ?? GetString(root, "PlayerId");
-        int cost = GetInt(root, "Cost", 0);
-        int hp = GetInt(root, "ResurrectionHp", 1);
+        int resultHp = GetInt(root, "ResultHp", GetInt(root, "ResurrectionHp", 1));
+        int maxHp = GetInt(root, "MaxHp", 0);
 
-        // 任何客户端都可以据此更新“死亡登记册”。
         if (!string.IsNullOrWhiteSpace(targetPlayerId))
         {
-            DeathRegistry.MarkAlive(targetPlayerId);
+            UpdateKnownPlayerVitals(targetPlayerId, resultHp, maxHp);
         }
 
         string selfId = NetworkIdentityTracker.GetSelfPlayerId();
 
-        // 目标本人：执行复活落地。
+        // 目标本人：执行治疗落地。
         if (!string.IsNullOrWhiteSpace(selfId) && string.Equals(selfId, targetPlayerId, StringComparison.Ordinal))
         {
             try
             {
-                // 复活落地：直接使用 DeathPatches 的复活入口（它会走 Heal 并触发状态补丁）。
-                // 注意：DeathPatches 的 PlayerId 目前是 PlayerUnit.Id；此处落地仅针对本地 PlayerUnit。
-                bool prev = NetworkPlugin.Patch.DeathPatches.SuppressNetworkSync;
-                NetworkPlugin.Patch.DeathPatches.SuppressNetworkSync = true;
-                try
-                {
-                    NetworkPlugin.Patch.DeathPatches.ResurrectPlayer(GameStateUtils.GetCurrentPlayer(), hp);
-                }
-                finally
-                {
-                    NetworkPlugin.Patch.DeathPatches.SuppressNetworkSync = prev;
-                }
+                ApplyHealToLocalPlayer(resultHp, maxHp);
             }
             catch
             {
@@ -250,24 +240,13 @@ public static class ResurrectSyncPatch
             }
         }
 
-        // 发起者：成功后扣费（延迟扣费，失败等价退款）。
         if (!string.IsNullOrWhiteSpace(selfId) && string.Equals(selfId, requesterPlayerId, StringComparison.Ordinal))
         {
             OnResurrectResult?.Invoke(requestId, true, null);
-
-            try
-            {
-                // 扣费由 UI 侧执行更合理；这里仅发事件。
-                // ResurrectPanel 会在回调中 ConsumeMoney(cost)。
-            }
-            catch
-            {
-                // ignored
-            }
         }
     }
 
-    private static void HandleResurrectFailed(JsonElement root)
+    private static void HandleGapHealFailed(JsonElement root)
     {
         string requestId = GetString(root, "RequestId") ?? string.Empty;
         string requesterPlayerId = GetString(root, "RequesterPlayerId");
@@ -280,7 +259,7 @@ public static class ResurrectSyncPatch
         }
     }
 
-    private static void BroadcastFailed(string requestId, string requesterPlayerId, string reason)
+    private static void BroadcastHealFailed(string requestId, string requesterPlayerId, string reason)
     {
         try
         {
@@ -290,7 +269,7 @@ public static class ResurrectSyncPatch
                 return;
             }
 
-            client.SendGameEventData(NetworkMessageTypes.OnResurrectFailed, new
+            client.SendGameEventData(NetworkMessageTypes.OnGapHealFailed, new
             {
                 RequestId = requestId,
                 RequesterPlayerId = requesterPlayerId,
@@ -302,6 +281,110 @@ public static class ResurrectSyncPatch
         {
             // ignored
         }
+    }
+
+    private static bool TryResolveTargetVitals(string playerId, out int currentHp, out int maxHp)
+    {
+        currentHp = 0;
+        maxHp = 0;
+
+        if (string.IsNullOrWhiteSpace(playerId))
+        {
+            return false;
+        }
+
+        INetworkManager networkManager = ServiceProvider?.GetService<INetworkManager>();
+        if (networkManager == null)
+        {
+            return false;
+        }
+
+        string selfPlayerId = NetworkIdentityTracker.GetSelfPlayerId();
+        if (!string.IsNullOrWhiteSpace(selfPlayerId) && string.Equals(selfPlayerId, playerId, StringComparison.Ordinal))
+        {
+            var localPlayer = GameStateUtils.GetCurrentPlayer();
+            if (localPlayer != null)
+            {
+                currentHp = Math.Max(0, localPlayer.Hp);
+                maxHp = Math.Max(0, localPlayer.MaxHp);
+                return maxHp > 0;
+            }
+        }
+
+        var networkPlayer = networkManager.GetPlayer(playerId);
+        if (networkPlayer == null)
+        {
+            networkPlayer = networkManager.GetSelf();
+            if (networkPlayer == null || !string.Equals(networkPlayer.playerId, playerId, StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        currentHp = Math.Max(0, networkPlayer.HP);
+        maxHp = Math.Max(0, networkPlayer.maxHP);
+        return maxHp > 0;
+    }
+
+    private static void UpdateKnownPlayerVitals(string playerId, int hp, int maxHp)
+    {
+        if (string.IsNullOrWhiteSpace(playerId))
+        {
+            return;
+        }
+
+        INetworkManager networkManager = ServiceProvider?.GetService<INetworkManager>();
+        if (networkManager == null)
+        {
+            return;
+        }
+
+        var self = networkManager.GetSelf();
+        if (self != null && string.Equals(self.playerId, playerId, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var target = networkManager.GetPlayer(playerId);
+        if (target == null)
+        {
+            return;
+        }
+
+        target.HP = Math.Max(0, hp);
+        if (maxHp > 0)
+        {
+            target.maxHP = Math.Max(target.HP, maxHp);
+        }
+    }
+
+    private static void ApplyHealToLocalPlayer(int resultHp, int maxHp)
+    {
+        var localPlayer = GameStateUtils.GetCurrentPlayer();
+        if (localPlayer == null)
+        {
+            return;
+        }
+
+        int finalMaxHp = maxHp > 0 ? Math.Max(maxHp, localPlayer.MaxHp) : localPlayer.MaxHp;
+        int finalHp = Math.Min(finalMaxHp, Math.Max(0, resultHp));
+        int healDelta = finalHp - localPlayer.Hp;
+        if (healDelta <= 0)
+        {
+            return;
+        }
+
+        Traverse.Create(localPlayer).Method("Heal", healDelta).GetValue();
+    }
+
+    private static int CalculateHealingAmount(int maxHp)
+    {
+        if (maxHp <= 0)
+        {
+            return 1;
+        }
+
+        return Math.Max(1, (int)Math.Ceiling(maxHp * 0.2d));
     }
 
     private static bool TryGetJsonElement(object payload, out JsonElement root)
