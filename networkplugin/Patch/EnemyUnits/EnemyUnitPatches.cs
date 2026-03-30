@@ -8,12 +8,24 @@ using NetworkPlugin.Network.Client;
 namespace NetworkPlugin.Patch.EnemyUnits;
 
 [HarmonyPatch]
+/// <summary>
+/// Harmony 补丁类，拦截敌人单位的属性设置方法，根据联机房间玩家数量对敌人 HP 进行动态缩放，实现多人难度平衡。
+/// </summary>
 public class EnemyUnitPatches
 {
     private static IServiceProvider serviceProvider = ModService.ServiceProvider;
     private static INetworkManager networkManager => serviceProvider?.GetRequiredService<INetworkManager>();
 
     //TODO:人员变动发送请求后,客户端接收服务器响应后调整属性
+    /// <summary>
+    /// EnemyUnit.SetMaxHpInBattle 后缀补丁，在原方法执行后，
+    /// 按当前联机玩家数量对敌人 HP 和最大 HP 进行倍数缩放，并通过基类 SetMaxHp 方法应用修改后的值。
+    /// 返回 false 供 Harmony 用于覆盖原方法的返回值（<c>__result</c>）。
+    /// </summary>
+    /// <param name="_instance">被补丁的 EnemyUnit 实例。</param>
+    /// <param name="hp">原始 HP 数值。</param>
+    /// <param name="maxHp">原始最大 HP 数值。</param>
+    /// <returns>false，用于覆盖原方法返回值。</returns>
     [HarmonyPatch(typeof(EnemyUnit), "SetMaxHpInBattle")]
     [HarmonyPostfix]
     public static bool SetMaxHpInBattle(EnemyUnit _instance, int hp, int maxHp)
