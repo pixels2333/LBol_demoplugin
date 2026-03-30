@@ -3,3 +3,8 @@ lbol/**/bin
 lbol/**/obj
 debugtools/**/bin
 debugtools/**/obj
+**/project.assets.json
+**/project.nuget.cache
+**/*.csproj.nuget.dgspec.json
+**/*.csproj.nuget.g.props
+**/*.csproj.nuget.g.targets
