@@ -94,12 +94,26 @@
 - 其中 `RemoteCardUsePatch.Card_GetActions_Original(...)` 被视为 ReversePatch 白名单桩；回归重点是“不能真的落到桩体抛异常”，而不是简单删除该方法。
 - `GapOptionsSyncPatch.MergeCatchupGapOptionsEvents(...)` 与 `GapOptionsSyncPatch.OnGameEventReceived(...)` 当前都以缓存/日志为主，不直接重放动作；回归时必须额外核对 UI/游戏表现是否真正落地。
 
+### 战斗结束自动复活（非全灭）
+- `networkplugin/Patch/DeathPatches.cs` 当前约定为：本地玩家死亡后，只有在“敌人仍存活且并非全员死亡”时才继续维持假死续战；如果敌人已清空，则放行战斗结束；如果已判定全员死亡，则放行原版失败结算。
+- `networkplugin/Patch/BattleEndAutoRevivePatch.cs` 会在 `GameRunController.LeaveBattle(...)` 前检查本地玩家：若当前仍死亡但并非全员死亡，则按 `ConfigManager.GameBalance.BattleAutoReviveHpPercent`（默认 10%）自动复活，再让原版 `LeaveBattle(...)` 继续走胜利收尾。
+- “当前仍死亡”不要求必须是本场刚死；只要玩家在战斗结束时仍处于死亡状态，就会被这条规则覆盖。
+- 自动复活继续复用 `DeathPatches.ResurrectPlayer(...)` 与 `OnPlayerResurrected` 同步链路，不新增专门的战后复活消息类型。
+- 全员死亡判定优先使用 `DeathRegistry` + `NetworkManager.GetPlayerCount()`，避免假死玩家因 HP 被临时拉回而误判为存活。
+
 ### 玩家身份与玩家列表来源
 - 客户端侧“玩家列表/数量”由 `NetworkManager` 维护（轻量缓存），不承担完整权威同步。
 - 服务器侧分配的 `PlayerId` / Host 信息由 `NetworkIdentityTracker` 从 GameEvent 提取并缓存。
 - `NetworkManager` 在收到 `Welcome/PlayerListUpdate/PlayerJoined/PlayerLeft` 等事件后同步缓存，并可通过 `GetAllPlayers/GetPlayerCount/GetPlayer` 查询。
 - `OtherPlayersOverlayPatch.ResolveDisplayName(...)` 现作为 UI 层统一显示名入口：优先使用调用方显式传入名称，其次读取 `OtherPlayersOverlay` 玩家缓存，对本地玩家再用 `GameStateUtils.GetCurrentPlayerName()` 做运行时兜底。
 - `TradePanel`、`DeathPatches` / `ResurrectSyncPatch`、Overlay 头像条、地图图标与远端目标判定都应复用该入口，避免再次在各 UI 面板内部分叉 `PlayerName/playerId/角色名` 的回退顺序。
+
+### 地图节点投票与圆点显示
+- `Patch/Map/MapNodeMarkSyncPatch.cs` 当前将“节点高亮”和“玩家圆点”拆成两层：高亮来自本轮投票/裁决状态，圆点则来自“投票玩家 + 当前位于该节点的玩家”的合并结果。
+- 地图节点圆点不能只看 `PlayerVotes`；像 `aidefault` / `aidefault2` 这类调试虚拟玩家是通过 `OtherPlayersOverlayPatch.EnsureVirtualAiDefaultPlayer_NoThrow()` 注入到 Overlay 玩家缓存里的，只有读取 `OtherPlayersOverlayPatch.SnapshotPlayersDetailed()` 才能显示出来。
+- 本地玩家不能只依赖 `_players` 缓存里的坐标；若当前位置还没同步进 Overlay 缓存，`OtherPlayersOverlayPatch.SnapshotPlayersDetailed()` 现在会优先尝试 `TryGetSelfLocation(...)`，`MapNodeMarkSyncPatch.BuildDisplayedPlayerIdsByPos(...)` 也会再用一次当前 `VisitingNode` 做补位，确保自己至少能在当前地图节点上出圆点。
+- 地图头像图标容器 `NetworkPlugin_RemotePlayerIcons` 现在按“节点级”创建：每个有远程玩家的 `MapNodeWidget` 下会有自己的容器，图标会 reparent 到对应节点容器；每次刷新时节点容器和图标自身都要 `SetAsLastSibling()`，确保它们位于对应节点层级最上方，避免统一挂在 `nodeHolder` 时出现层级错位或被节点内其他 UI 压住。
+- 若后续再次调整地图节点可视逻辑，需保持这两个数据源同时生效：`PlayerVotes` 负责投票候选者，`SnapshotPlayersDetailed()` 负责当前位置玩家；否则会再次出现“头像/地图图标可见，但节点圆点缺失”的回归。
 
 ### MidGameJoin（中途加入）
 - 消息类型：

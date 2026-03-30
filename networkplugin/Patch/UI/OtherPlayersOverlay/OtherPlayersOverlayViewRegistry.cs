@@ -488,24 +488,22 @@ public static partial class OtherPlayersOverlayPatch
         }
 
         MapNodeWidget[,] widgets;
-        RectTransform nodeHolder;
         try
         {
             widgets = Traverse.Create(mapPanel).Field("_mapNodeWidgets").GetValue<MapNodeWidget[,]>();
-            nodeHolder = Traverse.Create(mapPanel).Field("nodeHolder").GetValue<RectTransform>();
         }
         catch
         {
             return;
         }
 
-        if (widgets == null || nodeHolder == null)
+        if (widgets == null)
         {
             return;
         }
 
-        EnsureMapIconsRoot(nodeHolder);
-        _defaultFont ??= FindDefaultFont(nodeHolder);
+        CleanupMapIconRoots();
+        _defaultFont ??= FindDefaultFont(mapPanel.transform);
 
         List<PlayerSummary> players;
         lock (_syncLock)
@@ -524,8 +522,6 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
-        _mapIconsRoot.gameObject.SetActive(true);
-
         HashSet<string> alive = new HashSet<string>();
         foreach (var group in players.GroupBy(p => (X: p.LocationX, Y: p.LocationY)))
         {
@@ -543,6 +539,15 @@ public static partial class OtherPlayersOverlayPatch
                 continue;
             }
 
+            RectTransform widgetIconsRoot = EnsureMapIconsRoot(widget);
+            if (widgetIconsRoot == null)
+            {
+                continue;
+            }
+
+            widgetIconsRoot.gameObject.SetActive(true);
+            widgetIconsRoot.SetAsLastSibling();
+
             int i = 0;
             foreach (PlayerSummary p in group.OrderByDescending(p => p.IsHost).ThenBy(p => p.PlayerName, StringComparer.OrdinalIgnoreCase))
             {
@@ -550,8 +555,14 @@ public static partial class OtherPlayersOverlayPatch
 
                 MapIconUi icon = EnsureMapIcon(p);
                 icon.Root.SetActive(true);
+                if (icon.Root.transform.parent != widgetIconsRoot)
+                {
+                    icon.Root.transform.SetParent(widgetIconsRoot, false);
+                }
 
-                icon.RootRect.localPosition = widget.transform.localPosition + new Vector3(0f, 70f + i * 18f, 0f);
+                icon.Root.transform.SetAsLastSibling();
+
+                icon.RootRect.localPosition = new Vector3(0f, 70f + i * 18f, 0f);
                 icon.Label.text = ResolveDisplayName(p.PlayerId, p.PlayerName);
                 icon.Image.color = p.IsHost ? new Color(1f, 0.95f, 0.4f, 1f) : Color.white;
 
@@ -566,25 +577,94 @@ public static partial class OtherPlayersOverlayPatch
                 kv.Value.Root.SetActive(false);
             }
         }
+
+        foreach (var kv in _mapNodeIconsRoots)
+        {
+            RectTransform root = kv.Value;
+            if (root == null)
+            {
+                continue;
+            }
+
+            bool hasActiveChild = false;
+            for (int i = 0; i < root.childCount; i++)
+            {
+                if (root.GetChild(i)?.gameObject.activeSelf == true)
+                {
+                    hasActiveChild = true;
+                    break;
+                }
+            }
+
+            root.gameObject.SetActive(hasActiveChild);
+        }
     }
 
-    private static void EnsureMapIconsRoot(RectTransform nodeHolder)
+    private static RectTransform EnsureMapIconsRoot(MapNodeWidget widget)
     {
-        if (_mapIconsRoot != null && _mapIconsRoot.transform.parent == nodeHolder)
+        if (widget == null)
+        {
+            return null;
+        }
+
+        if (_mapNodeIconsRoots.TryGetValue(widget, out RectTransform existing) && existing != null && existing.transform.parent == widget.transform)
+        {
+            return existing;
+        }
+
+        if (existing != null)
+        {
+            UnityEngine.Object.Destroy(existing.gameObject);
+        }
+
+        GameObject root = new("NetworkPlugin_RemotePlayerIcons");
+        root.transform.SetParent(widget.transform, false);
+
+        RectTransform rt = root.AddComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0.5f, 0.5f);
+        rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = Vector2.zero;
+        rt.sizeDelta = new Vector2(140f, 140f);
+        rt.SetAsLastSibling();
+        _mapNodeIconsRoots[widget] = rt;
+        return rt;
+    }
+
+    private static void CleanupMapIconRoots()
+    {
+        if (_mapNodeIconsRoots.Count == 0)
         {
             return;
         }
 
-        ClearMapIcons();
+        List<MapNodeWidget> toRemove = null;
+        foreach (var kv in _mapNodeIconsRoots)
+        {
+            MapNodeWidget widget = kv.Key;
+            RectTransform root = kv.Value;
+            if (widget != null && root != null && root.transform.parent == widget.transform)
+            {
+                continue;
+            }
 
-        GameObject root = new("NetworkPlugin_RemotePlayerIcons");
-        root.transform.SetParent(nodeHolder, false);
+            toRemove ??= new List<MapNodeWidget>();
+            toRemove.Add(widget);
+            if (root != null)
+            {
+                UnityEngine.Object.Destroy(root.gameObject);
+            }
+        }
 
-        _mapIconsRoot = root.AddComponent<RectTransform>();
-        _mapIconsRoot.anchorMin = Vector2.zero;
-        _mapIconsRoot.anchorMax = Vector2.one;
-        _mapIconsRoot.offsetMin = Vector2.zero;
-        _mapIconsRoot.offsetMax = Vector2.zero;
+        if (toRemove == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < toRemove.Count; i++)
+        {
+            _mapNodeIconsRoots.Remove(toRemove[i]);
+        }
     }
 
     private static MapIconUi EnsureMapIcon(PlayerSummary player)
@@ -599,7 +679,7 @@ public static partial class OtherPlayersOverlayPatch
         }
 
         GameObject root = new($"RemoteIcon_{player.PlayerId}");
-        root.transform.SetParent(_mapIconsRoot, false);
+    root.transform.SetParent(null, false);
 
         RectTransform rootRect = root.AddComponent<RectTransform>();
         rootRect.sizeDelta = new Vector2(48f, 64f);
@@ -690,6 +770,22 @@ public static partial class OtherPlayersOverlayPatch
 
     private static void HideAllMapIcons()
     {
+        foreach (MapIconUi icon in _mapIcons.Values)
+        {
+            if (icon?.Root != null)
+            {
+                icon.Root.SetActive(false);
+            }
+        }
+
+        foreach (RectTransform root in _mapNodeIconsRoots.Values)
+        {
+            if (root != null)
+            {
+                root.gameObject.SetActive(false);
+            }
+        }
+
         _mapIconsRoot?.gameObject.SetActive(false);
     }
 
@@ -709,6 +805,16 @@ public static partial class OtherPlayersOverlayPatch
             UnityEngine.Object.Destroy(_mapIconsRoot.gameObject);
             _mapIconsRoot = null;
         }
+
+        foreach (RectTransform root in _mapNodeIconsRoots.Values)
+        {
+            if (root != null)
+            {
+                UnityEngine.Object.Destroy(root.gameObject);
+            }
+        }
+
+        _mapNodeIconsRoots.Clear();
     }
 
     private sealed class RemoteCharacterView

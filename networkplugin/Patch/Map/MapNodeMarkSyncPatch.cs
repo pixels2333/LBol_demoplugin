@@ -10,26 +10,31 @@ using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
-using NetworkPlugin.Network.NetworkPlayer;
+using NetworkPlugin.Patch.UI;
+using NetworkPlugin.Utils;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace NetworkPlugin.Patch.Map;
 
 /// <summary>
-/// 地图节点右键标记同步与渲染（参照 Together in Spire: MapNodePatches）。
-/// - 右键地图节点：切换“标记”状态，并通过 GameEvent 广播给其他玩家。
-/// - 打开地图/刷新节点状态：在每个 <see cref="MapNodeWidget"/> 上叠加一个标记背景。
+/// 地图节点投票同步与渲染。
+/// - 玩家右键地图节点：提交当前轮投票。
+/// - 房主在“全员投票完成”后裁决节点并广播结果。
+/// - 地图刷新时：显示投票候选（黄色）与裁决结果（绿色）以及投票玩家圆点。
 /// </summary>
-[HarmonyPatch]
 public static class MapNodeMarkSyncPatch
 {
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
     private static readonly object SyncLock = new();
-    private static readonly Dictionary<NodeKey, bool> Marks = new();
+    private static readonly Dictionary<string, NodeKey> PlayerVotes = new(StringComparer.Ordinal);
+    private static VoteSource? CurrentVoteSource;
+    private static NodeKey? ResolvedNode;
+    private static int _resolutionNonce;
 
     private static MapNodeWidget _hovered;
+
     private static Sprite _markSprite;
     private static readonly Dictionary<MapNodeWidget, Image> MarkImages = new();
 
@@ -47,6 +52,24 @@ public static class MapNodeMarkSyncPatch
         public readonly List<Image> Dots = new();
     }
 
+    private readonly struct VoteSource : IEquatable<VoteSource>
+    {
+        public VoteSource(int act, int x, int y)
+        {
+            Act = act;
+            X = x;
+            Y = y;
+        }
+
+        public int Act { get; }
+        public int X { get; }
+        public int Y { get; }
+
+        public bool Equals(VoteSource other) => Act == other.Act && X == other.X && Y == other.Y;
+        public override bool Equals(object obj) => obj is VoteSource other && Equals(other);
+        public override int GetHashCode() => HashCode.Combine(Act, X, Y);
+    }
+
     private readonly struct NodeKey : IEquatable<NodeKey>
     {
         public NodeKey(int act, int x, int y)
@@ -60,10 +83,12 @@ public static class MapNodeMarkSyncPatch
         public int X { get; }
         public int Y { get; }
 
+        public bool Matches(MapNode node)
+            => node != null && Act == node.Act && X == node.X && Y == node.Y;
+
         public bool Equals(NodeKey other) => Act == other.Act && X == other.X && Y == other.Y;
         public override bool Equals(object obj) => obj is NodeKey other && Equals(other);
         public override int GetHashCode() => HashCode.Combine(Act, X, Y);
-        public override string ToString() => $"Act={Act},X={X},Y={Y}";
     }
 
     private readonly struct NodePosKey : IEquatable<NodePosKey>
@@ -140,7 +165,10 @@ public static class MapNodeMarkSyncPatch
 
         lock (SyncLock)
         {
-            Marks.Clear();
+            PlayerVotes.Clear();
+            CurrentVoteSource = null;
+            ResolvedNode = null;
+            _resolutionNonce = 0;
         }
 
         try
@@ -161,42 +189,299 @@ public static class MapNodeMarkSyncPatch
 
     private static void OnGameEventReceived(string eventType, object payload)
     {
-        if (!string.Equals(eventType, NetworkMessageTypes.OnMapNodeMarkChanged, StringComparison.Ordinal))
+        if (string.Equals(eventType, NetworkMessageTypes.OnMapNodeVoteCast, StringComparison.Ordinal))
         {
+            HandleVoteCast(payload);
             return;
         }
 
+        if (string.Equals(eventType, NetworkMessageTypes.OnMapNodeVoteResult, StringComparison.Ordinal))
+        {
+            HandleVoteResult(payload);
+        }
+    }
+
+    private static void HandleVoteCast(object payload)
+    {
         if (!TryGetJsonElement(payload, out JsonElement root))
         {
             return;
         }
 
+        string playerId = GetString(root, "PlayerId");
+        int sourceAct = GetInt(root, "SourceAct", -1);
+        int sourceX = GetInt(root, "SourceX", -1);
+        int sourceY = GetInt(root, "SourceY", -1);
         int act = GetInt(root, "Act", -1);
         int x = GetInt(root, "X", -1);
         int y = GetInt(root, "Y", -1);
-        bool marked = GetBool(root, "Marked");
 
-        if (act < 0 || x < 0 || y < 0)
+        if (string.IsNullOrWhiteSpace(playerId) || sourceAct < 0 || sourceX < 0 || sourceY < 0 || act < 0 || x < 0 || y < 0)
         {
             return;
         }
 
+        VoteSource source = new(sourceAct, sourceX, sourceY);
+        NodeKey vote = new(act, x, y);
+
         lock (SyncLock)
         {
-            Marks[new NodeKey(act, x, y)] = marked;
+            if (CurrentVoteSource.HasValue && !CurrentVoteSource.Value.Equals(source))
+            {
+                return;
+            }
+
+            CurrentVoteSource = source;
+            PlayerVotes[playerId] = vote;
+            ResolvedNode = null;
+        }
+
+        MapPanel mapPanel = TryGetMapPanel();
+        TryResolveVotesAndBroadcast(mapPanel);
+
+        if (mapPanel?.IsVisible == true)
+        {
+            RefreshMarks(mapPanel);
+        }
+    }
+
+    private static void HandleVoteResult(object payload)
+    {
+        if (!TryGetJsonElement(payload, out JsonElement root))
+        {
+            return;
+        }
+
+        int sourceAct = GetInt(root, "SourceAct", -1);
+        int sourceX = GetInt(root, "SourceX", -1);
+        int sourceY = GetInt(root, "SourceY", -1);
+        int act = GetInt(root, "Act", -1);
+        int x = GetInt(root, "X", -1);
+        int y = GetInt(root, "Y", -1);
+
+        if (sourceAct < 0 || sourceX < 0 || sourceY < 0 || act < 0 || x < 0 || y < 0)
+        {
+            return;
+        }
+
+        VoteSource source = new(sourceAct, sourceX, sourceY);
+        NodeKey resolved = new(act, x, y);
+
+        lock (SyncLock)
+        {
+            CurrentVoteSource = source;
+            PlayerVotes.Clear();
+            ResolvedNode = resolved;
+        }
+
+        MapPanel mapPanel = TryGetMapPanel();
+        if (mapPanel?.IsVisible == true)
+        {
+            RefreshMarks(mapPanel);
+            TryApplyResolvedNode(mapPanel, resolved);
+        }
+    }
+
+    private static void TryResolveVotesAndBroadcast(MapPanel mapPanel)
+    {
+        if (!NetworkIdentityTracker.GetSelfIsHost())
+        {
+            return;
+        }
+
+        HashSet<string> expectedVoters = GetExpectedVoterIds();
+        if (expectedVoters.Count <= 0)
+        {
+            return;
+        }
+
+        VoteSource source;
+        List<NodeKey> candidates = new();
+        NodeKey resolved;
+        int nonce;
+
+        lock (SyncLock)
+        {
+            if (!CurrentVoteSource.HasValue)
+            {
+                return;
+            }
+
+            source = CurrentVoteSource.Value;
+            foreach (string playerId in expectedVoters)
+            {
+                if (!PlayerVotes.TryGetValue(playerId, out NodeKey vote))
+                {
+                    return;
+                }
+
+                candidates.Add(vote);
+            }
+
+            if (candidates.Count <= 0)
+            {
+                return;
+            }
+
+            _resolutionNonce++;
+            nonce = _resolutionNonce;
+            resolved = PickWinningVote(source, candidates, nonce);
+            PlayerVotes.Clear();
+            ResolvedNode = resolved;
+        }
+
+        INetworkClient client = TryGetClient();
+        if (client?.IsConnected == true)
+        {
+            try
+            {
+                client.SendGameEventData(
+                    NetworkMessageTypes.OnMapNodeVoteResult,
+                    new
+                    {
+                        SourceAct = source.Act,
+                        SourceX = source.X,
+                        SourceY = source.Y,
+                        Act = resolved.Act,
+                        X = resolved.X,
+                        Y = resolved.Y,
+                        Nonce = nonce,
+                        CandidateCount = candidates.Count,
+                        Timestamp = DateTime.Now.Ticks
+                    }
+                );
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+
+        if (mapPanel?.IsVisible == true)
+        {
+            RefreshMarks(mapPanel);
+            TryApplyResolvedNode(mapPanel, resolved);
+        }
+    }
+
+    private static NodeKey PickWinningVote(VoteSource source, List<NodeKey> votes, int nonce)
+    {
+        if (votes == null || votes.Count <= 0)
+        {
+            return default;
+        }
+
+        unchecked
+        {
+            int seed = 17;
+            seed = seed * 31 + source.Act;
+            seed = seed * 31 + source.X;
+            seed = seed * 31 + source.Y;
+            seed = seed * 31 + nonce;
+            for (int i = 0; i < votes.Count; i++)
+            {
+                seed = seed * 31 + votes[i].Act;
+                seed = seed * 31 + votes[i].X;
+                seed = seed * 31 + votes[i].Y;
+            }
+
+            int normalized = seed == int.MinValue ? 0 : Math.Abs(seed);
+            System.Random rng = new(normalized);
+            return votes[rng.Next(votes.Count)];
+        }
+    }
+
+    private static HashSet<string> GetExpectedVoterIds()
+    {
+        HashSet<string> ids;
+        try
+        {
+            ids = NetworkIdentityTracker.GetPlayerIdsSnapshot();
+        }
+        catch
+        {
+            ids = new HashSet<string>(StringComparer.Ordinal);
+        }
+
+        if (ids == null)
+        {
+            ids = new HashSet<string>(StringComparer.Ordinal);
+        }
+
+        List<string> emptyKeys = null;
+        foreach (string id in ids)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                (emptyKeys ??= new List<string>()).Add(id);
+            }
+        }
+
+        if (emptyKeys != null)
+        {
+            for (int i = 0; i < emptyKeys.Count; i++)
+            {
+                ids.Remove(emptyKeys[i]);
+            }
+        }
+
+        string selfId = GetSelfPlayerId();
+        if (!string.IsNullOrWhiteSpace(selfId))
+        {
+            ids.Add(selfId);
+        }
+
+        return ids;
+    }
+
+    private static string GetSelfPlayerId()
+    {
+        string id = null;
+        try
+        {
+            id = NetworkIdentityTracker.GetSelfPlayerId();
+        }
+        catch
+        {
+            // ignored
+        }
+
+        if (!string.IsNullOrWhiteSpace(id))
+        {
+            return id;
         }
 
         try
         {
-            MapPanel mapPanel = UiManager.GetPanel<MapPanel>();
-            if (mapPanel != null && mapPanel.IsVisible)
+            INetworkManager manager = TryGetNetworkManager();
+            var self = manager?.GetSelf();
+            if (!string.IsNullOrWhiteSpace(self?.playerId))
             {
-                RefreshMarks(mapPanel);
+                return self.playerId;
+            }
+
+            if (!string.IsNullOrWhiteSpace(self?.userName))
+            {
+                return self.userName;
             }
         }
         catch
         {
             // ignored
+        }
+
+        return null;
+    }
+
+    private static MapPanel TryGetMapPanel()
+    {
+        try
+        {
+            return UiManager.GetPanel<MapPanel>();
+        }
+        catch
+        {
+            return null;
         }
     }
 
@@ -231,13 +516,13 @@ public static class MapNodeMarkSyncPatch
                 return;
             }
 
-            MapPanel mapPanel = UiManager.GetPanel<MapPanel>();
+            MapPanel mapPanel = TryGetMapPanel();
             if (mapPanel == null || !mapPanel.IsVisible)
             {
                 return;
             }
 
-            ToggleLocalMarkAndBroadcast(_hovered);
+            SubmitLocalVoteAndBroadcast(_hovered, mapPanel);
             RefreshMarks(mapPanel);
         }
         catch
@@ -256,8 +541,10 @@ public static class MapNodeMarkSyncPatch
             if (client != null)
             {
                 EnsureSubscribed(client);
+                NetworkIdentityTracker.EnsureSubscribed(client);
             }
 
+            UpdateVoteSource(__instance);
             RefreshMarks(__instance);
         }
         catch
@@ -266,7 +553,53 @@ public static class MapNodeMarkSyncPatch
         }
     }
 
-    private static void ToggleLocalMarkAndBroadcast(MapNodeWidget widget)
+    private static void UpdateVoteSource(MapPanel mapPanel)
+    {
+        if (!TryGetCurrentVoteSource(mapPanel, out VoteSource source))
+        {
+            return;
+        }
+
+        lock (SyncLock)
+        {
+            if (CurrentVoteSource.HasValue && CurrentVoteSource.Value.Equals(source))
+            {
+                return;
+            }
+
+            CurrentVoteSource = source;
+            PlayerVotes.Clear();
+            ResolvedNode = null;
+        }
+    }
+
+    private static bool TryGetCurrentVoteSource(MapPanel mapPanel, out VoteSource source)
+    {
+        source = default;
+        if (mapPanel == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            GameMap gameMap = Traverse.Create(mapPanel).Field("_map").GetValue<GameMap>();
+            MapNode visitingNode = gameMap?.VisitingNode;
+            if (visitingNode == null)
+            {
+                return false;
+            }
+
+            source = new VoteSource(visitingNode.Act, visitingNode.X, visitingNode.Y);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void SubmitLocalVoteAndBroadcast(MapNodeWidget widget, MapPanel mapPanel)
     {
         MapNode node = widget?.MapNode;
         if (node == null)
@@ -274,39 +607,122 @@ public static class MapNodeMarkSyncPatch
             return;
         }
 
-        NodeKey key = new(node.Act, node.X, node.Y);
-        bool next;
+        if (!TryGetCurrentVoteSource(mapPanel, out VoteSource source))
+        {
+            return;
+        }
+
+        string playerId = GetSelfPlayerId();
+        if (string.IsNullOrWhiteSpace(playerId))
+        {
+            return;
+        }
+
+        NodeKey vote = new(node.Act, node.X, node.Y);
         lock (SyncLock)
         {
-            Marks.TryGetValue(key, out bool cur);
-            next = !cur;
-            Marks[key] = next;
+            if (!CurrentVoteSource.HasValue || !CurrentVoteSource.Value.Equals(source))
+            {
+                CurrentVoteSource = source;
+                PlayerVotes.Clear();
+                ResolvedNode = null;
+            }
+
+            PlayerVotes[playerId] = vote;
+            ResolvedNode = null;
         }
 
         INetworkClient client = TryGetClient();
-        if (client?.IsConnected != true)
+        if (client?.IsConnected == true)
+        {
+            try
+            {
+                client.SendGameEventData(
+                    NetworkMessageTypes.OnMapNodeVoteCast,
+                    new
+                    {
+                        PlayerId = playerId,
+                        SourceAct = source.Act,
+                        SourceX = source.X,
+                        SourceY = source.Y,
+                        Act = vote.Act,
+                        X = vote.X,
+                        Y = vote.Y,
+                        Timestamp = DateTime.Now.Ticks
+                    }
+                );
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+
+        TryResolveVotesAndBroadcast(mapPanel);
+    }
+
+    private static void TryApplyResolvedNode(MapPanel mapPanel, NodeKey resolved)
+    {
+        if (mapPanel == null)
         {
             return;
         }
 
         try
         {
-            client.SendGameEventData(
-                NetworkMessageTypes.OnMapNodeMarkChanged,
-                new
-                {
-                    Act = key.Act,
-                    X = key.X,
-                    Y = key.Y,
-                    Marked = next,
-                    Timestamp = DateTime.Now.Ticks
-                }
-            );
+            GameMap gameMap = Traverse.Create(mapPanel).Field("_map").GetValue<GameMap>();
+            MapNodeWidget[,] widgets = Traverse.Create(mapPanel).Field("_mapNodeWidgets").GetValue<MapNodeWidget[,]>();
+            if (gameMap == null || widgets == null)
+            {
+                return;
+            }
+
+            if (resolved.Matches(gameMap.VisitingNode))
+            {
+                return;
+            }
+
+            MapNodeWidget target = FindWidgetByNode(widgets, resolved);
+            if (target?.MapNode == null)
+            {
+                return;
+            }
+
+            gameMap.EnterNode(target.MapNode, freeMove: false, forced: false);
         }
         catch
         {
             // ignored
         }
+    }
+
+    private static MapNodeWidget FindWidgetByNode(MapNodeWidget[,] widgets, NodeKey target)
+    {
+        if (widgets == null)
+        {
+            return null;
+        }
+
+        int maxX = widgets.GetUpperBound(0);
+        int maxY = widgets.GetUpperBound(1);
+        for (int x = widgets.GetLowerBound(0); x <= maxX; x++)
+        {
+            for (int y = widgets.GetLowerBound(1); y <= maxY; y++)
+            {
+                MapNodeWidget widget = widgets[x, y];
+                if (widget?.MapNode == null)
+                {
+                    continue;
+                }
+
+                if (target.Matches(widget.MapNode))
+                {
+                    return widget;
+                }
+            }
+        }
+
+        return null;
     }
 
     private static void RefreshMarks(MapPanel mapPanel)
@@ -316,43 +732,27 @@ public static class MapNodeMarkSyncPatch
             return;
         }
 
-        Dictionary<NodePosKey, List<INetworkPlayer>> playersByPos = null;
-        try
+        Dictionary<NodePosKey, List<string>> votersByPos = new();
+        NodeKey? resolvedNode;
+
+        lock (SyncLock)
         {
-            INetworkManager manager = TryGetNetworkManager();
-            if (manager?.IsConnected == true)
+            foreach (KeyValuePair<string, NodeKey> pair in PlayerVotes)
             {
-                INetworkPlayer self = manager.GetSelf();
-                foreach (INetworkPlayer p in manager.GetAllPlayers())
+                NodePosKey keyPos = new(pair.Value.X, pair.Value.Y);
+                if (!votersByPos.TryGetValue(keyPos, out List<string> list))
                 {
-                    if (p == null || ReferenceEquals(p, self))
-                    {
-                        continue;
-                    }
-
-                    int px = p.location_X;
-                    int py = p.location_Y;
-                    if (px < 0 || py < 0)
-                    {
-                        continue;
-                    }
-
-                    playersByPos ??= new Dictionary<NodePosKey, List<INetworkPlayer>>();
-                    NodePosKey keyPos = new(px, py);
-                    if (!playersByPos.TryGetValue(keyPos, out List<INetworkPlayer> list))
-                    {
-                        list = new List<INetworkPlayer>();
-                        playersByPos[keyPos] = list;
-                    }
-
-                    list.Add(p);
+                    list = new List<string>();
+                    votersByPos[keyPos] = list;
                 }
+
+                list.Add(pair.Key);
             }
+
+            resolvedNode = ResolvedNode;
         }
-        catch
-        {
-            // ignored
-        }
+
+        Dictionary<NodePosKey, List<string>> displayedPlayerIdsByPos = BuildDisplayedPlayerIdsByPos(mapPanel, votersByPos);
 
         MapNodeWidget[,] widgets;
         try
@@ -375,37 +775,152 @@ public static class MapNodeMarkSyncPatch
         {
             for (int y = widgets.GetLowerBound(1); y <= maxY; y++)
             {
-                MapNodeWidget w = widgets[x, y];
-                if (w == null || w.MapNode == null)
+                MapNodeWidget widget = widgets[x, y];
+                if (widget?.MapNode == null)
                 {
                     continue;
                 }
 
-                NodeKey key = new(w.MapNode.Act, w.MapNode.X, w.MapNode.Y);
-                bool marked;
-                lock (SyncLock)
-                {
-                    marked = Marks.TryGetValue(key, out bool m) && m;
-                }
+                NodeKey key = new(widget.MapNode.Act, widget.MapNode.X, widget.MapNode.Y);
+                bool resolved = resolvedNode.HasValue && resolvedNode.Value.Equals(key);
+                votersByPos.TryGetValue(new NodePosKey(widget.MapNode.X, widget.MapNode.Y), out List<string> voters);
+                bool hasVotes = voters != null && voters.Count > 0;
+                displayedPlayerIdsByPos.TryGetValue(new NodePosKey(widget.MapNode.X, widget.MapNode.Y), out List<string> displayPlayerIds);
 
-                Image img = EnsureMarkImage(w);
+                Image img = EnsureMarkImage(widget);
                 if (img == null)
                 {
                     continue;
                 }
 
-                img.enabled = marked;
-                if (marked)
+                img.enabled = resolved || hasVotes;
+                if (resolved)
                 {
-                    img.color = new Color(1f, 0.85f, 0.2f, 0.35f);
+                    img.color = new Color(0.2f, 1f, 0.35f, 0.42f);
+                }
+                else if (hasVotes)
+                {
+                    float alpha = Mathf.Clamp(0.18f + 0.06f * voters.Count, 0.18f, 0.45f);
+                    img.color = new Color(1f, 0.85f, 0.2f, alpha);
                 }
 
-                List<INetworkPlayer> here = null;
-                playersByPos?.TryGetValue(new NodePosKey(w.MapNode.X, w.MapNode.Y), out here);
-
-                UpdatePlayerDots(w, here);
+                UpdatePlayerDots(widget, displayPlayerIds);
             }
         }
+    }
+
+    private static Dictionary<NodePosKey, List<string>> BuildDisplayedPlayerIdsByPos(MapPanel mapPanel, Dictionary<NodePosKey, List<string>> votersByPos)
+    {
+        Dictionary<NodePosKey, List<string>> displayed = new();
+
+        if (votersByPos != null)
+        {
+            foreach (KeyValuePair<NodePosKey, List<string>> pair in votersByPos)
+            {
+                if (pair.Value == null || pair.Value.Count <= 0)
+                {
+                    continue;
+                }
+
+                List<string> ids = GetOrCreatePlayerIdList(displayed, pair.Key);
+                AppendDistinct(ids, pair.Value);
+            }
+        }
+
+        foreach (var player in OtherPlayersOverlayPatch.SnapshotPlayersDetailed())
+        {
+            if (string.IsNullOrWhiteSpace(player.PlayerId) || !player.IsConnected)
+            {
+                continue;
+            }
+
+            if (!IsPlayerVisibleOnCurrentMap(mapPanel, player.Stage, player.LocationX, player.LocationY))
+            {
+                continue;
+            }
+
+            NodePosKey pos = new(player.LocationX, player.LocationY);
+            List<string> ids = GetOrCreatePlayerIdList(displayed, pos);
+            AppendDistinct(ids, player.PlayerId);
+        }
+
+        string selfPlayerId = GetSelfPlayerId();
+        if (!string.IsNullOrWhiteSpace(selfPlayerId)
+            && OtherPlayersOverlayPatch.TryGetSelfLocation(out int selfStage, out int selfX, out int selfY, out string _)
+            && IsPlayerVisibleOnCurrentMap(mapPanel, selfStage, selfX, selfY))
+        {
+            NodePosKey selfPos = new(selfX, selfY);
+            List<string> selfIds = GetOrCreatePlayerIdList(displayed, selfPos);
+            AppendDistinct(selfIds, selfPlayerId);
+        }
+
+        return displayed;
+    }
+
+    private static bool IsPlayerVisibleOnCurrentMap(MapPanel mapPanel, int stage, int x, int y)
+    {
+        if (mapPanel == null || x < 0 || y < 0)
+        {
+            return false;
+        }
+
+        try
+        {
+            GameMap gameMap = Traverse.Create(mapPanel).Field("_map").GetValue<GameMap>();
+            MapNode visitingNode = gameMap?.VisitingNode;
+            if (visitingNode == null)
+            {
+                return false;
+            }
+
+            return stage < 0 || visitingNode.Act == stage;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static List<string> GetOrCreatePlayerIdList(Dictionary<NodePosKey, List<string>> displayed, NodePosKey pos)
+    {
+        if (!displayed.TryGetValue(pos, out List<string> ids))
+        {
+            ids = new List<string>();
+            displayed[pos] = ids;
+        }
+
+        return ids;
+    }
+
+    private static void AppendDistinct(List<string> target, IEnumerable<string> playerIds)
+    {
+        if (target == null || playerIds == null)
+        {
+            return;
+        }
+
+        foreach (string playerId in playerIds)
+        {
+            AppendDistinct(target, playerId);
+        }
+    }
+
+    private static void AppendDistinct(List<string> target, string playerId)
+    {
+        if (target == null || string.IsNullOrWhiteSpace(playerId))
+        {
+            return;
+        }
+
+        for (int i = 0; i < target.Count; i++)
+        {
+            if (string.Equals(target[i], playerId, StringComparison.Ordinal))
+            {
+                return;
+            }
+        }
+
+        target.Add(playerId);
     }
 
     private static Image EnsureMarkImage(MapNodeWidget widget)
@@ -448,15 +963,16 @@ public static class MapNodeMarkSyncPatch
         return img;
     }
 
-    private static void UpdatePlayerDots(MapNodeWidget widget, List<INetworkPlayer> playersHere)
+    private static void UpdatePlayerDots(MapNodeWidget widget, List<string> voterIds)
     {
-        int count = playersHere?.Count ?? 0;
+        int count = voterIds?.Count ?? 0;
         if (count <= 0)
         {
             if (DotUis.TryGetValue(widget, out DotUi existing) && existing?.Root != null)
             {
                 existing.Root.gameObject.SetActive(false);
             }
+
             return;
         }
 
@@ -494,22 +1010,51 @@ public static class MapNodeMarkSyncPatch
         {
             bool active = i < displayCount;
             Image img = ui.Dots[i];
-            img?.enabled = active;
+            if (img != null)
+            {
+                img.enabled = active;
+            }
         }
 
         ApplyDotLayout(ui, displayCount);
 
         for (int i = 0; i < displayCount; i++)
         {
-            INetworkPlayer p = playersHere[i];
-            if (p == null)
+            Image img = ui.Dots[i];
+            if (img != null)
             {
-                continue;
+                img.color = GetPlayerDotColor(GetDotColorSeed(voterIds[i]));
+            }
+        }
+    }
+
+    private static string GetDotColorSeed(string playerId)
+    {
+        if (string.IsNullOrWhiteSpace(playerId))
+        {
+            return "player";
+        }
+
+        try
+        {
+            INetworkManager manager = TryGetNetworkManager();
+            var player = manager?.GetPlayer(playerId);
+            if (!string.IsNullOrWhiteSpace(player?.userName))
+            {
+                return player.userName;
             }
 
-            Image img = ui.Dots[i];
-            img?.color = GetPlayerDotColor(p.userName);
+            if (!string.IsNullOrWhiteSpace(player?.playerId))
+            {
+                return player.playerId;
+            }
         }
+        catch
+        {
+            // ignored
+        }
+
+        return playerId;
     }
 
     private static DotUi EnsureDotUi(MapNodeWidget widget)
@@ -563,7 +1108,10 @@ public static class MapNodeMarkSyncPatch
             }
 
             RectTransform rt = img.GetComponent<RectTransform>();
-            rt?.anchoredPosition = offsets[i];
+            if (rt != null)
+            {
+                rt.anchoredPosition = offsets[i];
+            }
         }
     }
 
@@ -589,7 +1137,7 @@ public static class MapNodeMarkSyncPatch
         try
         {
             const int size = 32;
-            Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            Texture2D tex = new(size, size, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Bilinear;
 
             float r = (size - 1) * 0.5f;
@@ -622,7 +1170,7 @@ public static class MapNodeMarkSyncPatch
     {
         try
         {
-            Texture2D tex = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            Texture2D tex = new(1, 1, TextureFormat.RGBA32, false);
             tex.SetPixel(0, 0, Color.white);
             tex.Apply(false, true);
             return Sprite.Create(tex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
@@ -682,27 +1230,20 @@ public static class MapNodeMarkSyncPatch
         }
     }
 
-    private static bool GetBool(JsonElement elem, string property)
+    private static string GetString(JsonElement elem, string property)
     {
         try
         {
             if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
             {
-                return false;
+                return null;
             }
 
-            return p.ValueKind switch
-            {
-                JsonValueKind.True => true,
-                JsonValueKind.False => false,
-                JsonValueKind.Number => p.TryGetInt32(out int v) && v != 0,
-                JsonValueKind.String => bool.TryParse(p.GetString(), out bool b) && b,
-                _ => false
-            };
+            return p.ValueKind == JsonValueKind.String ? p.GetString() : p.GetRawText();
         }
         catch
         {
-            return false;
+            return null;
         }
     }
 }

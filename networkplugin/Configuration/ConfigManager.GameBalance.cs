@@ -31,6 +31,11 @@ public partial class ConfigManager
     /// </summary>
     public ConfigEntry<float> RewardExpMultiplier { get; private set; }
 
+    /// <summary>
+    /// 战斗结束自动复活生命值百分比配置项。
+    /// </summary>
+    public ConfigEntry<int> BattleAutoReviveHpPercent { get; private set; }
+
     #endregion
 
     /// <summary>
@@ -43,6 +48,9 @@ public partial class ConfigManager
 
         // 绑定奖励分配配置
         BindRewardDistributionSettings(configFile);
+
+        // 绑定战斗复活配置
+        BindBattleReviveSettings(configFile);
     }
 
     /// <summary>
@@ -102,6 +110,21 @@ public partial class ConfigManager
     }
 
     /// <summary>
+    /// 绑定战斗结束自动复活设置。
+    /// </summary>
+    private void BindBattleReviveSettings(ConfigFile configFile)
+    {
+        BattleAutoReviveHpPercent = configFile.Bind(
+            "GameBalance.Battle",
+            "BattleAutoReviveHpPercent",
+            10,
+            "联机战斗胜利后自动复活死亡玩家时恢复的最大生命值百分比\n" +
+            "默认值 10 表示恢复 10% 最大生命值\n" +
+            "有效范围为 1-100"
+        );
+    }
+
+    /// <summary>
     /// 获取敌方血量调整系数
     /// 根据玩家数量和配置设置计算最终的调整系数
     /// </summary>
@@ -143,6 +166,36 @@ public partial class ConfigManager
     }
 
     /// <summary>
+    /// 获取战斗结束自动复活生命值百分比。
+    /// </summary>
+    /// <returns>裁剪到 1-100 的百分比数值。</returns>
+    public int GetBattleAutoReviveHpPercent()
+    {
+        int percent = BattleAutoReviveHpPercent?.Value ?? 10;
+        if (percent < 1)
+        {
+            return 1;
+        }
+
+        return percent > 100 ? 100 : percent;
+    }
+
+    /// <summary>
+    /// 根据最大生命值计算战斗结束自动复活后的生命值。
+    /// </summary>
+    /// <param name="maxHp">最大生命值。</param>
+    /// <returns>自动复活后的目标生命值。</returns>
+    public int CalculateBattleAutoReviveHp(int maxHp)
+    {
+        if (maxHp <= 0)
+        {
+            return 1;
+        }
+
+        return Math.Max(1, (int)Math.Ceiling(maxHp * (GetBattleAutoReviveHpPercent() / 100d)));
+    }
+
+    /// <summary>
     /// 重置游戏平衡设置为默认值
     /// </summary>
     public void ResetGameBalanceToDefaults()
@@ -156,6 +209,8 @@ public partial class ConfigManager
             RewardGoldMultiplier?.Value = 1.0f;
 
             RewardExpMultiplier?.Value = 1.0f;
+
+            BattleAutoReviveHpPercent?.Value = 10;
         }
         catch (Exception ex)
         {

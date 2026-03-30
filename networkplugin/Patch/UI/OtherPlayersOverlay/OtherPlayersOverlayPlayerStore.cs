@@ -99,6 +99,33 @@ public static partial class OtherPlayersOverlayPatch
     private static bool IsVirtualAiDebugPlayerId(string playerId)
         => !string.IsNullOrWhiteSpace(playerId) && VirtualAiDebugPlayers.Any(p => string.Equals(p.PlayerId, playerId, StringComparison.Ordinal));
 
+    private static bool IsInGapStationContext()
+    {
+        try
+        {
+            var run = GameStateUtils.GetCurrentGameRun();
+            var node = run?.CurrentMap?.VisitingNode;
+            if (node != null)
+            {
+                return string.Equals(node.StationType.ToString(), "Gap", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+        catch
+        {
+        }
+
+        if (TryGetSelfLocation(out _, out _, out _, out string locationName))
+        {
+            if (!string.IsNullOrWhiteSpace(locationName)
+                && string.Equals(locationName, "Gap", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static string GetVirtualAiDebugPlayerName(string playerId)
         => VirtualAiDebugPlayers.FirstOrDefault(p => string.Equals(p.PlayerId, playerId, StringComparison.Ordinal)).PlayerName;
 
@@ -309,7 +336,12 @@ public static partial class OtherPlayersOverlayPatch
 
                 if (!string.IsNullOrWhiteSpace(_selfPlayerId) && list.All(p => p.PlayerId != _selfPlayerId))
                 {
-                    list.Insert(0, (_selfPlayerId, ResolveDisplayName(_selfPlayerId, null, isLocal: true), true, false, -1, -1, -1, null, null));
+                    int selfStage = -1;
+                    int selfX = -1;
+                    int selfY = -1;
+                    string selfLocationName = null;
+                    TryGetSelfLocation(out selfStage, out selfX, out selfY, out selfLocationName);
+                    list.Insert(0, (_selfPlayerId, ResolveDisplayName(_selfPlayerId, null, isLocal: true), true, false, selfStage, selfX, selfY, selfLocationName, null));
                 }
 
                 return list;

@@ -1,5 +1,7 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using DG.Tweening;
 using HarmonyLib;
 using LBoL.Base;
@@ -13,19 +15,23 @@ using NetworkPlugin.Configuration;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
+using NetworkPlugin.Network.NetworkPlayer;
 using NetworkPlugin.Patch.Network;
 using NetworkPlugin.UI.Factories;
+using NetworkPlugin.UI.Models;
 using NetworkPlugin.UI.Payloads;
 using NetworkPlugin.UI.Panels;
-using NetworkPlugin.UI.State;
+using NetworkPlugin.Utils;
+using TMPro;
 using UnityEngine;
 
 namespace NetworkPlugin.Patch.UI;
 
 /// <summary>
 /// GapOptionsPanel补丁类
-/// 在GapStation UI中添加交易和复活选项
+/// 在GapStation UI中额外添加交易和治疗选项
 /// </summary>
+[HarmonyPatch]
 public class GapOptionsPanel_Patch
 {
     /// <summary>
@@ -59,7 +65,7 @@ public class GapOptionsPanel_Patch
 
     /// <summary>
     /// GapOptionsPanel.OnShowing方法补丁
-    /// 在显示Gap选项时添加交易和复活选项
+    /// 在显示Gap选项时添加交易和治疗选项
     /// </summary>
     [HarmonyPatch(typeof(GapOptionsPanel), "OnShowing")]
     [HarmonyPostfix]
@@ -69,16 +75,25 @@ public class GapOptionsPanel_Patch
         {
             // 检查是否启用gap功能扩展
             if (ConfigManager?.EnableGapStationExtensions?.Value != true)
+            {
+                Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 跳过额外按钮注入：EnableGapStationExtensions=false");
                 return;
+            }
 
             INetworkManager networkManager = GetNetworkManager();
             if (networkManager == null || !networkManager.IsConnected)
+            {
+                Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 跳过额外按钮注入：网络未连接");
                 return;
+            }
 
             _pendingDrinkTeaCompletion = false;
             _pendingDrinkTeaOptionId = null;
             _pendingDrinkTeaOptionName = null;
             GapOptionsSyncPatch.BroadcastGapOptionsEvent(NetworkMessageTypes.GapStationEntered, "GapStation", gapStation?.GetType().Name);
+
+            Plugin.Logger?.LogInfo(
+                $"[GapOptionsPanel_Patch] 开始注入额外按钮: baseOptions={gapStation?.GapOptions?.Count() ?? 0}, AllowTrading={ConfigManager?.AllowTrading?.Value}, AllowRevival={ConfigManager?.AllowRevival?.Value}");
 
             // 添加交易选项
             if (ConfigManager?.AllowTrading?.Value == true)
@@ -86,11 +101,12 @@ public class GapOptionsPanel_Patch
                 AddTradeOption(__instance, gapStation);
             }
 
-            // 添加复活选项
+            // 添加治疗选项
             if (ConfigManager?.AllowRevival?.Value == true)
             {
-                AddResurrectOption(__instance, gapStation);
+                AddTreatOption(__instance, gapStation);
             }
+
         }
         catch (Exception ex)
         {
@@ -105,9 +121,7 @@ public class GapOptionsPanel_Patch
     {
         try
         {
-            // 创建交易选项
-            // 创建自定义交易选项对象，包含ID、中文名称和描述
-            object tradeOption = CreateCustomGapOption("Trade", "交易", "与其他玩家交易卡牌、道具、金币等物品");
+            RuntimeTradeGapOption tradeOption = new();
 
             // 使用Traverse工具获取GapOptionsPanel的私有字段
             Traverse traverse = Traverse.Create(panel);
@@ -126,15 +140,9 @@ public class GapOptionsPanel_Patch
                 GapOptionWidget tradeWidget = UnityEngine.Object.Instantiate(template, optionsLayout);
                 tradeWidget.Parent = panel; // 设置父面板引用
 
-                // 设置widget的显示信息和图标
-                try
-                {
-                    Traverse.Create(tradeWidget).Method("SetOption").GetValue(tradeOption, GetTradeSprite());
-                }
-                catch (Exception ex)
-                {
-                    Plugin.Logger?.LogError($"[GapOptionsPanel_Patch] SetOption错误: {ex.Message}");
-                }
+                // 使用喝茶按钮同款样式（同款图标 + 同款模板）。
+                tradeWidget.SetOption(tradeOption, GetTeaStyleSprite(spriteTable));
+                ApplyRuntimeGapOptionPresentation(tradeWidget, tradeOption);
 
                 // 将新创建的widget添加到选项列表中
                 _options.Add(tradeWidget);
@@ -162,16 +170,14 @@ public class GapOptionsPanel_Patch
     }
 
     /// <summary>
-    /// 添加复活选项
+    /// 添加治疗选项
     /// </summary>
-    private static void AddResurrectOption(GapOptionsPanel panel, GapStation gapStation)
+    private static void AddTreatOption(GapOptionsPanel panel, GapStation gapStation)
     {
         try
         {
-            // 创建复活选项
-            object resurrectOption = CreateCustomGapOption("Resurrect", "复活", "复活已死亡的队友");
+            RuntimeTreatGapOption treatOption = new();
 
-            // 使用Traverse工具获取必要字段
             Traverse traverse = Traverse.Create(panel);
             Transform optionsLayout = traverse.Field("optionsLayout").GetValue<Transform>();
             GapOptionWidget template = traverse.Field("template").GetValue<GapOptionWidget>();
@@ -183,43 +189,33 @@ public class GapOptionsPanel_Patch
                 spriteTable != null &&
                 _options != null)
             {
-                // 创建复活选项widget
-                GapOptionWidget resurrectWidget = UnityEngine.Object.Instantiate(template, optionsLayout);
-                resurrectWidget.Parent = panel;
+                GapOptionWidget treatWidget = UnityEngine.Object.Instantiate(template, optionsLayout);
+                treatWidget.Parent = panel;
 
-                // 设置选项信息
-                try
-                {
-                    Traverse.Create(resurrectWidget).Method("SetOption").GetValue(resurrectOption, GetResurrectSprite());
-                }
-                catch (Exception ex)
-                {
-                    Plugin.Logger?.LogError($"[GapOptionsPanel_Patch] SetOption错误: {ex.Message}");
-                }
+                // 使用喝茶按钮同款样式（同款图标 + 同款模板）。
+                treatWidget.SetOption(treatOption, GetTeaStyleSprite(spriteTable));
+                ApplyRuntimeGapOptionPresentation(treatWidget, treatOption);
 
-                // 添加到选项列表
-                _options.Add(resurrectWidget);
+                _options.Add(treatWidget);
 
-                // 调整位置
                 int optionIndex = gapStation.GapOptions.Count + 1;
                 Vector3 optionPos = GetDefaultOptionPos(panel) + GetOptionPadding(panel) * optionIndex;
-                resurrectWidget.transform.DOLocalMove(optionPos, 1f, false)
+                treatWidget.transform.DOLocalMove(optionPos, 1f, false)
                     .From(optionPos - new Vector3(4000f, 0f, 0f), true, false)
                     .SetEase(DG.Tweening.Ease.OutCubic);
-                resurrectWidget.transform.SetAsFirstSibling();
+                treatWidget.transform.SetAsFirstSibling();
 
-                Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 已添加复活选项");
+                Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 已添加治疗选项");
             }
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[GapOptionsPanel_Patch] AddResurrectOption错误: {ex.Message}");
+            Plugin.Logger?.LogError($"[GapOptionsPanel_Patch] AddTreatOption错误: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// GapOptionsPanel.OptionClicked方法补丁
-    /// 处理交易和复活选项的点击事件
+    /// GapOptionsPanel.OptionClicked方法补丁，处理自定义交易/治疗选项点击
     /// </summary>
     [HarmonyPatch(typeof(GapOptionsPanel), "OptionClicked")]
     [HarmonyPrefix]
@@ -235,22 +231,20 @@ public class GapOptionsPanel_Patch
                     Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 处理交易选项");
 
                     if (!TradeUiMessages.IsTradeEnabledAndConnected(out string reason))
-                        {
-                            TradeUiMessages.ShowTopMessage(reason ?? "交易不可用。");
-                        Traverse.Create(__instance).Method("SelectedAndHide").GetValue();
+                    {
+                        TradeUiMessages.ShowTopMessage(reason ?? "交易不可用。");
                         return false;
                     }
 
                     TradePanel tradePanel = GetOrCreateTradePanel(__instance?.transform.parent);
                     if (tradePanel != null)
                     {
-                        Traverse.Create(__instance).Method("StartCoroutine").GetValue(tradePanel.ShowTradeAsync(new TradePayload()));
+                        __instance.StartCoroutine(tradePanel.ShowTradeAsync(new TradePayload()));
                     }
                     else
                     {
                         TradeUiMessages.ShowTradePanelMissing();
                     }
-                    Traverse.Create(__instance).Method("SelectedAndHide").GetValue();
                 }
                 catch (Exception ex)
                 {
@@ -259,31 +253,35 @@ public class GapOptionsPanel_Patch
                 return false; // 阻止原始方法执行
             }
 
-            // 检查是否为自定义复活选项
-            if (IsCustomResurrectOption(option))
+            // 检查是否为自定义治疗选项
+            if (IsCustomTreatOption(option))
             {
                 try
                 {
-                    Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 处理复活选项");
-                    ResurrectPanel resurrectPanel = GetOrCreateResurrectPanel();
+                    Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 处理治疗选项");
+                    ResurrectPanel resurrectPanel = GetOrCreateResurrectPanel(__instance?.transform.parent);
                     if (resurrectPanel != null)
                     {
+                        List<DeadPlayerEntry> candidates = BuildTreatmentCandidates();
+                        Plugin.Logger?.LogInfo($"[GapOptionsPanel_Patch] 治疗候选构建完成: total={candidates.Count}, ai1={candidates.FirstOrDefault(p => string.Equals(p.PlayerId, "aidefault", StringComparison.OrdinalIgnoreCase))?.PlayerName}, ai2={candidates.FirstOrDefault(p => string.Equals(p.PlayerId, "aidefault2", StringComparison.OrdinalIgnoreCase))?.PlayerName}");
+
                         ResurrectPayload payload = new ResurrectPayload
                         {
-                            DeadPlayers = DeathRegistry.GetDeadPlayersSnapshot(),
+                            Players = candidates,
                             CanCancel = true,
-                            // 需求：复活后 HP = Cost/2。
-                            // v1 规则：以目标 MaxHp 为成本基准 => desiredHp=MaxHp/2 => cost=MaxHp。
-                            CostCalculator = desiredHp => Math.Max(0, desiredHp * 2),
+                            CostCalculator = desiredHp => desiredHp,
                         };
 
-                        Traverse.Create(__instance).Method("StartCoroutine").GetValue(resurrectPanel.ShowResurrectAsync(payload));
+                        __instance.StartCoroutine(ShowTreatFlowAndCompleteAsync(__instance, resurrectPanel, payload));
                     }
-                    Traverse.Create(__instance).Method("SelectedAndHide").GetValue();
+                    else
+                    {
+                        TradeUiMessages.ShowTopMessage("治疗面板不可用。");
+                    }
                 }
                 catch (Exception ex)
                 {
-                    Plugin.Logger?.LogError($"[GapOptionsPanel_Patch] 处理复活选项错误: {ex.Message}");
+                    Plugin.Logger?.LogError($"[GapOptionsPanel_Patch] 处理治疗选项错误: {ex.Message}");
                 }
                 return false; // 阻止原始方法执行
             }
@@ -322,52 +320,16 @@ public class GapOptionsPanel_Patch
     #region 辅助方法
 
     /// <summary>
-    /// 创建自定义Gap选项
+    /// 获取与原版喝茶按钮一致的图标。
     /// </summary>
-    private static object CreateCustomGapOption(string id, string name, string description)
+    private static Sprite GetTeaStyleSprite(AssociationList<GapOptionType, Sprite> spriteTable)
     {
-        var customOption = new
+        if (spriteTable != null && spriteTable.TryGetValue(GapOptionType.DrinkTea, out Sprite teaSprite) && teaSprite != null)
         {
-            Id = id,
-            Name = name,
-            Description = description,
-            IsCustom = true
-        };
-        return customOption;
-    }
+            return teaSprite;
+        }
 
-    /// <summary>
-    /// 获取交易图标
-    /// </summary>
-    private static Sprite GetTradeSprite()
-    {
-        // 返回交易相关的图标，这里需要根据实际资源调整
-        try
-        {
-            return Resources.Load<Sprite>("UI/Icons/TradeIcon") ??
-                   Resources.Load<Sprite>("UI/Icons/DefaultIcon");
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// 获取复活图标
-    /// </summary>
-    private static Sprite GetResurrectSprite()
-    {
-        // 返回复活相关的图标，这里需要根据实际资源调整
-        try
-        {
-            return Resources.Load<Sprite>("UI/Icons/ResurrectIcon") ??
-                   Resources.Load<Sprite>("UI/Icons/DefaultIcon");
-        }
-        catch
-        {
-            return null;
-        }
+        return Resources.Load<Sprite>("UI/Icons/DefaultIcon");
     }
 
     /// <summary>
@@ -405,15 +367,325 @@ public class GapOptionsPanel_Patch
     /// </summary>
     private static bool IsCustomTradeOption(GapOption option)
     {
-        return option?.GetType().GetProperty("Id")?.GetValue(option)?.ToString() == "Trade";
+        return option is RuntimeGapOption runtime && string.Equals(runtime.Id, "Trade", StringComparison.Ordinal);
     }
 
     /// <summary>
-    /// 检查是否为自定义复活选项
+    /// 检查是否为自定义治疗选项
     /// </summary>
-    private static bool IsCustomResurrectOption(GapOption option)
+    private static bool IsCustomTreatOption(GapOption option)
     {
-        return option?.GetType().GetProperty("Id")?.GetValue(option)?.ToString() == "Resurrect";
+        return option is RuntimeGapOption runtime && string.Equals(runtime.Id, "Treat", StringComparison.Ordinal);
+    }
+
+    [HarmonyPatch(typeof(GapOptionWidget), nameof(GapOptionWidget.OnLocalizeChanged))]
+    [HarmonyPostfix]
+    public static void GapOptionWidget_OnLocalizeChanged_Postfix(GapOptionWidget __instance)
+    {
+        try
+        {
+            GapOption option = Traverse.Create(__instance).Field("_option").GetValue<GapOption>();
+            if (option is RuntimeGapOption runtime)
+            {
+                ApplyRuntimeGapOptionPresentation(__instance, runtime);
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[GapOptionsPanel_Patch] GapOptionWidget_OnLocalizeChanged错误: {ex.Message}");
+        }
+    }
+
+    private static void ApplyRuntimeGapOptionPresentation(GapOptionWidget widget, RuntimeGapOption option)
+    {
+        if (widget == null || option == null)
+        {
+            return;
+        }
+
+        TextMeshProUGUI optionName = Traverse.Create(widget).Field("optionName").GetValue<TextMeshProUGUI>();
+        TextMeshProUGUI optionTipText = Traverse.Create(widget).Field("optionTipText").GetValue<TextMeshProUGUI>();
+
+        if (optionName != null)
+        {
+            optionName.text = option.DisplayName;
+        }
+
+        if (optionTipText != null)
+        {
+            optionTipText.text = option.DisplayDescription;
+        }
+    }
+
+    private static List<DeadPlayerEntry> BuildTreatmentCandidates()
+    {
+        List<DeadPlayerEntry> result = [];
+        INetworkManager networkManager = GetNetworkManager();
+        if (networkManager == null)
+        {
+            return result;
+        }
+
+        Dictionary<string, (string PlayerName, bool IsConnected, bool IsHost)> candidatePlayers = new(StringComparer.Ordinal);
+
+        void AddOrUpdateCandidate(string playerId, string playerName, bool isConnected, bool isHost)
+        {
+            if (string.IsNullOrWhiteSpace(playerId))
+            {
+                return;
+            }
+
+            if (!candidatePlayers.TryGetValue(playerId, out (string PlayerName, bool IsConnected, bool IsHost) existing))
+            {
+                candidatePlayers[playerId] = (playerName, isConnected, isHost);
+                return;
+            }
+
+            candidatePlayers[playerId] =
+            (
+                string.IsNullOrWhiteSpace(existing.PlayerName) ? playerName : existing.PlayerName,
+                existing.IsConnected || isConnected,
+                existing.IsHost || isHost
+            );
+        }
+
+        foreach ((string PlayerId, string PlayerName, bool IsConnected, bool IsHost) player in OtherPlayersOverlayPatch.SnapshotPlayers())
+        {
+            AddOrUpdateCandidate(player.PlayerId, player.PlayerName, player.IsConnected, player.IsHost);
+        }
+
+        IEnumerable<INetworkPlayer> allNetworkPlayers = networkManager.GetAllPlayers() ?? Enumerable.Empty<INetworkPlayer>();
+        foreach (INetworkPlayer networkPlayer in allNetworkPlayers)
+        {
+            if (networkPlayer == null)
+            {
+                continue;
+            }
+
+            bool isHost = false;
+            try
+            {
+                isHost = networkPlayer.IsLobbyOwner();
+            }
+            catch
+            {
+                // ignored
+            }
+
+            AddOrUpdateCandidate(networkPlayer.playerId, networkPlayer.userName, true, isHost);
+        }
+
+        string selfPlayerId = networkManager.GetSelf()?.playerId;
+        if (!string.IsNullOrWhiteSpace(selfPlayerId))
+        {
+            AddOrUpdateCandidate(selfPlayerId, GameStateUtils.GetCurrentPlayerName(), true, false);
+        }
+
+        AddOrUpdateCandidate("aidefault", "AI Default", true, false);
+        AddOrUpdateCandidate("aidefault2", "AI Default 2", true, false);
+
+        foreach (string knownPlayerId in candidatePlayers.Keys.ToList())
+        {
+            if (IsVirtualAiSimulatedPlayer(knownPlayerId))
+            {
+                AddOrUpdateCandidate(knownPlayerId, OtherPlayersOverlayPatch.ResolveDisplayName(knownPlayerId, null), true, false);
+            }
+        }
+
+        foreach ((string playerId, (string playerName, bool isConnected, bool isHost) candidate) in candidatePlayers)
+        {
+            INetworkPlayer networkPlayer = ResolveNetworkPlayer(networkManager, playerId);
+            if (!TryGetPlayerVitals(playerId, networkPlayer, out int currentHp, out int maxHp))
+            {
+                continue;
+            }
+
+            int healAmount = CalculateHealingAmount(maxHp);
+            bool canTreat = currentHp < maxHp;
+            int finalHp = Math.Min(maxHp, currentHp + healAmount);
+
+            result.Add(new DeadPlayerEntry
+            {
+                PlayerId = playerId,
+                PlayerName = ResolveTreatmentDisplayName(playerId, candidate.playerName, selfPlayerId),
+                CurrentHp = currentHp,
+                MaxHp = maxHp,
+                ActionValue = healAmount,
+                ResurrectionCost = healAmount,
+                CanResurrect = canTreat,
+                DeadCause = canTreat ? "可治疗" : "生命已满",
+                StatusText = canTreat ? $"治疗后 {finalHp}/{maxHp}" : "生命已满",
+            });
+        }
+
+        return result
+            .OrderByDescending(p => p.CanResurrect)
+            .ThenBy(p => p.PlayerName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static IEnumerator ShowTreatFlowAndCompleteAsync(GapOptionsPanel panel, ResurrectPanel resurrectPanel, ResurrectPayload payload)
+    {
+        if (panel == null || resurrectPanel == null)
+        {
+            yield break;
+        }
+
+        yield return resurrectPanel.ShowResurrectAsync(payload);
+
+        if (resurrectPanel.DidCompleteTreatment)
+        {
+            Traverse.Create(panel).Method("SelectedAndHide").GetValue();
+        }
+    }
+
+    private static INetworkPlayer ResolveNetworkPlayer(INetworkManager networkManager, string playerId)
+    {
+        if (networkManager == null || string.IsNullOrWhiteSpace(playerId))
+        {
+            return null;
+        }
+
+        INetworkPlayer self = networkManager.GetSelf();
+        if (self != null && string.Equals(self.playerId, playerId, StringComparison.Ordinal))
+        {
+            return self;
+        }
+
+        return networkManager.GetPlayer(playerId);
+    }
+
+    private static bool TryGetPlayerVitals(string playerId, INetworkPlayer networkPlayer, out int currentHp, out int maxHp)
+    {
+        currentHp = 0;
+        maxHp = 0;
+
+        if (networkPlayer != null)
+        {
+            currentHp = Math.Max(0, networkPlayer.HP);
+            maxHp = Math.Max(0, networkPlayer.maxHP);
+        }
+
+        if (string.Equals(playerId, NetworkIdentityTracker.GetSelfPlayerId(), StringComparison.Ordinal))
+        {
+            var localPlayer = GameStateUtils.GetCurrentPlayer();
+            if (localPlayer != null)
+            {
+                currentHp = Math.Max(currentHp, Math.Max(0, localPlayer.Hp));
+                maxHp = Math.Max(maxHp, Math.Max(0, localPlayer.MaxHp));
+            }
+        }
+
+        if (maxHp <= 0 && IsVirtualAiSimulatedPlayer(playerId))
+        {
+            var localPlayer = GameStateUtils.GetCurrentPlayer();
+            int fallbackMaxHp = Math.Max(1, localPlayer?.MaxHp ?? 100);
+            int fallbackCurrentHp = localPlayer != null
+                ? Math.Max(0, localPlayer.Hp)
+                : Mathf.CeilToInt(fallbackMaxHp * 0.7f);
+
+            if (fallbackCurrentHp >= fallbackMaxHp)
+            {
+                fallbackCurrentHp = Math.Max(0, fallbackMaxHp - 1);
+            }
+
+            currentHp = Math.Max(currentHp, fallbackCurrentHp);
+            maxHp = Math.Max(maxHp, fallbackMaxHp);
+        }
+
+        return maxHp > 0;
+    }
+
+    private static bool IsVirtualAiSimulatedPlayer(string playerId)
+    {
+        if (string.IsNullOrWhiteSpace(playerId))
+        {
+            return false;
+        }
+
+        return string.Equals(playerId, "aidefault", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(playerId, "aidefault2", StringComparison.OrdinalIgnoreCase)
+            || playerId.StartsWith("aidefault", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string ResolveTreatmentDisplayName(string playerId, string preferredName, string selfPlayerId)
+    {
+        string normalizedPreferred = NormalizeTreatmentDisplayName(preferredName, playerId);
+        if (!string.IsNullOrWhiteSpace(normalizedPreferred))
+        {
+            return normalizedPreferred;
+        }
+
+        if (IsVirtualAiSimulatedPlayer(playerId))
+        {
+            return GetVirtualAiTreatmentDisplayName(playerId);
+        }
+
+        string resolved = OtherPlayersOverlayPatch.ResolveDisplayName(
+            playerId,
+            null,
+            string.Equals(playerId, selfPlayerId, StringComparison.Ordinal));
+
+        string normalizedResolved = NormalizeTreatmentDisplayName(resolved, playerId);
+        if (!string.IsNullOrWhiteSpace(normalizedResolved))
+        {
+            return normalizedResolved;
+        }
+
+        return string.IsNullOrWhiteSpace(playerId) ? "Unknown" : playerId;
+    }
+
+    private static string NormalizeTreatmentDisplayName(string displayName, string playerId)
+    {
+        if (string.IsNullOrWhiteSpace(displayName))
+        {
+            return null;
+        }
+
+        string trimmed = displayName.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(playerId)
+            && string.Equals(trimmed, playerId, StringComparison.Ordinal)
+            && IsVirtualAiSimulatedPlayer(playerId))
+        {
+            return null;
+        }
+
+        return trimmed;
+    }
+
+    private static string GetVirtualAiTreatmentDisplayName(string playerId)
+    {
+        if (string.IsNullOrWhiteSpace(playerId))
+        {
+            return "AI Default";
+        }
+
+        if (string.Equals(playerId, "aidefault2", StringComparison.OrdinalIgnoreCase))
+        {
+            return "AI Default 2";
+        }
+
+        if (string.Equals(playerId, "aidefault", StringComparison.OrdinalIgnoreCase))
+        {
+            return "AI Default";
+        }
+
+        return "AI Default";
+    }
+
+    private static int CalculateHealingAmount(int maxHp)
+    {
+        if (maxHp <= 0)
+        {
+            return 1;
+        }
+
+        return Math.Max(1, Mathf.CeilToInt(maxHp * 0.2f));
     }
 
     private static void TryBroadcastBuiltInGapOptionsSelection(GapOption option)
@@ -517,9 +789,19 @@ public class GapOptionsPanel_Patch
         try
         {
             // 尝试从UI管理器获取现有面板
-            var panel = Traverse.CreateWithType(typeof(UiManager).FullName).Method("GetPanel").GetValue<TradePanel>();
-            if (panel != null)
-                return panel;
+            TradePanel panel = null;
+            try
+            {
+                panel = UiManager.GetPanel<TradePanel>();
+                if (panel != null)
+                {
+                    return panel;
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // 面板尚未注册到 UiManager，继续尝试场景实例与运行时工厂。
+            }
 
             // 其次：从场景中查找已存在的 TradePanel（例如由 Prefab/其他模块创建）。
             try
@@ -554,18 +836,57 @@ public class GapOptionsPanel_Patch
     }
 
     /// <summary>
-    /// 获取或创建复活面板
+    /// 获取或创建治疗面板
     /// </summary>
-    private static ResurrectPanel GetOrCreateResurrectPanel()
+    private static ResurrectPanel GetOrCreateResurrectPanel(Transform parent)
     {
         try
         {
-            // 尝试从UI管理器获取现有面板
-            var panel = Traverse.CreateWithType(typeof(UiManager).FullName).Method("GetPanel").GetValue<ResurrectPanel>();
-            if (panel != null)
-                return panel;
+            var runtimePreferred = ResurrectPanelRuntimeFactory.GetOrCreate(parent);
+            if (runtimePreferred != null)
+            {
+                Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 优先使用运行时治疗面板实例。");
+                return runtimePreferred;
+            }
 
-            // 不要在这里创建交易面板；复活面板也不应裸创建，保持与现有逻辑一致。
+            try
+            {
+                var panel = UiManager.GetPanel<ResurrectPanel>();
+                if (panel != null)
+                {
+                    Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 使用 UiManager 注册的治疗面板实例。");
+                    return panel;
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // 治疗面板尚未由 UiManager 注册时返回 null，让调用方决定后续处理。
+                Plugin.Logger?.LogDebug("[GapOptionsPanel_Patch] UiManager 中未找到治疗面板，尝试场景搜索与运行时工厂。");
+            }
+
+            try
+            {
+                var scenePanel = UnityEngine.Object.FindObjectOfType<ResurrectPanel>(true);
+                if (scenePanel != null)
+                {
+                    Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 使用场景中已存在的治疗面板实例。");
+                    return scenePanel;
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            var runtimePanel = ResurrectPanelRuntimeFactory.GetOrCreate(parent);
+            if (runtimePanel != null)
+            {
+                Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 已创建运行时治疗面板实例。");
+                return runtimePanel;
+            }
+
+            Plugin.Logger?.LogWarning("[GapOptionsPanel_Patch] 无法获取治疗面板实例（UiManager/场景/运行时工厂均失败）。");
+
             return null;
         }
         catch (Exception ex)

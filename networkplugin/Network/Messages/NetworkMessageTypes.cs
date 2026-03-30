@@ -351,6 +351,16 @@ namespace NetworkPlugin.Network.Messages
         /// </summary>
         public const string OnMapNodeMarkChanged = "OnMapNodeMarkChanged";
 
+        /// <summary>
+        /// 地图节点投票提交（玩家 -> 房主/房间）。
+        /// </summary>
+        public const string OnMapNodeVoteCast = "OnMapNodeVoteCast";
+
+        /// <summary>
+        /// 地图节点投票裁决结果（房主广播）。
+        /// </summary>
+        public const string OnMapNodeVoteResult = "OnMapNodeVoteResult";
+
         // === 事件/对话同步消息 ===
 
         /// <summary>
@@ -466,6 +476,21 @@ namespace NetworkPlugin.Network.Messages
         /// 复活结果：Host -> 全体。
         /// </summary>
         public const string OnPlayerResurrected = "OnPlayerResurrected";
+
+        /// <summary>
+        /// Gap 治疗请求：客户端 -> Host。
+        /// </summary>
+        public const string OnGapHealRequest = "OnGapHealRequest";
+
+        /// <summary>
+        /// Gap 治疗失败：Host -> 全体。
+        /// </summary>
+        public const string OnGapHealFailed = "OnGapHealFailed";
+
+        /// <summary>
+        /// Gap 治疗结果：Host -> 全体。
+        /// </summary>
+        public const string OnGapPlayerHealed = "OnGapPlayerHealed";
 
         /// <summary>
         /// 进入休息点（GapStation）
