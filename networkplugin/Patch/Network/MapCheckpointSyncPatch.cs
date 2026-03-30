@@ -29,7 +29,7 @@ public static class MapCheckpointSyncPatch
     {
         try
         {
-            var client = ServiceProvider?.GetService<INetworkClient>();
+            INetworkClient client = TryGetNetworkClient();
             if (client == null || !client.IsConnected)
             {
                 return false;
@@ -52,6 +52,12 @@ public static class MapCheckpointSyncPatch
         }
 
         TryGetReconnectionManager()?.MarkMapCheckpoint(reason, TryBuildCurrentNodeKey(run));
+    }
+
+    private static void TryMarkCurrentRunCheckpoint(string reason)
+    {
+        GameRunController? run = GameStateUtils.GetCurrentGameRun();
+        TryMarkCheckpoint(reason, run);
     }
 
     private static string? TryBuildCurrentNodeKey(GameRunController? run)
@@ -120,8 +126,7 @@ public static class MapCheckpointSyncPatch
         {
             try
             {
-                GameRunController? run = GameStateUtils.GetCurrentGameRun();
-                TryMarkCheckpoint("reward_closed", run);
+                TryMarkCurrentRunCheckpoint("reward_closed");
             }
             catch
             {
@@ -138,8 +143,7 @@ public static class MapCheckpointSyncPatch
         {
             try
             {
-                GameRunController? run = GameStateUtils.GetCurrentGameRun();
-                TryMarkCheckpoint("shop_after_buying", run);
+                TryMarkCurrentRunCheckpoint("shop_after_buying");
             }
             catch
             {
@@ -156,8 +160,7 @@ public static class MapCheckpointSyncPatch
         {
             try
             {
-                GameRunController? run = GameStateUtils.GetCurrentGameRun();
-                TryMarkCheckpoint("gap_option_selected", run);
+                TryMarkCurrentRunCheckpoint("gap_option_selected");
             }
             catch
             {

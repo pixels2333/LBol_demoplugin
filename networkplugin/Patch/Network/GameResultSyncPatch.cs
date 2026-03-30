@@ -146,7 +146,14 @@ public static class GameResultSyncPatch
             return;
         }
 
-        string resultTypeString = GetString(root, "ResultType");
+        string resultTypeString = null;
+        if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("ResultType", out JsonElement resultTypeElement))
+        {
+            resultTypeString = resultTypeElement.ValueKind == JsonValueKind.String
+                ? resultTypeElement.GetString()
+                : resultTypeElement.GetRawText();
+        }
+
         if (string.IsNullOrWhiteSpace(resultTypeString) || !Enum.TryParse(resultTypeString, out GameResultType resultType))
         {
             Plugin.Logger?.LogWarning($"[GameResultSync] Invalid ResultType in payload: '{resultTypeString ?? "<null>"}'");
@@ -218,10 +225,11 @@ public static class GameResultSyncPatch
 
         try
         {
+            string resultTypeName = Enum.GetName(typeof(GameResultType), resultType) ?? string.Empty;
             var payload = new
             {
                 Sender = client.GetSelf()?.userName,
-                ResultType = resultType.ToString(),
+                ResultType = resultTypeName,
                 IsTrueEnd = resultType == GameResultType.TrueEnd,
                 Timestamp = DateTime.Now.Ticks
             };
@@ -263,7 +271,8 @@ public static class GameResultSyncPatch
 
             if (payload is string s)
             {
-                root = JsonDocument.Parse(s).RootElement;
+                using JsonDocument doc = JsonDocument.Parse(s);
+                root = doc.RootElement.Clone();
                 return true;
             }
         }
@@ -274,22 +283,5 @@ public static class GameResultSyncPatch
 
         root = default;
         return false;
-    }
-
-    private static string GetString(JsonElement elem, string property)
-    {
-        try
-        {
-            if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
-            {
-                return null;
-            }
-
-            return p.ValueKind == JsonValueKind.String ? p.GetString() : p.GetRawText();
-        }
-        catch
-        {
-            return null;
-        }
     }
 }

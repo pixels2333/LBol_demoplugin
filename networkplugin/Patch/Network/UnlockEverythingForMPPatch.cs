@@ -28,6 +28,17 @@ public static class UnlockEverythingForMPPatch
     private static bool IsMultiplayerConnected()
         => TryGetNetworkClient()?.IsConnected == true;
 
+    private static bool TryUseMaxUnlockLevel(ref int result)
+    {
+        if (!IsMultiplayerConnected())
+        {
+            return true;
+        }
+
+        result = ExpHelper.MaxLevel;
+        return false;
+    }
+
     /// <summary>
     /// 联机时将档案等级视为最大等级，等价于 StS 的 treatEverythingAsUnlocked() == true 的效果。
     /// </summary>
@@ -37,11 +48,7 @@ public static class UnlockEverythingForMPPatch
         [HarmonyPrefix]
         private static bool Prefix(ref int __result)
         {
-            if (!IsMultiplayerConnected())
-                return true;
-
-            __result = ExpHelper.MaxLevel;
-            return false;
+            return TryUseMaxUnlockLevel(ref __result);
         }
     }
 
@@ -54,11 +61,7 @@ public static class UnlockEverythingForMPPatch
         [HarmonyPrefix]
         private static bool Prefix(ref int __result)
         {
-            if (!IsMultiplayerConnected())
-                return true;
-
-            __result = ExpHelper.MaxLevel;
-            return false;
+            return TryUseMaxUnlockLevel(ref __result);
         }
     }
 }

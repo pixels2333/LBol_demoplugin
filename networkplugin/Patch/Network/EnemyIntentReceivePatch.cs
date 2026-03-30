@@ -244,24 +244,9 @@ public static class EnemyIntentReceivePatch
             return;
         }
 
-        string groupId = enemy.Battle.EnemyGroup.Id;
-        string spawnId = SpawnedEnemySyncPatch.TryGetSpawnId(enemy, out string sid) ? sid : null;
-        string spawnKey = BuildSpawnKey(groupId, spawnId, enemy.RootIndex, enemy.Id);
-        string legacyKey = BuildLegacyKey(groupId, enemy.RootIndex, enemy.Id);
-
-        PendingIntent pending;
-        lock (_lock)
+        if (!TryResolvePendingIntent(enemy, out PendingIntent pending))
         {
-            bool found = _pendingByEnemyKey.TryGetValue(spawnKey, out pending);
-            if (!found)
-            {
-                found = _pendingByEnemyKey.TryGetValue(legacyKey, out pending);
-            }
-
-            if (!found || pending == null)
-            {
-                return;
-            }
+            return;
         }
 
         ApplyIntentionsToEnemy(enemy, pending.Intentions);
@@ -306,7 +291,7 @@ public static class EnemyIntentReceivePatch
     {
         try
         {
-            var playBoard = UiManager.GetPanel<PlayBoard>();
+            PlayBoard playBoard = UiManager.GetPanel<PlayBoard>();
             if (playBoard == null)
             {
                 return null;
@@ -473,15 +458,30 @@ public static class EnemyIntentReceivePatch
         }
     }
 
-    private static string BuildSpawnKey(string enemyGroupId, string spawnId, int rootIndex, string enemyId)
+    private static bool TryResolvePendingIntent(EnemyUnit enemy, out PendingIntent pending)
     {
-        if (!string.IsNullOrWhiteSpace(spawnId))
-        {
-            return $"{enemyGroupId ?? ""}|spawn:{spawnId}";
-        }
+        pending = null;
 
-        return BuildLegacyKey(enemyGroupId, rootIndex, enemyId);
+        string groupId = enemy.Battle.EnemyGroup.Id;
+        string spawnId = SpawnedEnemySyncPatch.TryGetSpawnId(enemy, out string sid) ? sid : null;
+        string spawnKey = BuildSpawnKey(groupId, spawnId, enemy.RootIndex, enemy.Id);
+        string legacyKey = BuildLegacyKey(groupId, enemy.RootIndex, enemy.Id);
+
+        lock (_lock)
+        {
+            if (_pendingByEnemyKey.TryGetValue(spawnKey, out pending) && pending != null)
+            {
+                return true;
+            }
+
+            return _pendingByEnemyKey.TryGetValue(legacyKey, out pending) && pending != null;
+        }
     }
+
+    private static string BuildSpawnKey(string enemyGroupId, string spawnId, int rootIndex, string enemyId)
+        => !string.IsNullOrWhiteSpace(spawnId)
+            ? $"{enemyGroupId ?? ""}|spawn:{spawnId}"
+            : BuildLegacyKey(enemyGroupId, rootIndex, enemyId);
 
     private static string BuildLegacyKey(string enemyGroupId, int rootIndex, string enemyId)
     {

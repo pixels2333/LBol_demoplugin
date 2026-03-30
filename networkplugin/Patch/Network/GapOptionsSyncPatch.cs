@@ -80,16 +80,7 @@ public static class GapOptionsSyncPatch
 			return;
 		}
 
-		INetworkClient client;
-		try
-		{
-			client = ServiceProvider?.GetService<INetworkClient>();
-		}
-		catch
-		{
-			return;
-		}
-
+		INetworkClient client = ServiceProvider?.GetService<INetworkClient>();
 		if (client?.IsConnected != true)
 		{
 			return;
@@ -116,7 +107,7 @@ public static class GapOptionsSyncPatch
 			TimestampUtcTicks = timestampUtcTicks,
 		};
 
-		RememberProcessedAction(actionId);
+		TryMarkFirstSeen(actionId);
 		AppendRoomEvent(snapshot);
 
 		client.SendGameEventData(eventType, new
@@ -265,6 +256,12 @@ public static class GapOptionsSyncPatch
 		return $"{eventType}:{playerId}:{cardId}:{roomKey}:{timestamp}";
 	}
 
+	private static bool TryGetProperty(JsonElement elem, string property, out JsonElement result)
+	{
+		result = default;
+		return elem.ValueKind == JsonValueKind.Object && elem.TryGetProperty(property, out result);
+	}
+
 	private static bool TryGetJsonElement(object payload, out JsonElement root)
 	{
 		try
@@ -277,7 +274,8 @@ public static class GapOptionsSyncPatch
 
 			if (payload is string s)
 			{
-				root = JsonDocument.Parse(s).RootElement;
+				using JsonDocument doc = JsonDocument.Parse(s);
+				root = doc.RootElement.Clone();
 				return true;
 			}
 		}
@@ -294,7 +292,7 @@ public static class GapOptionsSyncPatch
 	{
 		try
 		{
-			if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
+			if (!TryGetProperty(elem, property, out JsonElement p))
 			{
 				return null;
 			}
@@ -311,7 +309,7 @@ public static class GapOptionsSyncPatch
 	{
 		try
 		{
-			if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
+			if (!TryGetProperty(elem, property, out JsonElement p))
 			{
 				return null;
 			}
@@ -369,23 +367,6 @@ public static class GapOptionsSyncPatch
 			RoomKey = e.RoomKey ?? string.Empty,
 			TimestampUtcTicks = e.TimestampUtcTicks,
 		};
-	}
-
-	private static void RememberProcessedAction(string actionId)
-	{
-		if (string.IsNullOrWhiteSpace(actionId))
-		{
-			return;
-		}
-
-		lock (DedupLock)
-		{
-			if (ProcessedActionIds.Add(actionId))
-			{
-				ProcessedActionOrder.Enqueue(actionId);
-				TrimProcessedActions_NoLock();
-			}
-		}
 	}
 
 	private static bool TryMarkFirstSeen(string actionId)

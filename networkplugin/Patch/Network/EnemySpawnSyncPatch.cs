@@ -204,12 +204,8 @@ public static class EnemySpawnSyncPatch
     {
         try
         {
-            string playerId = root.TryGetProperty("PlayerId", out JsonElement idEl) && idEl.ValueKind == JsonValueKind.String
-                ? idEl.GetString()
-                : null;
-            bool isHost = root.TryGetProperty("IsHost", out JsonElement hostEl) &&
-                          (hostEl.ValueKind == JsonValueKind.True || hostEl.ValueKind == JsonValueKind.False) &&
-                          hostEl.GetBoolean();
+            string playerId = GetString(root, "PlayerId");
+            bool isHost = GetBool(root, "IsHost", fallback: false);
 
             lock (_syncLock)
             {
@@ -231,9 +227,7 @@ public static class EnemySpawnSyncPatch
     {
         try
         {
-            string newHostId = root.TryGetProperty("NewHostId", out JsonElement idEl) && idEl.ValueKind == JsonValueKind.String
-                ? idEl.GetString()
-                : null;
+            string newHostId = GetString(root, "NewHostId");
 
             lock (_syncLock)
             {
@@ -384,9 +378,22 @@ public static class EnemySpawnSyncPatch
                     continue;
                 }
 
-                if (index >= 0 && GetEnemyIndex(e) != index)
+                if (index >= 0)
                 {
-                    continue;
+                    int enemyIndex;
+                    try
+                    {
+                        enemyIndex = Traverse.Create(e).Property("Index")?.GetValue<int>() ?? -1;
+                    }
+                    catch
+                    {
+                        enemyIndex = -1;
+                    }
+
+                    if (enemyIndex != index)
+                    {
+                        continue;
+                    }
                 }
 
                 if (!string.IsNullOrWhiteSpace(id) && !string.Equals(e.Id, id, StringComparison.Ordinal))
@@ -404,19 +411,6 @@ public static class EnemySpawnSyncPatch
 
         return null;
     }
-
-    private static int GetEnemyIndex(EnemyUnit enemy)
-    {
-        try
-        {
-            return Traverse.Create(enemy).Property("Index")?.GetValue<int>() ?? -1;
-        }
-        catch
-        {
-            return -1;
-        }
-    }
-
     /// <summary>
     /// 应用生成快照，同步敌人单位的基础状态
     /// </summary>
@@ -482,7 +476,8 @@ public static class EnemySpawnSyncPatch
 
             if (payload is string s)
             {
-                root = JsonDocument.Parse(s).RootElement;
+	            using JsonDocument doc = JsonDocument.Parse(s);
+	            root = doc.RootElement.Clone();
                 return true;
             }
         }

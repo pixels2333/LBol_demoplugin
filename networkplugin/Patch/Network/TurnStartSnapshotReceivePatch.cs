@@ -53,9 +53,6 @@ public static class TurnStartSnapshotReceivePatch
     private static INetworkClient TryGetNetworkClient()
         => ServiceProvider?.GetService<INetworkClient>();
 
-    private static INetworkManager TryGetNetworkManager()
-        => ServiceProvider?.GetService<INetworkManager>();
-
     private static void EnsureSubscribed(INetworkClient client)
     {
         if (_subscribed && ReferenceEquals(_subscribedClient, client))
@@ -116,11 +113,42 @@ public static class TurnStartSnapshotReceivePatch
             }
 
             // 尝试将快照落地到远端玩家对象（如果存在）。
-            INetworkManager mgr = TryGetNetworkManager();
-            INetworkPlayer p = mgr?.GetPlayer(senderId);
-            if (p != null)
+            INetworkManager networkManager = ServiceProvider?.GetService<INetworkManager>();
+            INetworkPlayer player = networkManager?.GetPlayer(senderId);
+            if (player != null)
             {
-                ApplyToPlayer(p, snapshot);
+                try
+                {
+                    PlayerStateSnapshot playerState = snapshot.playerStateSnapshot;
+                    if (playerState != null)
+                    {
+                        player.HP = playerState.Health;
+                        player.maxHP = playerState.MaxHealth;
+                        player.block = playerState.Block;
+                        player.shield = playerState.Shield;
+                        player.coins = playerState.Gold;
+
+                        int[] mana = playerState.ManaGroup ?? new[] { 0, 0, 0, 0 };
+                        player.SetManaArraySafe(mana);
+
+                        // 回合开始：默认视为该玩家尚未结束回合。
+                        player.endturn = false;
+
+                        if (playerState.GameLocation != null)
+                        {
+                            player.location_X = playerState.GameLocation.X;
+                            player.location_Y = playerState.GameLocation.Y;
+                            if (!string.IsNullOrWhiteSpace(playerState.GameLocation.NodeType))
+                            {
+                                player.location = playerState.GameLocation.NodeType;
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    // ignored
+                }
             }
 
             Plugin.Logger?.LogDebug($"[TurnStartRecv] OnTurnStart received: player={senderId}");
@@ -128,44 +156,6 @@ public static class TurnStartSnapshotReceivePatch
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[TurnStartRecv] Error handling OnTurnStart: {ex.Message}");
-        }
-    }
-
-    private static void ApplyToPlayer(INetworkPlayer player, TurnStartStateSnapshot snapshot)
-    {
-        try
-        {
-            PlayerStateSnapshot ps = snapshot.playerStateSnapshot;
-            if (ps == null)
-            {
-                return;
-            }
-
-            player.HP = ps.Health;
-            player.maxHP = ps.MaxHealth;
-            player.block = ps.Block;
-            player.shield = ps.Shield;
-            player.coins = ps.Gold;
-
-            int[] mana = ps.ManaGroup ?? new[] { 0, 0, 0, 0 };
-            player.SetManaArraySafe(mana);
-
-            // 回合开始：默认视为该玩家尚未结束回合。
-            player.endturn = false;
-
-            if (ps.GameLocation != null)
-            {
-                player.location_X = ps.GameLocation.X;
-                player.location_Y = ps.GameLocation.Y;
-                if (!string.IsNullOrWhiteSpace(ps.GameLocation.NodeType))
-                {
-                    player.location = ps.GameLocation.NodeType;
-                }
-            }
-        }
-        catch
-        {
-            // ignored
         }
     }
 

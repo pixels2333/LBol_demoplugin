@@ -155,6 +155,17 @@ public class EventSyncPatch
         return networkClient != null && networkClient.IsConnected;
     }
 
+    private static bool TryGetConnectedSubscribedClient(out INetworkClient networkClient)
+    {
+        if (!TryGetConnectedClient(out networkClient))
+        {
+            return false;
+        }
+
+        EnsureSubscribed(networkClient);
+        return true;
+    }
+
     private static void OnGameEventReceived(string eventType, object payload)
     {
         // 只处理本补丁关心的消息。
@@ -517,10 +528,15 @@ public class EventSyncPatch
         return false;
     }
 
+    private static bool TryGetProperty(JsonElement root, string name, out JsonElement prop)
+    {
+        prop = default;
+        return root.ValueKind == JsonValueKind.Object && root.TryGetProperty(name, out prop);
+    }
+
     private static string GetString(JsonElement root, string name)
     {
-        if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty(name, out JsonElement prop) &&
-            prop.ValueKind == JsonValueKind.String)
+        if (TryGetProperty(root, name, out JsonElement prop) && prop.ValueKind == JsonValueKind.String)
         {
             return prop.GetString() ?? string.Empty;
         }
@@ -530,7 +546,7 @@ public class EventSyncPatch
 
     private static int GetInt(JsonElement root, string name, int fallback = 0)
     {
-        if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty(name, out JsonElement prop))
+        if (TryGetProperty(root, name, out JsonElement prop))
         {
             if (prop.ValueKind == JsonValueKind.Number && prop.TryGetInt32(out int v))
             {
@@ -568,12 +584,11 @@ public class EventSyncPatch
         {
             try
             {
-                if (!TryGetConnectedClient(out INetworkClient networkClient))
+                if (!TryGetConnectedSubscribedClient(out INetworkClient networkClient))
                 {
                     return;
                 }
 
-                EnsureSubscribed(networkClient);
                 NetworkIdentityTracker.EnsureSubscribed(networkClient);
 
                 // 打包事件启动数据。
@@ -621,7 +636,7 @@ public class EventSyncPatch
         {
             try
             {
-                if (!TryGetConnectedClient(out INetworkClient networkClient))
+                if (!TryGetConnectedSubscribedClient(out INetworkClient networkClient))
                 {
                     return;
                 }
@@ -630,9 +645,6 @@ public class EventSyncPatch
                 {
                     return;
                 }
-
-                EnsureSubscribed(networkClient);
-
                 // 打包选项选择数据。
                 var selectionData = new
                 {
@@ -664,7 +676,7 @@ public class EventSyncPatch
         {
             try
             {
-                if (!TryGetConnectedClient(out INetworkClient networkClient))
+                if (!TryGetConnectedSubscribedClient(out INetworkClient networkClient))
                 {
                     return;
                 }
@@ -673,9 +685,6 @@ public class EventSyncPatch
                 {
                     return;
                 }
-
-                EnsureSubscribed(networkClient);
-
                 // 打包结果数据。
                 var resultData = new
                 {
@@ -718,7 +727,7 @@ public class EventSyncPatch
         {
             try
             {
-                if (!TryGetConnectedClient(out INetworkClient networkClient))
+                if (!TryGetConnectedSubscribedClient(out INetworkClient networkClient))
                 {
                     return;
                 }
@@ -727,9 +736,6 @@ public class EventSyncPatch
                 {
                     return;
                 }
-
-                EnsureSubscribed(networkClient);
-
                 // 打包对话数据。
                 var dialogData = new
                 {
@@ -759,7 +765,7 @@ public class EventSyncPatch
         {
             try
             {
-                if (!TryGetConnectedClient(out INetworkClient networkClient))
+                if (!TryGetConnectedSubscribedClient(out INetworkClient networkClient))
                 {
                     return;
                 }
@@ -768,9 +774,6 @@ public class EventSyncPatch
                 {
                     return;
                 }
-
-                EnsureSubscribed(networkClient);
-
                 // 打包选项数据。
                 var optionsData = new
                 {
@@ -830,7 +833,7 @@ public class EventSyncPatch
         {
             try
             {
-                if (!TryGetConnectedClient(out INetworkClient networkClient))
+                if (!TryGetConnectedSubscribedClient(out INetworkClient networkClient))
                 {
                     return;
                 }
@@ -839,9 +842,6 @@ public class EventSyncPatch
                 {
                     return;
                 }
-
-                EnsureSubscribed(networkClient);
-
                 var rewardData = new
                 {
                     Timestamp = DateTime.Now.Ticks,
@@ -870,7 +870,7 @@ public class EventSyncPatch
         {
             try
             {
-                if (!TryGetConnectedClient(out INetworkClient networkClient))
+                if (!TryGetConnectedSubscribedClient(out INetworkClient networkClient))
                 {
                     return;
                 }
@@ -879,9 +879,6 @@ public class EventSyncPatch
                 {
                     return;
                 }
-
-                EnsureSubscribed(networkClient);
-
                 var shopData = new
                 {
                     Timestamp = DateTime.Now.Ticks,
@@ -906,7 +903,7 @@ public class EventSyncPatch
         {
             try
             {
-                if (!TryGetConnectedClient(out INetworkClient networkClient))
+                if (!TryGetConnectedSubscribedClient(out INetworkClient networkClient))
                 {
                     return;
                 }
@@ -915,9 +912,6 @@ public class EventSyncPatch
                 {
                     return;
                 }
-
-                EnsureSubscribed(networkClient);
-
                 var treasureData = new
                 {
                     Timestamp = DateTime.Now.Ticks,
@@ -1175,7 +1169,7 @@ public class EventSyncPatch
         {
             try
             {
-                if (!TryGetConnectedClient(out INetworkClient networkClient))
+                if (!TryGetConnectedSubscribedClient(out INetworkClient networkClient))
                 {
                     return;
                 }
@@ -1184,9 +1178,6 @@ public class EventSyncPatch
                 {
                     return;
                 }
-
-                EnsureSubscribed(networkClient);
-
                 var resultData = new
                 {
                     Timestamp = DateTime.Now.Ticks,

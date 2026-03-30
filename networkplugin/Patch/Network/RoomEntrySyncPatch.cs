@@ -19,6 +19,37 @@ public static class RoomEntrySyncPatch
 {
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
+    private static INetworkClient TryGetNetworkClient()
+        => ServiceProvider?.GetService<INetworkClient>();
+
+    private static ReconnectionManager TryGetReconnectionManager()
+        => ServiceProvider?.GetService<ReconnectionManager>();
+
+    private static bool TryGetConnectedHostClient(out INetworkClient client)
+    {
+        client = TryGetNetworkClient();
+        if (client == null || !client.IsConnected)
+        {
+            return false;
+        }
+
+        NetworkIdentityTracker.EnsureSubscribed(client);
+        return NetworkIdentityTracker.GetSelfIsHost();
+    }
+
+    private static void TryMarkEnterNodeCheckpoint(MapNode node)
+    {
+        try
+        {
+            string nodeKey = $"{node.Act}:{node.X}:{node.Y}:{node.StationType}";
+            TryGetReconnectionManager()?.MarkMapCheckpoint("enter_node", nodeKey);
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
     [HarmonyPatch(typeof(GameMap), nameof(GameMap.EnterNode))]
     private static class GameMap_EnterNode_Patch
     {
@@ -38,14 +69,7 @@ public static class RoomEntrySyncPatch
                     return;
                 }
 
-                INetworkClient client = ServiceProvider?.GetService<INetworkClient>();
-                if (client == null || !client.IsConnected)
-                {
-                    return;
-                }
-
-                NetworkIdentityTracker.EnsureSubscribed(client);
-                if (!NetworkIdentityTracker.GetSelfIsHost())
+                if (!TryGetConnectedHostClient(out INetworkClient client))
                 {
                     return;
                 }
@@ -56,16 +80,7 @@ public static class RoomEntrySyncPatch
                     return;
                 }
 
-                try
-                {
-                    ReconnectionManager reconnection = ServiceProvider?.GetService<ReconnectionManager>();
-                    string nodeKey = $"{node.Act}:{node.X}:{node.Y}:{node.StationType}";
-                    reconnection?.MarkMapCheckpoint("enter_node", nodeKey);
-                }
-                catch
-                {
-                    // ignored
-                }
+                TryMarkEnterNodeCheckpoint(node);
 
                 client.SendGameEventData(NetworkMessageTypes.OnMapNodeEnter, new
                 {

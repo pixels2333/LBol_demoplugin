@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using System.Text.Json;
 using HarmonyLib;
 using LBoL.Presentation.Units;
@@ -54,9 +55,6 @@ public static class TurnEndSnapshotReceivePatch
 
     private static INetworkClient TryGetNetworkClient()
         => ServiceProvider?.GetService<INetworkClient>();
-
-    private static INetworkManager TryGetNetworkManager()
-        => ServiceProvider?.GetService<INetworkManager>();
 
     private static void EnsureSubscribed(INetworkClient client)
     {
@@ -118,11 +116,50 @@ public static class TurnEndSnapshotReceivePatch
             }
 
             // 尝试将快照落地到远端玩家对象（如果存在）。
-            INetworkManager mgr = TryGetNetworkManager();
-            INetworkPlayer p = mgr?.GetPlayer(senderId);
-            if (p != null)
+            INetworkManager networkManager = ServiceProvider?.GetService<INetworkManager>();
+            INetworkPlayer player = networkManager?.GetPlayer(senderId);
+            if (player != null)
             {
-                ApplyToPlayer(p, snapshot);
+                try
+                {
+                    PlayerStateSnapshot playerState = snapshot.playerStateSnapshot;
+                    if (playerState != null)
+                    {
+                        player.HP = playerState.Health;
+                        player.maxHP = playerState.MaxHealth;
+                        player.block = playerState.Block;
+                        player.shield = playerState.Shield;
+
+                        // mana 的接口成员在历史代码中以 lowerCamelCase 使用（Remote/LocalNetworkPlayer 也实现了）。
+                        // 这里按 4 位数组落地，避免长度不一致。
+                        int[] mana = playerState.ManaGroup ?? new[] { 0, 0, 0, 0 };
+                        if (mana.Length != 4)
+                        {
+                            int[] fixedMana = new[] { 0, 0, 0, 0 };
+                            for (int i = 0; i < Math.Min(4, mana.Length); i++)
+                            {
+                                fixedMana[i] = mana[i];
+                            }
+
+                            mana = fixedMana;
+                        }
+
+                        // 通过动态/反射避免对接口增加新成员的破坏性修改。
+                        // RemoteNetworkPlayer/LocalNetworkPlayer 已有 public int[] mana {get;set;}。
+                        Type playerType = player.GetType();
+                        PropertyInfo manaProperty = playerType.GetProperty("mana");
+                        if (manaProperty != null && manaProperty.PropertyType == typeof(int[]))
+                        {
+                            manaProperty.SetValue(player, mana);
+                        }
+
+                        player.endturn = true;
+                    }
+                }
+                catch
+                {
+                    // ignored
+                }
             }
 
             Plugin.Logger?.LogDebug($"[TurnEndRecv] OnTurnEnd received: player={senderId}, battle={snapshot.BattleId}, round={snapshot.Round}");
@@ -130,52 +167,6 @@ public static class TurnEndSnapshotReceivePatch
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[TurnEndRecv] Error handling OnTurnEnd: {ex.Message}");
-        }
-    }
-
-    private static void ApplyToPlayer(INetworkPlayer player, TurnEndStateSnapshot snapshot)
-    {
-        try
-        {
-            PlayerStateSnapshot ps = snapshot.playerStateSnapshot;
-            if (ps == null)
-            {
-                return;
-            }
-
-            player.HP = ps.Health;
-            player.maxHP = ps.MaxHealth;
-            player.block = ps.Block;
-            player.shield = ps.Shield;
-
-            // mana 的接口成员在历史代码中以 lowerCamelCase 使用（Remote/LocalNetworkPlayer 也实现了）。
-            // 这里按 4 位数组落地，避免长度不一致。
-            int[] mana = ps.ManaGroup ?? new[] { 0, 0, 0, 0 };
-            if (mana.Length != 4)
-            {
-                int[] fixedMana = new[] { 0, 0, 0, 0 };
-                for (int i = 0; i < Math.Min(4, mana.Length); i++)
-                {
-                    fixedMana[i] = mana[i];
-                }
-
-                mana = fixedMana;
-            }
-
-            // 通过动态/反射避免对接口增加新成员的破坏性修改。
-            // RemoteNetworkPlayer/LocalNetworkPlayer 已有 public int[] mana {get;set;}。
-            var t = player.GetType();
-            var prop = t.GetProperty("mana");
-            if (prop != null && prop.PropertyType == typeof(int[]))
-            {
-                prop.SetValue(player, mana);
-            }
-
-            player.endturn = true;
-        }
-        catch
-        {
-            // ignored
         }
     }
 

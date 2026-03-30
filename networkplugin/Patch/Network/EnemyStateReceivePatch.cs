@@ -34,12 +34,6 @@ public static class EnemyStateReceivePatch
     private static INetworkClient TryGetNetworkClient()
         => ServiceProvider?.GetService<INetworkClient>();
 
-    private static void SetSubscriptionState(INetworkClient client, bool subscribed)
-    {
-        _subscribedClient = subscribed ? client : null;
-        _subscribed = subscribed;
-    }
-
     private static bool IsSelfHost()
         => NetworkIdentityTracker.GetSelfIsHost();
 
@@ -103,11 +97,13 @@ public static class EnemyStateReceivePatch
         {
             client.OnGameEventReceived += _onGameEventReceived;
             client.OnConnectionStateChanged += _onConnectionStateChanged;
-            SetSubscriptionState(client, true);
+            _subscribedClient = client;
+            _subscribed = true;
         }
         catch
         {
-            SetSubscriptionState(null, false);
+            _subscribedClient = null;
+            _subscribed = false;
         }
     }
 
@@ -220,25 +216,9 @@ public static class EnemyStateReceivePatch
             return;
         }
 
-        string battleId = enemy.Battle.GetHashCode().ToString();
-        string spawnId = SpawnedEnemySyncPatch.TryGetSpawnId(enemy, out string sid) ? sid : null;
-
-        string spawnKey = BuildSpawnKey(battleId, spawnId, enemy.RootIndex, enemy.Id);
-        string legacyKey = BuildLegacyKey(battleId, enemy.RootIndex, enemy.Id);
-
-        PendingState pending;
-        lock (_lock)
+        if (!TryResolvePendingState(enemy, out PendingState pending))
         {
-            bool found = _pendingByEnemyKey.TryGetValue(spawnKey, out pending);
-            if (!found)
-            {
-                found = _pendingByEnemyKey.TryGetValue(legacyKey, out pending);
-            }
-
-            if (!found || pending == null)
-            {
-                return;
-            }
+            return;
         }
 
         if (!string.IsNullOrWhiteSpace(pending.SpawnId))
@@ -251,43 +231,45 @@ public static class EnemyStateReceivePatch
 
     private static void ApplyState(EnemyUnit enemy, PendingState pending)
     {
-        try
-        {
-            Traverse.Create(enemy).Property("Hp").SetValue(Math.Max(0, pending.CurrentHp));
-        }
-        catch
-        {
-            // ignored
-        }
-
-        try
-        {
-            Traverse.Create(enemy).Property("Block").SetValue(Math.Max(0, pending.Block));
-        }
-        catch
-        {
-            // ignored
-        }
-
-        try
-        {
-            Traverse.Create(enemy).Property("Shield").SetValue(Math.Max(0, pending.Shield));
-        }
-        catch
-        {
-            // ignored
-        }
+        TrySetEnemyProperty(enemy, "Hp", Math.Max(0, pending.CurrentHp));
+        TrySetEnemyProperty(enemy, "Block", Math.Max(0, pending.Block));
+        TrySetEnemyProperty(enemy, "Shield", Math.Max(0, pending.Shield));
 
         if (!pending.IsAlive || pending.IsDying)
         {
-            try
+            TrySetEnemyProperty(enemy, "Hp", 0);
+        }
+    }
+
+    private static bool TryResolvePendingState(EnemyUnit enemy, out PendingState pending)
+    {
+        pending = null;
+
+        string battleId = enemy.Battle.GetHashCode().ToString();
+        string spawnId = SpawnedEnemySyncPatch.TryGetSpawnId(enemy, out string sid) ? sid : null;
+        string spawnKey = BuildSpawnKey(battleId, spawnId, enemy.RootIndex, enemy.Id);
+        string legacyKey = BuildLegacyKey(battleId, enemy.RootIndex, enemy.Id);
+
+        lock (_lock)
+        {
+            if (_pendingByEnemyKey.TryGetValue(spawnKey, out pending) && pending != null)
             {
-                Traverse.Create(enemy).Property("Hp").SetValue(0);
+                return true;
             }
-            catch
-            {
-                // ignored
-            }
+
+            return _pendingByEnemyKey.TryGetValue(legacyKey, out pending) && pending != null;
+        }
+    }
+
+    private static void TrySetEnemyProperty(EnemyUnit enemy, string propertyName, int value)
+    {
+        try
+        {
+            Traverse.Create(enemy).Property(propertyName).SetValue(value);
+        }
+        catch
+        {
+            // ignored
         }
     }
 

@@ -25,15 +25,6 @@ public static class ExhibitSyncPatch
     private static INetworkClient TryGetNetworkClient()
         => ServiceProvider?.GetService<INetworkClient>();
 
-    private static bool IsConnected()
-    {
-        INetworkClient client = TryGetNetworkClient();
-        return client != null && client.IsConnected;
-    }
-
-    private static bool HasAliveEnemies(BattleController battle)
-        => battle?.EnemyGroup != null && battle.EnemyGroup.Alives != null && battle.EnemyGroup.Alives.Any();
-
     /// <summary>
     /// GremlinHornPatch 对应：在怪物死亡触发遗物后，如果战斗未结束则“撤销结束回合”。
     /// 
@@ -48,18 +39,16 @@ public static class ExhibitSyncPatch
         {
             try
             {
-                if (__instance == null || !IsConnected())
-                {
-                    return;
-                }
-
-                if (!string.Equals(__instance.Id, "Bianhua", StringComparison.Ordinal))
-                {
-                    return;
-                }
-
-                BattleController battle = __instance.Battle;
-                if (battle == null || battle.BattleShouldEnd || !HasAliveEnemies(battle))
+                INetworkClient client = TryGetNetworkClient();
+                BattleController battle = __instance?.Battle;
+                if (__instance == null ||
+                    client == null ||
+                    !client.IsConnected ||
+                    !string.Equals(__instance.Id, "Bianhua", StringComparison.Ordinal) ||
+                    battle == null ||
+                    battle.BattleShouldEnd ||
+                    battle.EnemyGroup?.Alives == null ||
+                    !battle.EnemyGroup.Alives.Any())
                 {
                     return;
                 }

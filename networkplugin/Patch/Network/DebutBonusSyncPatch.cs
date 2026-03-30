@@ -139,12 +139,8 @@ public static class DebutBonusSyncPatch
     {
         try
         {
-            string playerId = root.TryGetProperty("PlayerId", out JsonElement idEl) && idEl.ValueKind == JsonValueKind.String
-                ? idEl.GetString()
-                : null;
-            bool isHost = root.TryGetProperty("IsHost", out JsonElement hostEl) &&
-                          (hostEl.ValueKind == JsonValueKind.True || hostEl.ValueKind == JsonValueKind.False) &&
-                          hostEl.GetBoolean();
+            TryGetString(root, "PlayerId", out string playerId);
+            bool isHost = TryGetBool(root, "IsHost", out bool hostValue) && hostValue;
 
             lock (_syncLock)
             {
@@ -162,9 +158,7 @@ public static class DebutBonusSyncPatch
     {
         try
         {
-            string newHostId = root.TryGetProperty("NewHostId", out JsonElement idEl) && idEl.ValueKind == JsonValueKind.String
-                ? idEl.GetString()
-                : null;
+            TryGetString(root, "NewHostId", out string newHostId);
 
             lock (_syncLock)
             {
@@ -189,14 +183,8 @@ public static class DebutBonusSyncPatch
                 return;
             }
 
-            long ts = root.TryGetProperty("Timestamp", out JsonElement tsEl) && tsEl.ValueKind == JsonValueKind.Number &&
-                      tsEl.TryGetInt64(out long tsValue)
-                ? tsValue
-                : DateTime.Now.Ticks;
-
-            string sender = root.TryGetProperty("PlayerId", out JsonElement senderEl) && senderEl.ValueKind == JsonValueKind.String
-                ? senderEl.GetString()
-                : null;
+            long ts = TryGetLong(root, "Timestamp", out long tsValue) ? tsValue : DateTime.Now.Ticks;
+            TryGetString(root, "PlayerId", out string sender);
 
             lock (_syncLock)
             {
@@ -227,7 +215,8 @@ public static class DebutBonusSyncPatch
 
             if (payload is string s)
             {
-                root = JsonDocument.Parse(s).RootElement;
+                using JsonDocument doc = JsonDocument.Parse(s);
+                root = doc.RootElement.Clone();
                 return true;
             }
         }
@@ -240,10 +229,37 @@ public static class DebutBonusSyncPatch
         return false;
     }
 
+    private static bool TryGetProperty(JsonElement root, string prop, out JsonElement el)
+    {
+        el = default;
+        return root.ValueKind == JsonValueKind.Object && root.TryGetProperty(prop, out el);
+    }
+
+    private static bool TryGetString(JsonElement root, string prop, out string value)
+    {
+        value = null;
+        return TryGetProperty(root, prop, out JsonElement el)
+            && el.ValueKind == JsonValueKind.String
+            && (value = el.GetString()) != null;
+    }
+
+    private static bool TryGetBool(JsonElement root, string prop, out bool value)
+    {
+        value = default;
+        if (!TryGetProperty(root, prop, out JsonElement el) ||
+            (el.ValueKind != JsonValueKind.True && el.ValueKind != JsonValueKind.False))
+        {
+            return false;
+        }
+
+        value = el.GetBoolean();
+        return true;
+    }
+
     private static bool TryGetInt(JsonElement root, string prop, out int value)
     {
         value = default;
-        if (!root.TryGetProperty(prop, out JsonElement el))
+        if (!TryGetProperty(root, prop, out JsonElement el))
         {
             return false;
         }
@@ -256,12 +272,21 @@ public static class DebutBonusSyncPatch
         };
     }
 
-    private static bool IsConnectedAndMultiplayer(out INetworkClient client)
+    private static bool TryGetLong(JsonElement root, string prop, out long value)
     {
-        client = TryGetNetworkClient();
-        return client != null && client.IsConnected;
-    }
+        value = default;
+        if (!TryGetProperty(root, prop, out JsonElement el))
+        {
+            return false;
+        }
 
+        return el.ValueKind switch
+        {
+            JsonValueKind.Number => el.TryGetInt64(out value),
+            JsonValueKind.String => long.TryParse(el.GetString(), out value),
+            _ => false,
+        };
+    }
     [HarmonyPatch(typeof(Debut), nameof(Debut.RollBonus))]
     private static class Debut_RollBonus_Sync
     {
@@ -270,7 +295,8 @@ public static class DebutBonusSyncPatch
         {
             try
             {
-                if (!IsConnectedAndMultiplayer(out INetworkClient client))
+                INetworkClient client = TryGetNetworkClient();
+                if (client?.IsConnected != true)
                 {
                     return;
                 }

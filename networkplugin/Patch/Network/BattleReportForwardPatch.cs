@@ -37,6 +37,34 @@ public static class BattleReportForwardPatch
 	private static INetworkClient TryGetNetworkClient()
 	    => ServiceProvider?.GetService<INetworkClient>();
 
+	private static bool ShouldForwardReportEvent(string eventType)
+	{
+		return !string.IsNullOrWhiteSpace(eventType)
+		    && eventType.EndsWith("Report", StringComparison.Ordinal)
+		    && eventType.StartsWith("BattlePlayer", StringComparison.Ordinal);
+	}
+
+	private static bool TryReserveForwardKey(string eventType, string playerId, string targetId, long timestamp)
+	{
+		string key = $"{eventType}|{playerId}|{targetId}";
+
+		lock (SyncLock)
+		{
+			if (_lastForwardedTicksByKey.TryGetValue(key, out long lastTimestamp) && lastTimestamp == timestamp)
+			{
+				return false;
+			}
+
+			_lastForwardedTicksByKey[key] = timestamp;
+			if (_lastForwardedTicksByKey.Count > MaxForwardedKeys)
+			{
+				_lastForwardedTicksByKey.Clear();
+			}
+		}
+
+		return true;
+	}
+
 	[HarmonyTargetMethod]
 	private static MethodBase TargetMethod()
 	{
@@ -113,9 +141,7 @@ public static class BattleReportForwardPatch
 
 	private static void OnGameEventReceived(string eventType, object payload)
 	{
-		if (string.IsNullOrWhiteSpace(eventType) ||
-		    !eventType.EndsWith("Report", StringComparison.Ordinal) ||
-		    !eventType.StartsWith("BattlePlayer", StringComparison.Ordinal))
+		if (!ShouldForwardReportEvent(eventType))
 		{
 			return;
 		}
@@ -148,24 +174,37 @@ public static class BattleReportForwardPatch
 			return;
 		}
 
-		long ts = TryGetLong(root, "Timestamp") ?? 0;
-		string playerId = TryGetString(root, "PlayerId") ?? string.Empty;
-		string targetId = TryGetString(root, "TargetId") ?? string.Empty;
-		string key = $"{eventType}|{playerId}|{targetId}";
-
-		lock (SyncLock)
+		long timestamp = 0;
+		string playerId = string.Empty;
+		string targetId = string.Empty;
+		if (root.ValueKind == JsonValueKind.Object)
 		{
-			if (_lastForwardedTicksByKey.TryGetValue(key, out long lastTs) && lastTs == ts)
+			if (root.TryGetProperty("Timestamp", out JsonElement timestampElement))
 			{
-				return;
+				if (timestampElement.ValueKind == JsonValueKind.Number)
+				{
+					timestampElement.TryGetInt64(out timestamp);
+				}
+				else if (timestampElement.ValueKind == JsonValueKind.String)
+				{
+					long.TryParse(timestampElement.GetString(), out timestamp);
+				}
 			}
 
-			_lastForwardedTicksByKey[key] = ts;
-
-			if (_lastForwardedTicksByKey.Count > MaxForwardedKeys)
+			if (root.TryGetProperty("PlayerId", out JsonElement playerElement) && playerElement.ValueKind == JsonValueKind.String)
 			{
-				_lastForwardedTicksByKey.Clear();
+				playerId = playerElement.GetString() ?? string.Empty;
 			}
+
+			if (root.TryGetProperty("TargetId", out JsonElement targetElement) && targetElement.ValueKind == JsonValueKind.String)
+			{
+				targetId = targetElement.GetString() ?? string.Empty;
+			}
+		}
+
+		if (!TryReserveForwardKey(eventType, playerId, targetId, timestamp))
+		{
+			return;
 		}
 
 		// 直接复用原 payload（Host 不修改内容，只负责转发）。
@@ -197,7 +236,8 @@ public static class BattleReportForwardPatch
 
 			if (payload is string s)
 			{
-				root = JsonDocument.Parse(s).RootElement;
+				using JsonDocument doc = JsonDocument.Parse(s);
+				root = doc.RootElement.Clone();
 				return true;
 			}
 		}
@@ -210,34 +250,4 @@ public static class BattleReportForwardPatch
 		return false;
 	}
 
-	private static bool TryGetProperty(JsonElement root, string prop, out JsonElement element)
-	{
-		element = default;
-		return root.ValueKind == JsonValueKind.Object && root.TryGetProperty(prop, out element);
-	}
-
-	private static string TryGetString(JsonElement root, string prop)
-	{
-		if (!TryGetProperty(root, prop, out JsonElement el))
-		{
-			return null;
-		}
-
-		return el.ValueKind == JsonValueKind.String ? el.GetString() : null;
-	}
-
-	private static long? TryGetLong(JsonElement root, string prop)
-	{
-		if (!TryGetProperty(root, prop, out JsonElement el))
-		{
-			return null;
-		}
-
-		return el.ValueKind switch
-		{
-			JsonValueKind.Number => el.TryGetInt64(out long v) ? v : null,
-			JsonValueKind.String => long.TryParse(el.GetString(), out long v) ? v : null,
-			_ => null,
-		};
-	}
 }

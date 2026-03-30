@@ -164,7 +164,7 @@ public static class EndTurnSyncPatch
         ResetLocalTurnState();
 
         // If we disconnected while the local gate was holding the UI, release it.
-        ForceEnableEndTurnButton();
+        SetEndTurnButtonInteractable(true);
         RefreshAllCardsEdge();
     }
 
@@ -519,7 +519,7 @@ public static class EndTurnSyncPatch
                     _pendingRound = -1;
                 }
 
-                ForceEnableEndTurnButton();
+                SetEndTurnButtonInteractable(true);
                 RefreshAllCardsEdge();
                 return;
             }
@@ -648,19 +648,6 @@ public static class EndTurnSyncPatch
         }
     }
 
-    private static string GetEffectivePlayerId()
-    {
-        lock (_syncLock)
-        {
-            if (!string.IsNullOrWhiteSpace(_selfPlayerId))
-            {
-                return _selfPlayerId;
-            }
-        }
-
-        return null;
-    }
-
     private static string GetBattleId(BattleController battle)
     {
         try
@@ -718,7 +705,7 @@ public static class EndTurnSyncPatch
         }
     }
 
-    private static void ForceDisableEndTurnButton()
+    private static void SetEndTurnButtonInteractable(bool interactable)
     {
         try
         {
@@ -729,26 +716,10 @@ public static class EndTurnSyncPatch
             }
 
             var endTurnButton = Traverse.Create(playBoard).Field("endTurnButton").GetValue<UnityEngine.UI.Button>();
-            endTurnButton?.interactable = false;
-        }
-        catch
-        {
-            // ignored
-        }
-    }
-
-    private static void ForceEnableEndTurnButton()
-    {
-        try
-        {
-            var playBoard = UiManager.GetPanel<PlayBoard>();
-            if (playBoard == null)
+            if (endTurnButton != null)
             {
-                return;
+                endTurnButton.interactable = interactable;
             }
-
-            var endTurnButton = Traverse.Create(playBoard).Field("endTurnButton").GetValue<UnityEngine.UI.Button>();
-            endTurnButton?.interactable = true;
         }
         catch
         {
@@ -774,7 +745,7 @@ public static class EndTurnSyncPatch
 
                 ResetLocalTurnState();
 
-                ForceEnableEndTurnButton();
+                SetEndTurnButtonInteractable(true);
             }
             catch
             {
@@ -876,7 +847,11 @@ public static class EndTurnSyncPatch
                 string battleId = GetBattleId(__instance);
                 int round = __instance.RoundCounter;
 
-                string selfPlayerId = GetEffectivePlayerId();
+                string selfPlayerId;
+                lock (_syncLock)
+                {
+                    selfPlayerId = _selfPlayerId;
+                }
                 if (string.IsNullOrWhiteSpace(selfPlayerId))
                 {
                     // 未拿到 Welcome.PlayerId 时不介入，避免把回合逻辑锁死
@@ -891,7 +866,7 @@ public static class EndTurnSyncPatch
                     _endedPlayers.Add(selfPlayerId);
                 }
 
-                ForceDisableEndTurnButton();
+                SetEndTurnButtonInteractable(false);
                 RefreshAllCardsEdge();
 
                 client.SendGameEventData(NetworkMessageTypes.EndTurnRequest, new
@@ -918,7 +893,7 @@ public static class EndTurnSyncPatch
         }
     }
 
-    [HarmonyPatch(typeof(Card), "get_CanUse")]
+    [HarmonyPatch(typeof(Card), nameof(Card.CanUse), MethodType.Getter)]
     private static class Card_CanUse_BlockAfterEnd
     {
         [HarmonyPrefix]
@@ -928,7 +903,7 @@ public static class EndTurnSyncPatch
         }
     }
 
-    [HarmonyPatch(typeof(UltimateSkill), "get_Available")]
+    [HarmonyPatch(typeof(UltimateSkill), nameof(UltimateSkill.Available), MethodType.Getter)]
     private static class UltimateSkill_Available_BlockAfterEnd
     {
         [HarmonyPrefix]
@@ -938,7 +913,7 @@ public static class EndTurnSyncPatch
         }
     }
 
-    [HarmonyPatch(typeof(Doll), "get_Usable")]
+    [HarmonyPatch(typeof(Doll), nameof(Doll.Usable), MethodType.Getter)]
     private static class Doll_Usable_BlockAfterEnd
     {
         [HarmonyPrefix]
