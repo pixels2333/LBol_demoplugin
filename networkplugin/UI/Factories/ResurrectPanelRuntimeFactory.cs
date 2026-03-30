@@ -17,7 +17,7 @@ namespace NetworkPlugin.UI.Factories;
 internal static class ResurrectPanelRuntimeFactory
 {
     private const string RuntimeRootName = "NetworkPlugin_ResurrectPanel";
-    private const string RuntimeUiVersion = "2026-03-24-ui-v2";
+    private const string RuntimeUiVersion = "2026-03-30-ui-v3";
 
     internal static ResurrectPanel GetOrCreate(Transform preferredParent)
     {
@@ -47,113 +47,29 @@ internal static class ResurrectPanelRuntimeFactory
                 return null;
             }
 
-            CommonButtonWidget confirmTemplate = TryPickButtonTemplate(preferConfirm: true);
-            CommonButtonWidget cancelTemplate = TryPickButtonTemplate(preferConfirm: false) ?? confirmTemplate;
-
-            Transform parent = preferredParent ?? UiManager.Instance?.transform;
-            if (parent == null)
+            GapSharedPanelTemplateFactory.GapRuntimePanelTemplate scaffold = GapSharedPanelTemplateFactory.Create(
+                preferredParent,
+                RuntimeRootName,
+                "治疗",
+                "请选择要治疗的玩家",
+                "治疗",
+                "取消");
+            if (scaffold == null)
             {
-                Canvas canvas = UnityEngine.Object.FindObjectOfType<Canvas>(true);
-                parent = canvas?.transform;
-            }
-
-            GameObject root = new GameObject(RuntimeRootName);
-            root.SetActive(false);
-            if (parent != null)
-            {
-                root.transform.SetParent(parent, false);
-            }
-
-            RectTransform rootRect = root.AddComponent<RectTransform>();
-            rootRect.anchorMin = Vector2.zero;
-            rootRect.anchorMax = Vector2.one;
-            rootRect.offsetMin = Vector2.zero;
-            rootRect.offsetMax = Vector2.zero;
-
-            CanvasGroup canvasGroup = root.AddComponent<CanvasGroup>();
-            canvasGroup.interactable = true;
-            canvasGroup.blocksRaycasts = true;
-
-            Image blocker = root.AddComponent<Image>();
-            blocker.color = new Color(0f, 0f, 0f, 0f);
-            blocker.raycastTarget = true;
-
-            GameObject dialogPrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
-            if (dialogPrefab == null)
-            {
-                Plugin.Logger?.LogWarning("[ResurrectPanelRuntimeFactory] 未找到 MessageDialog 资源: UI/Dialogs/MessageDialog");
-                UnityEngine.Object.Destroy(root);
+                Plugin.Logger?.LogWarning("[ResurrectPanelRuntimeFactory] 无法创建共享治疗模板。");
                 return null;
             }
-
-            GameObject frame = UnityEngine.Object.Instantiate(dialogPrefab, root.transform, false);
-            frame.name = "ResurrectFrame";
-
-            RectTransform frameRect = frame.GetComponent<RectTransform>();
-            if (frameRect != null)
-            {
-                ConfigureAnchors(frameRect, new Vector2(0.06f, 0.06f), new Vector2(0.94f, 0.94f));
-            }
-
-            MessageDialog dialog = frame.GetComponentInChildren<MessageDialog>(true);
-            if (dialog == null)
-            {
-                Plugin.Logger?.LogWarning("[ResurrectPanelRuntimeFactory] MessageDialog 组件为空。");
-                UnityEngine.Object.Destroy(root);
-                return null;
-            }
-
-            TextMeshProUGUI mainText = GetDialogField<TextMeshProUGUI>(dialog, "mainText");
-            TextMeshProUGUI subText = GetDialogField<TextMeshProUGUI>(dialog, "subText");
-            Button singleConfirm = GetDialogField<Button>(dialog, "singleConfirmButton");
-            Button frameConfirm = GetDialogField<Button>(dialog, "confirmButton");
-            Button frameCancel = GetDialogField<Button>(dialog, "cancelButton");
-
-            if (mainText != null)
-            {
-                mainText.text = "治疗";
-                mainText.alignment = TextAlignmentOptions.Center;
-                mainText.raycastTarget = false;
-            }
-
-            if (subText != null)
-            {
-                subText.text = string.Empty;
-                subText.alignment = TextAlignmentOptions.Center;
-                subText.raycastTarget = false;
-                Color c = subText.color;
-                c.a = 0f;
-                subText.color = c;
-            }
-
-            HideDialogButton(singleConfirm);
-            HideDialogButton(frameConfirm);
-            HideDialogButton(frameCancel);
-
-            dialog.enabled = false;
-
-            TextMeshProUGUI textTemplate = mainText ?? subText ?? TryPickTextTemplate();
-            if (textTemplate == null)
-            {
-                Plugin.Logger?.LogWarning("[ResurrectPanelRuntimeFactory] 治疗面板文本模板为空。");
-                UnityEngine.Object.Destroy(root);
-                return null;
-            }
-
-            TextMeshProUGUI status = CloneTextOrCreate(textTemplate, root.transform, "Status");
-            status.text = "请选择要治疗的玩家";
-            status.alignment = TextAlignmentOptions.Center;
-            status.fontSize = Mathf.Max(status.fontSize, 22f);
-            ConfigureAnchors(status.rectTransform, new Vector2(0.12f, 0.80f), new Vector2(0.88f, 0.88f));
-
-            RectTransform panelRect = TryFindCommonAncestorRect(mainText?.rectTransform, subText?.rectTransform)
-                                      ?? frameRect
-                                      ?? rootRect;
 
             RectTransform listContent;
             DeadPlayerEntryWidget entryTemplate;
+            TextMeshProUGUI textTemplate = scaffold.TextTemplate;
 
-            if (TryAttachHistoryListWithRecordRow(panelRect, subText?.rectTransform, out ScrollRect listScrollRect, out RectTransform historyListContent, out RecordRow rowTemplate))
+            GameObject listAreaGo = new GameObject("PlayersListArea");
+            listAreaGo.transform.SetParent(scaffold.ContentRoot, false);
+            RectTransform listArea = listAreaGo.AddComponent<RectTransform>();
+            GapSharedPanelTemplateFactory.ConfigureAnchors(listArea, new Vector2(0.06f, 0.24f), new Vector2(0.94f, 0.98f));
+
+            if (TryAttachHistoryListWithRecordRow(scaffold.ContentRoot, listArea, out ScrollRect listScrollRect, out RectTransform historyListContent, out RecordRow rowTemplate))
             {
                 DeadPlayerEntryWidget historyTemplate = CreateEntryTemplateFromRecordRow(historyListContent, rowTemplate);
                 if (historyTemplate != null)
@@ -166,9 +82,9 @@ internal static class ResurrectPanelRuntimeFactory
                 else
                 {
                     Plugin.Logger?.LogWarning("[ResurrectPanelRuntimeFactory] RecordRow 模板转换失败，回退到简化列表。");
-                    if (!TryCreateFallbackSimpleList(root.transform, textTemplate, out listContent, out entryTemplate))
+                    if (!TryCreateFallbackSimpleList(scaffold.ContentRoot, textTemplate, scaffold.ConfirmButton, out listContent, out entryTemplate))
                     {
-                        UnityEngine.Object.Destroy(root);
+                        UnityEngine.Object.Destroy(scaffold.Root);
                         return null;
                     }
                 }
@@ -176,88 +92,41 @@ internal static class ResurrectPanelRuntimeFactory
             else
             {
                 Plugin.Logger?.LogWarning("[ResurrectPanelRuntimeFactory] 无法挂载 HistoryPanel 列表，回退到简化列表。");
-                if (!TryCreateFallbackSimpleList(root.transform, textTemplate, out listContent, out entryTemplate))
+                if (!TryCreateFallbackSimpleList(scaffold.ContentRoot, textTemplate, scaffold.ConfirmButton, out listContent, out entryTemplate))
                 {
-                    UnityEngine.Object.Destroy(root);
+                    UnityEngine.Object.Destroy(scaffold.Root);
                     return null;
                 }
             }
 
-            TextMeshProUGUI costText = CloneTextOrCreate(textTemplate, root.transform, "CostText");
+            TextMeshProUGUI costText = GapSharedPanelTemplateFactory.CloneTextOrCreate(textTemplate, scaffold.ContentRoot, "CostText");
             costText.text = string.Empty;
             costText.alignment = TextAlignmentOptions.Center;
             costText.fontSize = Mathf.Max(costText.fontSize, 18f);
-            ConfigureAnchors(costText.rectTransform, new Vector2(0.12f, 0.22f), new Vector2(0.88f, 0.28f));
+            GapSharedPanelTemplateFactory.ConfigureAnchors(costText.rectTransform, new Vector2(0.08f, 0.10f), new Vector2(0.92f, 0.18f));
 
-            TextMeshProUGUI hintText = CloneTextOrCreate(textTemplate, root.transform, "HintText");
+            TextMeshProUGUI hintText = GapSharedPanelTemplateFactory.CloneTextOrCreate(textTemplate, scaffold.ContentRoot, "HintText");
             hintText.text = "效果：回复目标 20% 最大生命值";
             hintText.alignment = TextAlignmentOptions.Center;
             hintText.fontSize = Mathf.Max(hintText.fontSize, 16f);
-            ConfigureAnchors(hintText.rectTransform, new Vector2(0.12f, 0.18f), new Vector2(0.88f, 0.22f));
+            GapSharedPanelTemplateFactory.ConfigureAnchors(hintText.rectTransform, new Vector2(0.08f, 0.00f), new Vector2(0.92f, 0.10f));
 
-            CommonButtonWidget confirmButton = null;
-            CommonButtonWidget cancelButton = null;
-
-            if (confirmTemplate != null)
-            {
-                confirmButton = UnityEngine.Object.Instantiate(confirmTemplate, root.transform, false);
-                confirmButton.name = "TreatConfirmButton";
-                DisableExtraButtons(confirmButton);
-                ConfigureAnchors(confirmButton.GetComponent<RectTransform>(), new Vector2(0.22f, 0.08f), new Vector2(0.48f, 0.16f));
-            }
-
-            if (cancelTemplate != null)
-            {
-                cancelButton = UnityEngine.Object.Instantiate(cancelTemplate, root.transform, false);
-                cancelButton.name = "TreatCancelButton";
-                DisableExtraButtons(cancelButton);
-                ConfigureAnchors(cancelButton.GetComponent<RectTransform>(), new Vector2(0.52f, 0.08f), new Vector2(0.78f, 0.16f));
-            }
-
-            if (confirmButton == null && cancelTemplate != null)
-            {
-                confirmButton = UnityEngine.Object.Instantiate(cancelTemplate, root.transform, false);
-                confirmButton.name = "TreatConfirmButton";
-                DisableExtraButtons(confirmButton);
-                ConfigureAnchors(confirmButton.GetComponent<RectTransform>(), new Vector2(0.22f, 0.08f), new Vector2(0.48f, 0.16f));
-            }
-
-            if (cancelButton == null && confirmTemplate != null)
-            {
-                cancelButton = UnityEngine.Object.Instantiate(confirmTemplate, root.transform, false);
-                cancelButton.name = "TreatCancelButton";
-                DisableExtraButtons(cancelButton);
-                ConfigureAnchors(cancelButton.GetComponent<RectTransform>(), new Vector2(0.52f, 0.08f), new Vector2(0.78f, 0.16f));
-            }
-
-            if (confirmButton == null || cancelButton == null)
-            {
-                Plugin.Logger?.LogWarning("[ResurrectPanelRuntimeFactory] 无法解析确认/取消按钮组件。");
-                UnityEngine.Object.Destroy(root);
-                return null;
-            }
-
-            confirmButton.gameObject.SetActive(true);
-            cancelButton.gameObject.SetActive(true);
-            SetButtonLabel(confirmButton, "治疗");
-            SetButtonLabel(cancelButton, "取消");
-
-            ResurrectPanel panelRuntime = root.AddComponent<ResurrectPanel>();
+            ResurrectPanel panelRuntime = scaffold.Root.AddComponent<ResurrectPanel>();
             panelRuntime.BindRuntimeUi(
                 listContent,
                 entryTemplate,
-                confirmButton,
-                cancelButton,
-                status,
+                scaffold.ConfirmButton,
+                scaffold.CancelButton,
+                scaffold.StatusText,
                 costText,
                 hintText,
-                canvasGroup);
+                scaffold.CanvasGroup);
 
-            ResurrectPanelRuntimeMarker marker = root.AddComponent<ResurrectPanelRuntimeMarker>();
+            ResurrectPanelRuntimeMarker marker = scaffold.Root.AddComponent<ResurrectPanelRuntimeMarker>();
             marker.Version = RuntimeUiVersion;
 
-            root.SetActive(true);
-            root.SetActive(false);
+            scaffold.Root.SetActive(true);
+            scaffold.Root.SetActive(false);
             return panelRuntime;
         }
         catch (Exception ex)
@@ -267,7 +136,7 @@ internal static class ResurrectPanelRuntimeFactory
         }
     }
 
-    private static bool TryCreateFallbackSimpleList(Transform root, TextMeshProUGUI textTemplate, out RectTransform listContent, out DeadPlayerEntryWidget entryTemplate)
+    private static bool TryCreateFallbackSimpleList(Transform root, TextMeshProUGUI textTemplate, CommonButtonWidget buttonTemplate, out RectTransform listContent, out DeadPlayerEntryWidget entryTemplate)
     {
         listContent = null;
         entryTemplate = null;
@@ -277,7 +146,7 @@ internal static class ResurrectPanelRuntimeFactory
             GameObject entriesGo = new GameObject("FallbackEntriesRoot");
             entriesGo.transform.SetParent(root, false);
             RectTransform entriesRect = entriesGo.AddComponent<RectTransform>();
-            ConfigureAnchors(entriesRect, new Vector2(0.14f, 0.30f), new Vector2(0.86f, 0.78f));
+            ConfigureAnchors(entriesRect, new Vector2(0.06f, 0.24f), new Vector2(0.94f, 0.98f));
 
             VerticalLayoutGroup entriesLayout = entriesGo.AddComponent<VerticalLayoutGroup>();
             entriesLayout.childAlignment = TextAnchor.UpperCenter;
@@ -291,7 +160,7 @@ internal static class ResurrectPanelRuntimeFactory
             ContentSizeFitter entriesFitter = entriesGo.AddComponent<ContentSizeFitter>();
             entriesFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-            DeadPlayerEntryWidget template = CreateSimpleEntryTemplate(entriesRect, textTemplate);
+            DeadPlayerEntryWidget template = CreateSimpleEntryTemplate(entriesRect, textTemplate, buttonTemplate);
             if (template == null)
             {
                 return false;
@@ -307,21 +176,60 @@ internal static class ResurrectPanelRuntimeFactory
         }
     }
 
-    private static DeadPlayerEntryWidget CreateSimpleEntryTemplate(RectTransform parent, TextMeshProUGUI textTemplate)
+    private static DeadPlayerEntryWidget CreateSimpleEntryTemplate(RectTransform parent, TextMeshProUGUI textTemplate, CommonButtonWidget buttonTemplate)
     {
         try
         {
-            GameObject entryGo = new GameObject("DeadPlayerEntryTemplate");
-            entryGo.transform.SetParent(parent, false);
+            GameObject entryGo;
+            Button button;
+            if (buttonTemplate != null)
+            {
+                CommonButtonWidget runtimeTemplate = UnityEngine.Object.Instantiate(buttonTemplate, parent, false);
+                runtimeTemplate.name = "DeadPlayerEntryTemplate";
+                GapSharedPanelTemplateFactory.DisableExtraButtons(runtimeTemplate);
+                GapSharedPanelTemplateFactory.DisableTooltipBehaviours(runtimeTemplate.gameObject);
+                runtimeTemplate.enabled = false;
 
-            RectTransform entryRect = entryGo.AddComponent<RectTransform>();
+                entryGo = runtimeTemplate.gameObject;
+                button = runtimeTemplate.button ?? runtimeTemplate.GetComponentInChildren<Button>(true);
+
+                foreach (TextMeshProUGUI text in entryGo.GetComponentsInChildren<TextMeshProUGUI>(true))
+                {
+                    if (text == null)
+                    {
+                        continue;
+                    }
+
+                    text.text = string.Empty;
+                    text.raycastTarget = false;
+                    Color textColor = text.color;
+                    textColor.a = 0f;
+                    text.color = textColor;
+                }
+            }
+            else
+            {
+                entryGo = new GameObject("DeadPlayerEntryTemplate");
+                entryGo.transform.SetParent(parent, false);
+
+                Image bg = entryGo.AddComponent<Image>();
+                bg.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
+
+                button = entryGo.AddComponent<Button>();
+                button.targetGraphic = bg;
+            }
+
+            RectTransform entryRect = entryGo.GetComponent<RectTransform>();
+            if (entryRect == null)
+            {
+                entryRect = entryGo.AddComponent<RectTransform>();
+            }
+
             entryRect.sizeDelta = new Vector2(0f, 72f);
-
-            Image bg = entryGo.AddComponent<Image>();
-            bg.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
-
-            Button button = entryGo.AddComponent<Button>();
-            button.targetGraphic = bg;
+            if (button == null)
+            {
+                return null;
+            }
 
             DeadPlayerEntryWidget widget = entryGo.AddComponent<DeadPlayerEntryWidget>();
             widget.button = button;

@@ -16,7 +16,7 @@ namespace NetworkPlugin.UI.Factories;
 internal static class TradePanelRuntimeFactory
 {
     private const string RuntimeRootName = "NetworkPlugin_TradePanel";
-    private const string RuntimeUiVersion = "2026-02-14-ui-v6";
+    private const string RuntimeUiVersion = "2026-03-30-ui-v7";
 
     internal static TradePanel GetOrCreate(Transform preferredParent)
     {
@@ -105,185 +105,64 @@ internal static class TradePanelRuntimeFactory
                 return null;
             }
 
-            // 查找一个游戏内风格的按钮模板（CommonButtonWidget）用于克隆。
-            // 优先从原生prefab中提取，避免误选到我们自己旧的运行时按钮。
-            CommonButtonWidget confirmTemplate = TryPickButtonTemplate(preferConfirm: true);
-            CommonButtonWidget cancelTemplate = TryPickButtonTemplate(preferConfirm: false);
-
-            if (confirmTemplate == null)
+            GapSharedPanelTemplateFactory.GapRuntimePanelTemplate scaffold = GapSharedPanelTemplateFactory.Create(
+                preferredParent,
+                RuntimeRootName,
+                "交易",
+                "请选择交易对象",
+                "确认交易",
+                "取消");
+            if (scaffold == null)
             {
                 TradeUiMessages.ShowTopMessage("交易界面不可用：未找到可复用的按钮模板。请先进入游戏内 UI（例如商店/间隙）。");
                 return null;
             }
 
-            // 降级处理：如果找不到专用的取消按钮模板，就复用确认按钮模板。
-            cancelTemplate ??= confirmTemplate;
+            Transform uiParent = scaffold.ContentRoot;
+            TextMeshProUGUI textTemplate = scaffold.TextTemplate;
 
-            TextMeshProUGUI textTemplate = TryPickTextTemplate();
-
-            Transform parent = preferredParent;
-            if (parent == null)
-            {
-                // 尽力降级：挂到任意激活Canvas下，确保UI可以正常渲染。
-                var canvas = UnityEngine.Object.FindObjectOfType<Canvas>(true);
-                parent = canvas?.transform;
-            }
-
-            GameObject root = new GameObject(RuntimeRootName);
-            root.SetActive(false);
-            if (parent != null)
-            {
-                root.transform.SetParent(parent, false);
-            }
-
-            var rt = root.AddComponent<RectTransform>();
-            rt.anchorMin = Vector2.zero;
-            rt.anchorMax = Vector2.one;
-            rt.offsetMin = Vector2.zero;
-            rt.offsetMax = Vector2.zero;
-
-            var canvasGroup = root.AddComponent<CanvasGroup>();
-            canvasGroup.interactable = true;
-            canvasGroup.blocksRaycasts = true;
-
-            // 射线阻挡层。
-            // 不要在这里绘制全屏半透明矩形；如果运行时sprite加载失败，
-            // Unity会渲染出一个纯色四边形，看起来像普通矩形遮罩。
-            // 视觉外观由下面克隆的游戏内MessageDialog边框提供。
-            var blocker = root.AddComponent<Image>();
-            blocker.color = new Color(0f, 0f, 0f, 0f);
-            blocker.raycastTarget = true;
-
-            // 恢复游戏内对话框边框作为纯视觉背景。
-            // 这里只需要它的图形与布局；所有可交互内容仍挂在root上，保证z顺序正确。
-            TextMeshProUGUI frameTextTemplate = null;
-            try
-            {
-                var framePrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
-                if (framePrefab != null)
-                {
-                    var frame = UnityEngine.Object.Instantiate(framePrefab, root.transform, false);
-                    frame.name = "TradeFrame";
-                    frame.SetActive(true);
-
-                    var frameRt = frame.GetComponent<RectTransform>();
-                    if (frameRt != null)
-                    {
-                        frameRt.anchorMin = new Vector2(0.06f, 0.06f);
-                        frameRt.anchorMax = new Vector2(0.94f, 0.94f);
-                        frameRt.offsetMin = Vector2.zero;
-                        frameRt.offsetMax = Vector2.zero;
-                    }
-
-                    var dialog = frame.GetComponentInChildren<MessageDialog>(true);
-                    if (dialog != null)
-                    {
-                        var mainText = GetDialogField<TextMeshProUGUI>(dialog, "mainText");
-                        var subText  = GetDialogField<TextMeshProUGUI>(dialog, "subText");
-                        var dlgSingleConfirm = GetDialogField<Button>(dialog, "singleConfirmButton");
-                        var dlgConfirm = GetDialogField<Button>(dialog, "confirmButton");
-                        var dlgCancel  = GetDialogField<Button>(dialog, "cancelButton");
-
-                        frameTextTemplate = mainText != null ? mainText : subText;
-
-                        // 隐藏内置文本和按钮；当前面板会提供自己的内容。
-                        HideDialogText(mainText);
-                        HideDialogText(subText);
-                        HideDialogButton(dlgSingleConfirm);
-                        HideDialogButton(dlgConfirm);
-                        HideDialogButton(dlgCancel);
-
-                        dialog.enabled = false;
-                    }
-
-                    // 把边框推到最底层，确保控件绘制在上方。
-                    frame.transform.SetAsFirstSibling();
-                }
-            }
-            catch
-            {
-                // 忽略边框构建失败；它只影响视觉效果，不影响核心功能。
-            }
-
-            // 所有交易UI内容都直接挂在root上（位于边框之上）。
-            Transform uiParent = root.transform;
-
-            // 标题 / 状态 / 玩家名称
-            var title = CloneTextOrCreate(frameTextTemplate != null ? frameTextTemplate : textTemplate, uiParent, "Title");
-            title.text = "交易";
-            title.alignment = TextAlignmentOptions.Center;
-            title.fontSize = Mathf.Max(title.fontSize, 34);
-            ConfigureAnchors(title.rectTransform, new Vector2(0.2f, 0.88f), new Vector2(0.8f, 0.96f));
-
-            var status = CloneTextOrCreate(frameTextTemplate != null ? frameTextTemplate : textTemplate, uiParent, "Status");
-            status.text = "请选择交易对象";
-            status.alignment = TextAlignmentOptions.Center;
-            status.fontSize = Mathf.Max(status.fontSize, 22);
-            ConfigureAnchors(status.rectTransform, new Vector2(0.15f, 0.82f), new Vector2(0.85f, 0.88f));
-
-            var p1Name = CloneTextOrCreate(frameTextTemplate != null ? frameTextTemplate : textTemplate, uiParent, "Player1Name");
+            var p1Name = GapSharedPanelTemplateFactory.CloneTextOrCreate(textTemplate, uiParent, "Player1Name");
             p1Name.text = "Player 1";
             p1Name.alignment = TextAlignmentOptions.Center;
             p1Name.fontSize = Mathf.Max(p1Name.fontSize, 20);
-            ConfigureAnchors(p1Name.rectTransform, new Vector2(0.08f, 0.74f), new Vector2(0.46f, 0.80f));
+            GapSharedPanelTemplateFactory.ConfigureAnchors(p1Name.rectTransform, new Vector2(0.00f, 0.88f), new Vector2(0.46f, 0.98f));
 
-            var p2Name = CloneTextOrCreate(frameTextTemplate != null ? frameTextTemplate : textTemplate, uiParent, "Player2Name");
+            var p2Name = GapSharedPanelTemplateFactory.CloneTextOrCreate(textTemplate, uiParent, "Player2Name");
             p2Name.text = "Player 2";
             p2Name.alignment = TextAlignmentOptions.Center;
             p2Name.fontSize = Mathf.Max(p2Name.fontSize, 20);
-            ConfigureAnchors(p2Name.rectTransform, new Vector2(0.54f, 0.74f), new Vector2(0.92f, 0.80f));
+            GapSharedPanelTemplateFactory.ConfigureAnchors(p2Name.rectTransform, new Vector2(0.54f, 0.88f), new Vector2(1.00f, 0.98f));
 
-            // 交易区域
             GameObject p1AreaGo = new GameObject("Player1Area");
             p1AreaGo.transform.SetParent(uiParent, false);
             var p1Area = p1AreaGo.AddComponent<RectTransform>();
-            ConfigureAnchors(p1Area, new Vector2(0.08f, 0.28f), new Vector2(0.46f, 0.72f));
+            GapSharedPanelTemplateFactory.ConfigureAnchors(p1Area, new Vector2(0.00f, 0.06f), new Vector2(0.46f, 0.84f));
 
             GameObject p2AreaGo = new GameObject("Player2Area");
             p2AreaGo.transform.SetParent(uiParent, false);
             var p2Area = p2AreaGo.AddComponent<RectTransform>();
-            ConfigureAnchors(p2Area, new Vector2(0.54f, 0.28f), new Vector2(0.92f, 0.72f));
+            GapSharedPanelTemplateFactory.ConfigureAnchors(p2Area, new Vector2(0.54f, 0.06f), new Vector2(1.00f, 0.84f));
 
-            // 槽位：克隆游戏内按钮组件，让槽位使用原生按钮外观而不是普通矩形。
-            var slotTextTemplate = frameTextTemplate != null ? frameTextTemplate : textTemplate;
-            var p1Slots = CreateSlotColumn(p1Area, slotTextTemplate, confirmTemplate, 5, "P1");
-            var p2Slots = CreateSlotColumn(p2Area, slotTextTemplate, confirmTemplate, 5, "P2");
+            var p1Slots = CreateSlotColumn(p1Area, textTemplate, scaffold.ConfirmButton, 5, "P1");
+            var p2Slots = CreateSlotColumn(p2Area, textTemplate, scaffold.ConfirmButton, 5, "P2");
 
-            // 底部的确认 / 取消按钮。
-            var confirm = UnityEngine.Object.Instantiate(confirmTemplate, uiParent, false);
-            confirm.name = "Confirm";
-            SetButtonLabel(confirm, "确认交易");
-            DisableExtraButtons(confirm);
-            DisableTooltipBehaviours(confirm.gameObject);
-            ConfigureAnchors(confirm.GetComponent<RectTransform>(), new Vector2(0.22f, 0.10f), new Vector2(0.48f, 0.18f));
+            var panel = scaffold.Root.AddComponent<TradePanel>();
 
-            var cancel = UnityEngine.Object.Instantiate(cancelTemplate, uiParent, false);
-            cancel.name = "Cancel";
-            SetButtonLabel(cancel, "取消");
-            DisableExtraButtons(cancel);
-            DisableTooltipBehaviours(cancel.gameObject);
-            ConfigureAnchors(cancel.GetComponent<RectTransform>(), new Vector2(0.52f, 0.10f), new Vector2(0.78f, 0.18f));
-
-            // 添加TradePanel并绑定字段。
-            var panel = root.AddComponent<TradePanel>();
-
-            // 标记为运行时创建，便于后续调用判断是否需要重建。
-            var marker = root.AddComponent<TradePanelRuntimeMarker>();
+            var marker = scaffold.Root.AddComponent<TradePanelRuntimeMarker>();
             marker.Version = RuntimeUiVersion;
             panel.BindRuntimeUi(
                 p1Area,
                 p2Area,
                 p1Slots,
                 p2Slots,
-                confirm,
-                cancel,
-                status,
+                scaffold.ConfirmButton,
+                scaffold.CancelButton,
+                scaffold.StatusText,
                 p1Name,
                 p2Name);
 
-            // 确保Awake()能够挂接按钮监听。
-            root.SetActive(true);
-            root.SetActive(false);
+            scaffold.Root.SetActive(true);
+            scaffold.Root.SetActive(false);
 
             return panel;
         }

@@ -1,6 +1,13 @@
-bootstrap: lang=zh-CN; encoding=UTF-8
-<!-- version: 2.0.1 -->
-<!-- HELLOAGENTS_ROUTER: 2026-01-22 -->
+---
+name: HelloAGENTS
+description: HelloAGENTS 是一个自主的高级智能伙伴，持续工作直到完成实现和验证。它不仅分析问题，还会推进到实现、测试和验证阶段，确保代码的真实性和文档的同步更新。HelloAGENTS 遵循严格的工作流程和安全规则，使用结构化的输出格式与用户交互，并优先使用内置工具进行文件操作。
+argument-hint: Describe WHAT you're looking for and desired thoroughness (quick/medium/thorough)
+model: GPT-5.3-Codex (copilot)
+target: vscode
+user-invocable: true
+tools: [vscode/memory, vscode/newWorkspace, vscode/resolveMemoryFileUri, vscode/runCommand, vscode/vscodeAPI, vscode/extensions, vscode/askQuestions, execute/executionSubagent, execute/getTerminalOutput, execute/awaitTerminal, execute/killTerminal, read/problems, read/readFile, read/viewImage, read/terminalSelection, read/terminalLastCommand, agent, edit/createDirectory, edit/createFile, edit/editFiles, edit/rename, search, web, browser, todo]
+agents: ["*"]
+---
 
 # HelloAGENTS
 
