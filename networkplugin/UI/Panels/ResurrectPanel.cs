@@ -13,10 +13,11 @@ using NetworkPlugin.Patch.Network;
 using NetworkPlugin.UI.Models;
 using NetworkPlugin.UI.Payloads;
 using NetworkPlugin.UI.State;
-using NetworkPlugin.UI.Widgets;
 using NetworkPlugin.Utils;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace NetworkPlugin.UI.Panels;
 
@@ -40,12 +41,6 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 	private Transform deadPlayersContainer;
 
 	/// <summary>
-	/// 玩家条目预制体模板
-	/// </summary>
-	[SerializeField]
-	private DeadPlayerEntryWidget deadPlayerEntryTemplate;
-
-	/// <summary>
 	/// 治疗按钮
 	/// </summary>
 	[SerializeField]
@@ -62,18 +57,6 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 	/// </summary>
 	[SerializeField]
 	private TextMeshProUGUI statusText;
-
-	/// <summary>
-	/// 治疗信息文本显示
-	/// </summary>
-	[SerializeField]
-	private TextMeshProUGUI costText;
-
-	/// <summary>
-	/// 辅助说明文本显示
-	/// </summary>
-	[SerializeField]
-	private TextMeshProUGUI goldAmount;
 	#endregion
 
 	#region 复活数据
@@ -83,19 +66,23 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 	private readonly List<DeadPlayerEntry> _deadPlayers = [];
 
 	/// <summary>
-	/// 玩家UI组件列表
+	/// 可点击文字列表（每行对应一个玩家）
 	/// </summary>
-	private readonly List<DeadPlayerEntryWidget> _playerWidgets = [];
+	private readonly List<Button> _playerButtons = new List<Button>();
+
+	/// <summary>
+	/// 当前选中行的 Button
+	/// </summary>
+
+	/// <summary>
+	/// 可点击行文字模板（从工厂传入）
+	/// </summary>
+	private TextMeshProUGUI _textTemplate;
 
 	/// <summary>
 	/// 当前选中的目标玩家
 	/// </summary>
 	private DeadPlayerEntry _selectedPlayer;
-
-	/// <summary>
-	/// 治疗量
-	/// </summary>
-	private int _healingAmount = 0;
 
 	private string _selfPlayerId;
 	private string _pendingRequestId;
@@ -131,21 +118,17 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 	#region Unity生命周期
 	internal void BindRuntimeUi(
 		Transform runtimeDeadPlayersContainer,
-		DeadPlayerEntryWidget runtimeDeadPlayerEntryTemplate,
+		TextMeshProUGUI runtimeTextTemplate,
 		CommonButtonWidget runtimeResurrectButton,
 		CommonButtonWidget runtimeCancelButton,
 		TextMeshProUGUI runtimeStatusText,
-		TextMeshProUGUI runtimeCostText,
-		TextMeshProUGUI runtimeGoldAmount,
 		CanvasGroup runtimeCanvasGroup)
 	{
 		deadPlayersContainer = runtimeDeadPlayersContainer;
-		deadPlayerEntryTemplate = runtimeDeadPlayerEntryTemplate;
+		_textTemplate = runtimeTextTemplate;
 		resurrectButton = runtimeResurrectButton;
 		cancelButton = runtimeCancelButton;
 		statusText = runtimeStatusText;
-		costText = runtimeCostText;
-		goldAmount = runtimeGoldAmount;
 
 		_canvasGroup = runtimeCanvasGroup;
 		if (_canvasGroup == null)
@@ -257,15 +240,13 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 
 		// 设置取消按钮可见性
 		cancelButton?.gameObject.SetActive(_canCancel);
+		resurrectButton?.gameObject.SetActive(false);
 
 		// 启用交互
 		_canvasGroup.interactable = true;
 
 		// 创建UI条目
 		CreatePlayerEntries();
-
-		// 更新辅助说明
-		UpdateHintDisplay();
 
 		// 更新UI字符串
 		UpdateUIStrings();
@@ -317,9 +298,14 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 	/// </summary>
 	private void UpdateUIStrings()
 	{
+		if (!string.IsNullOrWhiteSpace(_pendingRequestId))
+		{
+			return;
+		}
+
 		if (_selectedPlayer == null)
 		{
-			UpdateUIStatus("请选择要治疗的玩家");
+			UpdateUIStatus("点击玩家立即治疗");
 		}
 	}
 
@@ -332,42 +318,23 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		_deadPlayers.Clear();
 		// 清空选中玩家
 		_selectedPlayer = null;
-		// 重置治疗量
-		_healingAmount = 0;
 
-		// 清空列表槽位
+		// 销毁所有行条目
 		if (deadPlayersContainer != null)
 		{
 			foreach (Transform child in deadPlayersContainer)
 			{
-				if (deadPlayerEntryTemplate != null && child == deadPlayerEntryTemplate.transform)
-				{
-					child.gameObject.SetActive(false);
-					continue;
-				}
-
-				// 销毁所有子对象
 				Destroy(child.gameObject);
 			}
 		}
 
-		// 清空UI组件列表
-		_playerWidgets.Clear();
+		// 清空按钮列表
+		_playerButtons.Clear();
 
 		// 禁用确认按钮
 		if (resurrectButton?.button != null)
 		{
 			resurrectButton.button.interactable = false;
-		}
-
-		if (costText != null)
-		{
-			costText.text = string.Empty;
-		}
-
-		if (goldAmount != null)
-		{
-			goldAmount.text = string.Empty;
 		}
 	}
 
@@ -381,8 +348,7 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
         }
 
 	/// <summary>
-	/// 创建玩家条目
-	/// 为所有目标玩家创建 UI 条目。
+	/// 创建玩家条目（可点击文字行，仿 TradePanel partner picker）
 	/// </summary>
 	private void CreatePlayerEntries()
 	{
@@ -391,80 +357,96 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		{
 			foreach (Transform child in deadPlayersContainer)
 			{
-				if (deadPlayerEntryTemplate != null && child == deadPlayerEntryTemplate.transform)
-				{
-					child.gameObject.SetActive(false);
-					continue;
-				}
-
 				Destroy(child.gameObject);
 			}
 		}
+		_playerButtons.Clear();
 
-		// 清空UI组件列表
-		_playerWidgets.Clear();
-
-		// 创建新条目
 		for (int i = 0; i < _deadPlayers.Count; i++)
 		{
 			var player = _deadPlayers[i];
-			var entry = CreatePlayerEntry(player, i);
-			_playerWidgets.Add(entry);
-
-			Plugin.Logger?.LogDebug($"[ResurrectPanel] 渲染治疗条目: index={i}, playerId={player?.PlayerId}, playerName={player?.PlayerName}, active={entry?.gameObject?.activeSelf}");
+			var btn = CreatePlayerRow(player, i);
+			if (btn != null)
+			{
+				_playerButtons.Add(btn);
+				Plugin.Logger?.LogDebug($"[ResurrectPanel] 创建可点击文字行: index={i}, playerId={player?.PlayerId}, name={player?.PlayerName}");
+			}
 		}
 	}
 
 	/// <summary>
-	/// 创建单个玩家条目
+	/// 创建单行可点击文字条目（与 TradePanel CreateTextButton 相同风格）
 	/// </summary>
-	/// <param name="player">玩家数据</param>
-	/// <param name="index">条目索引</param>
-	/// <returns>创建的玩家条目组件</returns>
-	private DeadPlayerEntryWidget CreatePlayerEntry(DeadPlayerEntry player, int index)
+	private Button CreatePlayerRow(DeadPlayerEntry player, int index)
 	{
-		// 检查模板是否存在
-		if (deadPlayerEntryTemplate == null)
+		if (_textTemplate == null || deadPlayersContainer == null)
 		{
-			Debug.LogError("[ResurrectPanel] deadPlayerEntryTemplate is not assigned!");
+			Plugin.Logger?.LogWarning("[ResurrectPanel] 文字模板或容器为空，无法创建行");
 			return null;
 		}
 
-		// 实例化预制体
-		var entry = Instantiate(deadPlayerEntryTemplate, deadPlayersContainer, false);
-		entry.name = $"PlayerEntry_{index}";
-		entry.gameObject.SetActive(true);
+		string displayName = string.IsNullOrWhiteSpace(player?.PlayerName) ? player?.PlayerId : player.PlayerName;
+		int actionValue = player.ActionValue > 0 ? player.ActionValue : player.ResurrectionCost;
+		string actionText = actionValue > 0 ? $"治疗+{actionValue}" : "不可治疗";
+		string label = $"{displayName}  HP {player.CurrentHp}/{player.MaxHp}  |  {actionText}";
 
-		// 设置玩家数据
-		entry.SetPlayer(player);
+		// 克隆游戏内 TMP 模板，保留字体/材质
+		var tmp = UnityEngine.Object.Instantiate(_textTemplate, deadPlayersContainer, false);
+		tmp.name = $"PlayerRow_{index}";
+		tmp.text = label;
+		tmp.alignment = TextAlignmentOptions.Center;
+		tmp.raycastTarget = true;
+		tmp.enableAutoSizing = false;
+		// 与 TradePanel partner picker 一致：使用模板字号的 50%
+		float fontSize = _textTemplate.fontSize > 0 ? _textTemplate.fontSize * 0.5f : 18f;
+		tmp.fontSize = Mathf.Max(fontSize, 14f);
+		tmp.fontSizeMin = 1f;
+		tmp.fontSizeMax = tmp.fontSize;
 
-		// 注册点击事件
-		if (entry.button != null)
-		{
-			entry.button.onClick.RemoveAllListeners();
-			entry.button.onClick.AddListener(() => OnPlayerSelected(player, entry));
-		}
-		else
-		{
-			RecordRow row = entry.GetComponent<RecordRow>();
-			if (row != null)
-			{
-				row.Click += () => OnPlayerSelected(player, entry);
-			}
-		}
+		Color baseColor = player.CanResurrect
+			? new Color(0.92f, 0.92f, 0.92f, 1f)
+			: new Color(0.5f, 0.5f, 0.5f, 0.6f);
+		tmp.color = baseColor;
 
-		return entry;
+		var le = tmp.gameObject.AddComponent<LayoutElement>();
+		le.preferredHeight = 40f;
+		le.flexibleWidth = 1f;
+
+		var btn = tmp.gameObject.AddComponent<Button>();
+		btn.targetGraphic = tmp;
+		btn.interactable = player.CanResurrect;
+		btn.transition = Selectable.Transition.ColorTint;
+
+		var colors = btn.colors;
+		colors.normalColor = Color.white;
+		colors.highlightedColor = new Color(1f, 1f, 0.7f, 1f);
+		colors.selectedColor = new Color(1f, 1f, 0.7f, 1f);
+		colors.pressedColor = new Color(0.85f, 0.85f, 0.85f, 1f);
+		colors.disabledColor = new Color(0.5f, 0.5f, 0.5f, 0.5f);
+		colors.fadeDuration = 0.08f;
+		btn.colors = colors;
+
+		var nav = btn.navigation;
+		nav.mode = Navigation.Mode.None;
+		btn.navigation = nav;
+
+		// 悬停放大效果（与 TradePanel TextButtonHover 一致）
+		tmp.gameObject.AddComponent<RowHoverScale>();
+
+		var capturedPlayer = player;
+		btn.onClick.RemoveAllListeners();
+		btn.onClick.AddListener(() => OnPlayerSelected(capturedPlayer, btn));
+
+		tmp.gameObject.SetActive(true);
+		return btn;
 	}
 	#endregion
 
 	#region 玩家选择处理
 	/// <summary>
-	/// 玩家选择事件处理
-	/// 当玩家点击某个目标玩家条目时触发。
+	/// 玩家选择事件处理（可点击文字行点击时触发）
 	/// </summary>
-	/// <param name="player">被选中的死亡玩家</param>
-	/// <param name="widget">对应的UI组件</param>
-	private void OnPlayerSelected(DeadPlayerEntry player, DeadPlayerEntryWidget widget)
+	private void OnPlayerSelected(DeadPlayerEntry player, Button btn)
 	{
 		// 检查是否可以治疗
 		if (!player.CanResurrect)
@@ -473,44 +455,33 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 			return;
 		}
 
-		// 取消之前选择的玩家
-		foreach (var w in _playerWidgets)
+		if (!string.IsNullOrWhiteSpace(_pendingRequestId))
 		{
-			w?.SetSelected(false);
+			UpdateUIStatus("正在治疗中，请稍候...");
+			return;
 		}
 
 		// 设置当前选中的玩家
 		_selectedPlayer = player;
-		// 计算治疗量：固定为目标最大生命值的 20%。
-		_healingAmount = player.ActionValue > 0 ? player.ActionValue : CalculateHealingAmount(player.MaxHp);
-		if (_payload?.CostCalculator != null)
-		{
-			_healingAmount = Math.Max(1, _payload.CostCalculator(_healingAmount));
-		}
 
-		// 更新选中状态
-		widget?.SetSelected(true);
-
-		// 更新UI显示
-		int finalHp = Math.Min(player.MaxHp, player.CurrentHp + _healingAmount);
-		UpdateUIStatus($"{player.PlayerName}：{player.CurrentHp}/{player.MaxHp} → {finalHp}/{player.MaxHp}");
-
-		// 更新治疗信息文本
-		costText?.text = $"治疗量：+{_healingAmount} HP";
-		goldAmount?.text = $"治疗后生命：{finalHp}/{player.MaxHp}";
-
-		if (resurrectButton?.button != null)
-		{
-			resurrectButton.button.interactable = true;
-		}
+		// 点击玩家即治疗，无需展开详情与二次确认。
+		OnResurrectPlayer();
 	}
 
-	/// <summary>
-	/// 更新辅助说明。
-	/// </summary>
-	private void UpdateHintDisplay()
+	private void SetPlayerButtonsInteractable(bool interactable)
 	{
-		goldAmount?.text = "效果：回复目标 20% 最大生命值";
+		int count = Math.Min(_playerButtons.Count, _deadPlayers.Count);
+		for (int i = 0; i < count; i++)
+		{
+			Button btn = _playerButtons[i];
+			DeadPlayerEntry player = _deadPlayers[i];
+			if (btn == null)
+			{
+				continue;
+			}
+
+			btn.interactable = interactable && player != null && player.CanResurrect;
+		}
 	}
 	#endregion
 
@@ -524,9 +495,13 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		if (_selectedPlayer == null || !_selectedPlayer.CanResurrect)
 			return;
 
+		if (!string.IsNullOrWhiteSpace(_pendingRequestId))
+			return;
+
 		// 先发请求，等待 Host 回包。
 		_pendingRequestId = Guid.NewGuid().ToString("N");
 		SendResurrectionEvent(_selectedPlayer);
+		SetPlayerButtonsInteractable(false);
 
 		// 禁用按钮，等待结果
 		if (resurrectButton?.button != null)
@@ -616,13 +591,13 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		if (success)
 		{
 			DidCompleteTreatment = true;
-			UpdateHintDisplay();
 			UpdateUIStatus("治疗完成：" + _selectedPlayer?.PlayerName);
 			StartCoroutine(HideAfterDelay(ResurrectCompleteWaitTime));
 		}
 		else
 		{
 			UpdateUIStatus("治疗失败" + (string.IsNullOrWhiteSpace(reason) ? string.Empty : $"：{reason}"));
+			SetPlayerButtonsInteractable(true);
 			if (resurrectButton?.button != null)
 			{
 				resurrectButton.button.interactable = _selectedPlayer != null && _selectedPlayer.CanResurrect;
@@ -666,4 +641,52 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		yield return new WaitWhile(() => IsVisible);
 	}
 	#endregion
+}
+
+/// <summary>
+/// 悬停放大效果（与 TradePanel TextButtonHover 相同行为）
+/// </summary>
+internal sealed class RowHoverScale : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
+{
+	private RectTransform _rt;
+	private bool _hovering;
+	private bool _pressed;
+
+	private void Awake()
+	{
+		_rt = transform as RectTransform;
+		if (_rt != null) _rt.localScale = Vector3.one;
+	}
+
+	public void OnPointerEnter(PointerEventData eventData)
+	{
+		_hovering = true;
+		Apply();
+	}
+
+	public void OnPointerExit(PointerEventData eventData)
+	{
+		_hovering = false;
+		_pressed = false;
+		Apply();
+	}
+
+	public void OnPointerDown(PointerEventData eventData)
+	{
+		_pressed = true;
+		Apply();
+	}
+
+	public void OnPointerUp(PointerEventData eventData)
+	{
+		_pressed = false;
+		Apply();
+	}
+
+	private void Apply()
+	{
+		if (_rt == null) return;
+		float s = _pressed ? 1.02f : _hovering ? 1.08f : 1f;
+		_rt.localScale = new Vector3(s, s, 1f);
+	}
 }

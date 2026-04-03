@@ -66,39 +66,6 @@
 	- 验证：`dotnet build d:/programme/LBol_demoplugin/networkplugin/NetWorkPlugin.csproj -v minimal -p:LangVersion=preview` 与 `dotnet build "networkplugin/NetWorkPlugin.csproj" -v minimal` 均通过（260 warnings，0 errors）。
 
 ### 重构
-- **[networkplugin]**: 继续对 `networkplugin/Patch/Network` 做第四轮热点简化，继续清理回合结束快照、开局奖励和结算同步补丁中的薄包装与单跳 helper。
-	- `Patch/Network/TurnEndSnapshotReceivePatch.cs`：删除只调用一次的 `TryGetNetworkManager()` / `ApplyToPlayer(...)`，将远端玩家快照落地逻辑直接收回 `OnGameEventReceived(...)` 主路径，保持字段写回行为不变。
-	- `Patch/Network/DebutBonusSyncPatch.cs`：删除 `SetSubscriptionState(...)` 与 `IsConnectedAndMultiplayer(...)` 这类薄包装，简化 `TryGetBool(...)` 实现，并把字符串 payload 的 JSON 读取改为安全克隆。
-	- `Patch/Network/GameResultSyncPatch.cs`：删除只调用一次的 `GetString(...)`，把 `ResultType` 读取收回消息处理主路径，并把字符串 payload 的 JSON 读取改为安全克隆。
-	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj -v minimal -p:LangVersion=preview` 通过（254 warnings，0 errors）。
-
-- **[networkplugin]**: 继续对 `networkplugin/Patch/Network` 做第三轮热点简化，进一步清掉 BattleReport / GapOptions / EnemySpawn 三个补丁里仍然偏碎的包装逻辑。
-	- `Patch/Network/BattleReportForwardPatch.cs`：删除只为读取三项字段存在的 JSON helper，直接在转发主路径内完成 `Timestamp` / `PlayerId` / `TargetId` 解析，减少阅读跳转。
-	- `Patch/Network/GapOptionsSyncPatch.cs`：去掉 `BroadcastGapOptionsEvent(...)` 中一层无收益的 `GetService` 防御包裹，删掉和 `TryMarkFirstSeen(...)` 重叠的 `RememberProcessedAction(...)`，并把字符串 payload 的 JSON 读取改为安全克隆。
-	- `Patch/Network/EnemySpawnSyncPatch.cs`：将 Welcome/HostChanged 的字段读取统一收回现有 `GetString` / `GetBool` helper，删除仅在 `FindSpawner(...)` 中调用一次的 `GetEnemyIndex(...)` 包装，并把字符串 payload 的 JSON 读取改为安全克隆。
-	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj -v minimal -p:LangVersion=preview` 通过（257 warnings，0 errors）。
-
-- **[networkplugin]**: 继续对 `networkplugin/Patch/Network` 做第二轮热点简化，开始收紧更大的事件/意图接收补丁中的重复前置逻辑。
-	- `Patch/Network/EnemyIntentReceivePatch.cs`：提取敌人意图 pending 的双键解析逻辑，删除 `TryApplyPendingToEnemy(...)` 中那段一次性内联查找，保留意图构造与落地行为不变。
-	- `Patch/Network/EventSyncPatch.cs`：提取高频复用的 `TryGetConnectedSubscribedClient(...)`，收敛事件选择、对话同步、特殊事件同步与投票结果广播前重复出现的“连通性检查 + EnsureSubscribed”前置代码。
-	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj -v minimal -p:LangVersion=preview` 通过（259 warnings，0 errors）。
-
-- **[networkplugin]**: 继续对 `networkplugin/Patch/Network` 做低风险等价简化，重点删掉只调用一次的小包装和重复的按钮/订阅状态桥接，不改网络协议与回合同步语义。
-	- `Patch/Network/TurnStartSnapshotReceivePatch.cs`：内联只调用一次的远端玩家快照落地逻辑，删除 `TryGetNetworkManager` / `ApplyToPlayer` 这类单跳 helper。
-	- `Patch/Network/ExhibitSyncPatch.cs`：把 `Bianhua` 触发后的恢复输入判定收回 `Postfix` 主路径，移除 `IsConnected` / `HasAliveEnemies` 这类碎片化包装。
-	- `Patch/Network/EnemyStateReceivePatch.cs`：删除单纯写回字段的 `SetSubscriptionState` 包装，保留直接订阅状态赋值，减少阅读跳转。
-	- `Patch/Network/EndTurnSyncPatch.cs`：合并 end turn 按钮启用/禁用包装，移除一次性 `GetEffectivePlayerId` 桥接，并顺手把属性 getter 的 Harmony 标注改为 `MethodType.Getter`。
-	- `Patch/Network/UnlockEverythingForMPPatch.cs`：当前工作树已收敛为共享 `TryUseMaxUnlockLevel(...)` 入口，本轮保留该方向，不重复扩大改动。
-	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj -v minimal -p:LangVersion=preview` 通过（259 warnings，0 errors）。
-
-- **[networkplugin]**: 继续等价简化 `networkplugin/Patch/Network` 的后续热点文件，主要把重复判断、重复取值和重复发送前置逻辑整理得更清楚。
-	- `Patch/Network/BattleReportForwardPatch.cs`：收敛 BattleReport 转发前的事件类型判断和去重登记逻辑，并把字符串 payload 的 JSON 读取改为安全克隆。
-	- `Patch/Network/DebutBonusSyncPatch.cs`：收敛订阅状态写回和欢迎包/房主切换/奖励广播中的重复字段读取逻辑。
-	- `Patch/Network/MapCheckpointSyncPatch.cs`、`RoomEntrySyncPatch.cs`：统一当前地图节点提交点和房主连接判断的重复代码。
-	- `Patch/Network/TurnStartSnapshotReceivePatch.cs`、`EnemyStateReceivePatch.cs`：提取回合开始快照的发送者解析逻辑，并收敛敌人状态落地时重复的待应用状态查找与属性赋值代码。
-	- `Patch/Network/ExhibitSyncPatch.cs`、`UnlockEverythingForMPPatch.cs`：提取遗物触发恢复输入判定与联机最大解锁等级复用逻辑。
-	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj -v minimal -p:LangVersion=preview` 通过（258 warnings，0 errors）。
-
 - **[networkplugin]**: 等价简化 `networkplugin/Patch/Network` 下的首批热点补丁，聚焦重复 helper 与重复上传/接收结构的收敛，不改事件语义与 Harmony 守卫。
 	- `Patch/Network/BattleCardZonePatch.cs`、`EnergySyncPatch.cs`、`ToolCardSyncPatch.cs`：统一网络客户端解析 helper，收敛重复 `SendGameEvent(...)` 前置解析路径。
 	- `Patch/Network/EnergySyncPatch.cs`：提取回合额外法力快照 payload 构建逻辑，消除 `GainTurnMana` / `LoseTurnMana` 的重复匿名对象结构。
@@ -278,7 +245,6 @@
 	- 验证：`dotnet build networkplugin/NetWorkPlugin.csproj -v minimal` 通过（257 warnings，0 errors）。
 
 ### Fixed
-- **[networkplugin]**: 补齐 `Patch/UI/OtherPlayersOverlayPatch.cs` 对 `UnitStatusWidget` / `HealthBar` 所在 `LBoL.Presentation.UI.Widgets` 命名空间的引用，并顺手删除重复 `using`，恢复当前工作区编译通过。
 - **[networkplugin]**: 收紧 `ShopTradeIconPatch` 的商店回归保护：在注入交易按钮前保存 `CardService` / `ReturnButton` 原生容器的 `RectTransform` 快照，并在隐藏或异常清理时完整恢复，避免商店布局残留偏移。
 - **[networkplugin]**: 收敛 `ShopTradeIconPatch` 的商店交易按钮文案定位逻辑，改为优先解析主标题 `TMP_Text`，仅在异常层级时回退到 legacy `Text` 并打印 hierarchy。
 	- 方案: [202603061348_networkplugin-todo-consolidation](archive/2026-03/202603061348_networkplugin-todo-consolidation/)
