@@ -13,7 +13,6 @@ using LBoL.Presentation.Units;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.NetworkPlayer;
-using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -54,7 +53,6 @@ public static partial class OtherPlayersOverlayPatch
     private const float PlayerNameFontSize = 13f;
     private const float RuntimeLayoutEpsilon = 0.01f;
     private const float OverlayDebugLogInterval = 0.5f;
-    private const float OverlayUiRefreshInterval = 0.2f;
     private static readonly Vector3 OverlayRootLocalPosition = new(1360f, 900f, 0f);
 
     /// <summary>获取依赖注入容器</summary>
@@ -120,15 +118,6 @@ public static partial class OtherPlayersOverlayPatch
     /// <summary>上一次 Overlay 调试摘要</summary>
     private static string _lastOverlayDebugSummary;
 
-    /// <summary>Overlay UI 下次允许刷新的时间</summary>
-    private static float _nextOverlayRefreshTime;
-
-    /// <summary>Overlay UI 是否需要强制刷新</summary>
-    private static bool _overlayUiDirty = true;
-
-    /// <summary>上一次用于判定UI刷新的数据签名</summary>
-    private static string _lastOverlayRenderSignature;
-
     #endregion
 
     #region Harmony 补丁方法
@@ -143,25 +132,32 @@ public static partial class OtherPlayersOverlayPatch
     {
         try
         {
+            EnsureSceneBoundBindingsCurrent();
+            bool isMapPanelVisible = IsMapPanelVisible();
+
             // 从依赖注入容器获取当前网络客户端实例
             INetworkClient client = TryGetNetworkClient();
-            bool hideRemoteInGap = IsInGapStationContext();
             if (client == null)
             {
                 // 没有网络客户端时：若启用虚拟玩家，则仍允许远程渲染；否则按原逻辑隐藏。
                 EnsureVirtualAiDefaultPlayer_NoThrow();
-                if (hideRemoteInGap || !IsVirtualAiDefaultEnabled())
+                if (!IsVirtualAiDefaultEnabled())
                 {
                     HideUi();
-                    MarkOverlayUiDirty();
                     HideRemoteCharacters();
                     return;
                 }
 
                 HideUi();
-                MarkOverlayUiDirty();
-                EnsureRemoteCharacters();
-                UpdateRemoteCharactersLayout();
+                if (isMapPanelVisible)
+                {
+                    HideRemoteCharacters();
+                }
+                else
+                {
+                    EnsureRemoteCharacters();
+                    UpdateRemoteCharactersLayout();
+                }
                 return;
             }
 
@@ -182,18 +178,23 @@ public static partial class OtherPlayersOverlayPatch
             if (!client.IsConnected)
             {
                 EnsureVirtualAiDefaultPlayer_NoThrow();
-                if (hideRemoteInGap || !IsVirtualAiDefaultEnabled())
+                if (!IsVirtualAiDefaultEnabled())
                 {
                     HideUi();
-                    MarkOverlayUiDirty();
                     HideRemoteCharacters();
                     return;
                 }
 
                 HideUi();
-                MarkOverlayUiDirty();
-                EnsureRemoteCharacters();
-                UpdateRemoteCharactersLayout();
+                if (isMapPanelVisible)
+                {
+                    HideRemoteCharacters();
+                }
+                else
+                {
+                    EnsureRemoteCharacters();
+                    UpdateRemoteCharactersLayout();
+                }
                 return;
             }
 
@@ -202,16 +203,6 @@ public static partial class OtherPlayersOverlayPatch
             if (UiManager.Instance == null || UiManager.IsShowingLoading || UiManager.IsBlockingInput)
             {
                 HideUi();
-                MarkOverlayUiDirty();
-                HideRemoteCharacters();
-                return;
-            }
-
-            if (hideRemoteInGap)
-            {
-                // 休息房间保持原版观感：不渲染其他玩家 Spine 与名字 Overlay。
-                HideUi();
-                MarkOverlayUiDirty();
                 HideRemoteCharacters();
                 return;
             }
@@ -219,21 +210,25 @@ public static partial class OtherPlayersOverlayPatch
             if (IsBattleOverlayActive())
             {
                 EnsureUi();
-                if (ShouldRefreshOverlayUi())
-                {
-                    RefreshUi();
-                }
+                RefreshUi();
             }
             else
             {
                 HideUi();
-                MarkOverlayUiDirty();
             }
 
             // 渲染远程玩家“角色实体”（战斗场景）
             EnsureVirtualAiDefaultPlayer_NoThrow();
-            EnsureRemoteCharacters();
-            UpdateRemoteCharactersLayout();
+            bool shouldRenderRemoteCharacters = ShouldRenderRemoteCharacters(isMapPanelVisible);
+            if (!shouldRenderRemoteCharacters)
+            {
+                HideRemoteCharacters();
+            }
+            else
+            {
+                EnsureRemoteCharacters();
+                UpdateRemoteCharactersLayout();
+            }
         }
         catch (Exception ex)
         {
@@ -450,90 +445,9 @@ public static partial class OtherPlayersOverlayPatch
         }
     }
 
-    private static bool ShouldRefreshOverlayUi()
-    {
-        float now = Time.unscaledTime;
-        if (_overlayUiDirty)
-        {
-            _overlayUiDirty = false;
-            _nextOverlayRefreshTime = now + OverlayUiRefreshInterval;
-            _lastOverlayRenderSignature = BuildOverlayRenderSignature();
-            return true;
-        }
-
-        if (now < _nextOverlayRefreshTime)
-        {
-            return false;
-        }
-
-        _nextOverlayRefreshTime = now + OverlayUiRefreshInterval;
-        string signature = BuildOverlayRenderSignature();
-        if (string.Equals(signature, _lastOverlayRenderSignature, StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        _lastOverlayRenderSignature = signature;
-        return true;
-    }
-
     private static void MarkOverlayUiDirty()
     {
-        _overlayUiDirty = true;
-        _nextOverlayRefreshTime = 0f;
-        _lastOverlayRenderSignature = null;
-    }
-
-    private static string BuildOverlayRenderSignature()
-    {
-        EnsureVirtualAiDefaultPlayer_NoThrow();
-
-        List<PlayerSummary> players;
-        lock (_syncLock)
-        {
-            players = _players.Values
-                .Where(p => p != null && !string.IsNullOrWhiteSpace(p.PlayerId))
-                .Where(p => string.IsNullOrWhiteSpace(_selfPlayerId) || !string.Equals(p.PlayerId, _selfPlayerId, StringComparison.Ordinal))
-                .OrderByDescending(p => p.IsHost)
-                .ThenByDescending(p => p.IsConnected)
-                .ThenBy(p => p.PlayerName, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-        }
-
-        if (players.Count == 0)
-        {
-            return "<empty>";
-        }
-
-        StringBuilder sb = new StringBuilder(players.Count * 96);
-        for (int i = 0; i < players.Count; i++)
-        {
-            PlayerSummary player = players[i];
-            sb.Append(player.PlayerId ?? "");
-            sb.Append('|').Append(player.PlayerName ?? "");
-            sb.Append('|').Append(player.IsConnected ? '1' : '0');
-            sb.Append('|').Append(player.IsHost ? '1' : '0');
-            sb.Append('|').Append(player.CharacterId ?? "");
-
-            if (TryGetRemoteBattleState(player, out RemoteBattleState battleState))
-            {
-                sb.Append('|').Append(battleState.Health);
-                sb.Append('/').Append(battleState.MaxHealth);
-                sb.Append('|').Append(battleState.Shield);
-                sb.Append('|').Append(battleState.Block);
-                sb.Append('|').Append(battleState.CurrentPower);
-                sb.Append('/').Append(battleState.PowerPerLevel);
-                sb.Append('/').Append(battleState.MaxPowerLevel);
-            }
-            else
-            {
-                sb.Append("|<nobs>");
-            }
-
-            sb.Append(';');
-        }
-
-        return sb.ToString();
+        RefreshVisibleMapPanelIcons_NoThrow();
     }
 
     #endregion
@@ -578,7 +492,7 @@ public static partial class OtherPlayersOverlayPatch
 
         GameObject template = UnityEngine.Object.Instantiate(source);
         template.name = "RemotePlayerAvatarTemplate";
-        template.hideFlags = HideFlags.HideAndDontSave;
+        template.hideFlags = HideFlags.None;
         PrepareAvatarTemplate(template);
         template.SetActive(false);
         _ui.AvatarTemplate = template;
@@ -721,7 +635,7 @@ public static partial class OtherPlayersOverlayPatch
 
         GameObject template = UnityEngine.Object.Instantiate(sourceWidget.gameObject);
         template.name = "RemotePlayerHealthBarTemplate";
-        template.hideFlags = HideFlags.HideAndDontSave;
+        template.hideFlags = HideFlags.None;
         PrepareHealthBarTemplate(template);
         template.SetActive(false);
         _ui.HealthBarTemplate = template;
@@ -1173,13 +1087,10 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
+        ApplyRuntimeEditableAvatarEntryStaticLayout(entry);
         entry.Root.SetActive(true);
 
         bool isConnected = player.IsConnected;
-        bool connectedStateChanged = entry.LastAppliedIsConnected != isConnected;
-        bool avatarCharacterChanged = !string.Equals(entry.LastAppliedCharacterId, player.CharacterId, StringComparison.OrdinalIgnoreCase);
-        string displayName = ResolveDisplayName(player.PlayerId, player.PlayerName);
-        bool displayNameChanged = !string.Equals(entry.LastAppliedDisplayName, displayName, StringComparison.Ordinal);
 
         if (entry.Status != null)
         {
@@ -1189,15 +1100,17 @@ public static partial class OtherPlayersOverlayPatch
 
         if (entry.Avatar != null)
         {
-            if (avatarCharacterChanged || entry.Avatar.sprite == null)
+            Sprite resolvedAvatar = TryGetAvatarSpriteForPlayer(player);
+            if (resolvedAvatar != null)
             {
-                entry.Avatar.sprite = TryGetAvatarSprite(player.CharacterId) ?? GetWhiteSprite();
+                entry.Avatar.sprite = resolvedAvatar;
+            }
+            else if (entry.Avatar.sprite == null)
+            {
+                entry.Avatar.sprite = GetWhiteSprite();
             }
 
-            if (connectedStateChanged)
-            {
-                entry.Avatar.color = isConnected ? Color.white : new Color(0.55f, 0.55f, 0.55f, 0.95f);
-            }
+            entry.Avatar.color = isConnected ? Color.white : new Color(0.55f, 0.55f, 0.55f, 0.95f);
         }
 
         if (entry.PlayerNameLabel != null)
@@ -1211,55 +1124,103 @@ public static partial class OtherPlayersOverlayPatch
                 }
             }
 
-            if (displayNameChanged)
-            {
-                entry.PlayerNameLabel.text = displayName;
-            }
-
-            if (connectedStateChanged)
-            {
-                entry.PlayerNameLabel.color = isConnected ? Color.white : new Color(0.72f, 0.72f, 0.72f, 0.96f);
-            }
+            entry.PlayerNameLabel.text = ResolveDisplayName(player.PlayerId, player.PlayerName);
+            entry.PlayerNameLabel.color = isConnected ? Color.white : new Color(0.72f, 0.72f, 0.72f, 0.96f);
         }
-
-        entry.LastAppliedCharacterId = player.CharacterId;
-        entry.LastAppliedDisplayName = displayName;
-        entry.LastAppliedIsConnected = isConnected;
 
         LogAvatarEntryDebug(entry, player, "ApplyAvatarEntry");
 
         ApplyBattleState(entry, player, isConnected);
     }
 
+    private static Sprite TryGetAvatarSpriteForPlayer(PlayerSummary player)
+    {
+        if (player == null)
+        {
+            return null;
+        }
+
+        List<string> candidates = new List<string>(4);
+        AddPlayerAvatarCandidate(candidates, player.CharacterId);
+
+        try
+        {
+            INetworkPlayer networkPlayer = TryGetNetworkManager()?.GetPlayer(player.PlayerId);
+            AddPlayerAvatarCandidate(candidates, networkPlayer?.chara);
+        }
+        catch
+        {
+            // ignored
+        }
+
+        if (!string.IsNullOrWhiteSpace(player.PlayerId) &&
+            _remoteCharacters.TryGetValue(player.PlayerId, out RemoteCharacterView remoteView))
+        {
+            AddPlayerAvatarCandidate(candidates, remoteView?.CharacterId);
+        }
+
+        AddPlayerAvatarCandidate(candidates, GetFallbackCharacterId());
+
+        foreach (string candidate in candidates)
+        {
+            Sprite sprite = TryGetAvatarSprite(candidate);
+            if (sprite != null)
+            {
+                return sprite;
+            }
+        }
+
+        return null;
+    }
+
+    private static void AddPlayerAvatarCandidate(List<string> candidates, string value)
+    {
+        if (candidates == null || string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        string normalized = value.Trim().Trim('"');
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return;
+        }
+
+        if (candidates.Any(existing => string.Equals(existing, normalized, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        candidates.Add(normalized);
+    }
+
     private static void ApplyBattleState(AvatarEntryUi entry, PlayerSummary player, bool isConnected)
     {
         bool hasBattleState = TryGetRemoteBattleState(player, out RemoteBattleState battleState);
 
+        if (entry.VisualGroup != null)
+        {
+            entry.VisualGroup.alpha = 1f;
+        }
+
+        if (entry.HealthGroup != null)
+        {
+            entry.HealthGroup.alpha = 1f;
+        }
+
         if (hasBattleState)
         {
-            if (entry.LastAppliedHasBattleState != true && entry.HealthRoot != null)
-            {
-                entry.HealthRoot.SetActive(true);
-            }
-
             ApplyPowerCharge(entry, battleState, isConnected);
             ApplyHealthBar(entry, battleState);
-            entry.LastAppliedHasBattleState = true;
             return;
         }
 
-        if (entry.LastAppliedHasBattleState != false)
+        if (entry.HealthRoot != null)
         {
-            if (entry.HealthRoot != null)
-            {
-                entry.HealthRoot.SetActive(false);
-            }
-
-            ClearPowerCharge(entry);
-            entry.HasInitializedHealthBar = false;
+            entry.HealthRoot.SetActive(false);
         }
 
-        entry.LastAppliedHasBattleState = false;
+        ClearPowerCharge(entry);
     }
 
     private static void ApplyPowerCharge(AvatarEntryUi entry, RemoteBattleState battleState, bool isConnected)
@@ -1374,6 +1335,11 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
+        if (entry.HealthRoot != null && !entry.HealthRoot.activeSelf)
+        {
+            entry.HealthRoot.SetActive(true);
+        }
+
         int maxHealth = Mathf.Max(1, battleState.MaxHealth);
         int health = Mathf.Clamp(battleState.Health, 0, maxHealth);
         int shield = Mathf.Max(0, battleState.Shield);
@@ -1418,6 +1384,8 @@ public static partial class OtherPlayersOverlayPatch
                 rect.localScale = Vector3.one;
                 rect.anchoredPosition = new Vector2(0f, -i * (AvatarEntryBaseHeight + AvatarEntrySpacing));
             });
+
+            ApplyRuntimeEditableAvatarEntryStaticLayout(entry);
         }
     }
 
@@ -1640,11 +1608,58 @@ public static partial class OtherPlayersOverlayPatch
         try
         {
             GameDirector director = Singleton<GameDirector>.Instance;
-            return director != null && director.PlayerUnitView != null;
+            return director != null && director.PlayerUnitView != null && !IsMapPanelVisible();
         }
         catch
         {
             return false;
+        }
+    }
+
+    private static bool IsMapPanelVisible()
+    {
+        try
+        {
+            MapPanel mapPanel = UiManager.GetPanel<MapPanel>();
+            return mapPanel != null && mapPanel.IsVisible;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool ShouldRenderRemoteCharacters(bool isMapPanelVisible)
+    {
+        if (isMapPanelVisible)
+        {
+            return false;
+        }
+
+        try
+        {
+            UnitView playerUnitView = Singleton<GameDirector>.Instance?.PlayerUnitView;
+            return playerUnitView != null && !playerUnitView.IsHidden;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void RefreshVisibleMapPanelIcons_NoThrow()
+    {
+        try
+        {
+            MapPanel mapPanel = UiManager.GetPanel<MapPanel>();
+            if (mapPanel != null && mapPanel.IsVisible)
+            {
+                UpdateMapIcons(mapPanel);
+            }
+        }
+        catch
+        {
+            // ignored
         }
     }
 
@@ -2230,10 +2245,6 @@ public static partial class OtherPlayersOverlayPatch
         public int LastBlock { get; set; } = int.MinValue;
         public bool HasInitializedHealthBar { get; set; }
         public string LastDebugSnapshot { get; set; }
-        public string LastAppliedCharacterId { get; set; }
-        public string LastAppliedDisplayName { get; set; }
-        public bool? LastAppliedIsConnected { get; set; }
-        public bool? LastAppliedHasBattleState { get; set; }
     }
 }
     #endregion

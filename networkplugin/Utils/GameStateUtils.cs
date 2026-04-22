@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using LBoL.Core;
 using LBoL.Presentation;
+using LBoL.Presentation.UI;
 using LBoL.Core.Units;
 using NetworkPlugin.Network;
 
@@ -67,9 +68,63 @@ namespace NetworkPlugin.Utils
 
         public static GameRunController GetCurrentGameRun()
         {
-            // LBoL 的 run 挂在 GameMaster 上，这样就不用依赖可能不存在的 Instance 属性。
+            _ = TryGetCurrentGameRun(out GameRunController run, out _);
+            return run;
+        }
+
+        public static bool TryGetCurrentGameRun(out GameRunController run, out string source)
+        {
+            // 优先走 GameMaster 当前局面。
             GameMaster gm = TryGetGameMaster();
-            return gm?.CurrentGameRun;
+            run = gm?.CurrentGameRun;
+            if (run != null)
+            {
+                source = "GameMaster.CurrentGameRun";
+                return true;
+            }
+
+            // 首次打开某些运行时面板时，GameMaster.CurrentGameRun 可能还没稳定可见，
+            // 但原生 UiPanelBase 已经持有 _gameRun 弱引用。此处回退到现有 UI 面板上下文。
+            try
+            {
+                UiPanelBase[] panels = UnityEngine.Object.FindObjectsOfType<UiPanelBase>(true);
+                FieldInfo gameRunField = typeof(UiPanelBase).GetField("_gameRun", BindingFlags.Instance | BindingFlags.NonPublic);
+                if (panels == null || gameRunField == null)
+                {
+                    source = gameRunField == null ? "MissingUiPanelBase._gameRun" : "UiPanelBase.None";
+                    run = null;
+                    return false;
+                }
+
+                foreach (UiPanelBase panel in panels)
+                {
+                    if (panel == null)
+                    {
+                        continue;
+                    }
+
+                    if (gameRunField.GetValue(panel) is WeakReference<GameRunController> weakRef
+                        && weakRef.TryGetTarget(out GameRunController panelRun)
+                        && panelRun != null)
+                    {
+                        run = panelRun;
+                        source = $"UiPanelBase:{panel.GetType().Name}";
+                        return true;
+                    }
+                }
+
+                source = "UiPanelBase.None";
+                run = null;
+                return false;
+            }
+            catch
+            {
+                // 忽略并回退为 null。
+            }
+
+            source = "Unavailable";
+            run = null;
+            return false;
         }
 
         public static bool IsHost()

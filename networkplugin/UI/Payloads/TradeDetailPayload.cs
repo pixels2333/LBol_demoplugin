@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using LBoL.Core.Cards;
+
 namespace NetworkPlugin.UI.Payloads;
 
 public sealed class TradeDetailPayload
@@ -11,4 +14,6 @@ public sealed class TradeDetailPayload
     public string PartnerPlayerName { get; set; }
 
     public int MaxTradeSlots { get; set; } = 5;
+
+    public List<Card> InitialDeckCards { get; set; }
 }

@@ -37,7 +37,8 @@ internal static class GapSharedPanelTemplateFactory
         string title,
         string initialStatus,
         string confirmLabel,
-        string cancelLabel)
+        string cancelLabel,
+        bool createFrame = true)
     {
         CommonButtonWidget confirmTemplate = TryPickButtonTemplate(preferConfirm: true);
         if (confirmTemplate == null)
@@ -77,45 +78,48 @@ internal static class GapSharedPanelTemplateFactory
         blocker.raycastTarget = true;
 
         TextMeshProUGUI frameTextTemplate = textTemplate;
-        try
+        if (createFrame)
         {
-            GameObject framePrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
-            if (framePrefab != null)
+            try
             {
-                GameObject frame = UnityEngine.Object.Instantiate(framePrefab, root.transform, false);
-                frame.name = runtimeRootName + "_Frame";
-                frame.SetActive(true);
-
-                RectTransform frameRect = frame.GetComponent<RectTransform>();
-                if (frameRect != null)
+                GameObject framePrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
+                if (framePrefab != null)
                 {
-                    ConfigureAnchors(frameRect, new Vector2(0.06f, 0.06f), new Vector2(0.94f, 0.94f));
+                    GameObject frame = UnityEngine.Object.Instantiate(framePrefab, root.transform, false);
+                    frame.name = runtimeRootName + "_Frame";
+                    frame.SetActive(true);
+
+                    RectTransform frameRect = frame.GetComponent<RectTransform>();
+                    if (frameRect != null)
+                    {
+                        ConfigureAnchors(frameRect, new Vector2(0.06f, 0.06f), new Vector2(0.94f, 0.94f));
+                    }
+
+                    MessageDialog dialog = frame.GetComponentInChildren<MessageDialog>(true);
+                    if (dialog != null)
+                    {
+                        TextMeshProUGUI mainText = GetDialogField<TextMeshProUGUI>(dialog, "mainText");
+                        TextMeshProUGUI subText = GetDialogField<TextMeshProUGUI>(dialog, "subText");
+                        Button singleConfirm = GetDialogField<Button>(dialog, "singleConfirmButton");
+                        Button dialogConfirm = GetDialogField<Button>(dialog, "confirmButton");
+                        Button dialogCancel = GetDialogField<Button>(dialog, "cancelButton");
+
+                        frameTextTemplate = mainText ?? subText ?? textTemplate;
+
+                        HideDialogText(mainText);
+                        HideDialogText(subText);
+                        HideDialogButton(singleConfirm);
+                        HideDialogButton(dialogConfirm);
+                        HideDialogButton(dialogCancel);
+                        dialog.enabled = false;
+                    }
+
+                    frame.transform.SetAsFirstSibling();
                 }
-
-                MessageDialog dialog = frame.GetComponentInChildren<MessageDialog>(true);
-                if (dialog != null)
-                {
-                    TextMeshProUGUI mainText = GetDialogField<TextMeshProUGUI>(dialog, "mainText");
-                    TextMeshProUGUI subText = GetDialogField<TextMeshProUGUI>(dialog, "subText");
-                    Button singleConfirm = GetDialogField<Button>(dialog, "singleConfirmButton");
-                    Button dialogConfirm = GetDialogField<Button>(dialog, "confirmButton");
-                    Button dialogCancel = GetDialogField<Button>(dialog, "cancelButton");
-
-                    frameTextTemplate = mainText ?? subText ?? textTemplate;
-
-                    HideDialogText(mainText);
-                    HideDialogText(subText);
-                    HideDialogButton(singleConfirm);
-                    HideDialogButton(dialogConfirm);
-                    HideDialogButton(dialogCancel);
-                    dialog.enabled = false;
-                }
-
-                frame.transform.SetAsFirstSibling();
             }
-        }
-        catch
-        {
+            catch
+            {
+            }
         }
 
         TextMeshProUGUI effectiveTextTemplate = frameTextTemplate ?? textTemplate;

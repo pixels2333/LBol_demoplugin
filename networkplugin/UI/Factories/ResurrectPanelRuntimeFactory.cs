@@ -17,7 +17,7 @@ namespace NetworkPlugin.UI.Factories;
 internal static class ResurrectPanelRuntimeFactory
 {
     private const string RuntimeRootName = "NetworkPlugin_ResurrectPanel";
-    private const string RuntimeUiVersion = "2026-04-04-click-heal-no-expand-v16";
+    private const string RuntimeUiVersion = "2026-04-19-runtime-selection-list-v17";
 
     internal static ResurrectPanel GetOrCreate(Transform preferredParent)
     {
@@ -123,65 +123,14 @@ internal static class ResurrectPanelRuntimeFactory
                 ?? frameRect
                 ?? (RectTransform)scaffold.ContentRoot;
 
-            // 在 panelRect 构建 ScrollRect（对齐 TradePanel EnsurePartnerPickerOverlay）
+            RuntimeSelectionPanelFactory.ScrollAreaScaffold scrollArea = RuntimeSelectionPanelFactory.CreateScrollArea(panelRect, subTextRect, "PlayersScroll");
+            if (scrollArea == null)
             {
-                GameObject scrollGo = new GameObject("PlayersScroll");
-                scrollGo.transform.SetParent(panelRect, false);
-                scrollGo.transform.SetAsLastSibling();
-                RectTransform scrollRt = scrollGo.AddComponent<RectTransform>();
-                if (subTextRect != null)
-                {
-                    CopyRectTransform(scrollRt, subTextRect);
-                }
-                else
-                {
-                    // 与 TradePanel EnsurePartnerPickerOverlay fallback 锚点一致
-                    GapSharedPanelTemplateFactory.ConfigureAnchors(scrollRt, new Vector2(0.06f, 0.20f), new Vector2(0.94f, 0.78f));
-                }
-
-                Image scrollImg = scrollGo.AddComponent<Image>();
-                scrollImg.color = new Color(0f, 0f, 0f, 0f);
-                scrollImg.raycastTarget = true;
-
-                ScrollRect scrollRect = scrollGo.AddComponent<ScrollRect>();
-                scrollRect.horizontal = false;
-                scrollRect.vertical = true;
-                scrollRect.movementType = ScrollRect.MovementType.Clamped;
-
-                GameObject viewport = new GameObject("Viewport");
-                viewport.transform.SetParent(scrollGo.transform, false);
-                RectTransform viewportRt = viewport.AddComponent<RectTransform>();
-                viewportRt.anchorMin = Vector2.zero;
-                viewportRt.anchorMax = Vector2.one;
-                viewportRt.offsetMin = Vector2.zero;
-                viewportRt.offsetMax = Vector2.zero;
-                viewport.AddComponent<RectMask2D>();
-
-                GameObject contentGo = new GameObject("Content");
-                contentGo.transform.SetParent(viewport.transform, false);
-                RectTransform contentRt = contentGo.AddComponent<RectTransform>();
-                contentRt.anchorMin = new Vector2(0f, 1f);
-                contentRt.anchorMax = new Vector2(1f, 1f);
-                contentRt.pivot = new Vector2(0.5f, 1f);
-                contentRt.sizeDelta = Vector2.zero;
-
-                VerticalLayoutGroup vlg = contentGo.AddComponent<VerticalLayoutGroup>();
-                vlg.childAlignment = TextAnchor.UpperCenter;
-                vlg.spacing = 8f;
-                vlg.padding = new RectOffset(10, 10, 10, 10);
-                vlg.childControlWidth = true;
-                vlg.childControlHeight = false;
-                vlg.childForceExpandWidth = true;
-                vlg.childForceExpandHeight = false;
-
-                ContentSizeFitter csf = contentGo.AddComponent<ContentSizeFitter>();
-                csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-                scrollRect.viewport = viewportRt;
-                scrollRect.content = contentRt;
-
-                listContent = contentRt;
+                Plugin.Logger?.LogWarning("[ResurrectPanelRuntimeFactory] 无法创建共享治疗列表滚动区域。");
+                return null;
             }
+
+            listContent = scrollArea.Content;
 
             if (frameCancel != null)
             {

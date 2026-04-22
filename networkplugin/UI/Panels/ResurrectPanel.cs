@@ -6,6 +6,7 @@ using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.UI.Widgets;
 using Microsoft.Extensions.DependencyInjection;
+using NetworkPlugin.Configuration;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
@@ -204,6 +205,8 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 	/// <param name="payload">面板负载数据，包含目标玩家信息。</param>
 	protected override void OnShowing(ResurrectPayload payload)
 	{
+		EnsurePopupTopmost();
+
 		// 保存负载数据
 		_payload = payload;
 		// 获取是否允许取消
@@ -261,7 +264,8 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 	/// </summary>
 	protected override void OnShown()
 	{
-		// 面板显示完成后的处理
+		// 面板显示完成后再次置顶，避免与 GapOptionsPanel/OptionWidget sibling 顺序竞争。
+		EnsurePopupTopmost();
 	}
 
 	/// <summary>
@@ -287,7 +291,6 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		ResetResurrectData();
 		// 清空负载数据
 		_payload = null;
-		DidCompleteTreatment = false;
 	}
 	#endregion
 
@@ -464,6 +467,13 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		// 设置当前选中的玩家
 		_selectedPlayer = player;
 
+		if (IsLocalDebugResurrectAllowed() && IsVirtualAiDebugPlayerId(player.PlayerId))
+		{
+			_pendingRequestId = Guid.NewGuid().ToString("N");
+			OnResurrectResult(_pendingRequestId, true, null);
+			return;
+		}
+
 		// 点击玩家即治疗，无需展开详情与二次确认。
 		OnResurrectPlayer();
 	}
@@ -617,6 +627,30 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		}
 
 		return Math.Max(1, Mathf.CeilToInt(maxHp * 0.2f));
+	}
+
+	private static bool IsLocalDebugResurrectAllowed()
+	{
+		var cfg = ModService.ServiceProvider?.GetService<ConfigManager>();
+		return cfg?.DebugVirtualPlayerAiDefault?.Value == true;
+	}
+
+	private static bool IsVirtualAiDebugPlayerId(string playerId)
+	{
+		return string.Equals(playerId, "aidefault", StringComparison.Ordinal)
+			|| string.Equals(playerId, "aidefault2", StringComparison.Ordinal);
+	}
+
+	private void EnsurePopupTopmost()
+	{
+		try
+		{
+			transform.SetAsLastSibling();
+		}
+		catch
+		{
+			// ignored
+		}
 	}
 	#endregion
 

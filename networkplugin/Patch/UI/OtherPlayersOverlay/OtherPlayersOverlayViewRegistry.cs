@@ -11,6 +11,7 @@ using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.UI.Widgets;
 using LBoL.Presentation.Units;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Utils;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -21,8 +22,16 @@ public static partial class OtherPlayersOverlayPatch
 {
     #region 远端视图注册与地图图标
 
+    private static ulong _lastMapIconLayoutFingerprint;
+
     private static void EnsureRemoteCharacters()
     {
+        if (!ShouldRenderRemoteCharacters(IsMapPanelVisible()))
+        {
+            HideRemoteCharacters();
+            return;
+        }
+
         if (Singleton<GameDirector>.Instance == null || Singleton<GameDirector>.Instance.PlayerUnitView == null)
         {
             HideRemoteCharacters();
@@ -81,6 +90,11 @@ public static partial class OtherPlayersOverlayPatch
 
     private static void UpdateRemoteCharactersLayout()
     {
+        if (!ShouldRenderRemoteCharacters(IsMapPanelVisible()))
+        {
+            return;
+        }
+
         if (_remoteCharactersRoot == null || !_remoteCharactersRoot.gameObject.activeInHierarchy)
         {
             return;
@@ -129,6 +143,11 @@ public static partial class OtherPlayersOverlayPatch
 
     private static void TickRemoteCharacters()
     {
+        if (!ShouldRenderRemoteCharacters(IsMapPanelVisible()))
+        {
+            return;
+        }
+
         if (_remoteCharacters.Count == 0)
         {
             return;
@@ -217,7 +236,6 @@ public static partial class OtherPlayersOverlayPatch
         {
         }
     }
-
     private static void DisableRemoteCharacterInteractions(UnitView view)
     {
         if (view == null)
@@ -246,6 +264,11 @@ public static partial class OtherPlayersOverlayPatch
 
     internal static IEnumerable<UnitView> SnapshotRemoteCharacterUnitViews()
     {
+        if (!ShouldRenderRemoteCharacters(IsMapPanelVisible()))
+        {
+            return Array.Empty<UnitView>();
+        }
+
         if (_remoteCharacters.Count == 0)
         {
             return Array.Empty<UnitView>();
@@ -266,6 +289,11 @@ public static partial class OtherPlayersOverlayPatch
 
     internal static void SetRemoteCharacterTargetingEnabled(bool enabled)
     {
+        if (!ShouldRenderRemoteCharacters(IsMapPanelVisible()))
+        {
+            return;
+        }
+
         if (_remoteCharacters.Count == 0)
         {
             return;
@@ -286,6 +314,11 @@ public static partial class OtherPlayersOverlayPatch
     {
         playerId = null;
         playerName = null;
+
+        if (!ShouldRenderRemoteCharacters(IsMapPanelVisible()))
+        {
+            return false;
+        }
 
         try
         {
@@ -338,6 +371,11 @@ public static partial class OtherPlayersOverlayPatch
     {
         view = null;
         if (string.IsNullOrWhiteSpace(playerId))
+        {
+            return false;
+        }
+
+        if (!ShouldRenderRemoteCharacters(IsMapPanelVisible()))
         {
             return false;
         }
@@ -502,8 +540,33 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
-        CleanupMapIconRoots();
+        RectTransform overlayRoot = EnsureMapIconsOverlayRoot(mapPanel);
+        if (overlayRoot == null)
+        {
+            return;
+        }
+
+        // 尊重 Runtime Editor 手动 Active 开关：不在每帧强制开启。
+        if (!overlayRoot.gameObject.activeSelf)
+        {
+            return;
+        }
+
+        overlayRoot.SetAsLastSibling();
         _defaultFont ??= FindDefaultFont(mapPanel.transform);
+
+        if (_mapNodeIconsRoots.Count > 0)
+        {
+            foreach (RectTransform root in _mapNodeIconsRoots.Values)
+            {
+                if (root != null)
+                {
+                    UnityEngine.Object.Destroy(root.gameObject);
+                }
+            }
+
+            _mapNodeIconsRoots.Clear();
+        }
 
         List<PlayerSummary> players;
         lock (_syncLock)
@@ -522,6 +585,8 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
+        _lastMapIconLayoutFingerprint = 0;
+
         HashSet<string> alive = new HashSet<string>();
         foreach (var group in players.GroupBy(p => (X: p.LocationX, Y: p.LocationY)))
         {
@@ -539,34 +604,36 @@ public static partial class OtherPlayersOverlayPatch
                 continue;
             }
 
-            RectTransform widgetIconsRoot = EnsureMapIconsRoot(widget);
-            if (widgetIconsRoot == null)
-            {
-                continue;
-            }
+            Vector2 nodeAnchoredPosition = GetMapNodeAnchoredPosition(widget);
 
-            widgetIconsRoot.gameObject.SetActive(true);
-            widgetIconsRoot.SetAsLastSibling();
+            List<PlayerSummary> orderedPlayers = [.. group
+                .OrderByDescending(p => p.IsHost)
+                .ThenBy(p => p.PlayerName, StringComparer.OrdinalIgnoreCase)];
 
-            int i = 0;
-            foreach (PlayerSummary p in group.OrderByDescending(p => p.IsHost).ThenBy(p => p.PlayerName, StringComparer.OrdinalIgnoreCase))
+            const float baseY = 0f;
+            const float horizontalSpacing = 100f;
+            float startX = -((orderedPlayers.Count - 1) * horizontalSpacing * 0.5f);
+
+            for (int i = 0; i < orderedPlayers.Count; i++)
             {
+                PlayerSummary p = orderedPlayers[i];
                 alive.Add(p.PlayerId);
 
                 MapIconUi icon = EnsureMapIcon(p);
-                icon.Root.SetActive(true);
-                if (icon.Root.transform.parent != widgetIconsRoot)
+                if (icon.Root.transform.parent != overlayRoot)
                 {
-                    icon.Root.transform.SetParent(widgetIconsRoot, false);
+                    icon.Root.transform.SetParent(overlayRoot, false);
                 }
 
                 icon.Root.transform.SetAsLastSibling();
+                icon.Root.hideFlags = HideFlags.None;
+                icon.RootRect.anchorMin = new Vector2(0.5f, 0.5f);
+                icon.RootRect.anchorMax = new Vector2(0.5f, 0.5f);
+                icon.RootRect.pivot = new Vector2(0.5f, 0.5f);
 
-                icon.RootRect.localPosition = new Vector3(0f, 70f + i * 18f, 0f);
+                icon.RootRect.anchoredPosition = nodeAnchoredPosition + new Vector2(startX + i * horizontalSpacing, baseY);
                 icon.Label.text = ResolveDisplayName(p.PlayerId, p.PlayerName);
                 icon.Image.color = p.IsHost ? new Color(1f, 0.95f, 0.4f, 1f) : Color.white;
-
-                i++;
             }
         }
 
@@ -578,37 +645,98 @@ public static partial class OtherPlayersOverlayPatch
             }
         }
 
-        foreach (var kv in _mapNodeIconsRoots)
-        {
-            RectTransform root = kv.Value;
-            if (root == null)
-            {
-                continue;
-            }
-
-            bool hasActiveChild = false;
-            for (int i = 0; i < root.childCount; i++)
-            {
-                if (root.GetChild(i)?.gameObject.activeSelf == true)
-                {
-                    hasActiveChild = true;
-                    break;
-                }
-            }
-
-            root.gameObject.SetActive(hasActiveChild);
-        }
+        overlayRoot.SetAsLastSibling();
     }
 
-    private static RectTransform EnsureMapIconsRoot(MapNodeWidget widget)
+    private static Vector2 GetMapNodeAnchoredPosition(MapNodeWidget widget)
     {
         if (widget == null)
+        {
+            return Vector2.zero;
+        }
+
+        RectTransform rect = widget.transform as RectTransform;
+        if (rect != null)
+        {
+            return rect.anchoredPosition;
+        }
+
+        Vector3 local = widget.transform.localPosition;
+        return new Vector2(local.x, local.y);
+    }
+
+    private static RectTransform EnsureMapIconsOverlayRoot(MapPanel mapPanel)
+    {
+        if (mapPanel == null)
         {
             return null;
         }
 
-        if (_mapNodeIconsRoots.TryGetValue(widget, out RectTransform existing) && existing != null && existing.transform.parent == widget.transform)
+        RectTransform nodeHolder = TryGetMapNodeHolder(mapPanel);
+        if (nodeHolder == null)
         {
+            return null;
+        }
+
+        if (_mapIconsRoot != null && _mapIconsRoot.transform.parent == nodeHolder)
+        {
+            _mapIconsRoot.hideFlags = HideFlags.None;
+            _mapIconsRoot.SetAsLastSibling();
+            return _mapIconsRoot;
+        }
+
+        if (_mapIconsRoot != null)
+        {
+            UnityEngine.Object.Destroy(_mapIconsRoot.gameObject);
+            _mapIconsRoot = null;
+        }
+
+        GameObject root = new("NetworkPlugin_RemotePlayerIconsOverlay");
+        root.hideFlags = HideFlags.None;
+        root.transform.SetParent(nodeHolder, false);
+
+        RectTransform rt = root.AddComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0f, 0f);
+        rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+        rt.localScale = Vector3.one;
+        rt.localEulerAngles = Vector3.zero;
+        rt.SetAsLastSibling();
+
+        _mapIconsRoot = rt;
+        return rt;
+    }
+
+    private static RectTransform TryGetMapNodeHolder(MapPanel mapPanel)
+    {
+        if (mapPanel == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return Traverse.Create(mapPanel).Field("nodeHolder").GetValue<RectTransform>();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static RectTransform EnsureMapIconsRoot(MapNodeWidget widget, RectTransform overlayRoot)
+    {
+        if (widget == null || overlayRoot == null)
+        {
+            return null;
+        }
+
+        if (_mapNodeIconsRoots.TryGetValue(widget, out RectTransform existing) && existing != null && existing.transform.parent == overlayRoot)
+        {
+            existing.localPosition = widget.transform.localPosition;
+            existing.SetAsLastSibling();
             return existing;
         }
 
@@ -618,13 +746,14 @@ public static partial class OtherPlayersOverlayPatch
         }
 
         GameObject root = new("NetworkPlugin_RemotePlayerIcons");
-        root.transform.SetParent(widget.transform, false);
+        root.hideFlags = HideFlags.None;
+        root.transform.SetParent(overlayRoot, false);
 
         RectTransform rt = root.AddComponent<RectTransform>();
         rt.anchorMin = new Vector2(0.5f, 0.5f);
         rt.anchorMax = new Vector2(0.5f, 0.5f);
         rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = Vector2.zero;
+        rt.localPosition = widget.transform.localPosition;
         rt.sizeDelta = new Vector2(140f, 140f);
         rt.SetAsLastSibling();
         _mapNodeIconsRoots[widget] = rt;
@@ -643,8 +772,9 @@ public static partial class OtherPlayersOverlayPatch
         {
             MapNodeWidget widget = kv.Key;
             RectTransform root = kv.Value;
-            if (widget != null && root != null && root.transform.parent == widget.transform)
+            if (widget != null && root != null && _mapIconsRoot != null && root.transform.parent == _mapIconsRoot)
             {
+                root.localPosition = widget.transform.localPosition;
                 continue;
             }
 
@@ -679,10 +809,11 @@ public static partial class OtherPlayersOverlayPatch
         }
 
         GameObject root = new($"RemoteIcon_{player.PlayerId}");
-    root.transform.SetParent(null, false);
+        root.hideFlags = HideFlags.None;
+        root.transform.SetParent(null, false);
 
         RectTransform rootRect = root.AddComponent<RectTransform>();
-        rootRect.sizeDelta = new Vector2(48f, 64f);
+        rootRect.sizeDelta = new Vector2(120f, 160f);
 
         GameObject avatarGo = new("Avatar");
         avatarGo.transform.SetParent(root.transform, false);
@@ -692,7 +823,7 @@ public static partial class OtherPlayersOverlayPatch
         avatarRect.anchorMax = new Vector2(1f, 1f);
         avatarRect.pivot = new Vector2(0.5f, 1f);
         avatarRect.anchoredPosition = Vector2.zero;
-        avatarRect.sizeDelta = new Vector2(0f, 48f);
+        avatarRect.sizeDelta = new Vector2(0f, 120f);
 
         Image avatar = avatarGo.AddComponent<Image>();
         avatar.raycastTarget = false;
@@ -706,7 +837,7 @@ public static partial class OtherPlayersOverlayPatch
         labelRect.anchorMax = new Vector2(1f, 0f);
         labelRect.pivot = new Vector2(0.5f, 0f);
         labelRect.anchoredPosition = Vector2.zero;
-        labelRect.sizeDelta = new Vector2(0f, 16f);
+        labelRect.sizeDelta = new Vector2(0f, 18f);
 
         MapIconUi icon = new MapIconUi
         {
@@ -735,24 +866,121 @@ public static partial class OtherPlayersOverlayPatch
             return null;
         }
 
-        if (_avatarCache.TryGetValue(characterId, out Sprite cached) && cached != null)
+        string normalized = characterId.Trim().Trim('"');
+        if (string.IsNullOrWhiteSpace(normalized))
         {
-            return cached;
+            return null;
+        }
+
+        List<string> candidates = BuildAvatarCharacterCandidates(normalized);
+        foreach (string candidate in candidates)
+        {
+            if (_avatarCache.TryGetValue(candidate, out Sprite cached) && cached != null)
+            {
+                return cached;
+            }
+
+            Sprite sprite = TryLoadAvatarSpriteNoThrow(candidate);
+            if (sprite == null)
+            {
+                continue;
+            }
+
+            foreach (string alias in candidates)
+            {
+                _avatarCache[alias] = sprite;
+            }
+
+            return sprite;
+        }
+
+        return null;
+    }
+
+    private static List<string> BuildAvatarCharacterCandidates(string characterId)
+    {
+        List<string> candidates = new List<string>(6);
+        AddAvatarCandidate(candidates, characterId);
+
+        int slash = Math.Max(characterId.LastIndexOf('/'), characterId.LastIndexOf('\\'));
+        if (slash >= 0 && slash + 1 < characterId.Length)
+        {
+            AddAvatarCandidate(candidates, characterId.Substring(slash + 1));
+        }
+
+        if (characterId.EndsWith("_Avatar", StringComparison.OrdinalIgnoreCase))
+        {
+            AddAvatarCandidate(candidates, characterId.Substring(0, characterId.Length - "_Avatar".Length));
+        }
+
+        if (TryResolveCharacterAliasViaLibrary(characterId, out string modelName, out string unitId))
+        {
+            AddAvatarCandidate(candidates, modelName);
+            AddAvatarCandidate(candidates, unitId);
+        }
+
+        return candidates;
+    }
+
+    private static bool TryResolveCharacterAliasViaLibrary(string characterId, out string modelName, out string unitId)
+    {
+        modelName = null;
+        unitId = null;
+
+        try
+        {
+            PlayerUnit unit = Library.TryCreatePlayerUnit(characterId);
+            if (unit == null)
+            {
+                return false;
+            }
+
+            modelName = unit.ModelName;
+            unitId = unit.Id;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static Sprite TryLoadAvatarSpriteNoThrow(string characterId)
+    {
+        if (string.IsNullOrWhiteSpace(characterId))
+        {
+            return null;
         }
 
         try
         {
-            Sprite sprite = ResourcesHelper.LoadCharacterAvatarSprite(characterId);
-            if (sprite != null)
-            {
-                _avatarCache[characterId] = sprite;
-            }
-            return sprite;
+            return ResourcesHelper.LoadCharacterAvatarSprite(characterId);
         }
         catch
         {
             return null;
         }
+    }
+
+    private static void AddAvatarCandidate(List<string> candidates, string characterId)
+    {
+        if (candidates == null || string.IsNullOrWhiteSpace(characterId))
+        {
+            return;
+        }
+
+        string normalized = characterId.Trim().Trim('"');
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return;
+        }
+
+        if (candidates.Any(existing => string.Equals(existing, normalized, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        candidates.Add(normalized);
     }
 
     private static void HideMapIcon(string playerId)
@@ -786,7 +1014,7 @@ public static partial class OtherPlayersOverlayPatch
             }
         }
 
-        _mapIconsRoot?.gameObject.SetActive(false);
+        // 保留总根节点 Active 状态，避免覆盖 Runtime Editor 的手动开关。
     }
 
     private static void ClearMapIcons()
@@ -815,6 +1043,83 @@ public static partial class OtherPlayersOverlayPatch
         }
 
         _mapNodeIconsRoots.Clear();
+    }
+
+    private static ulong ComputeMapIconLayoutFingerprint(IReadOnlyList<PlayerSummary> players)
+    {
+        if (players == null || players.Count == 0)
+        {
+            return 0;
+        }
+
+        ulong xor = 0;
+        ulong sum = 0;
+
+        for (int i = 0; i < players.Count; i++)
+        {
+            PlayerSummary player = players[i];
+            string signature = string.Join("|",
+                player.PlayerId ?? string.Empty,
+                player.PlayerName ?? string.Empty,
+                player.IsHost ? "1" : "0",
+                player.LocationX.ToString(),
+                player.LocationY.ToString(),
+                player.CharacterId ?? string.Empty);
+
+            ulong playerFingerprint = NetLogHelper.ComputeFnv1a64(signature);
+            xor ^= playerFingerprint;
+            sum += playerFingerprint;
+        }
+
+        return xor ^ sum ^ (ulong)players.Count;
+    }
+
+    private static bool AreMapIconRootsStable(MapNodeWidget[,] widgets, IReadOnlyList<PlayerSummary> players)
+    {
+        if (widgets == null || players == null || _mapIconsRoot == null)
+        {
+            return false;
+        }
+
+        int maxX = widgets.GetUpperBound(0);
+        int maxY = widgets.GetUpperBound(1);
+
+        for (int i = 0; i < players.Count; i++)
+        {
+            PlayerSummary player = players[i];
+            if (string.IsNullOrWhiteSpace(player.PlayerId) || player.LocationX < 0 || player.LocationY < 0)
+            {
+                return false;
+            }
+
+            if (player.LocationX < widgets.GetLowerBound(0) || player.LocationX > maxX || player.LocationY < widgets.GetLowerBound(1) || player.LocationY > maxY)
+            {
+                return false;
+            }
+
+            MapNodeWidget widget = widgets[player.LocationX, player.LocationY];
+            if (widget == null || !_mapNodeIconsRoots.TryGetValue(widget, out RectTransform widgetRoot) || widgetRoot == null || widgetRoot.transform.parent != _mapIconsRoot || !widgetRoot.gameObject.activeSelf)
+            {
+                return false;
+            }
+
+            if ((widgetRoot.localPosition - widget.transform.localPosition).sqrMagnitude > 0.01f)
+            {
+                return false;
+            }
+
+            if (!_mapIcons.TryGetValue(player.PlayerId, out MapIconUi icon) || icon?.Root == null || icon.Root.transform.parent != widgetRoot || !icon.Root.activeSelf)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static void ResetMapIconLayoutCache()
+    {
+        _lastMapIconLayoutFingerprint = 0;
     }
 
     private sealed class RemoteCharacterView

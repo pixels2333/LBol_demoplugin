@@ -18,6 +18,7 @@ using NetworkPlugin.UI.Factories;
 using NetworkPlugin.UI.Panels;
 using NetworkPlugin.UI.Payloads;
 using NetworkPlugin.UI.Rules;
+using NetworkPlugin.Utils;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -31,7 +32,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
     private const int MaxMoneyOffer = 99999;
 
     private static GameRunController CurrentGameRun
-        => Singleton<GameMaster>.Instance?.CurrentGameRun;
+        => GameStateUtils.GetCurrentGameRun();
 
     private CanvasGroup _canvasGroup;
 
@@ -83,6 +84,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
     private long _lastReturnToTradePanelTimestamp;
     private long _lastPreparingHandledTimestamp;
     private TradeSyncPatch.TradeStatus? _lastStatus;
+    private readonly List<Card> _initialDeckCards = new List<Card>();
 
     // 本地报价状态
     private readonly List<Card> _localCards = new List<Card>();
@@ -139,6 +141,16 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         _completionApplied = false;
         _lastPreparingHandledTimestamp = 0;
         _lastStatus = null;
+        _initialDeckCards.Clear();
+        if (payload?.InitialDeckCards != null)
+        {
+            _initialDeckCards.AddRange(payload.InitialDeckCards.Where(c => c != null));
+        }
+
+        bool hasRun = GameStateUtils.TryGetCurrentGameRun(out GameRunController currentRun, out string runSource);
+        int currentDeckCount = currentRun?.BaseDeck?.Count ?? 0;
+        Plugin.Logger?.LogInfo(
+            $"[TradeDetailDialog] OnShowing: tradeId={_tradeId ?? payload?.TradeId ?? "<null>"}, self={payload?.SelfPlayerId ?? "<null>"}, partner={payload?.PartnerPlayerId ?? "<null>"}, partnerName={payload?.PartnerPlayerName ?? "<null>"}, maxSlots={payload?.MaxTradeSlots ?? 0}, payloadDeckCount={payload?.InitialDeckCards?.Count ?? 0}, cachedInitialDeckCount={_initialDeckCards.Count}, hasRun={hasRun}, runSource={runSource ?? "<null>"}, currentDeckCount={currentDeckCount}");
 
         if (string.IsNullOrWhiteSpace(_selfId) || string.IsNullOrWhiteSpace(_partnerId))
         {
@@ -1065,11 +1077,31 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             return;
         }
 
+        bool hasRun = GameStateUtils.TryGetCurrentGameRun(out GameRunController currentRun, out string runSource);
+        int currentDeckCount = currentRun?.BaseDeck?.Count ?? 0;
+        Plugin.Logger?.LogInfo(
+            $"[TradeDetailDialog] ShowCardPicker: tradeId={_tradeId ?? "<null>"}, localCards={_localCards.Count}, initialDeckCount={_initialDeckCards.Count}, hasRun={hasRun}, runSource={runSource ?? "<null>"}, currentDeckCount={currentDeckCount}, pickerExists={(_cardPickerRoot != null)}");
+
         AudioManager.Card(3);
         EnsureCardPicker();
         RebuildCardPicker();
         _cardPickerRoot.SetActive(true);
         _canvasGroup.interactable = false;
+        StartCoroutine(CoRefreshCardPickerNextFrame());
+    }
+
+    private System.Collections.IEnumerator CoRefreshCardPickerNextFrame()
+    {
+        yield return null;
+
+        if (_cardPickerRoot == null || !_cardPickerRoot.activeSelf)
+        {
+            Plugin.Logger?.LogInfo($"[TradeDetailDialog] CoRefreshCardPickerNextFrame skipped: tradeId={_tradeId ?? "<null>"}, pickerExists={(_cardPickerRoot != null)}, pickerActive={(_cardPickerRoot != null && _cardPickerRoot.activeSelf)}");
+            yield break;
+        }
+
+        Plugin.Logger?.LogInfo($"[TradeDetailDialog] CoRefreshCardPickerNextFrame rebuilding: tradeId={_tradeId ?? "<null>"}");
+        RebuildCardPicker();
     }
 
     private void ShowExhibitPicker()
@@ -1094,6 +1126,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         }
 
         _cardPickerRoot = CreateFullOverlay("CardPicker", "选择要交易的卡牌");
+        Plugin.Logger?.LogInfo($"[TradeDetailDialog] EnsureCardPicker created: tradeId={_tradeId ?? "<null>"}, pickerExists={(_cardPickerRoot != null)}");
     }
 
     private void EnsureExhibitPicker()
@@ -1372,12 +1405,14 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
     {
         if (_cardPickerRoot == null)
         {
+            Plugin.Logger?.LogWarning($"[TradeDetailDialog] RebuildCardPicker aborted: picker root is null, tradeId={_tradeId ?? "<null>"}");
             return;
         }
 
         var tag = _cardPickerRoot.GetComponentInChildren<PickerListTag>(true);
         if (tag == null)
         {
+            Plugin.Logger?.LogWarning($"[TradeDetailDialog] RebuildCardPicker aborted: PickerListTag missing, tradeId={_tradeId ?? "<null>"}");
             return;
         }
 
@@ -1399,13 +1434,29 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             Destroy(c.gameObject);
         }
 
-        List<Card> deck = CurrentGameRun?.BaseDeck?
+        bool hasRun = GameStateUtils.TryGetCurrentGameRun(out GameRunController currentRun, out string runSource);
+        List<Card> deck = currentRun?.BaseDeck?
             .Where(c => c != null)
             .OrderBy(c => c.Name)
-            .ToList()
-            ?? new List<Card>();
+            .ToList();
+
+        string deckSource = "CurrentGameRun";
+
+        if (deck == null || deck.Count == 0)
+        {
+            deck = _initialDeckCards
+                .Where(c => c != null)
+                .OrderBy(c => c.Name)
+                .ToList();
+            deckSource = "InitialDeckCards";
+        }
+
+        deck ??= new List<Card>();
 
         HashSet<int> selected = new HashSet<int>(_localCards.Where(c => c != null).Select(c => c.InstanceId));
+        int candidateCount = deck.Count(card => card != null && !selected.Contains(card.InstanceId));
+        Plugin.Logger?.LogInfo(
+            $"[TradeDetailDialog] RebuildCardPicker: tradeId={_tradeId ?? "<null>"}, hasRun={hasRun}, runSource={runSource ?? "<null>"}, currentDeckCount={(currentRun?.BaseDeck?.Count ?? 0)}, initialDeckCount={_initialDeckCards.Count}, selectedCount={selected.Count}, chosenDeckSource={deckSource}, chosenDeckCount={deck.Count}, candidateCount={candidateCount}, cardCellTemplate={(_cardCellTemplate != null)}, pickerActive={(_cardPickerRoot != null && _cardPickerRoot.activeSelf)}");
 
         foreach (var card in deck)
         {
@@ -1454,6 +1505,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
         if (deck.Count == 0)
         {
+            Plugin.Logger?.LogWarning($"[TradeDetailDialog] RebuildCardPicker empty deck: tradeId={_tradeId ?? "<null>"}, hasRun={hasRun}, runSource={runSource ?? "<null>"}, initialDeckCount={_initialDeckCards.Count}");
             var empty = CloneText(container as RectTransform, "Empty", 20, TextAlignmentOptions.Center);
             empty.text = "没有可交易的卡牌";
         }

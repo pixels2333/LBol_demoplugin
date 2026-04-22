@@ -111,7 +111,8 @@ internal static class TradePanelRuntimeFactory
                 "交易",
                 "请选择交易对象",
                 "确认交易",
-                "取消");
+                "取消",
+                createFrame: false);
             if (scaffold == null)
             {
                 TradeUiMessages.ShowTopMessage("交易界面不可用：未找到可复用的按钮模板。请先进入游戏内 UI（例如商店/间隙）。");

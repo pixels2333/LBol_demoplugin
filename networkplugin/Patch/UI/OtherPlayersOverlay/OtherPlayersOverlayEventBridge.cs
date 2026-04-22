@@ -127,7 +127,7 @@ public static partial class OtherPlayersOverlayPatch
                 PlayerName = GetString(root, "PlayerName") ?? playerId,
                 IsHost = GetBool(root, "IsHost"),
                 IsConnected = hasConnectedField ? GetBool(root, "IsConnected") : true,
-                CharacterId = GetString(root, "CharacterId"),
+                CharacterId = ResolveCharacterId(root),
                 LocationX = GetInt(root, "LocationX", -1),
                 LocationY = GetInt(root, "LocationY", -1),
                 Stage = GetInt(root, "Stage", -1),
@@ -208,7 +208,7 @@ public static partial class OtherPlayersOverlayPatch
                 PlayerName = GetString(p, "PlayerName") ?? playerId,
                 IsHost = GetBool(p, "IsHost"),
                 IsConnected = hasConnectedField ? GetBool(p, "IsConnected") : true,
-                CharacterId = GetString(p, "CharacterId"),
+                CharacterId = ResolveCharacterId(p),
                 LocationX = GetInt(p, "LocationX", -1),
                 LocationY = GetInt(p, "LocationY", -1),
                 Stage = GetInt(p, "Stage", -1),
@@ -232,6 +232,41 @@ public static partial class OtherPlayersOverlayPatch
     #endregion
 
     #region JSON工具
+
+    private static string ResolveCharacterId(JsonElement elem)
+    {
+        string value = GetString(elem, "CharacterId");
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        value = GetString(elem, "ModelName");
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        value = GetString(elem, "CharacterName");
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        value = GetString(elem, "PlayerModel");
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        value = GetString(elem, "chara");
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        return GetString(elem, "Chara");
+    }
 
     private static bool TryGetJsonElement(object payload, out JsonElement element)
     {
