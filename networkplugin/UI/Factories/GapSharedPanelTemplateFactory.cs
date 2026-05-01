@@ -38,7 +38,8 @@ internal static class GapSharedPanelTemplateFactory
         string initialStatus,
         string confirmLabel,
         string cancelLabel,
-        bool createFrame = true)
+        bool createFrame = true,
+        bool layoutInFrame = false)
     {
         CommonButtonWidget confirmTemplate = TryPickButtonTemplate(preferConfirm: true);
         if (confirmTemplate == null)
@@ -78,6 +79,7 @@ internal static class GapSharedPanelTemplateFactory
         blocker.raycastTarget = true;
 
         TextMeshProUGUI frameTextTemplate = textTemplate;
+        RectTransform layoutRect = rootRect;
         if (createFrame)
         {
             try
@@ -104,7 +106,19 @@ internal static class GapSharedPanelTemplateFactory
                         Button dialogConfirm = GetDialogField<Button>(dialog, "confirmButton");
                         Button dialogCancel = GetDialogField<Button>(dialog, "cancelButton");
 
+                        RectTransform buttonRect = dialogCancel?.GetComponent<RectTransform>()
+                            ?? dialogConfirm?.GetComponent<RectTransform>()
+                            ?? singleConfirm?.GetComponent<RectTransform>();
+
                         frameTextTemplate = mainText ?? subText ?? textTemplate;
+
+                        if (layoutInFrame)
+                        {
+                            layoutRect = TryFindCommonAncestorRect(mainText?.rectTransform, buttonRect)
+                                ?? TryFindCommonAncestorRect(subText?.rectTransform, buttonRect)
+                                ?? frameRect
+                                ?? rootRect;
+                        }
 
                         HideDialogText(mainText);
                         HideDialogText(subText);
@@ -122,26 +136,27 @@ internal static class GapSharedPanelTemplateFactory
             }
         }
 
+        Transform layoutParent = layoutRect != null ? layoutRect.transform : root.transform;
         TextMeshProUGUI effectiveTextTemplate = frameTextTemplate ?? textTemplate;
 
-        TextMeshProUGUI titleText = CloneTextOrCreate(effectiveTextTemplate, root.transform, "Title");
+        TextMeshProUGUI titleText = CloneTextOrCreate(effectiveTextTemplate, layoutParent, "Title");
         titleText.text = title;
         titleText.alignment = TextAlignmentOptions.Center;
         titleText.fontSize = Mathf.Max(titleText.fontSize, 34f);
-        ConfigureAnchors(titleText.rectTransform, new Vector2(0.20f, 0.88f), new Vector2(0.80f, 0.96f));
+        ConfigureAnchors(titleText.rectTransform, new Vector2(0.18f, 0.86f), new Vector2(0.82f, 0.95f));
 
-        TextMeshProUGUI statusText = CloneTextOrCreate(effectiveTextTemplate, root.transform, "Status");
+        TextMeshProUGUI statusText = CloneTextOrCreate(effectiveTextTemplate, layoutParent, "Status");
         statusText.text = initialStatus;
         statusText.alignment = TextAlignmentOptions.Center;
         statusText.fontSize = Mathf.Max(statusText.fontSize, 22f);
-        ConfigureAnchors(statusText.rectTransform, new Vector2(0.15f, 0.82f), new Vector2(0.85f, 0.88f));
+        ConfigureAnchors(statusText.rectTransform, new Vector2(0.14f, 0.76f), new Vector2(0.86f, 0.84f));
 
         GameObject contentGo = new GameObject("ContentRoot");
-        contentGo.transform.SetParent(root.transform, false);
+        contentGo.transform.SetParent(layoutParent, false);
         RectTransform contentRoot = contentGo.AddComponent<RectTransform>();
-        ConfigureAnchors(contentRoot, new Vector2(0.08f, 0.22f), new Vector2(0.92f, 0.80f));
+        ConfigureAnchors(contentRoot, new Vector2(0.08f, 0.24f), new Vector2(0.92f, 0.76f));
 
-        CommonButtonWidget confirmButton = UnityEngine.Object.Instantiate(confirmTemplate, root.transform, false);
+        CommonButtonWidget confirmButton = UnityEngine.Object.Instantiate(confirmTemplate, layoutParent, false);
         if (confirmButton == null)
         {
             UnityEngine.Object.Destroy(root);
@@ -151,9 +166,9 @@ internal static class GapSharedPanelTemplateFactory
         SetButtonLabel(confirmButton, confirmLabel);
         DisableExtraButtons(confirmButton);
         DisableTooltipBehaviours(confirmButton.gameObject);
-        ConfigureAnchors(confirmButton.GetComponent<RectTransform>(), new Vector2(0.22f, 0.10f), new Vector2(0.48f, 0.18f));
+        ConfigureAnchors(confirmButton.GetComponent<RectTransform>(), new Vector2(0.30f, 0.06f), new Vector2(0.48f, 0.18f));
 
-        CommonButtonWidget cancelButton = UnityEngine.Object.Instantiate(cancelTemplate, root.transform, false);
+        CommonButtonWidget cancelButton = UnityEngine.Object.Instantiate(cancelTemplate, layoutParent, false);
         if (cancelButton == null)
         {
             UnityEngine.Object.Destroy(root);
@@ -163,7 +178,10 @@ internal static class GapSharedPanelTemplateFactory
         SetButtonLabel(cancelButton, cancelLabel);
         DisableExtraButtons(cancelButton);
         DisableTooltipBehaviours(cancelButton.gameObject);
-        ConfigureAnchors(cancelButton.GetComponent<RectTransform>(), new Vector2(0.52f, 0.10f), new Vector2(0.78f, 0.18f));
+        ConfigureAnchors(cancelButton.GetComponent<RectTransform>(), new Vector2(0.52f, 0.06f), new Vector2(0.70f, 0.18f));
+
+        // ContentRoot 移到最后层，确保其子元素（报价编辑器等覆盖层）的渲染顺序高于确认/取消按钮。
+        contentGo.transform.SetAsLastSibling();
 
         return new GapRuntimePanelTemplate
         {
@@ -209,6 +227,33 @@ internal static class GapSharedPanelTemplateFactory
         rect.anchorMax = max;
         rect.offsetMin = Vector2.zero;
         rect.offsetMax = Vector2.zero;
+    }
+
+    private static RectTransform TryFindCommonAncestorRect(RectTransform a, RectTransform b)
+    {
+        if (a == null || b == null)
+        {
+            return null;
+        }
+
+        Transform current = a;
+        while (current != null)
+        {
+            Transform other = b;
+            while (other != null)
+            {
+                if (ReferenceEquals(current, other))
+                {
+                    return current as RectTransform;
+                }
+
+                other = other.parent;
+            }
+
+            current = current.parent;
+        }
+
+        return null;
     }
 
     internal static void SetButtonLabel(CommonButtonWidget buttonWidget, string label)

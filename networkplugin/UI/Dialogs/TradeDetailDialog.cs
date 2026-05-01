@@ -94,6 +94,8 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
     // 选择器弹层
     private GameObject _cardPickerRoot;
     private GameObject _exhibitPickerRoot;
+    private readonly List<Card> _cardPickerOriginalCards = new List<Card>();
+    private bool _cardPickerEditing;
 
     internal void BindRuntime(
         CommonButtonWidget buttonTemplate,
@@ -229,7 +231,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         TryUnsubscribe();
 
         // 如果选择器还开着，一并关掉。
-        _cardPickerRoot?.SetActive(false);
+        CloseCardPickerOverlay(applyChanges: false, closeOnly: true);
         _exhibitPickerRoot?.SetActive(false);
 
         ScheduleReturnToTradePanel();
@@ -245,8 +247,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         // 如果选择器弹层还开着，先只关闭弹层，不取消整场交易。
         if (_cardPickerRoot != null && _cardPickerRoot.activeSelf)
         {
-            _cardPickerRoot.SetActive(false);
-            _canvasGroup.interactable = true;
+            CloseCardPickerOverlay(applyChanges: false, closeOnly: false);
             return;
         }
 
@@ -412,7 +413,10 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
             using (new ApplyingStateScope(this))
             {
-                SyncLocalFromState(state);
+                if (!_cardPickerEditing)
+                {
+                    SyncLocalFromState(state);
+                }
                 RefreshRemoteUi(state);
                 UpdateConfirmInteractable(state);
             }
@@ -1084,6 +1088,12 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
         AudioManager.Card(3);
         EnsureCardPicker();
+        if (_cardPickerRoot == null)
+        {
+            TryShowTopMessage("卡牌选择界面不可用。");
+            return;
+        }
+        BeginCardPickerEdit();
         RebuildCardPicker();
         _cardPickerRoot.SetActive(true);
         _canvasGroup.interactable = false;
@@ -1125,8 +1135,187 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             return;
         }
 
-        _cardPickerRoot = CreateFullOverlay("CardPicker", "选择要交易的卡牌");
+        _cardPickerRoot = CreateCardSelectionOverlay();
         Plugin.Logger?.LogInfo($"[TradeDetailDialog] EnsureCardPicker created: tradeId={_tradeId ?? "<null>"}, pickerExists={(_cardPickerRoot != null)}");
+    }
+
+    private void BeginCardPickerEdit()
+    {
+        _cardPickerOriginalCards.Clear();
+        _cardPickerOriginalCards.AddRange(_localCards.Where(c => c != null));
+        _cardPickerEditing = true;
+    }
+
+    private void CloseCardPickerOverlay(bool applyChanges, bool closeOnly)
+    {
+        if (_cardPickerRoot == null || !_cardPickerRoot.activeSelf)
+        {
+            _cardPickerEditing = false;
+            return;
+        }
+
+        if (!applyChanges)
+        {
+            _localCards.Clear();
+            _localCards.AddRange(_cardPickerOriginalCards.Where(c => c != null));
+        }
+
+        _cardPickerRoot.SetActive(false);
+        _canvasGroup.interactable = true;
+        _cardPickerEditing = false;
+
+        if (!closeOnly)
+        {
+            RefreshLocalUi();
+            RefreshRemoteUi(TradeSyncPatch.GetLastKnown(_tradeId));
+        }
+    }
+
+    private void ConfirmCardPickerSelection()
+    {
+        if (_cardPickerRoot == null)
+        {
+            return;
+        }
+
+        CardPickerPanelTag tag = _cardPickerRoot.GetComponent<CardPickerPanelTag>();
+        int targetCount = tag?.TargetSelectCount ?? 0;
+        if (targetCount > 0 && _localCards.Count != targetCount)
+        {
+            if (tag?.HintText != null)
+            {
+                tag.HintText.text = $"请选择 {targetCount} 张卡牌（当前 {_localCards.Count}/{targetCount}）";
+            }
+            return;
+        }
+
+        CloseCardPickerOverlay(applyChanges: true, closeOnly: false);
+        TrySendOfferUpdate();
+    }
+
+    private GameObject CreateCardSelectionOverlay()
+    {
+        // 独立交易确认面板：上半显示对方卡牌，下半显示我方卡牌，底部为可选卡牌。
+        try
+        {
+            GameObject root = new GameObject("CardPicker");
+            root.transform.SetParent(transform, false);
+            root.SetActive(false);
+
+            RectTransform rt = root.AddComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+
+            Image blocker = root.AddComponent<Image>();
+            blocker.color = new Color(0f, 0f, 0f, 0f);
+            blocker.raycastTarget = true;
+
+            GameObject prefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
+            if (prefab == null)
+            {
+                return CreateFullOverlayFallback(root, rt, "交易确认面板");
+            }
+
+            GameObject frame = Instantiate(prefab, root.transform, false);
+            frame.name = "Frame";
+            frame.SetActive(true);
+
+            RectTransform frameRt = frame.GetComponent<RectTransform>();
+            if (frameRt != null)
+            {
+                frameRt.anchorMin = new Vector2(0.05f, 0.05f);
+                frameRt.anchorMax = new Vector2(0.95f, 0.95f);
+                frameRt.offsetMin = Vector2.zero;
+                frameRt.offsetMax = Vector2.zero;
+            }
+
+            MessageDialog dialog = frame.GetComponentInChildren<MessageDialog>(true);
+            if (dialog == null)
+            {
+                return CreateFullOverlayFallback(root, rt, "交易确认面板");
+            }
+
+            TextMeshProUGUI mainText = GetDialogField<TextMeshProUGUI>(dialog, "mainText");
+            TextMeshProUGUI subText = GetDialogField<TextMeshProUGUI>(dialog, "subText");
+            Button singleConfirm = GetDialogField<Button>(dialog, "singleConfirmButton");
+            Button confirm = GetDialogField<Button>(dialog, "confirmButton");
+            Button cancel = GetDialogField<Button>(dialog, "cancelButton");
+
+            HideDialogButton(singleConfirm);
+
+            if (mainText != null)
+            {
+                mainText.gameObject.SetActive(true);
+                mainText.text = "交易确认面板";
+                mainText.alignment = TextAlignmentOptions.Center;
+                mainText.raycastTarget = false;
+                Color c = mainText.color;
+                c.a = 1f;
+                mainText.color = c;
+            }
+
+            RectTransform panelRect = TryFindCommonAncestorRect(mainText?.rectTransform, cancel?.GetComponent<RectTransform>())
+                ?? (frameRt != null ? frameRt : frame.GetComponent<RectTransform>());
+            if (panelRect == null)
+            {
+                panelRect = rt;
+            }
+
+            if (subText != null)
+            {
+                subText.gameObject.SetActive(false);
+            }
+
+            TextMeshProUGUI hint = CloneText(panelRect, "CardPickerHint", 18, TextAlignmentOptions.Center);
+            SetRect(hint.rectTransform, 0.08f, 0.84f, 0.92f, 0.89f);
+
+            TextMeshProUGUI remoteTitle = CloneText(panelRect, "RemoteSelectedTitle", 20, TextAlignmentOptions.Left);
+            remoteTitle.text = "对方已选卡牌";
+            SetRect(remoteTitle.rectTransform, 0.08f, 0.77f, 0.92f, 0.82f);
+
+            Transform remoteList = CreateScrollList(panelRect, "RemoteSelectedList", 0.08f, 0.60f, 0.92f, 0.76f);
+            AddListBackground(remoteList);
+
+            TextMeshProUGUI localTitle = CloneText(panelRect, "LocalSelectedTitle", 20, TextAlignmentOptions.Left);
+            localTitle.text = "我方已选卡牌";
+            SetRect(localTitle.rectTransform, 0.08f, 0.53f, 0.92f, 0.58f);
+
+            Transform localList = CreateScrollList(panelRect, "LocalSelectedList", 0.08f, 0.36f, 0.92f, 0.52f);
+            AddListBackground(localList);
+
+            TextMeshProUGUI availableTitle = CloneText(panelRect, "AvailableCardTitle", 20, TextAlignmentOptions.Left);
+            availableTitle.text = "可选卡牌";
+            SetRect(availableTitle.rectTransform, 0.08f, 0.29f, 0.92f, 0.34f);
+
+            Transform candidateList = CreateScrollList(panelRect, "AvailableCardList", 0.08f, 0.14f, 0.92f, 0.28f);
+            AddListBackground(candidateList);
+
+            CommonButtonWidget backButton = CloneButton(panelRect, "CardPickerBack", "返回");
+            SetRect(backButton.GetComponent<RectTransform>(), 0.26f, 0.05f, 0.44f, 0.11f);
+            backButton.button.onClick.RemoveAllListeners();
+            backButton.button.onClick.AddListener(() => CloseCardPickerOverlay(applyChanges: false, closeOnly: false));
+
+            CommonButtonWidget confirmButtonWidget = CloneButton(panelRect, "CardPickerConfirm", "确认选牌");
+            SetRect(confirmButtonWidget.GetComponent<RectTransform>(), 0.56f, 0.05f, 0.74f, 0.11f);
+            confirmButtonWidget.button.onClick.RemoveAllListeners();
+            confirmButtonWidget.button.onClick.AddListener(ConfirmCardPickerSelection);
+
+            CardPickerPanelTag panelTag = root.AddComponent<CardPickerPanelTag>();
+            panelTag.HintText = hint;
+            panelTag.RemoteSelectedList = remoteList;
+            panelTag.LocalSelectedList = localList;
+            panelTag.CandidateList = candidateList;
+            panelTag.ConfirmButton = confirmButtonWidget;
+
+            dialog.enabled = false;
+            return root;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private void EnsureExhibitPicker()
@@ -1401,6 +1590,16 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
     {
     }
 
+    private sealed class CardPickerPanelTag : MonoBehaviour
+    {
+        public TextMeshProUGUI HintText;
+        public Transform RemoteSelectedList;
+        public Transform LocalSelectedList;
+        public Transform CandidateList;
+        public CommonButtonWidget ConfirmButton;
+        public int TargetSelectCount;
+    }
+
     private void RebuildCardPicker()
     {
         if (_cardPickerRoot == null)
@@ -1409,27 +1608,43 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             return;
         }
 
-        var tag = _cardPickerRoot.GetComponentInChildren<PickerListTag>(true);
+        CardPickerPanelTag tag = _cardPickerRoot.GetComponent<CardPickerPanelTag>();
         if (tag == null)
         {
-            Plugin.Logger?.LogWarning($"[TradeDetailDialog] RebuildCardPicker aborted: PickerListTag missing, tradeId={_tradeId ?? "<null>"}");
+            Plugin.Logger?.LogWarning($"[TradeDetailDialog] RebuildCardPicker aborted: CardPickerPanelTag missing, tradeId={_tradeId ?? "<null>"}");
             return;
         }
 
-        var container = tag.transform;
-        
-        // 卡牌列表改用 Grid Layout，更接近游戏原生卡库的观看方式。
-        var vlg = container.GetComponent<VerticalLayoutGroup>();
+        Transform candidateContainer = tag.CandidateList;
+        Transform localContainer = tag.LocalSelectedList;
+        Transform remoteContainer = tag.RemoteSelectedList;
+        if (candidateContainer == null || localContainer == null || remoteContainer == null)
+        {
+            return;
+        }
+
+        // 可选卡牌列表改用 Grid Layout，更接近游戏原生卡库的观看方式。
+        var vlg = candidateContainer.GetComponent<VerticalLayoutGroup>();
         if (vlg != null) DestroyImmediate(vlg);
         
-        var glg = container.GetComponent<GridLayoutGroup>();
-        if (glg == null) glg = container.gameObject.AddComponent<GridLayoutGroup>();
+        var glg = candidateContainer.GetComponent<GridLayoutGroup>();
+        if (glg == null) glg = candidateContainer.gameObject.AddComponent<GridLayoutGroup>();
         glg.cellSize = new Vector2(160, 100);
         glg.spacing = new Vector2(10, 10);
         glg.padding = new RectOffset(10, 10, 10, 10);
         glg.childAlignment = TextAnchor.UpperLeft;
 
-        foreach (Transform c in container)
+        foreach (Transform c in candidateContainer)
+        {
+            Destroy(c.gameObject);
+        }
+
+        foreach (Transform c in localContainer)
+        {
+            Destroy(c.gameObject);
+        }
+
+        foreach (Transform c in remoteContainer)
         {
             Destroy(c.gameObject);
         }
@@ -1455,8 +1670,83 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
         HashSet<int> selected = new HashSet<int>(_localCards.Where(c => c != null).Select(c => c.InstanceId));
         int candidateCount = deck.Count(card => card != null && !selected.Contains(card.InstanceId));
+
+        int desiredCount = Mathf.Max(1, Mathf.Min(3, _maxSlots));
+        int maxSelectableNow = Mathf.Max(1, Mathf.Min(desiredCount, _localCards.Count + candidateCount));
+        tag.TargetSelectCount = maxSelectableNow;
+
+        while (_localCards.Count > maxSelectableNow)
+        {
+            _localCards.RemoveAt(_localCards.Count - 1);
+        }
+
+        if (tag.HintText != null)
+        {
+            tag.HintText.text = $"请选择 {maxSelectableNow} 张卡牌（当前 {_localCards.Count}/{maxSelectableNow}）";
+        }
+
+        if (tag.ConfirmButton?.button != null)
+        {
+            tag.ConfirmButton.button.interactable = _localCards.Count == maxSelectableNow;
+        }
+
         Plugin.Logger?.LogInfo(
-            $"[TradeDetailDialog] RebuildCardPicker: tradeId={_tradeId ?? "<null>"}, hasRun={hasRun}, runSource={runSource ?? "<null>"}, currentDeckCount={(currentRun?.BaseDeck?.Count ?? 0)}, initialDeckCount={_initialDeckCards.Count}, selectedCount={selected.Count}, chosenDeckSource={deckSource}, chosenDeckCount={deck.Count}, candidateCount={candidateCount}, cardCellTemplate={(_cardCellTemplate != null)}, pickerActive={(_cardPickerRoot != null && _cardPickerRoot.activeSelf)}");
+            $"[TradeDetailDialog] RebuildCardPicker: tradeId={_tradeId ?? "<null>"}, hasRun={hasRun}, runSource={runSource ?? "<null>"}, currentDeckCount={(currentRun?.BaseDeck?.Count ?? 0)}, initialDeckCount={_initialDeckCards.Count}, selectedCount={selected.Count}, chosenDeckSource={deckSource}, chosenDeckCount={deck.Count}, candidateCount={candidateCount}, target={maxSelectableNow}, cardCellTemplate={(_cardCellTemplate != null)}, pickerActive={(_cardPickerRoot != null && _cardPickerRoot.activeSelf)}");
+
+        // 先渲染“我方已选卡牌”（可点击移除）。
+        if (_localCards.Count == 0)
+        {
+            CommonButtonWidget empty = CloneListItem(localContainer, "LocalEmpty", "(无)", false);
+            empty.button.interactable = false;
+        }
+        else
+        {
+            for (int i = 0; i < _localCards.Count; i++)
+            {
+                Card selectedCard = _localCards[i];
+                if (selectedCard == null)
+                {
+                    continue;
+                }
+
+                string label = $"{selectedCard.Name}{(selectedCard.IsUpgraded ? "+" : string.Empty)}  (点击移除)";
+                CommonButtonWidget row = CloneListItem(localContainer, $"LocalSelected_{selectedCard.InstanceId}_{i}", label, false);
+                row.button.onClick.RemoveAllListeners();
+                row.button.onClick.AddListener(new UnityAction(() =>
+                {
+                    _localCards.Remove(selectedCard);
+                    RebuildCardPicker();
+                }));
+            }
+        }
+
+        // 渲染“对方已选卡牌”（只读）。
+        TradeSyncPatch.TradeSessionState state = TradeSyncPatch.GetLastKnown(_tradeId);
+        bool localIsA = state != null && string.Equals(state.PlayerAId, _selfId, StringComparison.Ordinal);
+        List<TradeSyncPatch.CardRef> remoteCards = state == null
+            ? null
+            : (localIsA ? state.OfferB : state.OfferA);
+
+        if (remoteCards == null || remoteCards.Count == 0)
+        {
+            CommonButtonWidget empty = CloneListItem(remoteContainer, "RemoteEmpty", "(无)", false);
+            empty.button.interactable = false;
+        }
+        else
+        {
+            for (int i = 0; i < remoteCards.Count && i < 3; i++)
+            {
+                TradeSyncPatch.CardRef remoteCard = remoteCards[i];
+                if (remoteCard == null)
+                {
+                    continue;
+                }
+
+                string label = $"{remoteCard.CardName}{(remoteCard.IsUpgraded ? "+" : string.Empty)}";
+                CommonButtonWidget row = CloneListItem(remoteContainer, $"RemoteSelected_{remoteCard.InstanceId}_{i}", label, false);
+                row.button.interactable = false;
+            }
+        }
 
         foreach (var card in deck)
         {
@@ -1467,7 +1757,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
             if (_cardCellTemplate != null)
             {
-                var cell = Instantiate(_cardCellTemplate, container, false);
+                var cell = Instantiate(_cardCellTemplate, candidateContainer, false);
                 cell.gameObject.SetActive(true);
                 cell.Card = card;
                 cell.SetNum(1);
@@ -1477,7 +1767,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
                 btn.onClick.RemoveAllListeners();
                 btn.onClick.AddListener(new UnityAction(() =>
                 {
-                    if (_localCards.Count >= _maxSlots)
+                    if (_localCards.Count >= maxSelectableNow)
                     {
                         return;
                     }
@@ -1489,10 +1779,10 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             }
             else
             {
-                var row = CloneListItem(container, $"Card_{card.InstanceId}", card.Name, false);
+                var row = CloneListItem(candidateContainer, $"Card_{card.InstanceId}", card.Name, false);
                 row.button.onClick.AddListener(new UnityAction(() =>
                 {
-                    if (_localCards.Count >= _maxSlots)
+                    if (_localCards.Count >= maxSelectableNow)
                     {
                         return;
                     }
@@ -1506,7 +1796,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         if (deck.Count == 0)
         {
             Plugin.Logger?.LogWarning($"[TradeDetailDialog] RebuildCardPicker empty deck: tradeId={_tradeId ?? "<null>"}, hasRun={hasRun}, runSource={runSource ?? "<null>"}, initialDeckCount={_initialDeckCards.Count}");
-            var empty = CloneText(container as RectTransform, "Empty", 20, TextAlignmentOptions.Center);
+            var empty = CloneText(candidateContainer as RectTransform, "Empty", 20, TextAlignmentOptions.Center);
             empty.text = "没有可交易的卡牌";
         }
     }

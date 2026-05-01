@@ -16,7 +16,7 @@ namespace NetworkPlugin.UI.Factories;
 internal static class TradePanelRuntimeFactory
 {
     private const string RuntimeRootName = "NetworkPlugin_TradePanel";
-    private const string RuntimeUiVersion = "2026-03-30-ui-v7";
+    private const string RuntimeUiVersion = "2026-04-26-ui-v21";
 
     internal static TradePanel GetOrCreate(Transform preferredParent)
     {
@@ -112,7 +112,8 @@ internal static class TradePanelRuntimeFactory
                 "请选择交易对象",
                 "确认交易",
                 "取消",
-                createFrame: false);
+                createFrame: true,
+                layoutInFrame: true);
             if (scaffold == null)
             {
                 TradeUiMessages.ShowTopMessage("交易界面不可用：未找到可复用的按钮模板。请先进入游戏内 UI（例如商店/间隙）。");
@@ -126,23 +127,23 @@ internal static class TradePanelRuntimeFactory
             p1Name.text = "Player 1";
             p1Name.alignment = TextAlignmentOptions.Center;
             p1Name.fontSize = Mathf.Max(p1Name.fontSize, 20);
-            GapSharedPanelTemplateFactory.ConfigureAnchors(p1Name.rectTransform, new Vector2(0.00f, 0.88f), new Vector2(0.46f, 0.98f));
+            GapSharedPanelTemplateFactory.ConfigureAnchors(p1Name.rectTransform, new Vector2(0.00f, 0.84f), new Vector2(0.46f, 0.98f));
 
             var p2Name = GapSharedPanelTemplateFactory.CloneTextOrCreate(textTemplate, uiParent, "Player2Name");
             p2Name.text = "Player 2";
             p2Name.alignment = TextAlignmentOptions.Center;
             p2Name.fontSize = Mathf.Max(p2Name.fontSize, 20);
-            GapSharedPanelTemplateFactory.ConfigureAnchors(p2Name.rectTransform, new Vector2(0.54f, 0.88f), new Vector2(1.00f, 0.98f));
+            GapSharedPanelTemplateFactory.ConfigureAnchors(p2Name.rectTransform, new Vector2(0.54f, 0.84f), new Vector2(1.00f, 0.98f));
 
             GameObject p1AreaGo = new GameObject("Player1Area");
             p1AreaGo.transform.SetParent(uiParent, false);
             var p1Area = p1AreaGo.AddComponent<RectTransform>();
-            GapSharedPanelTemplateFactory.ConfigureAnchors(p1Area, new Vector2(0.00f, 0.06f), new Vector2(0.46f, 0.84f));
+            GapSharedPanelTemplateFactory.ConfigureAnchors(p1Area, new Vector2(0.00f, -0.35f), new Vector2(0.26f, -0.06f));
 
             GameObject p2AreaGo = new GameObject("Player2Area");
             p2AreaGo.transform.SetParent(uiParent, false);
             var p2Area = p2AreaGo.AddComponent<RectTransform>();
-            GapSharedPanelTemplateFactory.ConfigureAnchors(p2Area, new Vector2(0.54f, 0.06f), new Vector2(1.00f, 0.84f));
+            GapSharedPanelTemplateFactory.ConfigureAnchors(p2Area, new Vector2(0.74f, -0.35f), new Vector2(1.00f, -0.06f));
 
             var p1Slots = CreateSlotColumn(p1Area, textTemplate, scaffold.ConfirmButton, 5, "P1");
             var p2Slots = CreateSlotColumn(p2Area, textTemplate, scaffold.ConfirmButton, 5, "P2");
@@ -152,6 +153,7 @@ internal static class TradePanelRuntimeFactory
             var marker = scaffold.Root.AddComponent<TradePanelRuntimeMarker>();
             marker.Version = RuntimeUiVersion;
             panel.BindRuntimeUi(
+                scaffold.ContentRoot,
                 p1Area,
                 p2Area,
                 p1Slots,

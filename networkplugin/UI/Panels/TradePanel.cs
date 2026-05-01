@@ -209,7 +209,15 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private bool _cardPickerApplyingSelection;
     private TextMeshProUGUI _cardCountText;
 
+    // 主面板结果展示区：位于状态文案下方，展示双方已选卡牌。
+    private GameObject _offerPreviewRoot;
+    private OfferPreviewPanelTag _localOfferPreviewPanel;
+    private OfferPreviewPanelTag _remoteOfferPreviewPanel;
+    private CardWidget _offerPreviewCardTemplate;
+    private RectTransform _runtimeContentRoot;
+
     internal void BindRuntimeUi(
+        RectTransform runtimeContentRoot,
         RectTransform runtimePlayer1TradeArea,
         RectTransform runtimePlayer2TradeArea,
         TradeSlotWidget[] runtimePlayer1Slots,
@@ -221,6 +229,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         TextMeshProUGUI runtimePlayer2NameText)
     {
         // 这些字段通常由 prefab 连接，运行时创建时需手动绑定。
+        _runtimeContentRoot = runtimeContentRoot;
         player1TradeArea = runtimePlayer1TradeArea;
         player2TradeArea = runtimePlayer2TradeArea;
         player1Slots = runtimePlayer1Slots;
@@ -252,6 +261,11 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
         cancelButton?.button?.onClick.RemoveAllListeners();
         cancelButton?.button?.onClick.AddListener(OnCancelTrade);
+    }
+
+    private Transform GetTradePanelContentParent()
+    {
+        return _runtimeContentRoot != null ? _runtimeContentRoot.transform : transform;
     }
 
     #endregion
@@ -364,6 +378,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         // 确保运行时 overlay 存在（工厂创建的面板无法通过 prefab 和进 UI）。
         EnsureOfferEditorOverlay();
         EnsureCardPickerOverlay();
+        EnsureOfferPreviewOverlay();
 
         // 设置玩家名称显示（不使用 Player 1/2 之类的占位文本）
         player1NameText?.text = ResolveLocalPlayerDisplayName(payload);
@@ -550,6 +565,8 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             }
         }
 
+        ClearOfferPreview();
+
         // 默认禁止点击确认按钮，直到双方都放入了卡牌
         if (confirmButton?.button != null)
         {
@@ -598,6 +615,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         {
             offeredCards.Add(card);
             UpdateTradeSlot(card, isPlayer1 ? player1Slots : player2Slots, offeredCards.Count - 1);
+            RefreshOfferPreview();
             CheckTradeReady();
 
             if (!_isApplyingState)
@@ -644,6 +662,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 slots[offeredCards.Count]?.ClearSlot();
             }
 
+            RefreshOfferPreview();
             CheckTradeReady();
 
             if (!_isApplyingState)
@@ -1232,6 +1251,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             _partnerPickerRoot?.transform.SetAsLastSibling();
             _cardPickerRoot?.transform.SetAsLastSibling();
             _exhibitPickerRoot?.transform.SetAsLastSibling();
+            _offerPreviewRoot?.transform.SetAsLastSibling();
             _offerEditorRoot?.transform.SetAsLastSibling();
             _offerActionsRoot?.transform.SetAsLastSibling();
         }
@@ -1254,6 +1274,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         confirmButton?.gameObject.SetActive(visible);
         cancelButton?.gameObject.SetActive(visible || _canCancel);
 
+        _offerPreviewRoot?.SetActive(visible);
         _offerEditorRoot?.SetActive(visible);
         _offerActionsRoot?.SetActive(visible);
     }
@@ -1779,6 +1800,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             PopulateLocalDebugRemoteOffer();
             EnsureOfferEditorOverlay();
             EnsureCardPickerOverlay();
+            EnsureOfferPreviewOverlay();
             EnsureExhibitPickerOverlay();
             SetTradeDetailsVisible(true);
             cancelButton?.gameObject.SetActive(_canCancel);
@@ -1801,6 +1823,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         UpdateUIStatus("交易详情界面不可用，已回退到面板模式");
         EnsureOfferEditorOverlay();
         EnsureCardPickerOverlay();
+        EnsureOfferPreviewOverlay();
         EnsureExhibitPickerOverlay();
         SetTradeDetailsVisible(true);
         cancelButton?.gameObject.SetActive(_canCancel);
@@ -2174,6 +2197,177 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
         _cardPickerRoot?.SetActive(false);
         SetTradeDetailsVisible(true);
+    }
+
+    private void EnsureOfferPreviewOverlay()
+    {
+        if (_offerPreviewRoot != null)
+        {
+            return;
+        }
+
+        try
+        {
+            ShowCardsPanel sourcePanel = UiManager.GetPanel<ShowCardsPanel>();
+            DeckHolder template = sourcePanel != null ? GetPrivateFieldValue<DeckHolder>(sourcePanel, "deckHolder") : null;
+            CardWidget cardTemplate = template != null ? GetPrivateFieldValue<CardWidget>(template, "cardTemplate") : null;
+            if (template == null || cardTemplate == null)
+            {
+                return;
+            }
+
+            _offerPreviewCardTemplate = cardTemplate;
+
+            _offerPreviewRoot = new GameObject("TradeOfferPreview");
+            _offerPreviewRoot.transform.SetParent(GetTradePanelContentParent(), false);
+
+            RectTransform rootRect = _offerPreviewRoot.AddComponent<RectTransform>();
+            SetRect(rootRect, 0.02f, 0.40f, 0.98f, 0.74f);
+
+            _localOfferPreviewPanel = CreateOfferPreviewPanel(_offerPreviewRoot.transform, "LocalOfferPreview", 0.00f, 0.00f, 0.48f, 1.00f);
+            _remoteOfferPreviewPanel = CreateOfferPreviewPanel(_offerPreviewRoot.transform, "RemoteOfferPreview", 0.52f, 0.00f, 1.00f, 1.00f);
+
+            RefreshOfferPreview();
+        }
+        catch
+        {
+            _offerPreviewRoot = null;
+            _localOfferPreviewPanel = null;
+            _remoteOfferPreviewPanel = null;
+            _offerPreviewCardTemplate = null;
+        }
+    }
+
+    private static OfferPreviewPanelTag CreateOfferPreviewPanel(Transform parent, string name, float minX, float minY, float maxX, float maxY)
+    {
+        if (parent == null)
+        {
+            return null;
+        }
+
+        GameObject root = new GameObject(name);
+        root.transform.SetParent(parent, false);
+
+        RectTransform rootRect = root.AddComponent<RectTransform>();
+        rootRect.anchorMin = new Vector2(minX, minY);
+        rootRect.anchorMax = new Vector2(maxX, maxY);
+        rootRect.offsetMin = Vector2.zero;
+        rootRect.offsetMax = Vector2.zero;
+
+        GameObject layout = new GameObject("CardLayout");
+        layout.transform.SetParent(root.transform, false);
+        RectTransform layoutRect = layout.AddComponent<RectTransform>();
+        layoutRect.anchorMin = Vector2.zero;
+        layoutRect.anchorMax = Vector2.one;
+        layoutRect.offsetMin = new Vector2(8f, 8f);
+        layoutRect.offsetMax = new Vector2(-8f, -8f);
+
+        OfferPreviewPanelTag tag = root.AddComponent<OfferPreviewPanelTag>();
+        tag.CardLayout = layoutRect;
+        return tag;
+    }
+
+    private void RefreshOfferPreview()
+    {
+        EnsureOfferPreviewOverlay();
+
+        RebuildOfferPreviewPanel(_localOfferPreviewPanel, _player1OfferedCards);
+        RebuildOfferPreviewPanel(_remoteOfferPreviewPanel, _player2OfferedCards);
+    }
+
+    private void ClearOfferPreview()
+    {
+        ClearOfferPreviewPanel(_localOfferPreviewPanel);
+        ClearOfferPreviewPanel(_remoteOfferPreviewPanel);
+    }
+
+    private void RebuildOfferPreviewPanel(OfferPreviewPanelTag panel, IEnumerable<Card> cards)
+    {
+        if (panel?.CardLayout == null || _offerPreviewCardTemplate == null)
+        {
+            return;
+        }
+
+        ClearOfferPreviewPanel(panel);
+
+        List<Card> list = (cards ?? Enumerable.Empty<Card>())
+            .Where(card => card != null)
+            .ToList();
+
+        if (list.Count == 0)
+        {
+            return;
+        }
+
+        Canvas.ForceUpdateCanvases();
+        RectTransform layout = panel.CardLayout;
+        LayoutRebuilder.ForceRebuildLayoutImmediate(layout);
+
+        float availableWidth = layout.rect.width > 1f ? layout.rect.width : 480f;
+        float availableHeight = layout.rect.height > 1f ? layout.rect.height : 240f;
+        RectTransform templateRect = _offerPreviewCardTemplate.transform as RectTransform;
+        float cardWidth = templateRect != null && templateRect.rect.width > 1f ? templateRect.rect.width : 360f;
+        float cardHeight = templateRect != null && templateRect.rect.height > 1f ? templateRect.rect.height : 540f;
+
+        int count = list.Count;
+        float spacing = Mathf.Clamp(availableWidth * 0.02f, 8f, 18f);
+        float scaleByWidth = (availableWidth - Mathf.Max(0, count - 1) * spacing) / (count * cardWidth);
+        float scaleByHeight = availableHeight / cardHeight;
+        float scale = Mathf.Clamp(Mathf.Min(scaleByWidth, scaleByHeight, 0.42f), 0.22f, 0.42f);
+        float displayedWidth = cardWidth * scale;
+        float totalWidth = displayedWidth * count + Mathf.Max(0, count - 1) * spacing;
+        float startX = -totalWidth * 0.5f + displayedWidth * 0.5f;
+
+        for (int i = 0; i < list.Count; i++)
+        {
+            Card card = list[i];
+            if (card == null)
+            {
+                continue;
+            }
+
+            CardWidget cardWidget = Instantiate(_offerPreviewCardTemplate, layout, false);
+            cardWidget.name = $"PreviewCard_{card.InstanceId}_{i}";
+            cardWidget.Card = card;
+
+            ShowingCard showing = cardWidget.gameObject.GetComponent<ShowingCard>() ?? cardWidget.gameObject.AddComponent<ShowingCard>();
+            showing.SetScale(scale, scale);
+
+            RectTransform rect = cardWidget.transform as RectTransform;
+            if (rect != null)
+            {
+                rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+                rect.pivot = new Vector2(0.5f, 0.5f);
+                rect.anchoredPosition = new Vector2(startX + i * (displayedWidth + spacing), 0f);
+            }
+        }
+    }
+
+    private static void ClearOfferPreviewPanel(OfferPreviewPanelTag panel)
+    {
+        if (panel?.CardLayout == null)
+        {
+            return;
+        }
+
+        List<Transform> children = new List<Transform>();
+        foreach (Transform child in panel.CardLayout)
+        {
+            if (child != null)
+            {
+                children.Add(child);
+            }
+        }
+
+        foreach (Transform child in children)
+        {
+            Destroy(child.gameObject);
+        }
+    }
+
+    private sealed class OfferPreviewPanelTag : MonoBehaviour
+    {
+        public RectTransform CardLayout;
     }
 
     private void RebuildCardPickerList()
@@ -3409,11 +3603,11 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         {
             Plugin.Logger?.LogInfo($"[TradePanel] EnsureOfferEditorOverlay creating: tradeId={_tradeId ?? "<null>"}");
             _offerEditorRoot = new GameObject("TradeOfferEditor");
-            _offerEditorRoot.transform.SetParent(transform, false);
+            _offerEditorRoot.transform.SetParent(GetTradePanelContentParent(), false);
 
             RectTransform rootRect = _offerEditorRoot.AddComponent<RectTransform>();
-            rootRect.anchorMin = new Vector2(0.02f, 0.02f);
-            rootRect.anchorMax = new Vector2(0.48f, 0.18f);
+            rootRect.anchorMin = new Vector2(0.00f, -0.35f);
+            rootRect.anchorMax = new Vector2(0.26f, -0.06f);
             rootRect.offsetMin = Vector2.zero;
             rootRect.offsetMax = Vector2.zero;
 
@@ -3432,46 +3626,45 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             cardsLabel.name = "CardsLabel";
             cardsLabel.text = "卡牌:";
             cardsLabel.alignment = TextAlignmentOptions.Center;
+            ConfigureSingleLineText(cardsLabel);
             SetRect(cardsLabel.rectTransform, 0.02f, 0.70f, 0.25f, 0.95f);
 
             _cardCountText = Instantiate(textTemplate, _offerEditorRoot.transform, false);
             _cardCountText.name = "CardsValue";
             _cardCountText.text = "0";
             _cardCountText.alignment = TextAlignmentOptions.Left;
-            SetRect(_cardCountText.rectTransform, 0.25f, 0.70f, 0.50f, 0.95f);
+            ConfigureSingleLineText(_cardCountText);
+            SetRect(_cardCountText.rectTransform, 0.28f, 0.70f, 0.52f, 0.95f);
 
             // 金币行
             var moneyLabel = Instantiate(textTemplate, _offerEditorRoot.transform, false);
             moneyLabel.name = "MoneyLabel";
             moneyLabel.text = "金币:";
             moneyLabel.alignment = TextAlignmentOptions.Center;
+            ConfigureSingleLineText(moneyLabel);
             SetRect(moneyLabel.rectTransform, 0.02f, 0.38f, 0.25f, 0.63f);
 
-            // 已持金币显示值（左下列表）：应展示玩家当前金币量（与顶栏一致）。
+            // 已持金币显示值：用户不需要看到，隐藏之。
             _ownedMoneyText = Instantiate(textTemplate, _offerEditorRoot.transform, false);
             _ownedMoneyText.name = "OwnedMoneyValue";
             _ownedMoneyText.text = "0";
             _ownedMoneyText.alignment = TextAlignmentOptions.Left;
             _ownedMoneyText.raycastTarget = false;
-            SetRect(_ownedMoneyText.rectTransform, 0.25f, 0.38f, 0.50f, 0.63f);
+            ConfigureSingleLineText(_ownedMoneyText);
+            SetRect(_ownedMoneyText.rectTransform, 0.28f, 0.38f, 0.52f, 0.63f);
+            _ownedMoneyText.gameObject.SetActive(false);
 
             // 金币三元组：保持 '-' 和 '+' 在数字两侧等距。
             // 需求：数字位数变化时间距保持不变，三元组整体居中。
             _moneyTripletRoot = new GameObject("MoneyTriplet");
             _moneyTripletRoot.transform.SetParent(_offerEditorRoot.transform, false);
             var moneyTripletRect = _moneyTripletRoot.AddComponent<RectTransform>();
-            SetRect(moneyTripletRect, 0.52f, 0.40f, 0.82f, 0.61f);
+            // 金币 triplet 从标签右侧开始撑到右边，完整显示加减号和数字。
+            SetRect(moneyTripletRect, 0.28f, 0.38f, 1.00f, 0.65f);
 
-            _moneyTripletLayout = _moneyTripletRoot.AddComponent<HorizontalLayoutGroup>();
-            _moneyTripletLayout.childAlignment = TextAnchor.MiddleCenter;
-            _moneyTripletLayout.spacing = 12f;
-            _moneyTripletLayout.childControlWidth = true;
-            _moneyTripletLayout.childControlHeight = true;
-            _moneyTripletLayout.childForceExpandWidth = false;
-            _moneyTripletLayout.childForceExpandHeight = false;
-
-            // 金币 +/-：可点击文字（无背景）。
+            // 金币 +/-：明确定位，避免 HorizontalLayoutGroup 导致字体尺寸坍缩为零。
             var minusBtn = CreateTextButton(textTemplate, _moneyTripletRoot.transform, "MoneyMinus", "-");
+            SetRect(minusBtn.GetComponent<RectTransform>(), 0.00f, 0.00f, 0.28f, 1.00f);
             minusBtn.onClick.RemoveAllListeners();
             minusBtn.onClick.AddListener(() =>
             {
@@ -3486,11 +3679,12 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             _moneyValueText.text = "0";
             _moneyValueText.alignment = TextAlignmentOptions.Center;
             _moneyValueText.raycastTarget = false; // 数字本身不可点击
-            _moneyValueText.enableWordWrapping = false;
-            _moneyValueText.overflowMode = TextOverflowModes.Overflow;
+            ConfigureSingleLineText(_moneyValueText);
+            SetRect(_moneyValueText.rectTransform, 0.30f, 0.00f, 0.70f, 1.00f);
             _moneyValueBaseFontSize = _moneyValueText.fontSize;
 
             var plusBtn = CreateTextButton(textTemplate, _moneyTripletRoot.transform, "MoneyPlus", "+");
+            SetRect(plusBtn.GetComponent<RectTransform>(), 0.72f, 0.00f, 1.00f, 1.00f);
             plusBtn.onClick.RemoveAllListeners();
             plusBtn.onClick.AddListener(() =>
             {
@@ -3516,13 +3710,15 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             exLabel.name = "ExLabel";
             exLabel.text = "展品:";
             exLabel.alignment = TextAlignmentOptions.Center;
+            ConfigureSingleLineText(exLabel);
             SetRect(exLabel.rectTransform, 0.02f, 0.05f, 0.25f, 0.30f);
 
             _exhibitValueText = Instantiate(textTemplate, _offerEditorRoot.transform, false);
             _exhibitValueText.name = "ExValue";
             _exhibitValueText.text = "0";
             _exhibitValueText.alignment = TextAlignmentOptions.Left;
-            SetRect(_exhibitValueText.rectTransform, 0.25f, 0.05f, 0.50f, 0.30f);
+            ConfigureSingleLineText(_exhibitValueText);
+            SetRect(_exhibitValueText.rectTransform, 0.28f, 0.05f, 0.52f, 0.30f);
 
             // 最终清理：将 button 模板层次带入的意外“取消”/多余按钮对象全部删除，仅保留已知 widget。
             PruneOfferEditorExtraButtons(_offerEditorRoot);
@@ -3749,22 +3945,22 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         try
         {
             _offerActionsRoot = new GameObject("TradeOfferActions");
-            _offerActionsRoot.transform.SetParent(transform, false);
+            _offerActionsRoot.transform.SetParent(GetTradePanelContentParent(), false);
 
             var rt = _offerActionsRoot.AddComponent<RectTransform>();
 
             // 右下区域（绿色框区域），与详情列对齐，保持与报价编辑器的间距一致。
-            rt.anchorMin = new Vector2(0.80f, 0.08f);
-            rt.anchorMax = new Vector2(0.98f, 0.20f);
+            rt.anchorMin = new Vector2(0.74f, -0.35f);
+            rt.anchorMax = new Vector2(1.00f, -0.06f);
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
 
-            _offerActionsPickCardsBtn = CreateTextButton(textTemplate, _offerActionsRoot.transform, "PickCards", "选择卡牌");
+            _offerActionsPickCardsBtn = CreateTextButton(textTemplate, _offerActionsRoot.transform, "PickCards", "选择卡牌", textTemplate.fontSize * 0.50f);
             var cardsRt = _offerActionsPickCardsBtn.GetComponent<RectTransform>();
-            SetRect(cardsRt, 0f, 0.45f, 1f, 1f); // 55%/45%
+            SetRect(cardsRt, 0.04f, 0.56f, 0.96f, 1f);
             {
                 var tmp = _offerActionsPickCardsBtn.GetComponent<TextMeshProUGUI>();
-                tmp?.alignment = TextAlignmentOptions.Left;
+                tmp?.alignment = TextAlignmentOptions.Center;
             }
 
             _offerActionsPickCardsBtn.onClick.RemoveAllListeners();
@@ -3779,12 +3975,12 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 ShowCardPickerOverlay();
             });
 
-            _offerActionsPickExhibitsBtn = CreateTextButton(textTemplate, _offerActionsRoot.transform, "PickExhibits", "选择展品");
+            _offerActionsPickExhibitsBtn = CreateTextButton(textTemplate, _offerActionsRoot.transform, "PickExhibits", "选择展品", textTemplate.fontSize * 0.50f);
             var exRt = _offerActionsPickExhibitsBtn.GetComponent<RectTransform>();
-            SetRect(exRt, 0f, 0f, 1f, 0.45f);
+            SetRect(exRt, 0.04f, 0.00f, 0.96f, 0.40f);
             {
                 var tmp = _offerActionsPickExhibitsBtn.GetComponent<TextMeshProUGUI>();
-                tmp?.alignment = TextAlignmentOptions.Left;
+                tmp?.alignment = TextAlignmentOptions.Center;
             }
 
             _offerActionsPickExhibitsBtn.onClick.RemoveAllListeners();
@@ -3891,6 +4087,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         tmp.text = text;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.raycastTarget = true;
+        ConfigureSingleLineText(tmp);
         if (fontSize > 0f)
         {
             tmp.enableAutoSizing = false;
@@ -3935,6 +4132,17 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
         _ = tmp.gameObject.AddComponent<TextButtonHover>();
         return btn;
+    }
+
+    private static void ConfigureSingleLineText(TextMeshProUGUI text)
+    {
+        if (text == null)
+        {
+            return;
+        }
+
+        text.enableWordWrapping = false;
+        text.overflowMode = TextOverflowModes.Overflow;
     }
 
     private bool TryPickOfferEditorTemplates(out TextMeshProUGUI textTemplate, out CommonButtonWidget buttonTemplate)

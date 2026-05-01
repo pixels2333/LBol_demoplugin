@@ -212,20 +212,20 @@ internal static class RuntimeSelectionPanelFactory
 
             if (singleConfirm != null && !ReferenceEquals(singleConfirm, confirm))
             {
-                singleConfirm.onClick.RemoveAllListeners();
+                ResetButtonClick(singleConfirm);
                 singleConfirm.gameObject.SetActive(false);
             }
 
             if (confirm != null)
             {
-                confirm.onClick.RemoveAllListeners();
+                ResetButtonClick(confirm);
                 confirm.gameObject.SetActive(showConfirmButton);
                 SetButtonLabel(confirm, confirmLabel);
             }
 
             if (cancel != null)
             {
-                cancel.onClick.RemoveAllListeners();
+                ResetButtonClick(cancel);
                 cancel.gameObject.SetActive(true);
                 SetButtonLabel(cancel, cancelLabel);
             }
@@ -515,6 +515,16 @@ internal static class RuntimeSelectionPanelFactory
             c.a = 1f;
             tmp.color = c;
         }
+    }
+
+    private static void ResetButtonClick(Button button)
+    {
+        if (button == null)
+        {
+            return;
+        }
+
+        button.onClick = new Button.ButtonClickedEvent();
     }
 
     private static CommonButtonWidget TryResolveCommonButtonWidget(Button target)
