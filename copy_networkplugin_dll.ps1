@@ -31,7 +31,8 @@ param(
   [switch]$CopyDepsJson = $false,
 
   # Default destination: the folder you specified.
-  [string]$DestDir = "D:\steam\steamapps\common\LBoL\Mods\1"
+  # [string]$DestDir = "D:\steam\steamapps\common\LBoL\Mods\1"
+  [string]$DestDir = "E:\Steam\steamapps\common\LBoL\Mods\demo"
 )
 
 $ErrorActionPreference = 'Stop'

@@ -9,15 +9,14 @@ using LBoL.Core.Cards;
 using LBoL.Presentation;
 using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Dialogs;
+using Microsoft.Extensions.DependencyInjection;
 using LBoL.Presentation.UI.ExtraWidgets;
 using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.UI.Widgets;
-using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Patch.Network;
 using NetworkPlugin.Patch.UI;
-using NetworkPlugin.UI.Dialogs;
 using NetworkPlugin.UI.Factories;
 using NetworkPlugin.UI.Payloads;
 using NetworkPlugin.UI.Rules;
@@ -61,57 +60,30 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     #region 序列化字段（UI 组件）
 
-    /// <summary>
-    /// 玩家 1 的交易区域根节点。
-    /// </summary>
     [SerializeField]
     private RectTransform player1TradeArea;
 
-    /// <summary>
-    /// 玩家 2 的交易区域根节点。
-    /// </summary>
     [SerializeField]
     private RectTransform player2TradeArea;
 
-    /// <summary>
-    /// 玩家 1 的交易卡槽数组。
-    /// </summary>
     [SerializeField]
     private TradeSlotWidget[] player1Slots;
 
-    /// <summary>
-    /// 玩家 2 的交易卡槽数组。
-    /// </summary>
     [SerializeField]
     private TradeSlotWidget[] player2Slots;
 
-    /// <summary>
-    /// 确认交易按钮。
-    /// </summary>
     [SerializeField]
     private CommonButtonWidget confirmButton;
 
-    /// <summary>
-    /// 取消交易按钮。
-    /// </summary>
     [SerializeField]
     private CommonButtonWidget cancelButton;
 
-    /// <summary>
-    /// 状态提示文本（等待放入卡牌、可确认、交易完成等）。
-    /// </summary>
     [SerializeField]
     private TextMeshProUGUI statusText;
 
-    /// <summary>
-    /// 玩家 1 名称文本。
-    /// </summary>
     [SerializeField]
     private TextMeshProUGUI player1NameText;
 
-    /// <summary>
-    /// 玩家 2 名称文本。
-    /// </summary>
     [SerializeField]
     private TextMeshProUGUI player2NameText;
 
@@ -119,19 +91,9 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     #region 内部状态字段
 
-    /// <summary>
-    /// 玩家 1 已放入交易的卡牌列表。
-    /// </summary>
     private readonly List<Card> _player1OfferedCards = new List<Card>();
-
-    /// <summary>
-    /// 玩家 2 已放入交易的卡牌列表。
-    /// </summary>
     private readonly List<Card> _player2OfferedCards = new List<Card>();
 
-    /// <summary>
-    /// 当前交易会话的 ID。
-    /// </summary>
     private string _tradeId;
     private string _selfPlayerId;
     private string _playerAId;
@@ -142,24 +104,9 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     // 当 true 时，TradePanel 已将控制权交给 TradeDetailDialog，不应再发起网络请求或初始化面板内编辑器。
     private bool _handoffToDetailDialog;
 
-    /// <summary>
-    /// 当前交易的参数载荷。
-    /// </summary>
     private TradePayload _payload;
-
-    /// <summary>
-    /// 本次交易允许的最大卡牌数量。
-    /// </summary>
     private int _maxTradeSlots = DefaultMaxTradeSlots;
-
-    /// <summary>
-    /// 用于整体控制交互和可见性的 CanvasGroup。
-    /// </summary>
     private CanvasGroup _canvasGroup;
-
-    /// <summary>
-    /// 当前交易是否允许取消。
-    /// </summary>
     private bool _canCancel = true;
 
     // v2 本地报价（金币 + 展品），卡牌存储于 _player1OfferedCards。
@@ -188,15 +135,11 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private bool _blockingCenterMessageActive;
 
     // 离线/本地调试模式：允许在无服务器时打开并操作 TradePanel。
-    // 用于在 DebugVirtualPlayerAiDefault/DebugFakePlayersForTrade 启用时验证 UI 流程
-    // （partner picker、卡牌/展品选)。
     private bool _localDebugTradeMode;
 
     // 运行时报价编辑器 overlay（金币 + 展品）。
     private GameObject _offerEditorRoot;
     private GameObject _offerActionsRoot;
-    private Button _offerActionsPickCardsBtn;
-    private Button _offerActionsPickExhibitsBtn;
     private GameObject _moneyTripletRoot;
     private HorizontalLayoutGroup _moneyTripletLayout;
     private float _moneyValueBaseFontSize;
@@ -241,12 +184,12 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         player2NameText = runtimePlayer2NameText;
 
         // 运行时创建的面板在 Awake() 之后绑定，因此需在此处注册按钮事件。
-        if (confirmButton?.button != null)
+        if (confirmButton?.button is not null)
         {
             confirmButton.button.onClick.RemoveAllListeners();
             confirmButton.button.onClick.AddListener(OnConfirmTrade);
 
-            // 用户需求：确认按钮使用 Open behavior + Normal weight。
+            // 用户需求：确认按钮使用 Open behavior + Normal weight.
             try
             {
                 Traverse traverse = HarmonyLib.Traverse.Create(confirmButton);
@@ -264,34 +207,23 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     }
 
     private Transform GetTradePanelContentParent()
-    {
-        return _runtimeContentRoot != null ? _runtimeContentRoot.transform : transform;
-    }
+        => _runtimeContentRoot is not null ? _runtimeContentRoot.transform : transform;
 
     #endregion
 
     #region UiPanel 属性
 
-    /// <summary>
-    /// 面板层级，交易面板使用顶层。
-    /// </summary>
     public override PanelLayer Layer => PanelLayer.Top;
 
     #endregion
 
     #region Unity 生命周期
 
-    /// <summary>
-    /// Unity Awake 生命周期回调，用于初始化组件引用及事件绑定。
-    /// </summary>
     public void Awake()
     {
         // 获取或添加 CanvasGroup，用于控制面板交互
         _canvasGroup = GetComponent<CanvasGroup>();
-        if (_canvasGroup == null)
-        {
-            _canvasGroup = gameObject.AddComponent<CanvasGroup>();
-        }
+        _canvasGroup ??= gameObject.AddComponent<CanvasGroup>();
 
         // 注册按钮点击事件
         confirmButton?.button?.onClick.AddListener(OnConfirmTrade);
@@ -302,13 +234,10 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     #region 多语言
 
-    /// <summary>
-    /// 语言切换时回调，刷新界面文本。
-    /// </summary>
     public override void OnLocaleChanged()
     {
         // 语言切换时刷新界面文本（如果当前有有效的 payload）
-        if (_payload != null)
+        if (_payload is not null)
         {
             UpdateUIStrings();
         }
@@ -318,20 +247,17 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     #region 面板生命周期
 
-    /// <summary>
-    /// 面板开始显示时（动画前）调用。
-    /// </summary>
-    /// <param name="payload">交易参数载荷。</param>
     protected override void OnShowing(TradePayload payload)
     {
-        Plugin.Logger?.LogInfo($"[TradePanel] OnShowing enter: payloadNull={(payload == null)}, gameObjectActiveSelf={gameObject.activeSelf}, gameObjectActiveInHierarchy={gameObject.activeInHierarchy}, panelGameRun={(GameRun != null)}, activeGameRun={(ActiveGameRun != null)}");
+        Plugin.Logger?.LogInfo($"[TradePanel] OnShowing enter: payloadNull={(payload is null)}, activeGameRun={(ActiveGameRun is not null)}");
         EnsurePopupTopmost();
 
         // 本地 UI 测试：调试开关启用时允许在无服务器情况下打开面板。
-        _localDebugTradeMode = !TryEnsureNetworkConnected() && IsLocalDebugTradeAllowed();
-        if (!_localDebugTradeMode && !TryEnsureNetworkConnected())
+        bool networkConnected = TryEnsureNetworkConnected();
+        _localDebugTradeMode = !networkConnected && IsLocalDebugTradeAllowed();
+        if (!networkConnected && !_localDebugTradeMode)
         {
-            Plugin.Logger?.LogWarning("[TradePanel] OnShowing aborted: network unavailable and local debug trade mode disabled.");
+            Plugin.Logger?.LogWarning("[TradePanel] OnShowing aborted: network unavailable.");
             Hide();
             return;
         }
@@ -343,11 +269,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
         // 重要：在可能提前返回之前（即显示 partner picker 或 modal dialog 前）确保面板可交互。
         // 否则如果面板在上次隐藏后再次打开，picker 可能显示但无法点击。
-        if (_canvasGroup != null)
-        {
-            _canvasGroup.interactable = true;
-            _canvasGroup.blocksRaycasts = true;
-        }
+        SetCanvasInteractable(true);
 
         // 缓存本次交易的参数
         _payload = payload;
@@ -381,39 +303,26 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         EnsureOfferPreviewOverlay();
 
         // 设置玩家名称显示（不使用 Player 1/2 之类的占位文本）
-        player1NameText?.text = ResolveLocalPlayerDisplayName(payload);
-        player2NameText?.text = ResolvePartnerDisplayName(payload);
+        if (player1NameText is not null) player1NameText.text = ResolveLocalPlayerDisplayName(payload);
+        if (player2NameText is not null) player2NameText.text = ResolvePartnerDisplayName(payload);
 
         // 根据配置显示/隐藏取消按钮
         cancelButton?.gameObject.SetActive(_canCancel);
-
-        // 允许面板交互
-        if (_canvasGroup != null)
-        {
-            _canvasGroup.interactable = true;
-            _canvasGroup.blocksRaycasts = true;
-        }
 
         // 刷新本地化文案
         UpdateUIStrings();
     }
 
-    /// <summary>
-    /// 面板展示完成后调用（动画后）。
-    /// </summary>
     protected override void OnShown()
     {
         // 面板显示完成后再次置顶，避免与 GapOptionsPanel/OptionWidget 的 sibling 顺序竞争。
         EnsurePopupTopmost();
     }
 
-    /// <summary>
-    /// 面板开始隐藏时调用。
-    /// </summary>
     protected override void OnHiding()
     {
         // 隐藏动画开始时禁用交互
-        _canvasGroup?.interactable = false;
+        SetCanvasInteractable(false);
 
         // 取消注册输入处理器
         if (_actionHandlerPushed)
@@ -425,9 +334,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         TryUnsubscribeTradeEvents();
     }
 
-    /// <summary>
-    /// 面板完全隐藏后调用。
-    /// </summary>
     protected override void OnHided()
     {
         // 完全隐藏后重置数据并清空 payload
@@ -439,9 +345,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     #region UI 文本与状态
 
-    /// <summary>
-    /// 根据当前语言和状态刷新 UI 文本。
-    /// </summary>
     private void UpdateUIStrings()
     {
         // 设置初始状态提示为“等待放入卡牌”
@@ -507,9 +410,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
     }
 
-    /// <summary>
-    /// 将交易数据重置并清空所有槽位显示。
-    /// </summary>
     private void ResetTradeData()
     {
         // 清空两侧玩家已放入的卡牌列表
@@ -531,15 +431,15 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         _lastPreparingHandledTimestamp = 0;
 
         // 提前清空可见标签，避免显示过时/占位符名称。
-        player1NameText?.text = string.Empty;
-        player2NameText?.text = string.Empty;
+        if (player1NameText is not null) player1NameText.text = string.Empty;
+        if (player2NameText is not null) player2NameText.text = string.Empty;
 
         // 隐藏所有活跃的 overlay。
         _partnerPickerActive = false;
         _blockingCenterMessageActive = false;
         _partnerPickerRoot?.SetActive(false);
 
-        if (_partnerPickerAutoRefreshCo != null)
+        if (_partnerPickerAutoRefreshCo is not null)
         {
             StopCoroutine(_partnerPickerAutoRefreshCo);
             _partnerPickerAutoRefreshCo = null;
@@ -548,7 +448,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         _exhibitPickerRoot?.SetActive(false);
 
         // 清空玩家1所有交易槽的显示
-        if (player1Slots != null)
+        if (player1Slots is not null)
         {
             foreach (TradeSlotWidget slot in player1Slots)
             {
@@ -557,7 +457,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
 
         // 清空玩家2所有交易槽的显示
-        if (player2Slots != null)
+        if (player2Slots is not null)
         {
             foreach (TradeSlotWidget slot in player2Slots)
             {
@@ -568,7 +468,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         ClearOfferPreview();
 
         // 默认禁止点击确认按钮，直到双方都放入了卡牌
-        if (confirmButton?.button != null)
+        if (confirmButton?.button is not null)
         {
             confirmButton.button.interactable = false;
         }
@@ -576,13 +476,9 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         RefreshOfferEditorTexts();
     }
 
-    /// <summary>
-    /// 更新状态提示文本。
-    /// </summary>
-    /// <param name="message">要显示的消息内容。</param>
     private void UpdateUIStatus(string message)
     {
-        statusText?.text = message;
+        if (statusText is not null) statusText.text = message;
     }
 
     #endregion
@@ -596,7 +492,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     /// <param name="isPlayer1">true 表示玩家 1，false 表示玩家 2。</param>
     public void AddCardToTrade(Card card, bool isPlayer1)
     {
-        if (card == null)
+        if (card is null)
         {
             return;
         }
@@ -632,7 +528,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     /// <param name="isPlayer1">true 表示玩家 1，false 表示玩家 2。</param>
     public void RemoveCardFromTrade(Card card, bool isPlayer1)
     {
-        if (card == null)
+        if (card is null)
         {
             return;
         }
@@ -657,7 +553,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             }
 
             // 清空末尾的 UI 槽位（避免旧卡牌残留显示）
-            if (slots != null && offeredCards.Count < slots.Length)
+            if (slots is not null && offeredCards.Count < slots.Length)
             {
                 slots[offeredCards.Count]?.ClearSlot();
             }
@@ -672,24 +568,15 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
     }
 
-    /// <summary>
-    /// 刷新指定索引处交易槽的显示。
-    /// </summary>
-    /// <param name="card">要显示的卡牌。</param>
-    /// <param name="slots">所属玩家的槽位数组。</param>
-    /// <param name="index">槽位索引。</param>
     private void UpdateTradeSlot(Card card, TradeSlotWidget[] slots, int index)
     {
-        if (slots != null && index >= 0 && index < slots.Length && slots[index] != null)
+        if (slots is not null && index >= 0 && index < slots.Length && slots[index] is not null)
         {
             bool isPlayer1 = slots == player1Slots;
             slots[index].SetCard(card, (c) => RemoveCardFromTrade(c, isPlayer1));
         }
     }
 
-    /// <summary>
-    /// 检查双方是否已放入至少一张卡牌，从而决定是否允许确认交易。
-    /// </summary>
     private void CheckTradeReady()
     {
         // v2：允许交易任意资产（卡牌/道具/金币/展品）。
@@ -698,7 +585,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         bool bothPlayersReady = localHasOffer && remoteHasOffer;
 
         // 用户需求：确认按钮永不置灰，点击服务端未就绪时会显示状态提示但不发送确认。
-        if (confirmButton?.button != null)
+        if (confirmButton?.button is not null)
         {
             confirmButton.button.interactable = true;
         }
@@ -724,9 +611,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     #region 按钮与输入处理
 
-    /// <summary>
-    /// 点击“确认交易”按钮时回调。
-    /// </summary>
     private void OnConfirmTrade()
     {
         if (TryIsNetworkTrade(out _))
@@ -734,7 +618,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             // v2：双方都提供了任意资产（卡牌/道具/金币/展品）即可确认。
             // 远端报价来自 host 状态，不一定来自 _player2OfferedCards。
             TradeSyncPatch.TradeSessionState state = TradeSyncPatch.GetLastKnown(_tradeId);
-            if (state == null)
+            if (state is null)
             {
                 return;
             }
@@ -770,9 +654,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         StartCoroutine(ExecuteTrade());
     }
 
-    /// <summary>
-    /// 点击“取消交易”按钮时回调。
-    /// </summary>
     private void OnCancelTrade()
     {
         if (TryIsNetworkTrade(out _))
@@ -783,12 +664,9 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         Hide();
     }
 
-    /// <summary>
-    /// 输入系统触发的取消事件回调（例如按下退出/返回键）。
-    /// </summary>
     public void OnCancel()
     {
-        if (_cardPickerRoot != null && _cardPickerRoot.activeSelf)
+        if (_cardPickerRoot is not null && _cardPickerRoot.activeSelf)
         {
             HideCardPickerOverlay();
             return;
@@ -805,9 +683,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     #region 协程与网络同步
 
-    /// <summary>
-    /// 执行实际交易逻辑的协程。
-    /// </summary>
     private IEnumerator ExecuteTrade()
     {
         GameRunController run = ActiveGameRun;
@@ -820,7 +695,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             yield break;
         }
 
-        if (run == null)
+        if (run is null)
         {
             UpdateUIStatus("Trade.Failed".Localize());
             Plugin.Logger?.LogWarning("[TradePanel] ExecuteTrade aborted: ActiveGameRun is null.");
@@ -828,11 +703,11 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
 
         // 禁用按钮以防止重复点击触发多次交易
-        if (confirmButton?.button != null)
+        if (confirmButton?.button is not null)
         {
             confirmButton.button.interactable = false;
         }
-        if (cancelButton?.button != null)
+        if (cancelButton?.button is not null)
         {
             cancelButton.button.interactable = false;
         }
@@ -861,26 +736,14 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             });
         }
 
-        // 更新状态为“交易完成”
+        // 更新状态为"交易完成"
         UpdateUIStatus("Trade.Completed".Localize());
 
-        // 发送网络事件通知其他玩家本次交易已经完成
-        SendTradeEvent();
+        // v1：交易完成事件由 TradeSyncPatch 统一发送/广播，此处保留为扩展点。
 
         // 等待一小段时间，让玩家看清结果
         yield return new WaitForSeconds(TradeCompleteWaitTime);
-
-        // 关闭交易面板
         Hide();
-    }
-
-    /// <summary>
-    /// 发送交易完成事件到同步管理器（网络广播）。
-    /// </summary>
-    private void SendTradeEvent()
-    {
-        // v1：交易完成事件由 TradeSyncPatch 统一发送/广播。
-        // 这里保留方法作为本地模式的扩展点。
     }
 
     private void SetupTradeSession(TradePayload payload)
@@ -888,9 +751,8 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         try
         {
             INetworkClient client = ModService.ServiceProvider.GetService<INetworkClient>();
-            bool connected = client != null && client.IsConnected;
-            Plugin.Logger?.LogInfo(
-                $"[TradePanel] SetupTradeSession enter: connected={connected}, payloadTradeId={payload?.TradeId ?? "<null>"}, payloadP1={payload?.Player1Id ?? "<null>"}, payloadP2={payload?.Player2Id ?? "<null>"}, payloadP2Name={payload?.Player2Name ?? "<null>"}, existingTradeId={_tradeId ?? "<null>"}, localDebugTradeMode={_localDebugTradeMode}");
+            bool connected = client is not null && client.IsConnected;
+            Plugin.Logger?.LogInfo($"[TradePanel] SetupTradeSession enter: connected={connected}, tradeId={payload?.TradeId ?? "<null>"}");
             if (connected)
             {
                 NetworkIdentityTracker.EnsureSubscribed(client);
@@ -899,29 +761,18 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 _selfPlayerId = NetworkIdentityTracker.GetSelfPlayerId();
                 if (string.IsNullOrWhiteSpace(_selfPlayerId))
                 {
-                    Plugin.Logger?.LogWarning("[TradePanel] SetupTradeSession aborted: self player id is empty.");
+                    Plugin.Logger?.LogWarning("[TradePanel] SetupTradeSession aborted: self player id empty.");
                     return;
                 }
             }
             else
             {
-                // 离线/本地调试分支：伪造稳定本地身份，使展示和过滤能正常工作。
-                // 避免等待网络状态更新。
                 _selfPlayerId = "local";
             }
 
             _tradeId = payload?.TradeId;
-            if (string.IsNullOrWhiteSpace(_tradeId))
-            {
-                _tradeId = Guid.NewGuid().ToString("N");
-            }
-
-            _playerAId = payload?.Player1Id;
-            if (string.IsNullOrWhiteSpace(_playerAId))
-            {
-                _playerAId = _selfPlayerId;
-            }
-
+            _tradeId ??= Guid.NewGuid().ToString("N");
+            _playerAId = payload?.Player1Id ?? _selfPlayerId;
             _playerBId = payload?.Player2Id;
 
             // 需求：无法明确确定 partner 时必须显示 partner picker UI。
@@ -935,33 +786,27 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             // 已连接：请求 host 驱动的交易会话。离线/本地调试：跳过网络。
             if (connected)
             {
-                // 首选 dialog 屏山类编辑器。创建失败时回退到面板内流程。
                 if (TryShowTradeDetailDialog(_playerBId, payload?.Player2Name))
                 {
-                    Plugin.Logger?.LogInfo($"[TradePanel] SetupTradeSession: handed off to TradeDetailDialog, tradeId={_tradeId}, partner={_playerBId}");
+                    Plugin.Logger?.LogInfo($"[TradePanel] SetupTradeSession: handed off to TradeDetailDialog, tradeId={_tradeId}");
                     _handoffToDetailDialog = true;
                     Hide(false);
                     return;
                 }
 
-                Plugin.Logger?.LogInfo($"[TradePanel] SetupTradeSession: TradeDetailDialog unavailable, fallback to panel flow. tradeId={_tradeId}, partner={_playerBId}");
+                Plugin.Logger?.LogInfo($"[TradePanel] SetupTradeSession: dialog unavailable, fallback to panel. tradeId={_tradeId}");
                 TrySubscribeTradeEvents();
-
-                // 若本端是参与者之一，发起会话（Host 会裁决并广播状态）。
                 TradeSyncPatch.RequestStartTrade(_tradeId, _playerAId, _playerBId, _maxTradeSlots);
                 TradeSyncPatch.RequestSnapshot(_tradeId, _selfPlayerId);
-                Plugin.Logger?.LogInfo($"[TradePanel] SetupTradeSession: requested start/snapshot, tradeId={_tradeId}, playerA={_playerAId}, playerB={_playerBId}, maxSlots={_maxTradeSlots}");
             }
             else
             {
-                // 本地调试会话：立即显示交易详情。
                 EnsureOfferEditorOverlay();
                 EnsureCardPickerOverlay();
                 EnsureExhibitPickerOverlay();
                 SetTradeDetailsVisible(true);
                 cancelButton?.gameObject.SetActive(_canCancel);
                 UpdateUIStatus("本地调试交易：未连接服务器");
-                Plugin.Logger?.LogInfo($"[TradePanel] SetupTradeSession: entered local debug panel flow, tradeId={_tradeId}, playerA={_playerAId}, playerB={_playerBId}");
             }
         }
         catch (Exception ex)
@@ -981,20 +826,15 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             }
 
             var dialog = TradeDetailDialogRuntimeFactory.GetOrCreate();
-            if (dialog == null)
+            if (dialog is null)
             {
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(_tradeId))
-            {
-                _tradeId = Guid.NewGuid().ToString("N");
-            }
+            _tradeId ??= Guid.NewGuid().ToString("N");
 
             GameRunController activeRun = ActiveGameRun;
-            int activeDeckCount = activeRun?.BaseDeck?.Count ?? 0;
-            Plugin.Logger?.LogInfo(
-                $"[TradePanel] TryShowTradeDetailDialog: tradeId={_tradeId}, self={_selfPlayerId ?? "<null>"}, partner={partnerPlayerId ?? "<null>"}, panelGameRun={(GameRun != null)}, activeGameRun={(activeRun != null)}, activeDeckCount={activeDeckCount}, offeredLocal={_player1OfferedCards.Count}, offeredRemote={_player2OfferedCards.Count}");
+            Plugin.Logger?.LogInfo($"[TradePanel] TryShowTradeDetailDialog: tradeId={_tradeId}, self={_selfPlayerId}, partner={partnerPlayerId}");
 
             dialog.Show(new TradeDetailPayload
             {
@@ -1003,7 +843,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 PartnerPlayerId = partnerPlayerId,
                 PartnerPlayerName = OtherPlayersOverlayPatch.ResolveDisplayName(partnerPlayerId, partnerPreferredName, isLocal: false),
                 MaxTradeSlots = _maxTradeSlots,
-                InitialDeckCards = ActiveGameRun?.BaseDeck?.Where(c => c != null).ToList() ?? new List<Card>()
+                InitialDeckCards = activeRun?.BaseDeck?.Where(c => c is not null).ToList() ?? new List<Card>()
             });
 
             return true;
@@ -1024,14 +864,13 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private bool TryEnsureNetworkConnected()
     {
         INetworkClient client = ModService.ServiceProvider?.GetService<INetworkClient>();
-        if (client == null || !client.IsConnected)
+        if (client is null || !client.IsConnected)
         {
-            Plugin.Logger?.LogWarning($"[TradePanel] TryEnsureNetworkConnected failed: clientNull={(client == null)}, isConnected={(client != null && client.IsConnected)}");
+            Plugin.Logger?.LogWarning("[TradePanel] TryEnsureNetworkConnected failed.");
             TryShowTopMessage("交易仅在联机模式下可用。");
             return false;
         }
 
-        Plugin.Logger?.LogInfo("[TradePanel] TryEnsureNetworkConnected succeeded.");
         return true;
     }
 
@@ -1052,15 +891,11 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         Plugin.Logger?.LogInfo($"[TradePanel] ShowPartnerPickerOverlay enter: tradeId={_tradeId ?? "<null>"}, self={_selfPlayerId ?? "<null>"}, currentPartner={_playerBId ?? "<null>"}");
 
         // 确保 overlay 获得点击响应（即使面板之前被隐藏过）。
-        if (_canvasGroup != null)
-        {
-            _canvasGroup.interactable = true;
-            _canvasGroup.blocksRaycasts = true;
-        }
+        SetCanvasInteractable(true);
 
         // 懒创建 overlay。
         EnsurePartnerPickerOverlay();
-        if (_partnerPickerRoot == null)
+        if (_partnerPickerRoot is null)
         {
             Plugin.Logger?.LogWarning($"[TradePanel] ShowPartnerPickerOverlay failed: picker root missing, buildError={_partnerPickerBuildError ?? "<null>"}");
             ShowTradeTargetUnavailableDialog(_partnerPickerBuildError);
@@ -1095,7 +930,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         {
             Plugin.Logger?.LogInfo("[TradePanel] ShowPartnerPickerOverlay: self location unavailable, waiting for auto refresh.");
             TryShowPartnerPickerWaiting();
-            if (_partnerPickerAutoRefreshCo != null)
+            if (_partnerPickerAutoRefreshCo is not null)
             {
                 StopCoroutine(_partnerPickerAutoRefreshCo);
                 _partnerPickerAutoRefreshCo = null;
@@ -1106,20 +941,20 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void TryShowPartnerPickerWaiting()
     {
-        if (_partnerPickerRoot == null)
+        if (_partnerPickerRoot is null)
         {
             return;
         }
 
         PartnerPickerTag tag = _partnerPickerRoot.GetComponentInChildren<PartnerPickerTag>(true);
-        if (tag == null)
+        if (tag is null)
         {
             return;
         }
 
         tag.ScrollRect?.gameObject.SetActive(false);
 
-        if (tag.EmptyText != null)
+        if (tag.EmptyText is not null)
         {
             tag.EmptyText.gameObject.SetActive(true);
             tag.EmptyText.text = "正在同步位置信息...";
@@ -1136,7 +971,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         float t = 0f;
         while (t < 1.0f)
         {
-            if (!_partnerPickerActive || _partnerPickerRoot == null)
+            if (!_partnerPickerActive || _partnerPickerRoot is null)
             {
                 _partnerPickerAutoRefreshCo = null;
                 yield break;
@@ -1152,7 +987,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             yield return null;
         }
 
-        if (_partnerPickerActive && _partnerPickerRoot != null)
+        if (_partnerPickerActive && _partnerPickerRoot is not null)
         {
             RebuildPartnerPickerList();
         }
@@ -1162,14 +997,14 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private static void ForceEnableRaycasts(GameObject root)
     {
-        if (root == null)
+        if (root is null)
         {
             return;
         }
 
         foreach (var cg in root.GetComponentsInChildren<CanvasGroup>(true))
         {
-            if (cg == null)
+            if (cg is null)
             {
                 continue;
             }
@@ -1197,7 +1032,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         confirmButton?.gameObject.SetActive(false);
         cancelButton?.gameObject.SetActive(false);
         UpdateUIStatus(string.Empty);
-        _canvasGroup?.interactable = false;
+        SetCanvasInteractable(false);
 
         UiManager.GetDialog<MessageDialog>().Show(new MessageContent
         {
@@ -1220,7 +1055,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void HidePartnerPickerOverlay()
     {
-        if (_partnerPickerAutoRefreshCo != null)
+        if (_partnerPickerAutoRefreshCo is not null)
         {
             StopCoroutine(_partnerPickerAutoRefreshCo);
             _partnerPickerAutoRefreshCo = null;
@@ -1232,12 +1067,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
         // 重新开启交易 UI。
         SetTradeDetailsVisible(true);
-
-        if (_canvasGroup != null)
-        {
-            _canvasGroup.interactable = true;
-            _canvasGroup.blocksRaycasts = true;
-        }
+        SetCanvasInteractable(true);
 
         // 恢复底层取消按钮状态。
         cancelButton?.gameObject.SetActive(_canCancel);
@@ -1245,20 +1075,13 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void EnsurePopupTopmost()
     {
-        try
-        {
-            transform.SetAsLastSibling();
-            _partnerPickerRoot?.transform.SetAsLastSibling();
-            _cardPickerRoot?.transform.SetAsLastSibling();
-            _exhibitPickerRoot?.transform.SetAsLastSibling();
-            _offerPreviewRoot?.transform.SetAsLastSibling();
-            _offerEditorRoot?.transform.SetAsLastSibling();
-            _offerActionsRoot?.transform.SetAsLastSibling();
-        }
-        catch
-        {
-            // ignored
-        }
+        transform.SetAsLastSibling();
+        _partnerPickerRoot?.transform.SetAsLastSibling();
+        _cardPickerRoot?.transform.SetAsLastSibling();
+        _exhibitPickerRoot?.transform.SetAsLastSibling();
+        _offerPreviewRoot?.transform.SetAsLastSibling();
+        _offerEditorRoot?.transform.SetAsLastSibling();
+        _offerActionsRoot?.transform.SetAsLastSibling();
     }
 
     private void SetTradeDetailsVisible(bool visible)
@@ -1279,9 +1102,16 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         _offerActionsRoot?.SetActive(visible);
     }
 
+    private void SetCanvasInteractable(bool interactable)
+    {
+        if (_canvasGroup is null) return;
+        _canvasGroup.interactable = interactable;
+        _canvasGroup.blocksRaycasts = interactable;
+    }
+
     private void EnsurePartnerPickerOverlay()
     {
-        if (_partnerPickerRoot != null)
+        if (_partnerPickerRoot is not null)
         {
             return;
         }
@@ -1293,7 +1123,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
             // 严格要求：使用游戏内 dialog prefab 作为 overlay 窗口框架，而非运行时构建的 Image/Outline。
             GameObject prefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
-            if (prefab == null)
+            if (prefab is null)
             {
                 _partnerPickerBuildError = "无法加载 UI/Dialogs/MessageDialog";
                 _partnerPickerRoot = null;
@@ -1305,7 +1135,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             _partnerPickerRoot.SetActive(false);
 
             RectTransform rootRect = _partnerPickerRoot.GetComponent<RectTransform>();
-            if (rootRect != null)
+            if (rootRect is not null)
             {
                 rootRect.anchorMin = Vector2.zero;
                 rootRect.anchorMax = Vector2.one;
@@ -1314,7 +1144,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             }
 
             MessageDialog dialog = _partnerPickerRoot.GetComponentInChildren<MessageDialog>(true);
-            if (dialog == null)
+            if (dialog is null)
             {
                 _partnerPickerBuildError = "MessageDialog 组件缺失";
                 Destroy(_partnerPickerRoot);
@@ -1331,14 +1161,14 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
             RectTransform subTextRect = subText?.rectTransform;
 
-            if (mainText != null)
+            if (mainText is not null)
             {
                 mainText.text = "请选择交易对象";
                 mainText.alignment = TextAlignmentOptions.Center;
                 mainText.raycastTarget = false;
             }
 
-            if (subText != null)
+            if (subText is not null)
             {
                 // 复用其 rect 作为列表占位区域；并添加点击刺激（点击可触发刷新）。
                 subText.text = string.Empty;
@@ -1357,12 +1187,12 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             }
 
             // 确保 dialog 按钮不会调用 UiDialog.Hide()（调用会修改 UiManager 当前 dialog 状态）。
-            if (singleConfirm != null)
+            if (singleConfirm is not null)
             {
                 singleConfirm.onClick.RemoveAllListeners();
                 Destroy(singleConfirm.gameObject);
             }
-            if (confirm != null)
+            if (confirm is not null)
             {
                 confirm.onClick.RemoveAllListeners();
                 confirm.gameObject.SetActive(true);
@@ -1370,7 +1200,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 _partnerPickerRefreshButton = confirm;
 
                 var refreshLabel = confirm.GetComponentInChildren<TextMeshProUGUI>(true);
-                if (refreshLabel != null)
+                if (refreshLabel is not null)
                 {
                     refreshLabel.text = "刷新";
                     refreshLabel.alignment = TextAlignmentOptions.Center;
@@ -1379,7 +1209,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 confirm.onClick.AddListener(OnPartnerPickerRefreshClicked);
             }
 
-            if (cancel != null)
+            if (cancel is not null)
             {
                 cancel.onClick.RemoveAllListeners();
                 cancel.gameObject.SetActive(true);
@@ -1387,7 +1217,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 _partnerPickerCancelButton = cancel;
 
                 var cancelLabel = cancel.GetComponentInChildren<TextMeshProUGUI>(true);
-                if (cancelLabel != null)
+                if (cancelLabel is not null)
                 {
                     cancelLabel.text = "取消";
                     cancelLabel.alignment = TextAlignmentOptions.Center;
@@ -1403,7 +1233,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             // 安全网：如果行级 pointer 事件受 prefab raycast 层次/逆序阻塞，
             // 则在 overlay 根捕获点击并通过矩形命中测试解析被点击的行。
             var catcher = _partnerPickerRoot.GetComponent<PartnerPickerClickCatcher>();
-            if (catcher == null)
+            if (catcher is null)
             {
                 catcher = _partnerPickerRoot.AddComponent<PartnerPickerClickCatcher>();
             }
@@ -1411,15 +1241,15 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
             RectTransform panelRect = TryFindCommonAncestorRect(mainText?.rectTransform,
                 cancel?.GetComponent<RectTransform>());
-            if (panelRect == null)
+            if (panelRect is null)
             {
-                panelRect = mainText != null ? mainText.rectTransform.parent as RectTransform : null;
+                panelRect = mainText is not null ? mainText.rectTransform.parent as RectTransform : null;
             }
-            if (panelRect == null)
+            if (panelRect is null)
             {
                 panelRect = rootRect;
             }
-            if (panelRect == null)
+            if (panelRect is null)
             {
                 Destroy(_partnerPickerRoot);
                 _partnerPickerRoot = null;
@@ -1429,7 +1259,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
             // 构建用于显示 TMP 可点击文字 partner 条目的简单 ScrollRect 容器。
             TextMeshProUGUI pickerTextTemplate = mainText ?? subText;
-            if (pickerTextTemplate == null)
+            if (pickerTextTemplate is null)
             {
                 Destroy(_partnerPickerRoot);
                 _partnerPickerRoot = null;
@@ -1443,7 +1273,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 scrollGo.transform.SetAsLastSibling();
 
                 var scrollRt = scrollGo.AddComponent<RectTransform>();
-                if (subTextRect != null)
+                if (subTextRect is not null)
                 {
                     CopyRectTransform(scrollRt, subTextRect);
                 }
@@ -1504,14 +1334,14 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             }
 
             // 确保取消按钮在列表上方。
-            if (cancel != null)
+            if (cancel is not null)
             {
                 cancel.transform.SetAsLastSibling();
             }
 
             // 验证标签创建成功。
             PartnerPickerTag tagCheck = _partnerPickerRoot.GetComponentInChildren<PartnerPickerTag>(true);
-            if (tagCheck == null || tagCheck.TextTemplate == null)
+            if (tagCheck is null || tagCheck.TextTemplate is null)
             {
                 Destroy(_partnerPickerRoot);
                 _partnerPickerRoot = null;
@@ -1528,7 +1358,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             {
                 _partnerPickerBuildError = "构建交易对象选择界面时发生异常";
             }
-            if (_partnerPickerRoot != null)
+            if (_partnerPickerRoot is not null)
             {
                 Destroy(_partnerPickerRoot);
             }
@@ -1538,7 +1368,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void OnPartnerPickerRefreshClicked()
     {
-        if (!_partnerPickerActive || _partnerPickerRoot == null)
+        if (!_partnerPickerActive || _partnerPickerRoot is null)
         {
             return;
         }
@@ -1551,7 +1381,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         {
             TryShowPartnerPickerWaiting();
 
-            if (_partnerPickerAutoRefreshCo != null)
+            if (_partnerPickerAutoRefreshCo is not null)
             {
                 StopCoroutine(_partnerPickerAutoRefreshCo);
                 _partnerPickerAutoRefreshCo = null;
@@ -1563,7 +1393,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private static void CopyRectTransform(RectTransform dst, RectTransform src)
     {
-        if (dst == null || src == null)
+        if (dst is null || src is null)
         {
             return;
         }
@@ -1580,13 +1410,13 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private static T GetDialogField<T>(MessageDialog dialog, string fieldName) where T : class
     {
-        if (dialog == null || string.IsNullOrWhiteSpace(fieldName))
+        if (dialog is null || string.IsNullOrWhiteSpace(fieldName))
         {
             return null;
         }
 
         FieldInfo fi = typeof(MessageDialog).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
-        if (fi == null)
+        if (fi is null)
         {
             return null;
         }
@@ -1596,16 +1426,16 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private static T GetPrivateFieldValue<T>(object target, string fieldName) where T : class
     {
-        if (target == null || string.IsNullOrWhiteSpace(fieldName))
+        if (target is null || string.IsNullOrWhiteSpace(fieldName))
         {
             return null;
         }
 
         Type t = target.GetType();
-        while (t != null)
+        while (t is not null)
         {
             FieldInfo fi = t.GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (fi != null)
+            if (fi is not null)
             {
                 return fi.GetValue(target) as T;
             }
@@ -1618,21 +1448,21 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private static RectTransform TryFindCommonAncestorRect(RectTransform a, RectTransform b)
     {
-        if (a == null || b == null)
+        if (a is null || b is null)
         {
             return null;
         }
 
         HashSet<Transform> ancestors = new HashSet<Transform>();
         Transform t = a;
-        while (t != null)
+        while (t is not null)
         {
             ancestors.Add(t);
             t = t.parent;
         }
 
         Transform u = b;
-        while (u != null)
+        while (u is not null)
         {
             if (ancestors.Contains(u))
             {
@@ -1646,18 +1476,18 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void RebuildPartnerPickerList()
     {
-        if (_partnerPickerRoot == null)
+        if (_partnerPickerRoot is null)
         {
             return;
         }
 
         PartnerPickerTag tag = _partnerPickerRoot.GetComponentInChildren<PartnerPickerTag>(true);
-        if (tag == null || tag.TextTemplate == null)
+        if (tag is null || tag.TextTemplate is null)
         {
             return;
         }
 
-        Transform container = tag.ListContainer != null ? tag.ListContainer : tag.transform;
+        Transform container = tag.ListContainer is not null ? tag.ListContainer : tag.transform;
         foreach (Transform child in container)
         {
             Destroy(child.gameObject);
@@ -1717,7 +1547,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 // 严格模式：空状态也必须使用游戏内 UI 元素。
                 tag.ScrollRect?.gameObject.SetActive(false);
 
-                if (tag.EmptyText != null)
+                if (tag.EmptyText is not null)
                 {
                     tag.EmptyText.gameObject.SetActive(true);
                     tag.EmptyText.text = hasSelfLoc
@@ -1731,7 +1561,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 return;
             }
 
-            if (tag.EmptyText != null)
+            if (tag.EmptyText is not null)
             {
                 tag.EmptyText.text = string.Empty;
                 var c = tag.EmptyText.color;
@@ -1785,8 +1615,8 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             _tradeId = Guid.NewGuid().ToString("N");
         }
 
-        player1NameText?.text = ResolveLocalPlayerDisplayName(_payload);
-        player2NameText?.text = OtherPlayersOverlayPatch.ResolveDisplayName(partnerPlayerId, partnerPlayerName, isLocal: false);
+        if (player1NameText is not null) player1NameText.text = ResolveLocalPlayerDisplayName(_payload);
+        if (player2NameText is not null) player2NameText.text = OtherPlayersOverlayPatch.ResolveDisplayName(partnerPlayerId, partnerPlayerName, isLocal: false);
 
         HidePartnerPickerOverlay();
 
@@ -1795,8 +1625,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         {
             // 即使已连接，选择本地调试虚拟玩家也允许启动纯本地 UI 测试会话。
             _localDebugTradeMode = true;
-            GameRunController activeRun = ActiveGameRun;
-            Plugin.Logger?.LogInfo($"[TradePanel] OnPartnerSelected: entering local debug shortcut, tradeId={_tradeId}, activeGameRun={(activeRun != null)}, deckCount={(activeRun?.BaseDeck?.Count ?? 0)}, money={(activeRun?.Money ?? 0)}");
+            Plugin.Logger?.LogInfo($"[TradePanel] OnPartnerSelected: local debug shortcut for {partnerPlayerId}");
             PopulateLocalDebugRemoteOffer();
             EnsureOfferEditorOverlay();
             EnsureCardPickerOverlay();
@@ -1805,15 +1634,13 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             SetTradeDetailsVisible(true);
             cancelButton?.gameObject.SetActive(_canCancel);
             UpdateUIStatus($"本地调试交易：{partnerPlayerName}（不走服务器）");
-            Plugin.Logger?.LogInfo($"[TradePanel] OnPartnerSelected: local debug UI ready, offerEditorExists={(_offerEditorRoot != null)}, cardPickerExists={(_cardPickerRoot != null)}, exhibitPickerExists={(_exhibitPickerRoot != null)}, offeredLocal={_player1OfferedCards.Count}, offeredRemote={_player2OfferedCards.Count}, localMoney={_localMoneyOffer}");
-            Plugin.Logger?.LogInfo($"[TradePanel] OnPartnerSelected: entered local debug shortcut for partner={partnerPlayerId}");
             return;
         }
 
         // 网络交易优先使用基于 dialog 的编辑器。
         if (TryShowTradeDetailDialog(partnerPlayerId, partnerPlayerName))
         {
-            Plugin.Logger?.LogInfo($"[TradePanel] OnPartnerSelected: handed off to TradeDetailDialog, tradeId={_tradeId}, partner={partnerPlayerId}");
+            Plugin.Logger?.LogInfo($"[TradePanel] OnPartnerSelected: handed off to TradeDetailDialog, tradeId={_tradeId}");
             _handoffToDetailDialog = true;
             Hide(false);
             return;
@@ -1833,12 +1660,10 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             TrySubscribeTradeEvents();
             TradeSyncPatch.RequestStartTrade(_tradeId, _playerAId, _playerBId, _maxTradeSlots);
             TradeSyncPatch.RequestSnapshot(_tradeId, _selfPlayerId);
-            Plugin.Logger?.LogInfo($"[TradePanel] OnPartnerSelected: fallback panel flow requested start/snapshot, tradeId={_tradeId}, playerA={_playerAId}, playerB={_playerBId}, maxSlots={_maxTradeSlots}");
         }
         else
         {
             UpdateUIStatus("本地调试交易：未连接服务器");
-            Plugin.Logger?.LogInfo($"[TradePanel] OnPartnerSelected: fallback local panel flow, tradeId={_tradeId}, playerA={_playerAId}, playerB={_playerBId}");
         }
     }
 
@@ -1850,18 +1675,18 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         using (new ApplyingStateScope(this))
         {
             // 取少量本地牌组卡牌作为展示克隆。
-            var deck = run?.BaseDeck?.Where(c => c != null).ToList() ?? new List<Card>();
+            var deck = run?.BaseDeck?.Where(c => c is not null).ToList() ?? new List<Card>();
             int take = Math.Min(2, deck.Count);
             for (int i = 0; i < take; i++)
             {
                 var src = deck[i];
-                if (src == null)
+                if (src is null)
                 {
                     continue;
                 }
 
                 Card temp = Library.TryCreateCard(src.Id, src.IsUpgraded, src.UpgradeCounter ?? 0);
-                if (temp != null)
+                if (temp is not null)
                 {
                     AddCardToTrade(temp, false);
                 }
@@ -1921,26 +1746,9 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             || locationName.IndexOf("间隙", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
-    private static Sprite TryLoadAvatarSprite(string characterId)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(characterId))
-            {
-                return null;
-            }
-
-            return ResourcesHelper.LoadCharacterAvatarSprite(characterId);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
     private void EnsureCardPickerOverlay()
     {
-        if (_cardPickerRoot != null)
+        if (_cardPickerRoot is not null)
         {
             Plugin.Logger?.LogInfo($"[TradePanel] EnsureCardPickerOverlay skipped: existing root name={_cardPickerRoot.name}, activeSelf={_cardPickerRoot.activeSelf}");
             return;
@@ -1949,7 +1757,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         try
         {
             ShowCardsPanel sourcePanel = UiManager.GetPanel<ShowCardsPanel>();
-            if (sourcePanel == null)
+            if (sourcePanel is null)
             {
                 Plugin.Logger?.LogWarning("[TradePanel] EnsureCardPickerOverlay failed: ShowCardsPanel template unavailable.");
                 _cardPickerRoot = null;
@@ -1957,13 +1765,13 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             }
 
             SelectCardPanel selectCardPanel = UiManager.GetPanel<SelectCardPanel>();
-            Plugin.Logger?.LogInfo($"[TradePanel] EnsureCardPickerOverlay creating: sourcePanel={sourcePanel.name}, selectCardPanel={(selectCardPanel != null ? selectCardPanel.name : "<null>")}");
+            Plugin.Logger?.LogInfo($"[TradePanel] EnsureCardPickerOverlay creating: sourcePanel={sourcePanel.name}, selectCardPanel={(selectCardPanel is not null ? selectCardPanel.name : "<null>")}");
             _cardPickerRoot = Instantiate(sourcePanel.gameObject, transform, false);
             _cardPickerRoot.name = "TradeCardPicker";
             _cardPickerRoot.SetActive(false);
 
             ShowCardsPanel clonedPanel = _cardPickerRoot.GetComponent<ShowCardsPanel>();
-            if (clonedPanel == null)
+            if (clonedPanel is null)
             {
                 Plugin.Logger?.LogWarning("[TradePanel] EnsureCardPickerOverlay failed: cloned ShowCardsPanel missing.");
                 Destroy(_cardPickerRoot);
@@ -1985,11 +1793,11 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             tag.FollowCardOnlyToggle = GetPrivateFieldValue<CommonToggleWidget>(clonedPanel, "followCardOnlyToggle");
             tag.DreamCardOnlyToggle = GetPrivateFieldValue<CommonToggleWidget>(clonedPanel, "dreamCardOnlyToggle");
             tag.MinimizedButton = GetPrivateFieldValue<GameObject>(clonedPanel, "minimizedButton");
-            tag.SelectParticleTemplate = selectCardPanel != null
+            tag.SelectParticleTemplate = selectCardPanel is not null
                 ? GetPrivateFieldValue<GameObject>(selectCardPanel, "selectParticle")
                 : null;
 
-            if (tag.DeckHolder == null)
+            if (tag.DeckHolder is null)
             {
                 Plugin.Logger?.LogWarning("[TradePanel] EnsureCardPickerOverlay failed: DeckHolder missing on cloned panel.");
                 Destroy(_cardPickerRoot);
@@ -1997,43 +1805,23 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 return;
             }
 
-            Plugin.Logger?.LogInfo($"[TradePanel] EnsureCardPickerOverlay ready: returnButton={(tag.ReturnButton != null)}, topHideButton={(tag.TopHideButton != null)}, portrait={(tag.Portrait != null)}, deckHolder={(tag.DeckHolder != null)}");
+            Plugin.Logger?.LogInfo($"[TradePanel] EnsureCardPickerOverlay ready: returnButton={(tag.ReturnButton is not null)}, topHideButton={(tag.TopHideButton is not null)}, portrait={(tag.Portrait is not null)}, deckHolder={(tag.DeckHolder is not null)}");
 
-            if (tag.MinimizedButton != null)
+            if (tag.MinimizedButton is not null)
             {
                 tag.MinimizedButton.SetActive(false);
             }
 
-            if (tag.ReturnButton != null)
+            if (tag.ReturnButton is not null)
             {
                 tag.ReturnButton.onClick.RemoveAllListeners();
-                tag.ReturnButton.onClick.AddListener(() =>
-                {
-                    try
-                    {
-                        HideCardPickerOverlay();
-                    }
-                    catch
-                    {
-                        // 忽略
-                    }
-                });
+                tag.ReturnButton.onClick.AddListener(HideCardPickerOverlay);
             }
 
-            if (tag.TopHideButton != null)
+            if (tag.TopHideButton is not null)
             {
                 tag.TopHideButton.onClick.RemoveAllListeners();
-                tag.TopHideButton.onClick.AddListener(() =>
-                {
-                    try
-                    {
-                        HideCardPickerOverlay();
-                    }
-                    catch
-                    {
-                        // 忽略
-                    }
-                });
+                tag.TopHideButton.onClick.AddListener(HideCardPickerOverlay);
             }
 
             BindCardPickerToggle(tag.ActualOrderToggle, on =>
@@ -2161,9 +1949,9 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private void ShowCardPickerOverlay()
     {
         GameRunController run = ActiveGameRun;
-        Plugin.Logger?.LogInfo($"[TradePanel] ShowCardPickerOverlay enter: tradeId={_tradeId ?? "<null>"}, cardPickerExists={(_cardPickerRoot != null)}, activeGameRun={(run != null)}, deckCount={(run?.BaseDeck?.Count ?? 0)}, offeredLocal={_player1OfferedCards.Count}, maxSlots={_maxTradeSlots}, canEdit={CanEditOffer()}");
+        Plugin.Logger?.LogInfo($"[TradePanel] ShowCardPickerOverlay enter: tradeId={_tradeId ?? "<null>"}, cardPickerExists={(_cardPickerRoot is not null)}, activeGameRun={(run is not null)}, deckCount={(run?.BaseDeck?.Count ?? 0)}, offeredLocal={_player1OfferedCards.Count}, maxSlots={_maxTradeSlots}, canEdit={CanEditOffer()}");
         EnsureCardPickerOverlay();
-        if (_cardPickerRoot == null)
+        if (_cardPickerRoot is null)
         {
             Plugin.Logger?.LogWarning($"[TradePanel] ShowCardPickerOverlay aborted: card picker root missing, tradeId={_tradeId ?? "<null>"}");
             TryShowTopMessage("卡牌选择界面不可用。");
@@ -2171,7 +1959,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
 
         CardPickerTag tag = _cardPickerRoot.GetComponent<CardPickerTag>();
-        if (tag != null)
+        if (tag is not null)
         {
             tag.CurrentOrder = CardPickerOrderStatus.Actual;
             tag.CurrentFilter = CardPickerFilterStatus.AllCards;
@@ -2187,8 +1975,8 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void HideCardPickerOverlay()
     {
-        CardPickerTag tag = _cardPickerRoot != null ? _cardPickerRoot.GetComponent<CardPickerTag>() : null;
-        if (tag?.DeckHolder != null)
+        CardPickerTag tag = _cardPickerRoot is not null ? _cardPickerRoot.GetComponent<CardPickerTag>() : null;
+        if (tag?.DeckHolder is not null)
         {
             tag.SelectWidgets.Clear();
             tag.SelectIndexOrder.Clear();
@@ -2201,7 +1989,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void EnsureOfferPreviewOverlay()
     {
-        if (_offerPreviewRoot != null)
+        if (_offerPreviewRoot is not null)
         {
             return;
         }
@@ -2209,9 +1997,9 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         try
         {
             ShowCardsPanel sourcePanel = UiManager.GetPanel<ShowCardsPanel>();
-            DeckHolder template = sourcePanel != null ? GetPrivateFieldValue<DeckHolder>(sourcePanel, "deckHolder") : null;
-            CardWidget cardTemplate = template != null ? GetPrivateFieldValue<CardWidget>(template, "cardTemplate") : null;
-            if (template == null || cardTemplate == null)
+            DeckHolder template = sourcePanel is not null ? GetPrivateFieldValue<DeckHolder>(sourcePanel, "deckHolder") : null;
+            CardWidget cardTemplate = template is not null ? GetPrivateFieldValue<CardWidget>(template, "cardTemplate") : null;
+            if (template is null || cardTemplate is null)
             {
                 return;
             }
@@ -2240,7 +2028,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private static OfferPreviewPanelTag CreateOfferPreviewPanel(Transform parent, string name, float minX, float minY, float maxX, float maxY)
     {
-        if (parent == null)
+        if (parent is null)
         {
             return null;
         }
@@ -2283,7 +2071,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void RebuildOfferPreviewPanel(OfferPreviewPanelTag panel, IEnumerable<Card> cards)
     {
-        if (panel?.CardLayout == null || _offerPreviewCardTemplate == null)
+        if (panel?.CardLayout is null || _offerPreviewCardTemplate is null)
         {
             return;
         }
@@ -2291,7 +2079,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         ClearOfferPreviewPanel(panel);
 
         List<Card> list = (cards ?? Enumerable.Empty<Card>())
-            .Where(card => card != null)
+            .Where(card => card is not null)
             .ToList();
 
         if (list.Count == 0)
@@ -2306,8 +2094,8 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         float availableWidth = layout.rect.width > 1f ? layout.rect.width : 480f;
         float availableHeight = layout.rect.height > 1f ? layout.rect.height : 240f;
         RectTransform templateRect = _offerPreviewCardTemplate.transform as RectTransform;
-        float cardWidth = templateRect != null && templateRect.rect.width > 1f ? templateRect.rect.width : 360f;
-        float cardHeight = templateRect != null && templateRect.rect.height > 1f ? templateRect.rect.height : 540f;
+        float cardWidth = templateRect is not null && templateRect.rect.width > 1f ? templateRect.rect.width : 360f;
+        float cardHeight = templateRect is not null && templateRect.rect.height > 1f ? templateRect.rect.height : 540f;
 
         int count = list.Count;
         float spacing = Mathf.Clamp(availableWidth * 0.02f, 8f, 18f);
@@ -2321,7 +2109,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         for (int i = 0; i < list.Count; i++)
         {
             Card card = list[i];
-            if (card == null)
+            if (card is null)
             {
                 continue;
             }
@@ -2334,7 +2122,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             showing.SetScale(scale, scale);
 
             RectTransform rect = cardWidget.transform as RectTransform;
-            if (rect != null)
+            if (rect is not null)
             {
                 rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
                 rect.pivot = new Vector2(0.5f, 0.5f);
@@ -2345,7 +2133,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private static void ClearOfferPreviewPanel(OfferPreviewPanelTag panel)
     {
-        if (panel?.CardLayout == null)
+        if (panel?.CardLayout is null)
         {
             return;
         }
@@ -2353,7 +2141,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         List<Transform> children = new List<Transform>();
         foreach (Transform child in panel.CardLayout)
         {
-            if (child != null)
+            if (child is not null)
             {
                 children.Add(child);
             }
@@ -2372,21 +2160,21 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void RebuildCardPickerList()
     {
-        if (_cardPickerRoot == null)
+        if (_cardPickerRoot is null)
         {
             Plugin.Logger?.LogWarning($"[TradePanel] RebuildCardPickerList aborted: card picker root missing, tradeId={_tradeId ?? "<null>"}");
             return;
         }
 
         CardPickerTag tag = _cardPickerRoot.GetComponent<CardPickerTag>();
-        if (tag == null || tag.DeckHolder == null)
+        if (tag is null || tag.DeckHolder is null)
         {
-            Plugin.Logger?.LogWarning($"[TradePanel] RebuildCardPickerList aborted: picker tag/holder missing, tradeId={_tradeId ?? "<null>"}, tag={(tag != null)}, holder={(tag?.DeckHolder != null)}");
+            Plugin.Logger?.LogWarning($"[TradePanel] RebuildCardPickerList aborted: picker tag/holder missing, tradeId={_tradeId ?? "<null>"}, tag={(tag is not null)}, holder={(tag?.DeckHolder is not null)}");
             return;
         }
 
         GameRunController run = ActiveGameRun;
-        Plugin.Logger?.LogInfo($"[TradePanel] RebuildCardPickerList enter: tradeId={_tradeId ?? "<null>"}, activeGameRun={(run != null)}, deckCount={(run?.BaseDeck?.Count ?? 0)}, offeredLocal={_player1OfferedCards.Count}, maxSlots={_maxTradeSlots}, pickerActive={_cardPickerRoot.activeSelf}, canEdit={CanEditOffer()}");
+        Plugin.Logger?.LogInfo($"[TradePanel] RebuildCardPickerList enter: tradeId={_tradeId ?? "<null>"}, activeGameRun={(run is not null)}, deckCount={(run?.BaseDeck?.Count ?? 0)}, offeredLocal={_player1OfferedCards.Count}, maxSlots={_maxTradeSlots}, pickerActive={_cardPickerRoot.activeSelf}, canEdit={CanEditOffer()}");
 
         // 网络交易下仅允许编辑本地报价。
         if (!CanEditOffer())
@@ -2402,10 +2190,10 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         List<Card> deck = new List<Card>();
         try
         {
-            if (run?.BaseDeck != null)
+            if (run?.BaseDeck is not null)
             {
                 deck = run.BaseDeck
-                    .Where(c => c != null)
+                    .Where(c => c is not null)
                     .ToList();
             }
         }
@@ -2420,7 +2208,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         {
             foreach (var c in _player1OfferedCards)
             {
-                if (c != null)
+                if (c is not null)
                 {
                     offered.Add(c.InstanceId);
                 }
@@ -2431,10 +2219,10 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             // 忽略
         }
 
-        List<Card> candidates = deck.Where(c => c != null && !offered.Contains(c.InstanceId)).ToList();
+        List<Card> candidates = deck.Where(c => c is not null && !offered.Contains(c.InstanceId)).ToList();
         if (candidates.Count == 0)
         {
-            Plugin.Logger?.LogInfo($"[TradePanel] Card picker empty: panelGameRun={(GameRun != null)}, activeGameRun={(run != null)}, deckCount={deck.Count}, offeredCount={offered.Count}, tradeId={_tradeId ?? "<null>"}");
+            Plugin.Logger?.LogInfo($"[TradePanel] Card picker empty: panelGameRun={(GameRun is not null)}, activeGameRun={(run is not null)}, deckCount={deck.Count}, offeredCount={offered.Count}, tradeId={_tradeId ?? "<null>"}");
             tag.SourceCards.Clear();
             tag.TargetSelectCount = 0;
             tag.DeckHolder.Clear();
@@ -2458,11 +2246,11 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         tag.TargetSelectCount = Math.Max(1, Math.Min(3, Math.Min(remaining, candidates.Count)));
         Plugin.Logger?.LogInfo($"[TradePanel] RebuildCardPickerList prepared: tradeId={_tradeId ?? "<null>"}, candidateCount={candidates.Count}, remaining={remaining}, targetSelectCount={tag.TargetSelectCount}");
 
-        if (tag.Portrait != null)
+        if (tag.Portrait is not null)
         {
             ShowCardsPanel sourcePanel = UiManager.GetPanel<ShowCardsPanel>();
-            Image sourcePortrait = sourcePanel != null ? GetPrivateFieldValue<Image>(sourcePanel, "portrait") : null;
-            if (sourcePortrait != null && sourcePortrait.sprite != null)
+            Image sourcePortrait = sourcePanel is not null ? GetPrivateFieldValue<Image>(sourcePanel, "portrait") : null;
+            if (sourcePortrait is not null && sourcePortrait.sprite is not null)
             {
                 tag.Portrait.sprite = sourcePortrait.sprite;
             }
@@ -2474,7 +2262,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private static void BindCardPickerToggle(CommonToggleWidget widget, UnityEngine.Events.UnityAction<bool> handler)
     {
-        if (widget?.toggle == null || handler == null)
+        if (widget?.toggle is null || handler is null)
         {
             return;
         }
@@ -2484,39 +2272,39 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private static void ApplyCardPickerToggleStates(CardPickerTag tag)
     {
-        if (tag == null)
+        if (tag is null)
         {
             return;
         }
 
-        if (tag.ActualOrderToggle?.toggle != null)
+        if (tag.ActualOrderToggle?.toggle is not null)
         {
             tag.ActualOrderToggle.toggle.SetIsOnWithoutNotify(tag.CurrentOrder == CardPickerOrderStatus.Actual);
             tag.ActualOrderToggle.toggle.interactable = true;
             tag.ActualOrderToggle.SetLock(true);
         }
 
-        if (tag.IndexOrderToggle?.toggle != null)
+        if (tag.IndexOrderToggle?.toggle is not null)
         {
             tag.IndexOrderToggle.toggle.SetIsOnWithoutNotify(tag.CurrentOrder == CardPickerOrderStatus.Index);
         }
 
-        if (tag.TypeOrderToggle?.toggle != null)
+        if (tag.TypeOrderToggle?.toggle is not null)
         {
             tag.TypeOrderToggle.toggle.SetIsOnWithoutNotify(tag.CurrentOrder == CardPickerOrderStatus.Type);
         }
 
-        if (tag.RarityOrderToggle?.toggle != null)
+        if (tag.RarityOrderToggle?.toggle is not null)
         {
             tag.RarityOrderToggle.toggle.SetIsOnWithoutNotify(tag.CurrentOrder == CardPickerOrderStatus.Rarity);
         }
 
-        if (tag.DreamCardOnlyToggle?.toggle != null)
+        if (tag.DreamCardOnlyToggle?.toggle is not null)
         {
             tag.DreamCardOnlyToggle.toggle.SetIsOnWithoutNotify(tag.CurrentFilter == CardPickerFilterStatus.DreamCardsOnly);
         }
 
-        if (tag.FollowCardOnlyToggle?.toggle != null)
+        if (tag.FollowCardOnlyToggle?.toggle is not null)
         {
             tag.FollowCardOnlyToggle.toggle.SetIsOnWithoutNotify(tag.CurrentFilter == CardPickerFilterStatus.FollowCardsOnly);
         }
@@ -2524,7 +2312,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void PopulateCardPickerWidgets(CardPickerTag tag)
     {
-        if (tag?.DeckHolder == null)
+        if (tag?.DeckHolder is null)
         {
             return;
         }
@@ -2533,14 +2321,14 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         tag.SelectWidgets.Clear();
         tag.SelectIndexOrder.Clear();
 
-        int dreamCount = tag.SourceCards.Count(c => c != null && c.IsDreamCard);
-        int followCount = tag.SourceCards.Count(c => c != null && c.IsFollowCard);
-        if (tag.DreamCardOnlyToggle != null)
+        int dreamCount = tag.SourceCards.Count(c => c is not null && c.IsDreamCard);
+        int followCount = tag.SourceCards.Count(c => c is not null && c.IsFollowCard);
+        if (tag.DreamCardOnlyToggle is not null)
         {
             tag.DreamCardOnlyToggle.gameObject.SetActive(dreamCount > 0);
         }
 
-        if (tag.FollowCardOnlyToggle != null)
+        if (tag.FollowCardOnlyToggle is not null)
         {
             tag.FollowCardOnlyToggle.gameObject.SetActive(followCount > 0);
         }
@@ -2569,7 +2357,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private static List<Card> GetCardPickerDisplayCards(CardPickerTag tag)
     {
-        IEnumerable<Card> ordered = tag.SourceCards.Where(card => card != null);
+        IEnumerable<Card> ordered = tag.SourceCards.Where(card => card is not null);
         switch (tag.CurrentOrder)
         {
             case CardPickerOrderStatus.Index:
@@ -2606,13 +2394,13 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     {
         try
         {
-            if (tag?.DeckHolder == null || card == null)
+            if (tag?.DeckHolder is null || card is null)
             {
                 return;
             }
 
             CardWidget cardWidget = tag.DeckHolder.AddCardWidget(card, true);
-            if (cardWidget == null)
+            if (cardWidget is null)
             {
                 return;
             }
@@ -2631,7 +2419,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private static GameObject CreateCardPickerSelectionMarker(Transform parent, GameObject template)
     {
-        if (template != null)
+        if (template is not null)
         {
             GameObject marker = Instantiate(template, parent, false);
             marker.name = "TradeSelectParticle";
@@ -2654,7 +2442,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void OnCardPickerSelectionChanged(CardPickerTag tag, SelectCardWidget widget)
     {
-        if (tag == null || widget == null || tag.TargetSelectCount <= 0)
+        if (tag is null || widget is null || tag.TargetSelectCount <= 0)
         {
             return;
         }
@@ -2677,7 +2465,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             tag.SelectIndexOrder.Remove(widgetIndex);
         }
 
-        int selectedCount = tag.SelectWidgets.Count(w => w != null && w.IsSelected);
+        int selectedCount = tag.SelectWidgets.Count(w => w is not null && w.IsSelected);
         if (selectedCount > tag.TargetSelectCount && tag.SelectIndexOrder.Count > 0)
         {
             int firstIndex = tag.SelectIndexOrder[0];
@@ -2685,13 +2473,13 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             if (firstIndex >= 0 && firstIndex < tag.SelectWidgets.Count)
             {
                 SelectCardWidget firstWidget = tag.SelectWidgets[firstIndex];
-                if (firstWidget != null)
+                if (firstWidget is not null)
                 {
                     firstWidget.SetSelected(false, false);
                 }
             }
 
-            selectedCount = tag.SelectWidgets.Count(w => w != null && w.IsSelected);
+            selectedCount = tag.SelectWidgets.Count(w => w is not null && w.IsSelected);
         }
 
         if (selectedCount >= tag.TargetSelectCount)
@@ -2702,7 +2490,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void ApplyCardPickerSelection(CardPickerTag tag)
     {
-        if (tag == null || _cardPickerApplyingSelection)
+        if (tag is null || _cardPickerApplyingSelection)
         {
             return;
         }
@@ -2718,7 +2506,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 }
 
                 SelectCardWidget widget = tag.SelectWidgets[index];
-                if (widget == null || !widget.IsSelected || widget.Card == null)
+                if (widget is null || !widget.IsSelected || widget.Card is null)
                 {
                     continue;
                 }
@@ -2760,7 +2548,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
         private static bool Contains(RectTransform rt, Vector2 screenPoint)
         {
-            if (rt == null)
+            if (rt is null)
             {
                 return false;
             }
@@ -2790,7 +2578,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             try
             {
                 var mouse = Mouse.current;
-                if (mouse != null && mouse.leftButton != null && mouse.leftButton.wasPressedThisFrame)
+                if (mouse is not null && mouse.leftButton is not null && mouse.leftButton.wasPressedThisFrame)
                 {
                     screenPos = mouse.position.ReadValue();
                     return true;
@@ -2822,7 +2610,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         {
             try
             {
-                if (Panel == null || !Panel._partnerPickerActive || Panel._partnerPickerRoot == null)
+                if (Panel is null || !Panel._partnerPickerActive || Panel._partnerPickerRoot is null)
                 {
                     return;
                 }
@@ -2838,7 +2626,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 }
 
                 // 忽略取消按钮点击。
-                if (Panel._partnerPickerCancelButton != null)
+                if (Panel._partnerPickerCancelButton is not null)
                 {
                     RectTransform cancelRt = Panel._partnerPickerCancelButton.transform as RectTransform;
                     if (Contains(cancelRt, pos))
@@ -2848,17 +2636,17 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 }
 
                 PartnerPickerTag pickerTag = Panel._partnerPickerRoot.GetComponentInChildren<PartnerPickerTag>(true);
-                if (pickerTag == null)
+                if (pickerTag is null)
                 {
                     return;
                 }
 
                 RectTransform listRegion = null;
-                if (pickerTag.ListContainer != null)
+                if (pickerTag.ListContainer is not null)
                 {
                     listRegion = pickerTag.ListContainer;
                 }
-                else if (pickerTag.ScrollRect != null)
+                else if (pickerTag.ScrollRect is not null)
                 {
                     listRegion = pickerTag.ScrollRect.GetComponent<RectTransform>();
                 }
@@ -2868,14 +2656,14 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 }
 
                 // 仅处理列表区域内的点击。
-                if (listRegion != null && !Contains(listRegion, pos))
+                if (listRegion is not null && !Contains(listRegion, pos))
                 {
                     return;
                 }
 
-                Transform container = pickerTag.ListContainer != null ? pickerTag.ListContainer : pickerTag.transform;
+                Transform container = pickerTag.ListContainer is not null ? pickerTag.ListContainer : pickerTag.transform;
 
-                if (container == null)
+                if (container is null)
                 {
                     return;
                 }
@@ -2885,7 +2673,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 for (int i = candidates.Length - 1; i >= 0; i--)
                 {
                     var cand = candidates[i];
-                    if (cand == null || string.IsNullOrWhiteSpace(cand.PlayerId))
+                    if (cand is null || string.IsNullOrWhiteSpace(cand.PlayerId))
                     {
                         continue;
                     }
@@ -2901,7 +2689,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                     // 备用：部分 prefab 根 rect 尺寸为零，需对其全部图形进行命中测试（TMP/Image/等）。
                     foreach (var g in cand.GetComponentsInChildren<Graphic>(true))
                     {
-                        if (g == null)
+                        if (g is null)
                         {
                             continue;
                         }
@@ -2924,12 +2712,12 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         {
             try
             {
-                if (eventData == null || eventData.button != PointerEventData.InputButton.Left)
+                if (eventData is null || eventData.button != PointerEventData.InputButton.Left)
                 {
                     return;
                 }
 
-                if (Panel == null || !Panel._partnerPickerActive || Panel._partnerPickerRoot == null)
+                if (Panel is null || !Panel._partnerPickerActive || Panel._partnerPickerRoot is null)
                 {
                     return;
                 }
@@ -2942,16 +2730,16 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 // 忽略对取消按钮的干扰。
                 try
                 {
-                    if (Panel._partnerPickerCancelButton != null)
+                    if (Panel._partnerPickerCancelButton is not null)
                     {
                         var press = eventData.pointerPress;
-                        if (press != null && press.transform != null && press.transform.IsChildOf(Panel._partnerPickerCancelButton.transform))
+                        if (press is not null && press.transform is not null && press.transform.IsChildOf(Panel._partnerPickerCancelButton.transform))
                         {
                             return;
                         }
 
                         var hit = eventData.pointerCurrentRaycast.gameObject;
-                        if (hit != null && hit.transform != null && hit.transform.IsChildOf(Panel._partnerPickerCancelButton.transform))
+                        if (hit is not null && hit.transform is not null && hit.transform.IsChildOf(Panel._partnerPickerCancelButton.transform))
                         {
                             return;
                         }
@@ -2963,14 +2751,14 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 }
 
                 PartnerPickerTag pickerTag = Panel._partnerPickerRoot.GetComponentInChildren<PartnerPickerTag>(true);
-                if (pickerTag == null)
+                if (pickerTag is null)
                 {
                     return;
                 }
 
-                Transform container = pickerTag.ListContainer != null ? pickerTag.ListContainer : pickerTag.transform;
+                Transform container = pickerTag.ListContainer is not null ? pickerTag.ListContainer : pickerTag.transform;
 
-                if (container == null)
+                if (container is null)
                 {
                     return;
                 }
@@ -2979,13 +2767,13 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 var candidates = container.GetComponentsInChildren<PartnerCandidateTag>(true);
                 foreach (var cand in candidates)
                 {
-                    if (cand == null || string.IsNullOrWhiteSpace(cand.PlayerId))
+                    if (cand is null || string.IsNullOrWhiteSpace(cand.PlayerId))
                     {
                         continue;
                     }
 
                     RectTransform rt = cand.transform as RectTransform;
-                    if (rt == null || !rt.gameObject.activeInHierarchy)
+                    if (rt is null || !rt.gameObject.activeInHierarchy)
                     {
                         continue;
                     }
@@ -3010,13 +2798,13 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                     // 备用：测试候选项的所有图形方块。
                     foreach (var g in cand.GetComponentsInChildren<Graphic>(true))
                     {
-                        if (g == null)
+                        if (g is null)
                         {
                             continue;
                         }
 
                         var grt = g.rectTransform;
-                        if (grt == null)
+                        if (grt is null)
                         {
                             continue;
                         }
@@ -3048,7 +2836,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
 
         INetworkClient client = ModService.ServiceProvider.GetService<INetworkClient>();
-        if (client == null || !client.IsConnected)
+        if (client is null || !client.IsConnected)
         {
             return false;
         }
@@ -3059,22 +2847,14 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void TrySubscribeTradeEvents()
     {
-        if (_subscribedToTrade)
-        {
-            return;
-        }
-
+        if (_subscribedToTrade) return;
         TradeSyncPatch.OnTradeStateUpdated += OnTradeStateUpdated;
         _subscribedToTrade = true;
     }
 
     private void TryUnsubscribeTradeEvents()
     {
-        if (!_subscribedToTrade)
-        {
-            return;
-        }
-
+        if (!_subscribedToTrade) return;
         TradeSyncPatch.OnTradeStateUpdated -= OnTradeStateUpdated;
         _subscribedToTrade = false;
     }
@@ -3083,7 +2863,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     {
         try
         {
-            if (state == null || !string.Equals(state.TradeId, _tradeId, StringComparison.Ordinal))
+            if (state is null || !string.Equals(state.TradeId, _tradeId, StringComparison.Ordinal))
             {
                 return;
             }
@@ -3150,7 +2930,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             _localExhibitOfferIds.Clear();
             foreach (var ex in localIsA ? state.ExhibitsA : state.ExhibitsB)
             {
-                if (ex != null && !string.IsNullOrWhiteSpace(ex.ExhibitId))
+                if (ex is not null && !string.IsNullOrWhiteSpace(ex.ExhibitId))
                 {
                     _localExhibitOfferIds.Add(ex.ExhibitId);
                 }
@@ -3161,7 +2941,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             foreach (var c in localIsA ? state.OfferA : state.OfferB)
             {
                 Card real = TryFindDeckCard(c);
-                if (real != null)
+                if (real is not null)
                 {
                     AddCardToTrade(real, true);
                 }
@@ -3171,7 +2951,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             foreach (var c in localIsA ? state.OfferB : state.OfferA)
             {
                 Card temp = TryCreateDisplayCard(c);
-                if (temp != null)
+                if (temp is not null)
                 {
                     AddCardToTrade(temp, false);
                 }
@@ -3182,7 +2962,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
 
         // 用户需求：永不禁用确认按钮，点击时再做逻辑守卫。
-        if (confirmButton?.button != null)
+        if (confirmButton?.button is not null)
         {
             confirmButton.button.interactable = true;
         }
@@ -3205,7 +2985,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void LockSlots(TradeSlotWidget[] slots)
     {
-        if (slots == null)
+        if (slots is null)
         {
             return;
         }
@@ -3220,7 +3000,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     {
         try
         {
-            if (cardRef == null || cardRef.InstanceId < 0)
+            if (cardRef is null || cardRef.InstanceId < 0)
             {
                 return null;
             }
@@ -3237,7 +3017,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     {
         try
         {
-            if (cardRef == null || string.IsNullOrWhiteSpace(cardRef.CardId))
+            if (cardRef is null || string.IsNullOrWhiteSpace(cardRef.CardId))
             {
                 return null;
             }
@@ -3262,7 +3042,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         // 只发送本地侧(player1)报价。
         List<Card> offered = _player1OfferedCards;
         List<TradeSyncPatch.CardRef> refs = offered
-            .Where(c => c != null)
+            .Where(c => c is not null)
             .Select(c => new TradeSyncPatch.CardRef
             {
                 CardId = c.Id,
@@ -3302,12 +3082,12 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     {
         GameRunController run = ActiveGameRun;
         TradeSyncPatch.TradeSessionState state = TradeSyncPatch.GetLastKnown(_tradeId);
-        if (state == null || state.Status != TradeSyncPatch.TradeStatus.Completed)
+        if (state is null || state.Status != TradeSyncPatch.TradeStatus.Completed)
         {
             yield break;
         }
 
-        if (run == null)
+        if (run is null)
         {
             UpdateUIStatus("Trade failed: game state unavailable.");
             Plugin.Logger?.LogWarning($"[TradePanel] ApplyNetworkTradeAndClose aborted: ActiveGameRun is null, tradeId={_tradeId ?? "<null>"}");
@@ -3315,7 +3095,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
 
         // 禁用交互
-        _canvasGroup?.interactable = false;
+        SetCanvasInteractable(false);
 
         using (TradeSyncPatch.EnterApplyingTradeScope())
         {
@@ -3329,17 +3109,17 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             List<TradeSyncPatch.ExhibitRef> myExhibits = localIsA ? state.ExhibitsA : state.ExhibitsB;
             List<TradeSyncPatch.ExhibitRef> theirExhibits = localIsA ? state.ExhibitsB : state.ExhibitsA;
 
-            if (mine != null)
+            if (mine is not null)
             {
                 foreach (var c in mine)
                 {
-                    if (c == null)
+                    if (c is null)
                     {
                         continue;
                     }
 
                     Card deck = TryFindDeckCard(c);
-                    if (deck == null)
+                    if (deck is null)
                     {
                         UpdateUIStatus("Trade failed: missing offered card.");
                         yield break;
@@ -3369,7 +3149,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             }
 
             // 展品：严格核查（未找到/不可交易/黑名单/重复 则失败）。
-            if (myExhibits != null)
+            if (myExhibits is not null)
             {
                 foreach (var ex in myExhibits)
                 {
@@ -3382,14 +3162,14 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                     Exhibit owned = null;
                     try
                     {
-                        owned = run.Player?.Exhibits?.FirstOrDefault(e => e != null && string.Equals(e.Id, id, StringComparison.Ordinal));
+                        owned = run.Player?.Exhibits?.FirstOrDefault(e => e is not null && string.Equals(e.Id, id, StringComparison.Ordinal));
                     }
                     catch
                     {
                         owned = null;
                     }
 
-                    if (owned == null)
+                    if (owned is null)
                     {
                         UpdateUIStatus("Trade failed: missing offered exhibit.");
                         yield break;
@@ -3413,7 +3193,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 }
             }
 
-            if (theirExhibits != null)
+            if (theirExhibits is not null)
             {
                 foreach (var ex in theirExhibits)
                 {
@@ -3439,7 +3219,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                         created = null;
                     }
 
-                    if (created == null)
+                    if (created is null)
                     {
                         UpdateUIStatus("Trade failed: cannot create received exhibit.");
                         yield break;
@@ -3457,17 +3237,17 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 }
             }
 
-            if (theirs != null)
+            if (theirs is not null)
             {
                 foreach (var c in theirs)
                 {
-                    if (c == null || string.IsNullOrWhiteSpace(c.CardId))
+                    if (c is null || string.IsNullOrWhiteSpace(c.CardId))
                     {
                         continue;
                     }
 
                     Card created = Library.TryCreateCard(c.CardId, c.IsUpgraded, c.UpgradeCounter);
-                    if (created != null)
+                    if (created is not null)
                     {
                         run.AddDeckCard(created, true, new VisualSourceData
                         {
@@ -3486,7 +3266,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private void TryHandlePreparing(TradeSyncPatch.TradeSessionState state)
     {
         GameRunController run = ActiveGameRun;
-        if (state == null)
+        if (state is null)
         {
             return;
         }
@@ -3513,11 +3293,11 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
 
         // 卡牌必须已存在（按实例 ID 核查）。
-        if (mine != null)
+        if (mine is not null)
         {
             foreach (var c in mine)
             {
-                if (c == null)
+                if (c is null)
                 {
                     continue;
                 }
@@ -3528,7 +3308,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                     return;
                 }
 
-                if (TryFindDeckCard(c) == null)
+                if (TryFindDeckCard(c) is null)
                 {
                     TradeSyncPatch.RequestPrepareResult(_tradeId, _selfPlayerId, false, "MissingCard");
                     return;
@@ -3553,7 +3333,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
 
         // 展品必须存在且可交易。
-        if (myExhibits != null)
+        if (myExhibits is not null)
         {
             foreach (var ex in myExhibits)
             {
@@ -3567,14 +3347,14 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 Exhibit owned = null;
                 try
                 {
-                    owned = run?.Player?.Exhibits?.FirstOrDefault(e => e != null && string.Equals(e.Id, id, StringComparison.Ordinal));
+                    owned = run?.Player?.Exhibits?.FirstOrDefault(e => e is not null && string.Equals(e.Id, id, StringComparison.Ordinal));
                 }
                 catch
                 {
                     owned = null;
                 }
 
-                if (owned == null)
+                if (owned is null)
                 {
                     TradeSyncPatch.RequestPrepareResult(_tradeId, _selfPlayerId, false, "MissingExhibit");
                     return;
@@ -3593,7 +3373,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void EnsureOfferEditorOverlay()
     {
-        if (_offerEditorRoot != null)
+        if (_offerEditorRoot is not null)
         {
             Plugin.Logger?.LogInfo($"[TradePanel] EnsureOfferEditorOverlay skipped: existing root name={_offerEditorRoot.name}, activeSelf={_offerEditorRoot.activeSelf}");
             return;
@@ -3730,14 +3510,14 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             _offerEditorRoot?.transform.SetAsLastSibling();
 
             RefreshOfferEditorTexts();
-            Plugin.Logger?.LogInfo($"[TradePanel] EnsureOfferEditorOverlay ready: tradeId={_tradeId ?? "<null>"}, cardCountText={(_cardCountText != null)}, ownedMoneyText={(_ownedMoneyText != null)}, exhibitValueText={(_exhibitValueText != null)}, offerActionsExists={(_offerActionsRoot != null)}");
+            Plugin.Logger?.LogInfo($"[TradePanel] EnsureOfferEditorOverlay ready: tradeId={_tradeId ?? "<null>"}, cardCountText={(_cardCountText is not null)}, ownedMoneyText={(_ownedMoneyText is not null)}, exhibitValueText={(_exhibitValueText is not null)}, offerActionsExists={(_offerActionsRoot is not null)}");
         }
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[TradePanel] EnsureOfferEditorOverlay exception: {ex.Message}");
             try
             {
-                if (_offerEditorRoot != null)
+                if (_offerEditorRoot is not null)
                 {
                     Destroy(_offerEditorRoot);
                 }
@@ -3752,106 +3532,59 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private static void PruneOfferEditorExtraButtons(GameObject offerRoot)
     {
-        if (offerRoot == null)
-        {
+        if (offerRoot is null)
             return;
+
+        HashSet<string> keepRoots = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "CardsLabel",
+            "CardsValue",
+            "MoneyLabel",
+            "OwnedMoneyValue",
+            "MoneyTriplet",
+            "ExLabel",
+            "ExValue"
+        };
+
+        List<Transform> children = new List<Transform>();
+        foreach (Transform child in offerRoot.transform)
+        {
+            if (child is not null)
+                children.Add(child);
         }
 
-        try
+        foreach (var child in children)
         {
-            // 保留报价编辑器稳定性：完整保留已创建控件的全部子树。
-            // 删除单个 Button 对象可能意外破坏 widget 结构（尤其是模板包含多层嵌套 button/image 时）。
-            HashSet<string> keepRoots = new HashSet<string>(StringComparer.Ordinal)
-            {
-                "CardsLabel",
-                "CardsValue",
-                "MoneyLabel",
-                "OwnedMoneyValue",
-                "MoneyTriplet",
-                "ExLabel",
-                "ExValue"
-            };
+            if (child is null)
+                continue;
 
-            // 删除 offerRoot 下不属于我们的直接子节点。
-            // （我们只创建直接子节点；模板内部元素保留在已索引的根节点下。）
-            List<Transform> children = new List<Transform>();
-            foreach (Transform child in offerRoot.transform)
-            {
-                if (child != null)
-                {
-                    children.Add(child);
-                }
-            }
-
-            foreach (var child in children)
-            {
-                if (child == null)
-                {
-                    continue;
-                }
-
-                var n = child.name ?? string.Empty;
-                if (!keepRoots.Contains(n))
-                    Destroy(child.gameObject);
-            }
-
-            // 安全清理：在已保留的子树内，删除明显命名为 cancel/close 的对象。
-            // 避免模板嵌入的红色圈/图标干扰。
-            foreach (var t in offerRoot.GetComponentsInChildren<Transform>(true))
-            {
-                if (t == null || ReferenceEquals(t.gameObject, offerRoot))
-                {
-                    continue;
-                }
-
-                var n = t.name ?? string.Empty;
-                if (n.IndexOf("cancel", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    n.IndexOf("close", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    // 只删除非根节点。
-                    if (!keepRoots.Contains(n))
-                        Destroy(t.gameObject);
-                }
-            }
+            if (!keepRoots.Contains(child.name ?? string.Empty))
+                Destroy(child.gameObject);
         }
-        catch
+
+        foreach (var t in offerRoot.GetComponentsInChildren<Transform>(true))
         {
-            // 忽略
+            if (t is null || ReferenceEquals(t.gameObject, offerRoot))
+                continue;
+
+            var n = t.name ?? string.Empty;
+            if ((n.IndexOf("cancel", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 n.IndexOf("close", StringComparison.OrdinalIgnoreCase) >= 0) &&
+                !keepRoots.Contains(n))
+                Destroy(t.gameObject);
         }
     }
 
     private void ApplyMoneyValueSizingForDigits()
     {
-        if (_moneyValueText == null)
-        {
-            return;
-        }
+        if (_moneyValueText is null) return;
 
         string s = _moneyValueText.text ?? string.Empty;
-        int digits = 0;
-        for (int i = 0; i < s.Length; i++)
-        {
-            char ch = s[i];
-            if (ch >= '0' && ch <= '9')
-            {
-                digits++;
-            }
-        }
-
+        int digits = s.Count(ch => ch >= '0' && ch <= '9');
         float baseSize = _moneyValueBaseFontSize > 0f ? _moneyValueBaseFontSize : _moneyValueText.fontSize;
-        if (digits >= 4)
-        {
-            // 用户需求：数字 >= 4 位时仅缩小数字本身，最小保持 60%。
-            float scale = Mathf.Clamp(3f / digits, 0.6f, 1f);
-            _moneyValueText.fontSize = baseSize * scale;
-        }
-        else
-        {
-            _moneyValueText.fontSize = baseSize;
-        }
+        _moneyValueText.fontSize = digits >= 4 ? baseSize * Mathf.Clamp(3f / digits, 0.6f, 1f) : baseSize;
 
-        // 重建布局确保 '-' 和 '+' 在数字两侧等距。
-        if (_moneyTripletRoot != null)
+        if (_moneyTripletRoot is not null)
             LayoutRebuilder.ForceRebuildLayoutImmediate(_moneyTripletRoot.transform as RectTransform);
     }
 
@@ -3869,16 +3602,16 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             try
             {
                 var p = run?.Player;
-                if (p != null)
+                if (p is not null)
                 {
                     var t = p.GetType();
                     var prop = t.GetProperty("Money", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                    if (prop != null && prop.PropertyType == typeof(int))
+                    if (prop is not null && prop.PropertyType == typeof(int))
                     {
                         best = Math.Max(best, (int)prop.GetValue(p));
                     }
                     var field = t.GetField("Money", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                    if (field != null && field.FieldType == typeof(int))
+                    if (field is not null && field.FieldType == typeof(int))
                     {
                         best = Math.Max(best, (int)field.GetValue(p));
                     }
@@ -3893,21 +3626,21 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             try
             {
                 var gm = GameMaster.Instance;
-                if (gm != null)
+                if (gm is not null)
                 {
                     var t = gm.GetType();
                     var prop = t.GetProperty("CurrentGameRun", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                     var reflectedRun = prop?.GetValue(gm);
-                    if (reflectedRun != null)
+                    if (reflectedRun is not null)
                     {
                         var rt = reflectedRun.GetType();
                         var moneyProp = rt.GetProperty("Money", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                        if (moneyProp != null && moneyProp.PropertyType == typeof(int))
+                        if (moneyProp is not null && moneyProp.PropertyType == typeof(int))
                         {
                             best = Math.Max(best, (int)moneyProp.GetValue(reflectedRun));
                         }
                         var moneyField = rt.GetField("Money", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                        if (moneyField != null && moneyField.FieldType == typeof(int))
+                        if (moneyField is not null && moneyField.FieldType == typeof(int))
                         {
                             best = Math.Max(best, (int)moneyField.GetValue(reflectedRun));
                         }
@@ -3926,7 +3659,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
             ownedMoney = best;
             // 只有在至少有已知运行上下文时，才将 0 视为有效。
-            return (run != null) || ownedMoney > 0;
+            return (run is not null) || ownedMoney > 0;
         }
         catch
         {
@@ -3937,7 +3670,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void EnsureOfferActionsOverlay(TextMeshProUGUI textTemplate)
     {
-        if (_offerActionsRoot != null)
+        if (_offerActionsRoot is not null)
         {
             return;
         }
@@ -3955,16 +3688,13 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
 
-            _offerActionsPickCardsBtn = CreateTextButton(textTemplate, _offerActionsRoot.transform, "PickCards", "选择卡牌", textTemplate.fontSize * 0.50f);
-            var cardsRt = _offerActionsPickCardsBtn.GetComponent<RectTransform>();
-            SetRect(cardsRt, 0.04f, 0.56f, 0.96f, 1f);
-            {
-                var tmp = _offerActionsPickCardsBtn.GetComponent<TextMeshProUGUI>();
-                tmp?.alignment = TextAlignmentOptions.Center;
-            }
+            var pickCardsBtn = CreateTextButton(textTemplate, _offerActionsRoot.transform, "PickCards", "选择卡牌", textTemplate.fontSize * 0.50f);
+            SetRect(pickCardsBtn.GetComponent<RectTransform>(), 0.04f, 0.56f, 0.96f, 1f);
+            var cardsTmp = pickCardsBtn.GetComponent<TextMeshProUGUI>();
+            if (cardsTmp is not null) cardsTmp.alignment = TextAlignmentOptions.Center;
 
-            _offerActionsPickCardsBtn.onClick.RemoveAllListeners();
-            _offerActionsPickCardsBtn.onClick.AddListener(() =>
+            pickCardsBtn.onClick.RemoveAllListeners();
+            pickCardsBtn.onClick.AddListener(() =>
             {
                 if (!CanEditOffer())
                 {
@@ -3975,16 +3705,13 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 ShowCardPickerOverlay();
             });
 
-            _offerActionsPickExhibitsBtn = CreateTextButton(textTemplate, _offerActionsRoot.transform, "PickExhibits", "选择展品", textTemplate.fontSize * 0.50f);
-            var exRt = _offerActionsPickExhibitsBtn.GetComponent<RectTransform>();
-            SetRect(exRt, 0.04f, 0.00f, 0.96f, 0.40f);
-            {
-                var tmp = _offerActionsPickExhibitsBtn.GetComponent<TextMeshProUGUI>();
-                tmp?.alignment = TextAlignmentOptions.Center;
-            }
+            var pickExhibitsBtn = CreateTextButton(textTemplate, _offerActionsRoot.transform, "PickExhibits", "选择展品", textTemplate.fontSize * 0.50f);
+            SetRect(pickExhibitsBtn.GetComponent<RectTransform>(), 0.04f, 0.00f, 0.96f, 0.40f);
+            var exhibitsTmp = pickExhibitsBtn.GetComponent<TextMeshProUGUI>();
+            if (exhibitsTmp is not null) exhibitsTmp.alignment = TextAlignmentOptions.Center;
 
-            _offerActionsPickExhibitsBtn.onClick.RemoveAllListeners();
-            _offerActionsPickExhibitsBtn.onClick.AddListener(() =>
+            pickExhibitsBtn.onClick.RemoveAllListeners();
+            pickExhibitsBtn.onClick.AddListener(() =>
             {
                 if (!CanEditOffer())
                 {
@@ -3996,13 +3723,13 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             });
 
             // 初始化时同步报价编辑器的显示状态。
-            _offerActionsRoot?.SetActive(_offerEditorRoot != null && _offerEditorRoot.activeSelf);
+            _offerActionsRoot?.SetActive(_offerEditorRoot is not null && _offerEditorRoot.activeSelf);
         }
         catch
         {
             try
             {
-                if (_offerActionsRoot != null)
+                if (_offerActionsRoot is not null)
                 {
                     Destroy(_offerActionsRoot);
                 }
@@ -4013,8 +3740,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             }
 
             _offerActionsRoot = null;
-            _offerActionsPickCardsBtn = null;
-            _offerActionsPickExhibitsBtn = null;
         }
     }
 
@@ -4030,7 +3755,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         private void Awake()
         {
             _rt = transform as RectTransform;
-            _rt?.localScale = Vector3.one;
+            if (_rt is not null) _rt.localScale = Vector3.one;
         }
 
         public void OnPointerEnter(PointerEventData eventData)
@@ -4060,21 +3785,8 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
         private void ApplyScale()
         {
-            if (_rt == null)
-            {
-                return;
-            }
-
-            float s = 1f;
-            if (_pressed)
-            {
-                s = PressedScale;
-            }
-            else if (_hovering)
-            {
-                s = HoverScale;
-            }
-
+            if (_rt is null) return;
+            float s = _pressed ? PressedScale : _hovering ? HoverScale : 1f;
             _rt.localScale = new Vector3(s, s, 1f);
         }
     }
@@ -4136,7 +3848,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private static void ConfigureSingleLineText(TextMeshProUGUI text)
     {
-        if (text == null)
+        if (text is null)
         {
             return;
         }
@@ -4154,10 +3866,10 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         try
         {
             GameObject dialogPrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
-            if (dialogPrefab != null)
+            if (dialogPrefab is not null)
             {
                 var dialog = dialogPrefab.GetComponentInChildren<MessageDialog>(true);
-                if (dialog != null)
+                if (dialog is not null)
                 {
                     textTemplate = GetDialogField<TextMeshProUGUI>(dialog, "mainText")
                                    ?? GetDialogField<TextMeshProUGUI>(dialog, "subText")
@@ -4176,14 +3888,14 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 }
 
                 // 备用启发式地：若具体字段未找到，按得分选择最佳自定义按钮。
-                if (buttonTemplate == null)
+                if (buttonTemplate is null)
                 {
                     CommonButtonWidget best = null;
                     int bestScore = int.MaxValue;
                     var widgets = dialogPrefab.GetComponentsInChildren<CommonButtonWidget>(true);
                     foreach (var w in widgets)
                     {
-                        if (w == null || w.button == null)
+                        if (w is null || w.button is null)
                         {
                             continue;
                         }
@@ -4228,65 +3940,23 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
 
         // 备用：使用面板内已有引用（仍是游戏 UI，但兼容性稍差）。优先 confirmButton 而非 cancelButton。
-        textTemplate ??= statusText != null ? statusText : player1NameText;
-        buttonTemplate ??= confirmButton != null ? confirmButton : cancelButton;
+        textTemplate ??= statusText is not null ? statusText : player1NameText;
+        buttonTemplate ??= confirmButton is not null ? confirmButton : cancelButton;
 
         buttonTemplate = PreferSingleButtonWidget(buttonTemplate);
 
-        return textTemplate != null && buttonTemplate != null;
-    }
-
-    private static void NormalizeButtonWidget(CommonButtonWidget widget)
-    {
-        if (widget == null)
-        {
-            return;
-        }
-
-        // 确保只有主按钮保持可交互。
-        Button keep = widget.button;
-        var buttons = widget.GetComponentsInChildren<Button>(true);
-        if (buttons != null && buttons.Length > 1)
-        {
-            foreach (var b in buttons)
-            {
-                if (b == null || b == keep)
-                {
-                    continue;
-                }
-
-                // 优先硬删除：模板带入的额外按钮不应存在于运行时 widget。
-                Destroy(b.gameObject);
-            }
-        }
-
-        // 禁用 tooltip / 额外 pointer handler。
-        DisableTooltipBehaviours(widget.gameObject);
-
-        // 禁用 gamepad cursor / 额外视觉效果。
-        DisableCursorBehaviours(widget.gameObject);
-
-        // 强制设置 behavior 为 Open（0，通常为非红色）。
-        try
-        {
-            Traverse traverse = HarmonyLib.Traverse.Create(widget);
-            traverse.Field("buttonBehavior").SetValue(0);
-        }
-        catch
-        {
-            // 忽略
-        }
+        return textTemplate is not null && buttonTemplate is not null;
     }
 
     private static CommonButtonWidget TryResolveCommonButtonWidget(Button target)
     {
         // 优先选择明确引用该 Button 的最近 widget。
         var widgets = target.GetComponentsInParent<CommonButtonWidget>(true);
-        if (widgets != null)
+        if (widgets is not null)
         {
             foreach (var w in widgets)
             {
-                if (w == null)
+                if (w is null)
                 {
                     continue;
                 }
@@ -4303,7 +3973,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private static CommonButtonWidget PreferSingleButtonWidget(CommonButtonWidget template)
     {
-        if (template == null)
+        if (template is null)
         {
             return null;
         }
@@ -4318,7 +3988,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         int bestNodes = int.MaxValue;
         foreach (var w in template.GetComponentsInChildren<CommonButtonWidget>(true))
         {
-            if (w == null || w.button == null)
+            if (w is null || w.button is null)
             {
                 continue;
             }
@@ -4346,61 +4016,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         return best ?? template;
     }
 
-    private static void DisableCursorBehaviours(GameObject root)
-    {
-        if (root == null)
-        {
-            return;
-        }
-
-        foreach (var behaviour in root.GetComponentsInChildren<Behaviour>(true))
-        {
-            if (behaviour == null)
-            {
-                continue;
-            }
-
-            // 使用名称匹配来避免对可选包的硬引用。
-            var n = behaviour.GetType().Name;
-            if (string.IsNullOrWhiteSpace(n))
-            {
-                continue;
-            }
-
-            if (n.IndexOf("Gamepad", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                n.IndexOf("Cursor", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                // 不禁用 Button 本身。
-                if (behaviour is Button)
-                    continue;
-
-                behaviour.enabled = false;
-            }
-        }
-    }
-
-    private static void DisableTooltipBehaviours(GameObject root)
-    {
-        if (root == null)
-        {
-            return;
-        }
-
-        foreach (var behaviour in root.GetComponentsInChildren<Behaviour>(true))
-        {
-            if (behaviour == null)
-            {
-                continue;
-            }
-
-            var n = behaviour.GetType().Name;
-            if (!string.IsNullOrWhiteSpace(n) && n.IndexOf("Tooltip", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                behaviour.enabled = false;
-            }
-        }
-    }
-
     private bool CanEditOffer()
     {
         if (_isApplyingState || _partnerPickerActive)
@@ -4415,30 +4030,27 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
 
         TradeSyncPatch.TradeSessionState state = TradeSyncPatch.GetLastKnown(_tradeId);
-        return state == null || state.Status == TradeSyncPatch.TradeStatus.Open;
+        return state is null || state.Status == TradeSyncPatch.TradeStatus.Open;
     }
 
     private void RefreshOfferEditorTexts()
     {
-        _cardCountText?.text = (_player1OfferedCards?.Count ?? 0).ToString();
+        if (_cardCountText is not null) _cardCountText.text = (_player1OfferedCards?.Count ?? 0).ToString();
 
-        if (_ownedMoneyText != null)
+        if (_ownedMoneyText is not null)
         {
             if (!TryGetOwnedMoney(out int owned))
-            {
                 owned = ActiveGameRun?.Money ?? 0;
-            }
-            if (owned < 0) owned = 0;
-            _ownedMoneyText.text = owned.ToString();
+            _ownedMoneyText.text = Math.Max(0, owned).ToString();
         }
 
-        if (_moneyValueText != null)
+        if (_moneyValueText is not null)
         {
             _moneyValueText.text = _localMoneyOffer.ToString();
             ApplyMoneyValueSizingForDigits();
         }
 
-        _exhibitValueText?.text = _localExhibitOfferIds.Count.ToString();
+        if (_exhibitValueText is not null) _exhibitValueText.text = _localExhibitOfferIds.Count.ToString();
     }
 
     private void SetRect(RectTransform rt, float minX, float minY, float maxX, float maxY)
@@ -4454,7 +4066,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private void ShowExhibitPickerOverlay()
     {
         EnsureExhibitPickerOverlay();
-        if (_exhibitPickerRoot == null)
+        if (_exhibitPickerRoot is null)
         {
             TryShowTopMessage("展品选择界面不可用。");
             return;
@@ -4482,7 +4094,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void EnsureExhibitPickerOverlay()
     {
-        if (_exhibitPickerRoot != null)
+        if (_exhibitPickerRoot is not null)
         {
             return;
         }
@@ -4496,7 +4108,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 "确定",
                 "取消",
                 showConfirmButton: true);
-            if (scaffold == null)
+            if (scaffold is null)
             {
                 _exhibitPickerRoot = null;
                 return;
@@ -4504,36 +4116,16 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
             _exhibitPickerRoot = scaffold.Root;
 
-            if (scaffold.ConfirmButton != null)
+            if (scaffold.ConfirmButton is not null)
             {
                 scaffold.ConfirmButton.onClick.RemoveAllListeners();
-                scaffold.ConfirmButton.onClick.AddListener(() =>
-                {
-                    try
-                    {
-                        HideExhibitPickerOverlay(true);
-                    }
-                    catch
-                    {
-                        // 忽略
-                    }
-                });
+                scaffold.ConfirmButton.onClick.AddListener(() => HideExhibitPickerOverlay(true));
             }
 
-            if (scaffold.CancelButton != null)
+            if (scaffold.CancelButton is not null)
             {
                 scaffold.CancelButton.onClick.RemoveAllListeners();
-                scaffold.CancelButton.onClick.AddListener(() =>
-                {
-                    try
-                    {
-                        HideExhibitPickerOverlay(false);
-                    }
-                    catch
-                    {
-                        // 忽略
-                    }
-                });
+                scaffold.CancelButton.onClick.AddListener(() => HideExhibitPickerOverlay(false));
             }
 
             ExhibitPickerTag tag = _exhibitPickerRoot.AddComponent<ExhibitPickerTag>();
@@ -4560,13 +4152,13 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void RebuildExhibitPickerList()
     {
-        if (_exhibitPickerRoot == null)
+        if (_exhibitPickerRoot is null)
         {
             return;
         }
 
         ExhibitPickerTag tag = _exhibitPickerRoot.GetComponent<ExhibitPickerTag>();
-        if (tag == null || tag.Content == null)
+        if (tag is null || tag.Content is null)
         {
             return;
         }
@@ -4580,7 +4172,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         List<Exhibit> tradable = new List<Exhibit>();
         try
         {
-            if (run?.Player?.Exhibits != null)
+            if (run?.Player?.Exhibits is not null)
             {
                 tradable = run.Player.Exhibits
                     .Where(TradeExhibitRules.IsTradable)
@@ -4595,7 +4187,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
         if (tradable.Count == 0)
         {
-            Plugin.Logger?.LogInfo($"[TradePanel] Exhibit picker empty: panelGameRun={(GameRun != null)}, activeGameRun={(run != null)}, exhibitCount={(run?.Player?.Exhibits?.Count ?? 0)}, selectedCount={_localExhibitOfferIds.Count}, tradeId={_tradeId ?? "<null>"}");
+            Plugin.Logger?.LogInfo($"[TradePanel] Exhibit picker empty: panelGameRun={(GameRun is not null)}, activeGameRun={(run is not null)}, exhibitCount={(run?.Player?.Exhibits?.Count ?? 0)}, selectedCount={_localExhibitOfferIds.Count}, tradeId={_tradeId ?? "<null>"}");
             ShowPickerEmpty(tag.ScrollRect, tag.EmptyText, "没有可交易的展品。");
             return;
         }
@@ -4612,7 +4204,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     {
         try
         {
-            if (tag?.Content == null || exhibit == null)
+            if (tag?.Content is null || exhibit is null)
             {
                 return;
             }
@@ -4638,7 +4230,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 sprite,
                 selected,
                 interactable: true);
-            if (row == null)
+            if (row is null)
             {
                 return;
             }
@@ -4646,26 +4238,15 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             row.Button.onClick.RemoveAllListeners();
             row.Button.onClick.AddListener(() =>
             {
-                try
-                {
-                    bool nowSelected = !_localExhibitOfferIds.Contains(exhibit.Id);
-                    if (nowSelected)
-                    {
-                        _localExhibitOfferIds.Add(exhibit.Id);
-                    }
-                    else
-                    {
-                        _localExhibitOfferIds.Remove(exhibit.Id);
-                    }
+                bool nowSelected = !_localExhibitOfferIds.Contains(exhibit.Id);
+                if (nowSelected)
+                    _localExhibitOfferIds.Add(exhibit.Id);
+                else
+                    _localExhibitOfferIds.Remove(exhibit.Id);
 
-                    row.SetSelected(nowSelected);
-                    row.SetSecondaryText(BuildExhibitSecondaryText(exhibit.Id, nowSelected));
-                    RefreshOfferEditorTexts();
-                }
-                catch
-                {
-                    // 忽略
-                }
+                row.SetSelected(nowSelected);
+                row.SetSecondaryText(BuildExhibitSecondaryText(exhibit.Id, nowSelected));
+                RefreshOfferEditorTexts();
             });
         }
         catch
@@ -4681,11 +4262,11 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private static void SetButtonText(CommonButtonWidget button, string label)
     {
-        if (button == null)
+        if (button is null)
             return;
 
         var tmp = button.GetComponentInChildren<TextMeshProUGUI>(true);
-        if (tmp != null)
+        if (tmp is not null)
         {
             tmp.text = label;
             tmp.alignment = TextAlignmentOptions.Center;
@@ -4696,7 +4277,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     {
         scrollRect?.gameObject.SetActive(false);
 
-        if (emptyText != null)
+        if (emptyText is not null)
         {
             emptyText.gameObject.SetActive(true);
             emptyText.text = message ?? string.Empty;
@@ -4708,7 +4289,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private static void HidePickerEmpty(ScrollRect scrollRect, TextMeshProUGUI emptyText)
     {
-        if (emptyText != null)
+        if (emptyText is not null)
         {
             emptyText.gameObject.SetActive(true);
             emptyText.text = string.Empty;
@@ -4734,7 +4315,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
         public void Dispose()
         {
-            _panel?._isApplyingState = _prev;
+            if (_panel is not null) _panel._isApplyingState = _prev;
         }
     }
 
@@ -4745,7 +4326,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     /// <returns>用于等待面板关闭的协程。</returns>
     public IEnumerator ShowTradeAsync(TradePayload payload)
     {
-        Plugin.Logger?.LogInfo($"[TradePanel] ShowTradeAsync enter: payloadNull={(payload == null)}, isVisibleBefore={IsVisible}, gameObjectActiveSelf={gameObject.activeSelf}, activeInHierarchy={gameObject.activeInHierarchy}");
+        Plugin.Logger?.LogInfo($"[TradePanel] ShowTradeAsync enter: payloadNull={(payload is null)}, isVisibleBefore={IsVisible}, gameObjectActiveSelf={gameObject.activeSelf}, activeInHierarchy={gameObject.activeInHierarchy}");
         // 显示交易面板
         Show(payload);
         Plugin.Logger?.LogInfo($"[TradePanel] ShowTradeAsync after Show: isVisibleAfter={IsVisible}, gameObjectActiveSelf={gameObject.activeSelf}, activeInHierarchy={gameObject.activeInHierarchy}");

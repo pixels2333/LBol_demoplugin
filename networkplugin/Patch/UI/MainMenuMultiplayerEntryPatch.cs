@@ -1244,7 +1244,7 @@ public static class MainMenuMultiplayerEntryPatch
                 // 统一尺寸。
                 var r = b.GetComponent<RectTransform>();
                 // 用户诉求：按钮高度小一点点。
-                r?.sizeDelta = new Vector2(r.sizeDelta.x, 58f * panelScale);
+                if (r != null) r.sizeDelta = new Vector2(r.sizeDelta.x, 58f * panelScale);
             }
 
             // 最后兜底：确保容器不会超出画布。
@@ -1310,7 +1310,7 @@ public static class MainMenuMultiplayerEntryPatch
                 yield break;
             }
 
-            _container?.localScale = new Vector3(0.92f, 0.92f, 1f);
+            if (_container != null) _container.localScale = new Vector3(0.92f, 0.92f, 1f);
 
             const float duration = 0.22f;
             float t = 0f;
@@ -1334,7 +1334,7 @@ public static class MainMenuMultiplayerEntryPatch
             _rootGroup.alpha = 1f;
             _rootGroup.interactable = true;
             _rootGroup.blocksRaycasts = true;
-            _container?.localScale = Vector3.one;
+            if (_container != null) _container.localScale = Vector3.one;
         }
     }
 

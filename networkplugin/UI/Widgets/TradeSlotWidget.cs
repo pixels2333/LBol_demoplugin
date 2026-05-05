@@ -151,11 +151,12 @@ public class TradeSlotWidget : CommonButtonWidget
 		_onRemoveCard = removeCallback;
 
 		// Avoid accumulating listeners if SetCard is called multiple times.
-		button?.onClick.RemoveListener(OnRemoveClicked);
+		if (button != null)
+			button.onClick.RemoveListener(OnRemoveClicked);
 
 		if (card != null)
 		{
-			cardNameText?.text = card.Name;
+			if (cardNameText != null) cardNameText.text = card.Name;
 
 			// 优先使用游戏原生卡牌纹理。
 			TrySetCardImage(card);
@@ -166,7 +167,7 @@ public class TradeSlotWidget : CommonButtonWidget
 			ApplyFilledVisual();
 
 			// 启用按钮交互
-			button?.interactable = true;
+			if (button != null) button.interactable = true;
 
 			// 注册移除事件
 			button?.onClick.AddListener(OnRemoveClicked);
@@ -228,7 +229,7 @@ public class TradeSlotWidget : CommonButtonWidget
 		_currentCard = null;
 		_onRemoveCard = null;
 
-		cardNameText?.text = string.Empty;
+		if (cardNameText != null) cardNameText.text = string.Empty;
 		cardIcon?.gameObject.SetActive(false);
 		if (cardImage != null)
 		{
@@ -304,7 +305,7 @@ public class TradeSlotWidget : CommonButtonWidget
 	{
 		lockedOverlay?.SetActive(locked);
 
-		button?.interactable = !locked;
+		if (button != null) button.interactable = !locked;
 	}
 
 	public void SetSelected(bool selected)

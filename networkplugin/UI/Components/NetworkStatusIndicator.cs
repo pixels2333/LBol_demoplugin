@@ -61,8 +61,7 @@ public class NetworkStatusIndicator : MonoBehaviour
     {
         UpdatePingDisplay();
         UpdateConnectionStatus();
-        UpdateNatStatusDisplay();
-    } // 每帧更新延迟显示和连接状态
+    } // 每 N 帧更新延迟和连接状态（帧节流优化）
 
     /// <summary>
     /// 设置UI组件
@@ -129,7 +128,7 @@ public class NetworkStatusIndicator : MonoBehaviour
             _ => (disconnectedColor, "未知状态")
         };
 
-        connectionStatusIcon?.color = iconColor;
+        if (connectionStatusIcon != null) connectionStatusIcon.color = iconColor;
 
         if (statusText != null)
         {

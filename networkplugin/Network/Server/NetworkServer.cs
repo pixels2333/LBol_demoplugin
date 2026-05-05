@@ -439,7 +439,7 @@ public class NetworkServer : BaseGameServer
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[服务器] 广播游戏事件异常: to={session.PlayerId}, err={ex.Message}");
+                    Plugin.Logger?.LogError($"[服务器] 广播游戏事件异常: to={session.PlayerId}, err={ex.Message}");
                     _logger?.LogError($"[服务器] 广播游戏事件异常: to={session.PlayerId}, err={ex.Message}");
                 }
             }
@@ -486,7 +486,7 @@ public class NetworkServer : BaseGameServer
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[服务器] 发送消息异常: to={peer.EndPoint}, err={ex.Message}");
+            Plugin.Logger?.LogError($"[服务器] 发送消息异常: to={peer.EndPoint}, err={ex.Message}");
             _logger?.LogError($"[服务器] 发送消息异常: to={peer.EndPoint}, err={ex.Message}");
         }
     }
@@ -627,7 +627,7 @@ public class NetworkServer : BaseGameServer
             {
                 newHost.IsHost = true;
                 BroadcastMessage(NetworkMessageTypes.HostChanged, new { NewHostId = newHost.PlayerId });
-                Console.WriteLine($"[服务器] 房主已变更为 {newHost.PlayerId}");
+                Plugin.Logger?.LogInfo($"[服务器] 房主已变更为 {newHost.PlayerId}");
             }
         }
 
@@ -692,14 +692,14 @@ public class NetworkServer : BaseGameServer
                     HandleDirectMessage(senderSession, jsonPayload);
                     return;
                 default:
-                    Console.WriteLine($"[服务器] 未知系统消息类型: {messageType}, 来自 {senderSession.Peer.EndPoint}");
+                    Plugin.Logger?.LogInfo($"[服务器] 未知系统消息类型: {messageType}, 来自 {senderSession.Peer.EndPoint}");
                     _logger?.LogWarning($"[服务器] 未知系统消息类型: {messageType}, 来自 {senderSession.Peer.EndPoint}");
                     return;
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[服务器] 处理系统消息异常: type={messageType}, from={senderSession.Peer.EndPoint}, err={ex.Message}");
+            Plugin.Logger?.LogError($"[服务器] 处理系统消息异常: type={messageType}, from={senderSession.Peer.EndPoint}, err={ex.Message}");
             _logger?.LogError($"[服务器] 处理系统消息异常: type={messageType}, from={senderSession.Peer.EndPoint}, err={ex.Message}");
         }
     }
@@ -752,7 +752,7 @@ public class NetworkServer : BaseGameServer
         {
             object eventData = JsonSerializer.Deserialize<object>(jsonPayload);
             string summary = NetLogHelper.BuildSummary(eventType, jsonPayload);
-            Console.WriteLine($"[服务器] 收到游戏事件: type={eventType}, from={session.PlayerId} ({summary})");
+            Plugin.Logger?.LogInfo($"[服务器] 收到游戏事件: type={eventType}, from={session.PlayerId} ({summary})");
 
             session.UpdateMessageTime();
 
@@ -767,7 +767,7 @@ public class NetworkServer : BaseGameServer
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[服务器] 处理游戏事件异常: {ex.Message}");
+            Plugin.Logger?.LogError($"[服务器] 处理游戏事件异常: {ex.Message}");
             _logger?.LogError($"[服务器] 处理游戏事件异常: {ex.Message}");
         }
     }
@@ -795,7 +795,7 @@ public class NetworkServer : BaseGameServer
                 }
             }
 
-            Console.WriteLine($"[服务器] 玩家加入: {session.PlayerName} ({session.PlayerId})");
+            Plugin.Logger?.LogInfo($"[服务器] 玩家加入: {session.PlayerName} ({session.PlayerId})");
 
             BroadcastMessage(NetworkMessageTypes.PlayerJoined, new
             {
@@ -809,7 +809,7 @@ public class NetworkServer : BaseGameServer
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[服务器] 处理 PlayerJoined 异常: {ex.Message}");
+            Plugin.Logger?.LogError($"[服务器] 处理 PlayerJoined 异常: {ex.Message}");
             _logger?.LogError($"[服务器] 处理 PlayerJoined 异常: {ex.Message}");
         }
     }
@@ -933,7 +933,7 @@ public class NetworkServer : BaseGameServer
             }
             catch
             {
-                Console.WriteLine($"[服务器] UpdatePlayerLocation payload 无效: from={session.PlayerId}");
+                Plugin.Logger?.LogError($"[服务器] UpdatePlayerLocation payload 无效: from={session.PlayerId}");
                 return;
             }
 
@@ -963,7 +963,7 @@ public class NetworkServer : BaseGameServer
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[服务器] 处理 UpdatePlayerLocation 异常: {ex.Message}");
+            Plugin.Logger?.LogError($"[服务器] 处理 UpdatePlayerLocation 异常: {ex.Message}");
             _logger?.LogError($"[服务器] 处理 UpdatePlayerLocation 异常: {ex.Message}");
         }
     }
@@ -975,7 +975,7 @@ public class NetworkServer : BaseGameServer
     public override void Start()
     {
         _core.Start();
-        Console.WriteLine($"[服务器] 已启动，监听端口 {_port}。");
+        Plugin.Logger?.LogInfo($"[服务器] 已启动，监听端口 {_port}。");
         _logger?.LogInfo($"[服务器] 已启动，监听端口 {_port}。");
     }
 
@@ -1000,7 +1000,7 @@ public class NetworkServer : BaseGameServer
         _playerIdByPeerId.Clear();
         _sessionsByPlayerId.Clear();
         _disconnectedAtByPlayerId.Clear();
-        Console.WriteLine("[服务器] 已停止。");
+        Plugin.Logger?.LogInfo("[服务器] 已停止。");
         _logger?.LogInfo("[服务器] 已停止。");
     }
 
@@ -1055,7 +1055,7 @@ public class NetworkServer : BaseGameServer
         _playerIdByPeerId[session.Peer.Id] = session.PlayerId;
         _playerSessions[session.Peer.Id] = session;
 
-        Console.WriteLine($"[服务器] 客户端已连接: {session.Peer.EndPoint}");
+        Plugin.Logger?.LogInfo($"[服务器] 客户端已连接: {session.Peer.EndPoint}");
         _logger?.LogInfo($"[服务器] 客户端已连接: {session.Peer.EndPoint}");
 
         BroadcastPlayerList();
@@ -1064,7 +1064,7 @@ public class NetworkServer : BaseGameServer
 
     protected override void OnSessionDisconnected(PlayerSession session, DisconnectInfo disconnectInfo)
     {
-        Console.WriteLine($"[服务器] 客户端已断开: {session.Peer.EndPoint}, 原因: {disconnectInfo.Reason}");
+        Plugin.Logger?.LogInfo($"[服务器] 客户端已断开: {session.Peer.EndPoint}, 原因: {disconnectInfo.Reason}");
         _logger?.LogInfo($"[服务器] 客户端已断开: {session.Peer.EndPoint}, 原因: {disconnectInfo.Reason}");
 
         _playerIdByPeerId.Remove(session.Peer.Id);

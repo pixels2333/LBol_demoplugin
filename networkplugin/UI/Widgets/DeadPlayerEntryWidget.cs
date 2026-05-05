@@ -58,7 +58,7 @@ public class DeadPlayerEntryWidget : CommonButtonWidget
 		string displayName = string.IsNullOrWhiteSpace(player?.PlayerName) ? player?.PlayerId : player.PlayerName;
 
 		// 设置玩家名字
-		playerName?.text = displayName;
+		if (playerName != null) playerName.text = displayName;
 
 		string statusText = string.IsNullOrWhiteSpace(player.StatusText)
 			? player.DeadCause
@@ -67,15 +67,15 @@ public class DeadPlayerEntryWidget : CommonButtonWidget
 		int actionValue = player.ActionValue > 0 ? player.ActionValue : player.ResurrectionCost;
 		string actionText = actionValue > 0 ? $"治疗+{actionValue}" : "不可治疗";
 		string infoLine = $"HP {player.CurrentHp}/{player.MaxHp} | {actionText} | {statusText}";
-		playerInfo?.text = infoLine;
+		if (playerInfo != null) playerInfo.text = infoLine;
 
 		// 设置文字颜色和按钮状态
 		bool canResurrect = player.CanResurrect;
 		Color textColor = canResurrect ? Color.white : Color.gray;
 
-		playerName?.color = textColor;
+		if (playerName != null) playerName.color = textColor;
 
-		playerInfo?.color = textColor;
+		if (playerInfo != null) playerInfo.color = textColor;
 
 		if (playerName == null || playerInfo == null)
 		{
@@ -188,7 +188,7 @@ public class DeadPlayerEntryWidget : CommonButtonWidget
 			_bgImage = GetComponent<Image>();
 		}
 
-		_bgImage?.color = selected ? selectedColor : normalColor;
+		if (_bgImage != null) _bgImage.color = selected ? selectedColor : normalColor;
 
 		selectedIndicator?.gameObject.SetActive(selected);
 	}
