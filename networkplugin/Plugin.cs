@@ -103,23 +103,11 @@ public class Plugin : BaseUnityPlugin
         services.AddSingleton(ConfigManager);
 
         // 第2步：注册服务接口和对应的实现类
-        // Scoped 服务模式：在每次请求的生命周期内创建一次实例
-        // Transient 服务模式：每次请求都创建新实例
-        // Singleton 服务模式：在整个应用生命周期内共享单例
-        // services.AddSingleton<IService, Service>(); // 示例服务注册
         // 通过配置方法完成具体服务注册
         ConfigureServices(services);
 
         // 第3步：构建服务提供者，完成依赖注入容器的初始化
         serviceProvider = services.BuildServiceProvider();
-
-        // 第4步：使用服务提供者获取所需服务实例
-        // ServiceProvider 负责解析和根据配置提供相应的服务实例
-        // 可以从容器中获取任何已注册的服务
-        // var service = serviceProvider.GetService<IService>(); // 示例服务获取
-
-        // 第5步：调用服务方法执行具体功能
-        // service.method(params); // 使用注入的服务
 
         // 将服务提供者注册到模块服务中，供其他组件使用
         ModService.ServiceProvider = serviceProvider;

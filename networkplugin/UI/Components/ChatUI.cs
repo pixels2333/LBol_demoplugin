@@ -69,7 +69,7 @@ public class ChatUI : MonoBehaviour
 
         sendButton?.onClick.AddListener(OnSendButtonClicked);
 
-        chatDisplay?.text = "聊天系统已启用...\n";
+        if (chatDisplay != null) chatDisplay.text = "聊天系统已启用...\n";
 
         // 初始隐藏聊天容器
         chatContainer?.SetActive(false);

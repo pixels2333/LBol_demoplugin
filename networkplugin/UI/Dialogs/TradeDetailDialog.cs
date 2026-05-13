@@ -1783,7 +1783,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
                 var isOn = _localExhibitIds.Contains(ex.Id);
                 var img = widget.MainImage;
-                img?.color = isOn ? new Color(0.4f, 1f, 0.4f, 1f) : Color.white;
+                if (img != null) img.color = isOn ? new Color(0.4f, 1f, 0.4f, 1f) : Color.white;
 
                 var btn = widget.gameObject.GetComponent<Button>();
                 if (btn == null) btn = widget.gameObject.AddComponent<Button>();
@@ -2366,7 +2366,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
         public void Dispose()
         {
-            _d?._isApplyingState = _prev;
+            if (_d != null) _d._isApplyingState = _prev;
         }
     }
 }

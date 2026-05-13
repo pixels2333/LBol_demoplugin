@@ -366,7 +366,7 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 	/// <param name="message">要显示的消息</param>
         private void UpdateUIStatus(string message)
         {
-                statusText?.text = message;
+                if (statusText != null) statusText.text = message;
         }
 
 

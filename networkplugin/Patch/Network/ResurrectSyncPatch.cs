@@ -46,7 +46,8 @@ public static class ResurrectSyncPatch
 
         try
         {
-            _subscribedClient?.OnGameEventReceived -= OnGameEventReceived;
+            if (_subscribedClient != null)
+                _subscribedClient.OnGameEventReceived -= OnGameEventReceived;
         }
         catch
         {

@@ -118,12 +118,10 @@ public class NetworkClient : INetworkClient
         // 启动网络管理器，如果失败则抛出异常
         if (_netManager.Start())
         {
-            Console.WriteLine("[客户端] 网络客户端已启动。");
             Plugin.Logger?.LogInfo("[客户端] 网络客户端已启动。");
         }
         else
         {
-            Console.WriteLine("[客户端] 网络客户端启动失败。");
             Plugin.Logger?.LogError("[客户端] 网络客户端启动失败。");
             throw new Exception("Failed to start NetworkClient");
         }
@@ -160,7 +158,6 @@ public class NetworkClient : INetworkClient
     {
         _listener.PeerConnectedEvent += peer =>
         {
-            Console.WriteLine($"[客户端] 已连接到服务器: {peer.EndPoint}");
             Plugin.Logger?.LogInfo($"[客户端] 已连接到服务器: {peer.EndPoint}");
             _serverPeer = peer;
             _lastHeartbeatSentUtc = DateTime.UtcNow;
@@ -177,7 +174,6 @@ public class NetworkClient : INetworkClient
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[客户端] 通知同步管理器失败: {ex.Message}");
                 Plugin.Logger?.LogWarning($"[客户端] 通知同步管理器失败: {ex.Message}");
             }
 
@@ -225,7 +221,6 @@ public class NetworkClient : INetworkClient
 
         _listener.PeerDisconnectedEvent += (peer, disconnectInfo) =>
         {
-            Console.WriteLine($"[客户端] 已从服务器断开: {peer.EndPoint}, 原因: {disconnectInfo.Reason}");
             Plugin.Logger?.LogWarning($"[客户端] 已从服务器断开: {peer.EndPoint}, 原因: {disconnectInfo.Reason}");
             _serverPeer = null;
             _lastHeartbeatSentUtc = DateTime.MinValue;
@@ -241,14 +236,12 @@ public class NetworkClient : INetworkClient
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[客户端] 通知同步管理器失败: {ex.Message}");
                 Plugin.Logger?.LogWarning($"[客户端] 通知同步管理器失败: {ex.Message}");
             }
 
             // 检查是否启用自动重连功能
             if (_autoReconnectEnabled)
             {
-                Console.WriteLine($"[客户端] 已启用自动重连，将在 {_retryInterval}ms 后重试");
                 Plugin.Logger?.LogInfo($"[客户端] 已启用自动重连，将在 {_retryInterval}ms 后重试");
                 StartAutoReconnectTimer_NoThrow();
             }
@@ -279,13 +272,11 @@ public class NetworkClient : INetworkClient
                 }
                 else
                 {
-                    Console.WriteLine($"[客户端] 未知消息类型: {messageType}，来自 {fromPeer.EndPoint}");
                     Plugin.Logger?.LogWarning($"[客户端] 未知消息类型: {messageType}，来自 {fromPeer.EndPoint}");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[客户端] 处理来自 {fromPeer.EndPoint} 的数据失败: {ex.Message}");
                 Plugin.Logger?.LogError($"[客户端] 处理来自 {fromPeer.EndPoint} 的数据失败: {ex.Message}");
             }
             finally
@@ -328,7 +319,7 @@ public class NetworkClient : INetworkClient
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[客户端] 注入本地游戏事件失败: type={eventType}, err={ex.Message}");
+            Plugin.Logger?.LogError($"[客户端] 注入本地游戏事件失败: type={eventType}, err={ex.Message}");
         }
     }
 
@@ -349,7 +340,7 @@ public class NetworkClient : INetworkClient
 
             LogPayloadPreviewOnce(eventType, jsonPayload);
 
-            Console.WriteLine($"[客户端] 收到游戏事件: {eventType}");
+            Plugin.Logger?.LogInfo($"[客户端] 收到游戏事件: {eventType}");
             // 高频：仅 Debug，避免刷屏。
             Plugin.Logger?.LogDebug($"[客户端] 收到游戏事件: {eventType}");
 
@@ -366,7 +357,6 @@ public class NetworkClient : INetworkClient
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[客户端] 处理游戏事件失败: {ex.Message}");
             Plugin.Logger?.LogError($"[客户端] 处理游戏事件失败: {ex.Message}");
         }
     }
@@ -388,7 +378,7 @@ public class NetworkClient : INetworkClient
 
         // 只打一次：用于定位“无效的网络事件数据格式”根因。
         string summary = NetLogHelper.BuildSummary(eventType, jsonPayload);
-        Console.WriteLine($"[客户端] Payload 预览(仅一次): event={eventType}, {summary}");
+        Plugin.Logger?.LogInfo($"[客户端] Payload 预览(仅一次): event={eventType}, {summary}");
         try
         {
             Plugin.Logger?.LogInfo($"[客户端] Payload 预览(仅一次): event={eventType}, {summary}");
@@ -409,7 +399,6 @@ public class NetworkClient : INetworkClient
     {
         _lastConnectHost = host;
         _lastConnectPort = port;
-        Console.WriteLine($"[客户端] 正在连接服务器 {host}:{port}（密钥: <已隐藏>）...");
         Plugin.Logger?.LogInfo($"[客户端] 正在连接服务器 {host}:{port}（密钥: <已隐藏>）...");
         NetDataWriter connectData = new();
         // 将连接密钥写入数据包，用于服务器身份验证
@@ -468,7 +457,7 @@ public class NetworkClient : INetworkClient
         // 停止网络管理器，断开所有连接
         _netManager.Stop();
         _serverPeer = null;
-        Console.WriteLine("[客户端] 网络客户端服务已停止。");
+        Plugin.Logger?.LogInfo("[客户端] 网络客户端服务已停止。");
     }
 
     private void StartAutoReconnectTimer_NoThrow()
@@ -482,7 +471,7 @@ public class NetworkClient : INetworkClient
 
             if (string.IsNullOrWhiteSpace(_lastConnectHost) || _lastConnectPort <= 0)
             {
-                Console.WriteLine("[客户端] 自动重连跳过：缺少上次连接的地址信息");
+                Plugin.Logger?.LogInfo("[客户端] 自动重连跳过：缺少上次连接的地址信息");
                 return;
             }
 
@@ -498,19 +487,19 @@ public class NetworkClient : INetworkClient
                             return;
                         }
 
-                        Console.WriteLine($"[客户端] 自动重连尝试：{_lastConnectHost}:{_lastConnectPort}");
+                        Plugin.Logger?.LogInfo($"[客户端] 自动重连尝试：{_lastConnectHost}:{_lastConnectPort}");
                         ConnectToServer(_lastConnectHost, _lastConnectPort);
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"[客户端] 自动重连异常: {ex.Message}");
+                        Plugin.Logger?.LogError($"[客户端] 自动重连异常: {ex.Message}");
                     }
                 }, null, _retryInterval, _retryInterval);
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[客户端] 启动自动重连计时器失败: {ex.Message}");
+            Plugin.Logger?.LogError($"[客户端] 启动自动重连计时器失败: {ex.Message}");
         }
     }
 
@@ -577,7 +566,6 @@ public class NetworkClient : INetworkClient
         // 检查是否已连接到服务器
         if (!IsConnected)
         {
-            Console.WriteLine($"[客户端] 未连接到服务器，无法发送事件: {eventType}");
             Plugin.Logger?.LogWarning($"[客户端] 未连接到服务器，无法发送事件: {eventType}");
             return;
         }
@@ -595,12 +583,10 @@ public class NetworkClient : INetworkClient
             // 使用可靠有序的方式发送数据
             _serverPeer.Send(writer, DeliveryMethod.ReliableOrdered);
             string summary = NetLogHelper.BuildSummary(eventType, json);
-            Console.WriteLine($"[客户端] 已发送游戏事件: {eventType} ({summary})");
             Plugin.Logger?.LogDebug($"[客户端] 已发送游戏事件: {eventType} ({summary})");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[客户端] 发送游戏事件失败: {eventType}, 错误: {ex.Message}");
             Plugin.Logger?.LogError($"[客户端] 发送游戏事件失败: {eventType}, 错误: {ex.Message}");
         }
     }
@@ -663,12 +649,11 @@ public class NetworkClient : INetworkClient
             }
 
             string summary = NetLogHelper.BuildSummary(requestHeader, payloadForLog);
-            Console.WriteLine($"[客户端] 已发送请求: {requestHeader} ({summary})");
             Plugin.Logger?.LogDebug($"[客户端] 已发送请求: {requestHeader} ({summary})");
         }
         else
         {
-            Console.WriteLine("[客户端] 未连接到服务器，无法发送请求。");
+            Plugin.Logger?.LogInfo("[客户端] 未连接到服务器，无法发送请求。");
         }
     }
 
@@ -684,18 +669,18 @@ public class NetworkClient : INetworkClient
         {
             // 读取响应头标识
             string responseHeader = dataReader.GetString();
-            Console.WriteLine($"[客户端] 收到响应: type='{responseHeader}', from={fromPeer.EndPoint}");
+            Plugin.Logger?.LogInfo($"[客户端] 收到响应: type='{responseHeader}', from={fromPeer.EndPoint}");
 
             // 读取响应数据内容
             string responseData = dataReader.GetString();
-            Console.WriteLine($"[客户端] 响应消息: {responseData}");
+            Plugin.Logger?.LogInfo($"[客户端] 响应消息: {responseData}");
 
             // 触发响应接收事件
             OnResponseReceived?.Invoke(responseHeader, responseData);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[客户端] 处理响应失败: {ex.Message}");
+            Plugin.Logger?.LogError($"[客户端] 处理响应失败: {ex.Message}");
         }
     }
 
@@ -735,8 +720,8 @@ public class NetworkClient : INetworkClient
         // 更新连接超时配置
         _connectionTimeout = timeoutMs;
         // 如果网络管理器已启动，同时更新其实际超时设置
-        _netManager?.DisconnectTimeout = timeoutMs;
-        Console.WriteLine($"[客户端] 连接超时已设置为 {timeoutMs}ms");
+        if (_netManager != null) _netManager.DisconnectTimeout = timeoutMs;
+        Plugin.Logger?.LogInfo($"[客户端] 连接超时已设置为 {timeoutMs}ms");
     }
 
     /// <summary>
@@ -751,7 +736,7 @@ public class NetworkClient : INetworkClient
         _autoReconnectEnabled = enabled;
         // 设置重试间隔时间
         _retryInterval = retryInterval;
-        Console.WriteLine($"[客户端] 自动重连{(enabled ? "已启用" : "已禁用")}, 重试间隔: {retryInterval}ms");
+        Plugin.Logger?.LogInfo($"[客户端] 自动重连{(enabled ? "已启用" : "已禁用")}, 重试间隔: {retryInterval}ms");
     }
 
 

@@ -243,12 +243,12 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
-        view.BoxCollider?.enabled = false;
+        if (view.BoxCollider != null) view.BoxCollider.enabled = false;
 
         try
         {
             Collider2D circle = Traverse.Create(view).Field("_circleCollider").GetValue<Collider2D>();
-            circle?.enabled = false;
+            if (circle != null) circle.enabled = false;
         }
         catch
         {

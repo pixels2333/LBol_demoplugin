@@ -47,7 +47,8 @@ public static class RoomSyncManager
                 return;
             }
 
-            _subscribedClient?.OnGameEventReceived -= OnGameEventReceived;
+            if (_subscribedClient != null)
+                _subscribedClient.OnGameEventReceived -= OnGameEventReceived;
 
             _subscribedClient = client;
             _subscribedClient.OnGameEventReceived += OnGameEventReceived;
@@ -59,7 +60,8 @@ public static class RoomSyncManager
     {
         lock (_lock)
         {
-            _subscribedClient?.OnGameEventReceived -= OnGameEventReceived;
+            if (_subscribedClient != null)
+                _subscribedClient.OnGameEventReceived -= OnGameEventReceived;
 
             _subscribedClient = null;
             _subscribed = false;

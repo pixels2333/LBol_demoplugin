@@ -10,6 +10,8 @@ namespace NetworkPlugin.Patch.UI;
 public static partial class OtherPlayersOverlayPatch
 {
     private static int _lastSceneBindingSignature;
+    private static int _mapIconRefreshSkipCounter;
+    private const int MapIconRefreshFrameInterval = 10;
 
     [HarmonyPatch(typeof(GameDirector), nameof(GameDirector.EnterBattle))]
     [HarmonyPostfix]
@@ -52,6 +54,11 @@ public static partial class OtherPlayersOverlayPatch
     {
         try
         {
+            _mapIconRefreshSkipCounter++;
+            if (_mapIconRefreshSkipCounter < MapIconRefreshFrameInterval)
+                return;
+            _mapIconRefreshSkipCounter = 0;
+
             if (__instance != null && __instance.IsVisible)
             {
                 UpdateMapIcons(__instance);

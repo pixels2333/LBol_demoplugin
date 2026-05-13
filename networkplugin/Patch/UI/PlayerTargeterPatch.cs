@@ -101,7 +101,7 @@ public static class PlayerTargeterPatch
         try
         {
             Doll doll = Traverse.Create(selector).Field("_activeDoll").GetValue<Doll>();
-            doll?.PendingTarget = target;
+            if (doll != null) doll.PendingTarget = target;
         }
         catch
         {

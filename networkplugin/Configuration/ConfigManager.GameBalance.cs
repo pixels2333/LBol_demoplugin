@@ -202,20 +202,19 @@ public partial class ConfigManager
     {
         try
         {
-            EnemyHpMultiplier?.Value = 1.0f;
+            if (EnemyHpMultiplier != null) EnemyHpMultiplier.Value = 1.0f;
 
-            EnemyDamageMultiplier?.Value = 1.0f;
+            if (EnemyDamageMultiplier != null) EnemyDamageMultiplier.Value = 1.0f;
 
-            RewardGoldMultiplier?.Value = 1.0f;
+            if (RewardGoldMultiplier != null) RewardGoldMultiplier.Value = 1.0f;
 
-            RewardExpMultiplier?.Value = 1.0f;
+            if (RewardExpMultiplier != null) RewardExpMultiplier.Value = 1.0f;
 
-            BattleAutoReviveHpPercent?.Value = 10;
+            if (BattleAutoReviveHpPercent != null) BattleAutoReviveHpPercent.Value = 10;
         }
         catch (Exception ex)
         {
-            // 这里可以考虑使用日志记录错误
-            System.Console.WriteLine($"[ConfigManager] Error resetting game balance settings: {ex.Message}");
+            Plugin.Logger?.LogWarning($"[ConfigManager] Error resetting game balance settings: {ex.Message}");
         }
     }
 }

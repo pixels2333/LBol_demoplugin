@@ -118,6 +118,13 @@ public static partial class OtherPlayersOverlayPatch
     /// <summary>上一次 Overlay 调试摘要</summary>
     private static string _lastOverlayDebugSummary;
 
+    /// <summary>帧节流计数 / 脏标记（避免每帧 UI 刷新）。</summary>
+    private static int _uiDirtyCounter;
+    private const int UiRefreshFrameInterval = 30;
+    private static bool _wasOverlayVisible;
+    private static bool _wasRemoteCharactersVisible;
+    private static bool _uiDirty;
+
     #endregion
 
     #region Harmony 补丁方法
@@ -132,107 +139,78 @@ public static partial class OtherPlayersOverlayPatch
     {
         try
         {
+            INetworkClient client = TryGetNetworkClient();
+
+            // 每帧仅轮询网络事件（轻量级）
+            if (client != null)
+            {
+                EnsureSubscribed(client);
+                try { client.PollEvents(); } catch { }
+            }
+
+            // 帧节流：非脏标记触发时跳过完整 UI 刷新
+            _uiDirtyCounter++;
+            if (!_uiDirty && _uiDirtyCounter < UiRefreshFrameInterval)
+                return;
+            _uiDirtyCounter = 0;
+            _uiDirty = false;
+
             EnsureSceneBoundBindingsCurrent();
             bool isMapPanelVisible = IsMapPanelVisible();
 
-            // 从依赖注入容器获取当前网络客户端实例
-            INetworkClient client = TryGetNetworkClient();
+            bool showOverlay;
+            bool showRemoteChars;
+
             if (client == null)
             {
-                // 没有网络客户端时：若启用虚拟玩家，则仍允许远程渲染；否则按原逻辑隐藏。
                 EnsureVirtualAiDefaultPlayer_NoThrow();
-                if (!IsVirtualAiDefaultEnabled())
-                {
-                    HideUi();
-                    HideRemoteCharacters();
-                    return;
-                }
-
-                HideUi();
-                if (isMapPanelVisible)
-                {
-                    HideRemoteCharacters();
-                }
-                else
-                {
-                    EnsureRemoteCharacters();
-                    UpdateRemoteCharactersLayout();
-                }
-                return;
+                bool virt = IsVirtualAiDefaultEnabled();
+                showOverlay = false;
+                showRemoteChars = virt && !isMapPanelVisible;
             }
-
-            // 确保已经为当前客户端完成事件订阅（连接状态/游戏事件）
-            EnsureSubscribed(client);
-
-            // 每帧轮询一次网络事件，让玩家列表相关事件尽快被处理
-            try
-            {
-                client.PollEvents();
-            }
-            catch
-            {
-                // 忽略轮询失败：某些实现要求在 Start/Connect 之后才能 PollEvents
-            }
-
-            // 如果当前网络未连接，则不显示 Overlay
-            if (!client.IsConnected)
+            else if (!client.IsConnected)
             {
                 EnsureVirtualAiDefaultPlayer_NoThrow();
-                if (!IsVirtualAiDefaultEnabled())
-                {
-                    HideUi();
-                    HideRemoteCharacters();
-                    return;
-                }
-
-                HideUi();
-                if (isMapPanelVisible)
-                {
-                    HideRemoteCharacters();
-                }
-                else
-                {
-                    EnsureRemoteCharacters();
-                    UpdateRemoteCharactersLayout();
-                }
-                return;
+                bool virt = IsVirtualAiDefaultEnabled();
+                showOverlay = false;
+                showRemoteChars = virt && !isMapPanelVisible;
+            }
+            else if (UiManager.Instance == null || UiManager.IsShowingLoading || UiManager.IsBlockingInput)
+            {
+                showOverlay = false;
+                showRemoteChars = false;
+            }
+            else
+            {
+                showOverlay = IsBattleOverlayActive();
+                showRemoteChars = ShouldRenderRemoteCharacters(isMapPanelVisible);
             }
 
-            // 在加载界面或输入被阻塞时不显示 Overlay，避免挡住游戏 UI
-            // UiManager 的大部分状态是私有字段，这里优先使用公开属性
-            if (UiManager.Instance == null || UiManager.IsShowingLoading || UiManager.IsBlockingInput)
+            // 仅状态切换时操作 SetActive（避免每帧锁定）
+            if (showOverlay != _wasOverlayVisible)
             {
-                HideUi();
-                HideRemoteCharacters();
-                return;
+                _wasOverlayVisible = showOverlay;
+                if (showOverlay) { EnsureUi(); RefreshUi(); }
+                else { HideUi(); }
             }
-
-            if (IsBattleOverlayActive())
+            else if (showOverlay)
             {
-                EnsureUi();
                 RefreshUi();
             }
-            else
-            {
-                HideUi();
-            }
 
-            // 渲染远程玩家“角色实体”（战斗场景）
-            EnsureVirtualAiDefaultPlayer_NoThrow();
-            bool shouldRenderRemoteCharacters = ShouldRenderRemoteCharacters(isMapPanelVisible);
-            if (!shouldRenderRemoteCharacters)
+            if (showRemoteChars != _wasRemoteCharactersVisible)
             {
-                HideRemoteCharacters();
+                _wasRemoteCharactersVisible = showRemoteChars;
+                if (showRemoteChars) { EnsureRemoteCharacters(); UpdateRemoteCharactersLayout(); }
+                else { HideRemoteCharacters(); }
             }
-            else
+            else if (showRemoteChars)
             {
-                EnsureRemoteCharacters();
                 UpdateRemoteCharactersLayout();
             }
         }
         catch (Exception ex)
         {
-            // 捕获补丁逻辑中的所有异常，防止影响游戏主循环
             Plugin.Logger?.LogError($"[OtherPlayersOverlayPatch] GameDirector_Update_Postfix 异常: {ex}");
         }
     }
@@ -447,6 +425,7 @@ public static partial class OtherPlayersOverlayPatch
 
     private static void MarkOverlayUiDirty()
     {
+        _uiDirty = true;
         RefreshVisibleMapPanelIcons_NoThrow();
     }
 
@@ -507,7 +486,7 @@ public static partial class OtherPlayersOverlayPatch
 
         foreach (Graphic graphic in template.GetComponentsInChildren<Graphic>(true))
         {
-            graphic?.raycastTarget = false;
+            if (graphic != null) graphic.raycastTarget = false;
         }
 
         foreach (ParticleSystem particle in template.GetComponentsInChildren<ParticleSystem>(true))

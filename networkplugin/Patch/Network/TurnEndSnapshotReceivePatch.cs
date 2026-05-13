@@ -65,7 +65,8 @@ public static class TurnEndSnapshotReceivePatch
 
         try
         {
-            _subscribedClient?.OnGameEventReceived -= _onGameEventReceived;
+            if (_subscribedClient != null)
+                _subscribedClient.OnGameEventReceived -= _onGameEventReceived;
         }
         catch
         {
