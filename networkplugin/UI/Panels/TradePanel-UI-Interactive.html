@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradePanel 互动 UI 指南</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  .container { max-width: 1300px; margin: 0 auto; }
+
+  /* 标题区 */
+  .header {
+    text-align: center;
+    padding: 30px 0 20px;
+    border-bottom: 1px solid #30363d;
+    margin-bottom: 30px;
+  }
+  .header h1 { font-size: 2rem; font-weight: 700; background: linear-gradient(135deg, #58a6ff, #3fb950); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .header p { color: #8b949e; margin-top: 8px; font-size: 0.95rem; }
+  .header p span { color: #f0883e; }
+
+  /* 图例 */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 12px 24px;
+    background: #161b22; border: 1px solid #30363d; border-radius: 10px;
+    padding: 14px 20px; margin-bottom: 28px;
+    justify-content: center;
+  }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-size: 0.82rem; color: #c9d1d9; }
+  .legend-color { width: 14px; height: 14px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); }
+
+  /* 面板主容器 */
+  .panel-wrapper {
+    position: relative;
+    background: linear-gradient(145deg, #161b22, #0d1117);
+    border: 1px solid #30363d;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 28px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .panel-schema {
+    position: relative;
+    min-height: 780px;
+    background: rgba(13,17,23,0.6);
+    border-radius: 12px;
+    border: 1px dashed #21262d;
+  }
+
+  /* UI 元素通用 */
+  .ui-element {
+    position: absolute;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    cursor: default;
+  }
+  .ui-element:hover { filter: brightness(1.25); transform: scale(1.02); z-index: 100; }
+  .ui-element.clickable { cursor: pointer; }
+  .ui-element .label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-align: center;
+    padding: 0 3px;
+    pointer-events: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 工具提示 */
+  .tooltip {
+    visibility: hidden; opacity: 0;
+    position: absolute; z-index: 1000;
+    background: #1c2333; border: 1px solid #30363d;
+    border-radius: 10px; padding: 14px 16px;
+    width: 280px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+    transition: opacity 0.18s, visibility 0.18s;
+    pointer-events: none;
+    bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%);
+  }
+  .ui-element:hover .tooltip { visibility: visible; opacity: 1; }
+  .tooltip h4 { font-size: 0.85rem; margin-bottom: 6px; color: #58a6ff; }
+  .tooltip p { font-size: 0.75rem; color: #c9d1d9; line-height: 1.5; }
+  .tooltip code { font-size: 0.72rem; background: #0d1117; padding: 1px 5px; border-radius: 3px; color: #f0883e; }
+
+  /* 标题标签 */
+  .area-title {
+    position: absolute;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(13,17,23,0.7);
+    border: 1px solid #21262d;
+  }
+
+  /* 各行 UI */
+  .frame { border: 2px solid #30363d; border-radius: 10px; }
+  .frame-label {
+    position: absolute; top: -10px; left: 12px;
+    background: #161b22; padding: 0 8px;
+    font-size: 0.7rem; font-weight: 600; color: #8b949e;
+  }
+
+  /* slot */
+  .card-slot {
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(145deg, #1a202c, #131820);
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    color: #8b949e; font-size: 0.6rem;
+    transition: all 0.15s;
+  }
+  .card-slot.filled { background: linear-gradient(145deg, #1f3a2f, #162822); border-color: #3fb950; color: #7ee787; }
+  .card-slot.locked { background: linear-gradient(145deg, #2d1e1e, #221414); border-color: #da3633; color: #ff7b72; }
+
+  /* 交互元素 */
+  .btn-region {
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; font-size: 0.7rem; font-weight: 600;
+    transition: all 0.15s;
+    cursor: pointer;
+  }
+  .btn-region:active { transform: scale(0.95); }
+  .btn-primary { background: linear-gradient(135deg, #1f6feb, #1158c7); border: 1px solid #388bfd; color: #fff; }
+  .btn-primary:hover { background: linear-gradient(135deg, #388bfd, #1f6feb); }
+  .btn-danger { background: linear-gradient(135deg, #da3633, #b62324); border: 1px solid #f85149; color: #fff; }
+  .btn-danger:hover { background: linear-gradient(135deg, #f85149, #da3633); }
+  .btn-secondary { background: #21262d; border: 1px solid #30363d; color: #c9d1d9; }
+  .btn-secondary:hover { background: #30363d; }
+
+  /* overlay 模拟 */
+  .overlay-badge {
+    position: absolute; right: -8px; top: -8px;
+    background: #d29922; color: #000;
+    font-size: 0.55rem; font-weight: 700;
+    padding: 2px 6px; border-radius: 8px;
+  }
+
+  /* 功能卡片区域 */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 18px;
+    margin-top: 20px;
+  }
+  .feature-card {
+    background: #161b22; border: 1px solid #30363d;
+    border-radius: 12px; padding: 18px 20px;
+    transition: border-color 0.2s;
+  }
+  .feature-card:hover { border-color: #58a6ff; }
+  .feature-card h3 { font-size: 0.95rem; margin-bottom: 8px; color: #58a6ff; }
+  .feature-card ul { list-style: none; }
+  .feature-card li {
+    font-size: 0.82rem; color: #c9d1d9; padding: 3px 0;
+    position: relative; padding-left: 16px;
+  }
+  .feature-card li::before { content: "·"; position: absolute; left: 2px; color: #3fb950; font-weight: bold; }
+  .feature-card .code-ref {
+    display: block; font-size: 0.7rem; color: #8b949e; margin-top: 4px;
+    background: #0d1117; padding: 3px 8px; border-radius: 4px;
+  }
+
+  /* 状态机 */
+  .state-machine {
+    background: #161b22; border: 1px solid #30363d;
+    border-radius: 12px; padding: 20px; margin-top: 20px;
+  }
+  .state-machine h3 { font-size: 0.95rem; margin-bottom: 14px; color: #58a6ff; }
+  .states { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .state-node {
+    background: #0d1117; border: 1px solid #30363d;
+    border-radius: 8px; padding: 8px 14px;
+    font-size: 0.78rem; font-weight: 500;
+  }
+  .state-node.active { border-color: #3fb950; color: #7ee787; }
+  .state-node.closed { border-color: #da3633; color: #ff7b72; }
+  .state-arrow { color: #30363d; font-size: 1.2rem; }
+  .state-desc { margin-left: 6px; font-size: 0.7rem; color: #8b949e; }
+
+  /* 覆盖层 overlay */
+  .overlay-group {
+    margin-top: 20px;
+    background: #161b22; border: 1px solid #30363d;
+    border-radius: 12px; padding: 18px 20px;
+  }
+  .overlay-group h3 { font-size: 0.95rem; margin-bottom: 10px; color: #f0883e; }
+  .overlay-list { display: flex; flex-wrap: wrap; gap: 10px; }
+  .overlay-tag {
+    background: rgba(240,136,62,0.1); border: 1px solid rgba(240,136,62,0.3);
+    border-radius: 8px; padding: 8px 14px;
+    font-size: 0.78rem; cursor: default;
+    transition: all 0.15s;
+  }
+  .overlay-tag:hover { background: rgba(240,136,62,0.2); }
+  .overlay-tag strong { color: #f0883e; }
+
+  /* 流程图 */
+  .flow-section {
+    margin-top: 24px;
+  }
+  .flow-section h3 { font-size: 0.95rem; color: #58a6ff; margin-bottom: 12px; }
+  .flow-steps { display: flex; flex-wrap: wrap; gap: 6px 4px; align-items: center; }
+  .flow-step {
+    background: #0d1117; border: 1px solid #30363d;
+    border-radius: 6px; padding: 6px 12px;
+    font-size: 0.72rem; color: #c9d1d9;
+  }
+  .flow-arrow { color: #30363d; font-size: 0.9rem; }
+
+  /* panel 右下角统计 */
+  .stats-bar {
+    display: flex; gap: 16px;
+    background: #0d1117; border: 1px solid #21262d;
+    border-radius: 8px; padding: 8px 16px; margin-top: 12px;
+    justify-content: center;
+  }
+  .stat-item { font-size: 0.72rem; color: #8b949e; }
+  .stat-item strong { color: #e6edf3; }
+
+  /* 行内代码 */
+  .tag { font-size: 0.65rem; color: #f0883e; background: rgba(240,136,62,0.1); padding: 1px 6px; border-radius: 3px; }
+
+  /* 覆盖物/压感阻断 */
+  .mask-layer {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0);
+    pointer-events: none;
+  }
+
+  /* 响应式 */
+  @media (max-width: 640px) {
+    .panel-schema { min-height: 1000px; }
+    .ui-element .label { font-size: 0.55rem; }
+    .tooltip { width: 200px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- 页头 -->
+  <div class="header">
+    <h1>🎴 TradePanel — 玩家交易面板</h1>
+    <p><span>NetworkPlugin</span> · 联机玩家间卡牌/金币/展品交易 UI · 运行时动态构建</p>
+  </div>
+
+  <!-- 图例 -->
+  <div class="legend">
+    <div class="legend-item"><div class="legend-color" style="background:#1f6feb;"></div> 主面板/基础 UI</div>
+    <div class="legend-item"><div class="legend-color" style="background:#3fb950;"></div> 报价编辑/动作区</div>
+    <div class="legend-item"><div class="legend-color" style="background:#f0883e;"></div> Overlay（弹出层）</div>
+    <div class="legend-item"><div class="legend-color" style="background:#da3633;"></div> 远端锁定/只读区</div>
+    <div class="legend-item"><div class="legend-color" style="background:#d29922;"></div> 预览/状态反馈</div>
+  </div>
+
+  <!-- 面板示意图 -->
+  <div class="panel-wrapper">
+    <div class="panel-schema" id="schema">
+
+      <!-- ========== 框架 frame ========== -->
+      <div class="ui-element" style="top:14px;left:14px;right:14px;bottom:14px;border:2px solid #30363d;border-radius:12px;">
+        <div class="frame-label">NetworkPlugin_TradePanel_Frame</div>
+      </div>
+
+      <!-- 状态文字 -->
+      <div class="ui-element" style="top:24px;left:50%;transform:translateX(-50%);background:#1c2333;border:1px solid #30363d;padding:6px 18px;border-radius:8px;width:320px;text-align:center;">
+        <div class="label" style="font-size:0.8rem;color:#7ee787;">等待放入物品...</div>
+        <div class="tooltip">
+          <h4>statusText (TextMeshProUGUI)</h4>
+          <p>中央状态提示。关键值：<code>等待放入物品...</code> / <code>可以确认交易</code> / <code>Preparing...</code> / <code>Trade.Completed</code>。</p>
+          <p class="code-ref">[TradePanel.cs#L482](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Panels/TradePanel.cs#L482) UpdateUIStatus()</p>
+        </div>
+      </div>
+
+      <!-- ========== 玩家 1（本地玩家 / Player A） ========== -->
+      <div class="area-title" style="top:60px;left:30px;">◂ 玩家 1 · 本地侧</div>
+      <div class="ui-element" style="top:78px;left:24px;width:44%;height:84px;background:rgba(31,111,235,0.06);border:1px solid rgba(31,111,235,0.25);border-radius:10px;padding:6px;">
+        <div class="label" style="position:absolute;top:-6px;left:10px;background:#161b22;font-size:0.6rem;color:#58a6ff;padding:0 6px;border-radius:3px;">player1TradeArea</div>
+        <div style="display:flex;gap:4px;margin-top:16px;justify-content:center;">
+          <div class="card-slot filled" style="width:52px;height:36px;">卡 1</div>
+          <div class="card-slot filled" style="width:52px;height:36px;">卡 2</div>
+          <div class="card-slot" style="width:52px;height:36px;">+</div>
+        </div>
+        <div class="tooltip" style="bottom:100%;">
+          <h4>player1Slots (TradeSlotWidget[3])</h4>
+          <p>本地玩家（自己）的 3 个交易卡槽。点击卡牌可移除。卡牌上限 <code>DefaultMaxTradeSlots = 3</code>。</p>
+          <p class="code-ref">[TradePanel.cs#L496-L533](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Panels/TradePanel.cs#L496-L533)</p>
+        </div>
+      </div>
+      <div class="ui-element" style="top:78px;left:24px;width:44%;height:20px;">
+        <div class="label" style="position:absolute;top:90px;left:10px;font-size:0.6rem;color:#8b949e;">name: <span id="p1name" style="color:#e6edf3;">玩家 1</span></div>
+        <div class="tooltip">
+          <h4>player1NameText (TextMeshProUGUI)</h4>
+          <p>显示本地玩家名称。通过 <code>ResolveLocalPlayerDisplayName()</code> 解析。</p>
+        </div>
+      </div>
+
+      <!-- ========== 玩家 2（远端 / Player B） ========== -->
+      <div class="area-title" style="top:60px;right:30px;">玩家 2 · 远端侧 ▸</div>
+      <div class="ui-element" style="top:78px;right:24px;width:44%;height:84px;background:rgba(218,54,51,0.06);border:1px solid rgba(218,54,51,0.25);border-radius:10px;padding:6px;">
+        <div class="label" style="position:absolute;top:-6px;left:10px;background:#161b22;font-size:0.6rem;color:#ff7b72;padding:0 6px;border-radius:3px;">player2TradeArea</div>
+        <div style="display:flex;gap:4px;margin-top:16px;justify-content:center;">
+          <div class="card-slot filled" style="width:52px;height:36px;">卡 A</div>
+          <div class="card-slot" style="width:52px;height:36px;">+</div>
+          <div class="card-slot" style="width:52px;height:36px;">+</div>
+        </div>
+        <div class="overlay-badge">LOCKED</div>
+        <div class="tooltip" style="bottom:100%;">
+          <h4>player2Slots (TradeSlotWidget[3]) — 远端锁定</h4>
+          <p>联机模式下远端（对方）报价展示区，所有槽位 <code>SetLocked(true)</code> 防误删。本地调试模式下可编辑。</p>
+          <p class="code-ref">[TradePanel.cs#L529-L532](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Panels/TradePanel.cs#L529-L532)</p>
+        </div>
+      </div>
+      <div class="ui-element" style="top:78px;right:24px;width:44%;height:20px;">
+        <div class="label" style="position:absolute;top:90px;right:10px;font-size:0.6rem;color:#8b949e;text-align:right;">name: <span id="p2name" style="color:#e6edf3;">寻求交易...</span></div>
+        <div class="tooltip">
+          <h4>player2NameText (TextMeshProUGUI)</h4>
+          <p>显示交易伙伴名称。通过 <code>OtherPlayersOverlayPatch.ResolveDisplayName()</code> 解析。</p>
+        </div>
+      </div>
+
+      <!-- ========== PartnerPicker 选择交易对象 ========== -->
+      <div class="ui-element" style="top:72px;left:15%;width:70%;height:128px;background:rgba(240,136,62,0.08);border:1px solid rgba(240,136,62,0.35);border-radius:10px;z-index:5;">
+        <div class="frame-label" style="color:#f0883e;">_partnerPickerRoot · 选择交易对象 (overlay)</div>
+        <div style="position:absolute;top:12px;left:10%;right:10%;text-align:center;font-size:0.62rem;color:#e6edf3;">请选择交易对象</div>
+        <div style="position:absolute;top:32px;left:8%;right:8%;display:flex;flex-direction:column;gap:5px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 10px;background:rgba(255,255,255,0.04);border-radius:4px;font-size:0.58rem;cursor:pointer;" onmouseenter="this.style.background='rgba(255,255,255,0.1)';this.style.transform='scale(1.03)';this.style.transition='0.1s'" onmouseleave="this.style.background='rgba(255,255,255,0.04)';this.style.transform='scale(1)'" onmousedown="this.style.transform='scale(1.07)'" onmouseup="this.style.transform='scale(1.03)';alert('已选择玩家A')">
+            <span>🧑 玩家 A · Shop · (3,5) 同节点</span>
+            <span style="color:#8b949e;">+</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 10px;background:rgba(255,255,255,0.04);border-radius:4px;font-size:0.58rem;cursor:pointer;" onmouseenter="this.style.background='rgba(255,255,255,0.1)';this.style.transform='scale(1.03)';this.style.transition='0.1s'" onmouseleave="this.style.background='rgba(255,255,255,0.04)';this.style.transform='scale(1)'" onmousedown="this.style.transform='scale(1.07)'" onmouseup="this.style.transform='scale(1.03)';alert('已选择玩家B')">
+            <span>🧑 玩家 B · Shop · (3,5) 同节点 [Host]</span>
+            <span style="color:#8b949e;">+</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 10px;background:rgba(255,255,255,0.04);border-radius:4px;font-size:0.58rem;cursor:pointer;" onmouseenter="this.style.background='rgba(255,255,255,0.1)';this.style.transform='scale(1.03)';this.style.transition='0.1s'" onmouseleave="this.style.background='rgba(255,255,255,0.04)';this.style.transform='scale(1)'" onmousedown="this.style.transform='scale(1.07)'" onmouseup="this.style.transform='scale(1.03)';alert('已选择 AI Default')">
+            <span>🤖 AI Default · Trade · (3,5) 同节点</span>
+            <span style="color:#8b949e;">+</span>
+          </div>
+        </div>
+        <div style="position:absolute;bottom:5px;left:10%;right:10%;display:flex;justify-content:space-between;font-size:0.55rem;">
+          <span style="color:#f0883e;cursor:pointer;">🔄 刷新</span>
+          <span style="color:#ff7b72;cursor:pointer;">✕ 取消</span>
+        </div>
+        <div class="tooltip" style="bottom:100%;">
+          <h4>TradePartnerPicker</h4>
+          <p>选择交易对象。复用 MessageDialog prefab 构建 ScrollRect 列表。<br>
+          过滤同节点 + <code>IsShopLikeLocation()</code>。<br>
+          <code>CreateTextButton</code> 构建玩家条目，含 TextButtonHover 缩放效果。</p>
+          <p class="code-ref">[TradePanel.cs#L1114-L1400](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Panels/TradePanel.cs#L1114-L1400)</p>
+        </div>
+      </div>
+
+      <!-- ========== 报价预览区（预览双方卡牌缩略） ========== -->
+      <div class="ui-element" style="top:210px;left:24px;right:24px;height:120px;background:rgba(210,153,34,0.05);border:1px solid rgba(210,153,34,0.2);border-radius:10px;">
+        <div class="frame-label" style="color:#d29922;">_offerPreviewRoot · 双方报价预览</div>
+        <div style="position:absolute;top:14px;left:2%;width:46%;height:calc(100% - 24px);background:rgba(31,111,235,0.04);border:1px dashed rgba(31,111,235,0.15);border-radius:6px;">
+          <div class="label" style="font-size:0.6rem;color:#58a6ff;text-align:center;margin-top:4px;">LocalOfferPreview（本地报价）</div>
+          <div style="display:flex;gap:2px;justify-content:center;margin-top:6px;">
+            <div style="background:#1a202c;border:1px solid #30363d;border-radius:4px;width:38px;height:20px;font-size:0.5rem;text-align:center;color:#7ee787;"></div>
+            <div style="background:#1a202c;border:1px solid #30363d;border-radius:4px;width:38px;height:20px;font-size:0.5rem;text-align:center;color:#7ee787;"></div>
+          </div>
+        </div>
+        <div style="position:absolute;top:14px;right:2%;width:46%;height:calc(100% - 24px);background:rgba(218,54,51,0.04);border:1px dashed rgba(218,54,51,0.15);border-radius:6px;">
+          <div class="label" style="font-size:0.6rem;color:#ff7b72;text-align:center;margin-top:4px;">RemoteOfferPreview（远端报价）</div>
+          <div style="display:flex;gap:2px;justify-content:center;margin-top:6px;">
+            <div style="background:#1a202c;border:1px solid #30363d;border-radius:4px;width:38px;height:20px;font-size:0.5rem;text-align:center;color:#ff7b72;"></div>
+          </div>
+        </div>
+        <div class="tooltip" style="bottom:100%;">
+          <h4>OfferPreviewOverlay</h4>
+          <p>在状态文字下方展示双方已选卡牌的小尺寸缩略预览。<code>RefreshOfferPreview()</code> 驱动。</p>
+          <p class="code-ref">[TradePanel.cs#L2048-L2060](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Panels/TradePanel.cs#L2048-L2060)</p>
+        </div>
+      </div>
+
+      <!-- ========== 报价编辑器（左下） ========== -->
+      <div class="ui-element" style="bottom:100px;left:24px;width:28%;height:130px;background:rgba(63,185,80,0.05);border:1px solid rgba(63,185,80,0.2);border-radius:10px;">
+        <div class="frame-label" style="color:#3fb950;">_offerEditorRoot · 报价编辑器</div>
+        <div style="padding:14px 8px 4px;">
+          <div style="display:flex;justify-content:space-between;font-size:0.65rem;color:#c9d1d9;margin-bottom:6px;">
+            <span>卡牌:</span>
+            <span style="color:#7ee787;font-weight:600;" id="cardCount">2</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.65rem;color:#c9d1d9;margin-bottom:6px;">
+            <span>金币:</span>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <div style="background:#21262d;border:1px solid #30363d;border-radius:3px;width:16px;height:16px;text-align:center;line-height:16px;font-size:0.6rem;cursor:pointer;">−</div>
+              <span style="color:#d29922;font-weight:600;min-width:20px;text-align:center;" id="moneyVal">10</span>
+              <div style="background:#21262d;border:1px solid #30363d;border-radius:3px;width:16px;height:16px;text-align:center;line-height:16px;font-size:0.6rem;cursor:pointer;">+</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:0.65rem;color:#c9d1d9;">
+            <span>展品:</span>
+            <span style="color:#d29922;font-weight:600;" id="exCount">1</span>
+          </div>
+        </div>
+        <div class="tooltip" style="bottom:100%;">
+          <h4>OfferEditorOverlay</h4>
+          <p>左侧报价编辑区。展示当前卡牌数、金币 +/- 调整、展品数。通过 <code>CreateTextButton</code> 运行时构建。</p>
+          <p class="code-ref">[TradePanel.cs#L3285-L3480](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Panels/TradePanel.cs#L3285-L3480)</p>
+        </div>
+      </div>
+
+      <!-- ========== 报价操作按钮（右下） ========== -->
+      <div class="ui-element" style="bottom:100px;right:24px;width:22%;height:130px;background:rgba(63,185,80,0.05);border:1px solid rgba(63,185,80,0.2);border-radius:10px;">
+        <div class="frame-label" style="color:#3fb950;">_offerActionsRoot · 操作区</div>
+        <div style="padding:16px 8px 4px;display:flex;flex-direction:column;gap:10px;height:100%;justify-content:center;">
+          <div class="btn-region btn-primary" style="padding:8px 0;">📋 选择卡牌</div>
+          <div class="btn-region btn-secondary" style="padding:8px 0;">💎 选择展品</div>
+        </div>
+        <div class="tooltip" style="bottom:100%;">
+          <h4>OfferActionsOverlay</h4>
+          <p>右侧动作按钮区。"选择卡牌"打开 <code>CardPickerOverlay</code>；"选择展品"打开 <code>ExhibitPickerOverlay</code>。</p>
+          <p class="code-ref">[TradePanel.cs#L3602-L3658](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Panels/TradePanel.cs#L3602-L3658)</p>
+        </div>
+      </div>
+
+      <!-- ========== 确认 / 取消按钮 ========== -->
+      <div class="ui-element" style="bottom:40px;left:50%;transform:translateX(-50%);display:flex;gap:20px;align-items:center;">
+        <div class="btn-region btn-primary" style="padding:10px 28px;font-size:0.85rem;border-radius:8px;">✅ 确认交易</div>
+        <div class="btn-region btn-danger" style="padding:10px 28px;font-size:0.85rem;border-radius:8px;">✕ 取消</div>
+        <div class="tooltip" style="bottom:100%;">
+          <h4>confirmButton / cancelButton (CommonButtonWidget)</h4>
+          <p>确认交易 <code>→ OnConfirmTrade()</code>：检查双方报价后请求网络确认或执行本地交易。<br>取消 <code>→ OnCancelTrade()</code>：发送网络取消请求并关闭面板。</p>
+          <p class="code-ref">[TradePanel.cs#L616-L662](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Panels/TradePanel.cs#L616-L662)</p>
+        </div>
+      </div>
+
+    </div><!-- /panel-schema -->
+
+    <div class="stats-bar">
+      <div class="stat-item">🎯 <strong>3</strong> 最大槽位 (DefaultMaxTradeSlots)</div>
+      <div class="stat-item">💰 <strong>999</strong> 最大金币 (MaxMoneyOffer)</div>
+      <div class="stat-item">⏱ <strong>2s</strong> 完成后等待 (TradeCompleteWaitTime)</div>
+      <div class="stat-item">🔄 <strong>2</strong> overlay 类型异步刷新</div>
+    </div>
+  </div>
+
+  <!-- ========== 覆盖层 (Overlays) 说明 ========== -->
+  <div class="overlay-group">
+    <h3>🧩 运行时覆盖层 (Runtime Overlays)</h3>
+    <p style="font-size:0.8rem;color:#8b949e;margin-bottom:12px;">当启动特定功能时叠加在主面板上的独立 UI 层，通过 <code>SetTradeDetailsVisible(false)</code> 隐藏主面板细节。</p>
+    <div class="overlay-list">
+
+      <div class="overlay-tag" style="flex-basis:100%;">
+        <strong>1. PartnerPickerOverlay — 选择交易对象</strong>
+        <p style="font-size:0.72rem;margin-top:4px;color:#c9d1d9;">交易对象不明时弹出。复用 MessageDialog prefab，运行时构建 ScrollRect 列表。<br>
+        列表过滤：同 Stage + 同坐标 + <code>IsShopLikeLocation()</code>（匹配 Shop/Trade/Gap 等）。<br>
+        支持本地调试虚拟玩家 AI Default / AI Default 2。<br>
+        构建失败时回退到 <code>ShowTradeTargetUnavailableDialog</code> 错误弹窗。<br>
+        <span class="tag">EnsurePartnerPickerOverlay()</span> <span class="tag">RebuildPartnerPickerList()</span> <span class="tag">OnPartnerSelected()</span></p>
+        <div style="margin-top:10px;padding:10px;background:#0d1117;border-radius:8px;border:1px solid #21262d;">
+          <div style="font-size:0.68rem;color:#8b949e;margin-bottom:6px;">🎯 可点击玩家列表（通过 <code>CreateTextButton</code> 构建，悬停放大 1.08，按下放大 1.12）</div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div class="player-row" style="padding:5px 10px;cursor:pointer;border-radius:4px;background:#1a202c;border:1px solid #30363d;font-size:0.72rem;color:#c9d1d9;transition:transform 0.12s;" onmouseenter="this.style.transform='scale(1.08)';this.style.background='#21262d';this.style.borderColor='#58a6ff'" onmouseleave="this.style.transform='scale(1)';this.style.background='#1a202c';this.style.borderColor='#30363d'" onmousedown="this.style.transform='scale(1.12)'" onmouseup="this.style.transform='scale(1.08)';alert('已选择交易对象（互动示意）')">
+              🧑 玩家A  Shop - Act 1, (3,5) - 同节点
+            </div>
+            <div class="player-row" style="padding:5px 10px;cursor:pointer;border-radius:4px;background:#1a202c;border:1px solid #30363d;font-size:0.72rem;color:#c9d1d9;transition:transform 0.12s;" onmouseenter="this.style.transform='scale(1.08)';this.style.background='#21262d';this.style.borderColor='#58a6ff'" onmouseleave="this.style.transform='scale(1)';this.style.background='#1a202c';this.style.borderColor='#30363d'" onmousedown="this.style.transform='scale(1.12)'" onmouseup="this.style.transform='scale(1.08)';alert('已选择交易对象（互动示意）')">
+              🧑 玩家B  Shop - Act 1, (3,5) - 同节点 [Host]
+            </div>
+            <div class="player-row" style="padding:5px 10px;cursor:pointer;border-radius:4px;background:#1a202c;border:1px solid #30363d;font-size:0.72rem;color:#777;transition:transform 0.12s;" onmouseenter="this.style.transform='scale(1.08)';this.style.background='#21262d';this.style.borderColor='#58a6ff'" onmouseleave="this.style.transform='scale(1)';this.style.background='#1a202c';this.style.borderColor='#30363d'" onmousedown="this.style.transform='scale(1.12)'" onmouseup="this.style.transform='scale(1.08)';alert('已选择交易对象（互动示意）')">
+              🤖 AI Default  Trade - Act 1, (3,5) - 同节点 (本地调试)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="overlay-tag">
+        <strong>2. CardPickerOverlay</strong>
+        <p style="font-size:0.72rem;margin-top:4px;color:#c9d1d9;">从自身卡组选择要交易的卡牌。复用 ShowCardsPanel 构建，支持多种排序（实际/索引/类型/稀有度）和过滤（追放/梦境）。<br>
+        <span class="tag">EnsureCardPickerOverlay()</span> <span class="tag">ShowCardPickerOverlay()</span></p>
+      </div>
+
+      <div class="overlay-tag">
+        <strong>3. ExhibitPickerOverlay</strong>
+        <p style="font-size:0.72rem;margin-top:4px;color:#c9d1d9;">选择要交易的展品。通过 <code>RuntimeSelectionPanelFactory</code> 创建模态对话框，展示所有可交易展品列表。<br>
+        <span class="tag">EnsureExhibitPickerOverlay()</span> <span class="tag">ShowExhibitPickerOverlay()</span></p>
+      </div>
+
+      <div class="overlay-tag">
+        <strong>4. OfferPreviewOverlay</strong>
+        <p style="font-size:0.72rem;margin-top:4px;color:#c9d1d9;">双方报价卡牌缩略预览。本地侧与远端侧并排展示，自动缩放适应布局。<br>
+        <span class="tag">EnsureOfferPreviewOverlay()</span> <span class="tag">RefreshOfferPreview()</span></p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========== 核心功能区域 ========== -->
+  <div class="features-grid">
+
+    <div class="feature-card">
+      <h3>🃏 卡牌交易操作</h3>
+      <ul>
+        <li><code>AddCardToTrade(card, isPlayer1)</code> — 将卡放入指定侧槽位，更新预览</li>
+        <li><code>RemoveCardFromTrade(card, isPlayer1)</code> — 移除已放入卡牌，重排后序槽位</li>
+        <li>槽位上限 <code>_maxTradeSlots</code>（默认 5），联机模式远端侧锁定</li>
+      </ul>
+      <span class="code-ref">[TradePanel.cs#L496-L569](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Panels/TradePanel.cs#L496-L569)</span>
+    </div>
+
+    <div class="feature-card">
+      <h3>💰 金币报价</h3>
+      <ul>
+        <li>通过 <code>_localMoneyOffer</code> 记录，± 按钮调整</li>
+        <li>不可超过持有金币量 + 不超过 <code>MaxMoneyOffer (999)</code></li>
+        <li>展示在报价编辑器的 MoneyTriplet 区域</li>
+      </ul>
+      <span class="code-ref">[TradePanel.cs#L3400-L3470](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Panels/TradePanel.cs#L3400-L3470)</span>
+    </div>
+
+    <div class="feature-card">
+      <h3>💎 展品选择</h3>
+      <ul>
+        <li>通过 <code>_localExhibitOfferIds</code> (HashSet) 跟踪已选展品 ID</li>
+        <li><code>TradeExhibitRules.IsTradable(exhibit)</code> 过滤不可交易展品</li>
+        <li>行级点击切换选择/取消，支持图标显示</li>
+      </ul>
+      <span class="code-ref">[TradePanel.cs#L4137-L4200](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Panels/TradePanel.cs#L4137-L4200)</span>
+    </div>
+
+    <div class="feature-card">
+      <h3>🌐 网络同步</h3>
+      <ul>
+        <li><code>TradeSyncPatch</code> 驱动：RequestStartTrade / RequestOfferUpdate / RequestConfirm</li>
+        <li><code>OnTradeStateUpdated</code> 回调 -> <code>ApplyStateToUi</code> 刷新双方 UI</li>
+        <li>状态机: Open → Preparing → Completed / Canceled</li>
+        <li>Preparing 阶段严格验证本地报价合法性</li>
+      </ul>
+      <span class="code-ref">[TradePanel.cs#L2700-L2900](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Panels/TradePanel.cs#L2700-L2900)</span>
+    </div>
+
+    <div class="feature-card">
+      <h3>🧪 本地调试模式</h3>
+      <ul>
+        <li>调试开关 <code>DebugVirtualPlayerAiDefault</code> / <code>DebugFakePlayersForTrade</code></li>
+        <li>在无服务器时选择 "AI Default" 虚拟玩家启动本地会话</li>
+        <li><code>PopulateLocalDebugRemoteOffer()</code> 自动填充远端示例报价</li>
+      </ul>
+      <span class="code-ref">[TradePanel.cs#L858-L877](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Panels/TradePanel.cs#L858-L877)</span>
+    </div>
+
+    <div class="feature-card">
+      <h3>🔁 生命周期</h3>
+      <ul>
+        <li><code>OnShowing</code> → 检查网络、初始化 UI、注册输入处理器</li>
+        <li><code>OnShown</code> → 置顶防层级竞争</li>
+        <li><code>OnHiding</code> → 禁用交互、取消事件订阅</li>
+        <li><code>OnHided</code> → 重置数据、清空 payload</li>
+      </ul>
+      <span class="code-ref">[TradePanel.cs#L255-L340](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Panels/TradePanel.cs#L255-L340)</span>
+    </div>
+
+  </div>
+
+  <!-- ========== 状态机 ========== -->
+  <div class="state-machine">
+    <h3>⚙️ 交易状态机 (TradeStatus)</h3>
+    <div class="states">
+      <div class="state-node active">Open <span class="state-desc">报价中，可编辑</span></div>
+      <span class="state-arrow">→</span>
+      <div class="state-node">Preparing <span class="state-desc">Host 验证双方报价合法性</span></div>
+      <span class="state-arrow">→</span>
+      <div class="state-node">Completed <span class="state-desc">交易执行，资产交换</span></div>
+      <span class="state-arrow">╱</span>
+      <div class="state-node closed">Canceled <span class="state-desc">任一方取消</span></div>
+    </div>
+    <div style="margin-top:10px;font-size:0.74rem;color:#8b949e;">
+      <code>RequestPrepareResult</code> 失败 → Host 将状态回退到 Open 并附带 <code>Reason</code> 字段。
+    </div>
+  </div>
+
+  <!-- ========== 工作流 ========== -->
+  <div class="flow-section">
+    <h3>🔄 典型交易流程</h3>
+    <div class="flow-steps">
+      <div class="flow-step">📨 发起交易 (Show/TradePayload)</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">👤 选择对象 (PartnerPicker)</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">📋 放入卡牌/调整金币/选择展品</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">🔄 网络同步报价 (RequestOfferUpdate)</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">✅ 双方确认 (RequestConfirm)</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">🔍 Preparing 验证</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">🎉 执行交易 → 关闭面板</div>
+    </div>
+  </div>
+
+  <!-- ========== 底部脚注 ========== -->
+  <div style="margin-top:32px;padding:16px 0;border-top:1px solid #21262d;text-align:center;font-size:0.72rem;color:#484f58;">
+    NetworkPlugin · TradePanel.cs · 互动 UI 示意 · Unity uGUI (Ugui) 运行时动态构建
+  </div>
+
+</div>
+
+<!-- 简单交互模拟 -->
+<script>
+  // 模拟点击加减改变数值
+  document.querySelectorAll('.btn-region').forEach(el => {
+    el.addEventListener('click', function(e) {
+      if (this.textContent.includes('选择卡牌')) {
+        const count = document.getElementById('cardCount');
+        const v = parseInt(count.textContent) + 1;
+        if (v <= 5) count.textContent = v;
+      }
+      if (this.textContent.includes('选择展品')) {
+        const count = document.getElementById('exCount');
+        const v = parseInt(count.textContent) + 1;
+        if (v <= 3) count.textContent = v;
+      }
+      if (this.textContent.includes('确认交易')) {
+        alert('✅ 确认交易！\n(此弹窗为 HTML 互动示意)');
+      }
+      if (this.textContent.includes('取消')) {
+        alert('✕ 已取消交易 (互动示意)');
+      }
+    });
+  });
+
+  // 模拟金币 ±
+  document.querySelectorAll('[style*="cursor:pointer"]').forEach(el => {
+    el.addEventListener('click', function() {
+      const valSpan = document.getElementById('moneyVal');
+      let v = parseInt(valSpan.textContent);
+      if (this.textContent.trim() === '−' && v > 0) v--;
+      if (this.textContent.trim() === '+' && v < 100) v++;
+      valSpan.textContent = v;
+    });
+  });
+</script>
+</body>
+</html>

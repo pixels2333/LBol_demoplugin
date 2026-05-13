@@ -40,7 +40,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     /// <summary>
     /// 默认最大交易卡牌槽位数量。
     /// </summary>
-    private const int DefaultMaxTradeSlots = 5;
+    private const int DefaultMaxTradeSlots = 3;
 
     /// <summary>
     /// 交易完成后等待多少秒再关闭界面。
@@ -257,9 +257,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         bool networkConnected = TryEnsureNetworkConnected();
         _localDebugTradeMode = !networkConnected && IsLocalDebugTradeAllowed();
         if (!networkConnected && !_localDebugTradeMode)
-        bool networkConnected = TryEnsureNetworkConnected();
-        _localDebugTradeMode = !networkConnected && IsLocalDebugTradeAllowed();
-        if (!networkConnected && !_localDebugTradeMode)
         {
             Plugin.Logger?.LogWarning("[TradePanel] OnShowing aborted: network unavailable.");
             Hide();
@@ -453,22 +450,10 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         _exhibitPickerRoot?.SetActive(false);
 
         // 清空玩家1所有交易槽的显示
-        if (player1Slots is not null)
-        {
-            foreach (TradeSlotWidget slot in player1Slots)
-            {
-                slot?.ClearSlot();
-            }
-        }
+        player1Slots?.ToList().ForEach(s => s?.ClearSlot());
 
         // 清空玩家2所有交易槽的显示
-        if (player2Slots is not null)
-        {
-            foreach (TradeSlotWidget slot in player2Slots)
-            {
-                slot?.ClearSlot();
-            }
-        }
+        player2Slots?.ToList().ForEach(s => s?.ClearSlot());
 
         ClearOfferPreviewPanel(_localOfferPreviewPanel);
         ClearOfferPreviewPanel(_remoteOfferPreviewPanel);
@@ -717,28 +702,23 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
 
         // 将玩家1提供的卡牌从其卡组移除并加入到玩家2（当前实现视为本地玩家）
-        foreach (Card card in _player1OfferedCards)
+        _player1OfferedCards.ForEach(card =>
         {
-            // 从玩家1移除卡牌（false 可根据实际游戏逻辑表示来源）
             run.RemoveDeckCard(card, false);
-            // 将卡牌加入到另一方（当前为本地卡组，网络同步需另行处理）
             run.AddDeckCard(card, true, new VisualSourceData
             {
                 SourceType = VisualSourceType.CardSelect
             });
-        }
+        });
 
         // 将玩家2提供的卡牌加入到玩家1侧（目前仅做本地添加）
-        foreach (Card card in _player2OfferedCards)
+        _player2OfferedCards.ForEach(card =>
         {
-            // 从玩家2移除卡牌（网络模式下需要真正从对方卡组移除）
-            // NOTE: 单机分支无法实现“从对方卡组移除”的多玩家卡组操作。
-            // 联机交易已通过 TradeSyncPatch 的 Host 权威裁决 + 客户端本地落地（ApplyNetworkTradeAndClose）实现，且不会走到该分支。
             run.AddDeckCard(card, true, new VisualSourceData
             {
                 SourceType = VisualSourceType.CardSelect
             });
-        }
+        });
 
         // 更新状态为"交易完成"
         UpdateUIStatus("Trade.Completed".Localize());
@@ -1008,14 +988,12 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             return;
         }
 
-        foreach (var cg in root.GetComponentsInChildren<CanvasGroup>(true))
+        root.GetComponentsInChildren<CanvasGroup>(true).ToList().ForEach(cg =>
         {
             cg.interactable = true;
             cg.blocksRaycasts = true;
-
-            // 确保即使父 CanvasGroup 被临时禁用，dialog 也可以点击。
             cg.ignoreParentGroups = true;
-        }
+        });
     }
 
     private void ShowTradeTargetUnavailableDialog(string detail)
@@ -1080,14 +1058,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     }
 
     private void EnsurePopupTopmost()
-    {
-        transform.SetAsLastSibling();
-        _partnerPickerRoot?.transform.SetAsLastSibling();
-        _cardPickerRoot?.transform.SetAsLastSibling();
-        _exhibitPickerRoot?.transform.SetAsLastSibling();
-        _offerPreviewRoot?.transform.SetAsLastSibling();
-        _offerEditorRoot?.transform.SetAsLastSibling();
-        _offerActionsRoot?.transform.SetAsLastSibling();
     {
         transform.SetAsLastSibling();
         _partnerPickerRoot?.transform.SetAsLastSibling();
@@ -1683,21 +1653,12 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         {
             // 取少量本地牌组卡牌作为展示克隆。
             var deck = run?.BaseDeck?.Where(c => c is not null).ToList() ?? new List<Card>();
-            int take = Math.Min(2, deck.Count);
-            for (int i = 0; i < take; i++)
-            {
-                var src = deck[i];
-                if (src is null)
-                {
-                    continue;
-                }
-
-                Card temp = Library.TryCreateCard(src.Id, src.IsUpgraded, src.UpgradeCounter ?? 0);
-                if (temp is not null)
-                {
-                    AddCardToTrade(temp, false);
-                }
-            }
+            deck.Take(2)
+                .Where(src => src is not null)
+                .Select(src => Library.TryCreateCard(src.Id, src.IsUpgraded, src.UpgradeCounter ?? 0))
+                .Where(temp => temp is not null)
+                .ToList()
+                .ForEach(temp => AddCardToTrade(temp, false));
 
             // 本地侧加小额金币报价，使报价编辑器显示非零状态。
             _localMoneyOffer = Math.Min(10, run?.Money ?? 10);
@@ -2135,19 +2096,10 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             return;
         }
 
-        List<Transform> children = new List<Transform>();
-        foreach (Transform child in panel.CardLayout)
-        {
-            if (child is not null)
-            {
-                children.Add(child);
-            }
-        }
-
-        foreach (Transform child in children)
-        {
-            Destroy(child.gameObject);
-        }
+        panel.CardLayout.Cast<Transform>()
+            .Where(c => c is not null)
+            .ToList()
+            .ForEach(c => Destroy(c.gameObject));
     }
 
     private sealed class OfferPreviewPanelTag : MonoBehaviour
@@ -2200,20 +2152,14 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
 
         // 删除已报价的卡牌。
-        HashSet<int> offered = new HashSet<int>();
+        HashSet<int> offered;
         try
         {
-            foreach (var c in _player1OfferedCards)
-            {
-                if (c is not null)
-                {
-                    offered.Add(c.InstanceId);
-                }
-            }
+            offered = _player1OfferedCards.Where(c => c is not null).Select(c => c.InstanceId).ToHashSet();
         }
         catch
         {
-            // 忽略
+            offered = new HashSet<int>();
         }
 
         List<Card> candidates = deck.Where(c => c is not null && !offered.Contains(c.InstanceId)).ToList();
@@ -2240,7 +2186,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
         tag.SourceCards.Clear();
         tag.SourceCards.AddRange(candidates);
-        tag.TargetSelectCount = Math.Max(1, Math.Min(3, Math.Min(remaining, candidates.Count)));
+        tag.TargetSelectCount = Math.Max(1, Math.Min(remaining, candidates.Count));
         Plugin.Logger?.LogInfo($"[TradePanel] RebuildCardPickerList prepared: tradeId={_tradeId ?? "<null>"}, candidateCount={candidates.Count}, remaining={remaining}, targetSelectCount={tag.TargetSelectCount}");
 
         if (tag.Portrait is not null)
@@ -2922,51 +2868,34 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             // 从 host 状态拉取本地金币/展品报价，保持 UI 一致。
             _localMoneyOffer = localIsA ? state.MoneyA : state.MoneyB;
             _localExhibitOfferIds.Clear();
-            foreach (var ex in localIsA ? state.ExhibitsA : state.ExhibitsB)
-            {
-                if (ex is not null && !string.IsNullOrWhiteSpace(ex.ExhibitId))
-                {
-                    _localExhibitOfferIds.Add(ex.ExhibitId);
-                }
-            }
+            (localIsA ? state.ExhibitsA : state.ExhibitsB)?
+                .Where(ex => ex is not null && !string.IsNullOrWhiteSpace(ex.ExhibitId))
+                .Select(ex => ex.ExhibitId)
+                .ToList()
+                .ForEach(id => _localExhibitOfferIds.Add(id));
             RefreshOfferEditorTexts();
 
             // 本地报价：显示在 player1
-            foreach (var c in localIsA ? state.OfferA : state.OfferB)
-            {
-                Card real = TryFindDeckCard(c);
-                if (real is not null)
-                {
-                    AddCardToTrade(real, true);
-                }
-            }
+            (localIsA ? state.OfferA : state.OfferB)
+                ?.Select(c => TryFindDeckCard(c))
+                .Where(real => real is not null)
+                .ToList()
+                .ForEach(real => AddCardToTrade(real, true));
 
             // 远端报价：显示在 player2（临时卡用于展示）
-            foreach (var c in localIsA ? state.OfferB : state.OfferA)
-            {
-                Card temp = null;
-                try
+            (localIsA ? state.OfferB : state.OfferA)
+                ?.Where(c => c != null && !string.IsNullOrWhiteSpace(c.CardId))
+                .Select(c =>
                 {
-                    if (c != null && !string.IsNullOrWhiteSpace(c.CardId))
-                    {
-                        temp = Library.TryCreateCard(c.CardId, c.IsUpgraded, c.UpgradeCounter);
-                    }
-                }
-                catch { }
-                if (temp != null)
-                {
-                    AddCardToTrade(temp, false);
-                }
-            }
+                    try { return Library.TryCreateCard(c.CardId, c.IsUpgraded, c.UpgradeCounter); }
+                    catch { return null; }
+                })
+                .Where(temp => temp != null)
+                .ToList()
+                .ForEach(temp => AddCardToTrade(temp, false));
 
             // 锁住远端槽位，避免误删
-            if (player2Slots != null)
-            {
-                foreach (var s in player2Slots)
-                {
-                    s?.SetLocked(true);
-                }
-            }
+            player2Slots?.ToList().ForEach(s => s?.SetLocked(true));
         }
 
         // 用户需求：永不禁用确认按钮，点击时再做逻辑守卫。
@@ -3502,33 +3431,22 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             "ExValue"
         };
 
-        List<Transform> children = new List<Transform>();
-        foreach (Transform child in offerRoot.transform)
-        {
-            if (child is not null)
-                children.Add(child);
-        }
+        offerRoot.transform.Cast<Transform>()
+            .Where(child => child is not null && !keepRoots.Contains(child.name ?? string.Empty))
+            .ToList()
+            .ForEach(child => Destroy(child.gameObject));
 
-        foreach (var child in children)
-        {
-            if (child is null)
-                continue;
-
-            if (!keepRoots.Contains(child.name ?? string.Empty))
-                Destroy(child.gameObject);
-        }
-
-        foreach (var t in offerRoot.GetComponentsInChildren<Transform>(true))
-        {
-            if (t is null || ReferenceEquals(t.gameObject, offerRoot))
-                continue;
-
-            var n = t.name ?? string.Empty;
-            if ((n.IndexOf("cancel", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                 n.IndexOf("close", StringComparison.OrdinalIgnoreCase) >= 0) &&
-                !keepRoots.Contains(n))
-                Destroy(t.gameObject);
-        }
+        offerRoot.GetComponentsInChildren<Transform>(true)
+            .Where(t => t is not null && !ReferenceEquals(t.gameObject, offerRoot))
+            .Where(t =>
+            {
+                var n = t.name ?? string.Empty;
+                return (n.IndexOf("cancel", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        n.IndexOf("close", StringComparison.OrdinalIgnoreCase) >= 0) &&
+                       !keepRoots.Contains(n);
+            })
+            .ToList()
+            .ForEach(t => Destroy(t.gameObject));
     }
 
     private bool TryGetOwnedMoney(out int ownedMoney)
@@ -3689,16 +3607,29 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private sealed class TextButtonHover : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
     {
         public float HoverScale = 1.08f;
-        public float PressedScale = 1.02f;
+        public float PressedScale = 1.12f;
+        public float AnimationSpeed = 8f;
 
         private RectTransform _rt;
         private bool _hovering;
         private bool _pressed;
+        private float _targetScale = 1f;
 
         private void Awake()
         {
             _rt = transform as RectTransform;
+            _targetScale = 1f;
             if (_rt is not null) _rt.localScale = Vector3.one;
+        }
+
+        private void Update()
+        {
+            if (_rt is null) return;
+            float cur = _rt.localScale.x;
+            if (Mathf.Approximately(cur, _targetScale))
+                return;
+            float next = Mathf.Lerp(cur, _targetScale, Time.unscaledDeltaTime * AnimationSpeed);
+            _rt.localScale = new Vector3(next, next, 1f);
         }
 
         public void OnPointerEnter(PointerEventData eventData)
@@ -3729,8 +3660,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         private void ApplyScale()
         {
             if (_rt is null) return;
-            float s = _pressed ? PressedScale : _hovering ? HoverScale : 1f;
-            _rt.localScale = new Vector3(s, s, 1f);
+            _targetScale = _pressed ? PressedScale : _hovering ? HoverScale : 1f;
         }
     }
 
