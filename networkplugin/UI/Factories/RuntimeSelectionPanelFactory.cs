@@ -184,8 +184,35 @@ internal static class RuntimeSelectionPanelFactory
             CommonButtonWidget confirmWidget = TryResolveCommonButtonWidget(confirm ?? singleConfirm ?? cancel);
             CommonButtonWidget cancelWidget = TryResolveCommonButtonWidget(cancel ?? confirm ?? singleConfirm);
 
-            RectTransform panelRect = TryFindCommonAncestorRect(mainText?.rectTransform, cancel?.GetComponent<RectTransform>())
-                ?? (mainText != null ? mainText.rectTransform.parent as RectTransform : null)
+            RectTransform panelRect;
+            {
+                RectTransform __a = mainText?.rectTransform;
+                RectTransform __b = cancel?.GetComponent<RectTransform>();
+                RectTransform __result = null;
+                if (__a != null && __b != null)
+                {
+                    System.Collections.Generic.HashSet<Transform> ancestors = new();
+                    Transform current = __a;
+                    while (current != null)
+                    {
+                        ancestors.Add(current);
+                        current = current.parent;
+                    }
+                    current = __b;
+                    while (current != null)
+                    {
+                        if (ancestors.Contains(current))
+                        {
+                            __result = current as RectTransform;
+                            break;
+                        }
+                        current = current.parent;
+                    }
+                }
+                panelRect = __result;
+            }
+            panelRect = panelRect
+                ?? mainText?.rectTransform.parent as RectTransform
                 ?? frameRect;
 
             if (mainText != null)
@@ -285,7 +312,13 @@ internal static class RuntimeSelectionPanelFactory
         RectTransform scrollRt = scrollGo.AddComponent<RectTransform>();
         if (placeholderRect != null)
         {
-            CopyRectTransform(scrollRt, placeholderRect);
+            scrollRt.anchorMin = placeholderRect.anchorMin;
+            scrollRt.anchorMax = placeholderRect.anchorMax;
+            scrollRt.pivot = placeholderRect.pivot;
+            scrollRt.anchoredPosition = placeholderRect.anchoredPosition;
+            scrollRt.sizeDelta = placeholderRect.sizeDelta;
+            scrollRt.offsetMin = placeholderRect.offsetMin;
+            scrollRt.offsetMax = placeholderRect.offsetMax;
         }
         else
         {
@@ -384,7 +417,18 @@ internal static class RuntimeSelectionPanelFactory
         button.targetGraphic = background;
         button.transition = Selectable.Transition.ColorTint;
         button.navigation = new Navigation { mode = Navigation.Mode.None };
-        button.colors = ResolveColorBlock(styleTemplate);
+        button.colors = styleTemplate?.button != null
+            ? styleTemplate.button.colors
+            : new ColorBlock
+            {
+                normalColor = Color.white,
+                highlightedColor = new Color(1f, 1f, 0.85f, 1f),
+                pressedColor = new Color(0.88f, 0.88f, 0.88f, 1f),
+                selectedColor = new Color(1f, 1f, 0.85f, 1f),
+                disabledColor = new Color(0.45f, 0.45f, 0.45f, 0.65f),
+                colorMultiplier = 1f,
+                fadeDuration = 0.08f,
+            };
 
         GameObject selectedGo = new("SelectedIndicator");
         selectedGo.transform.SetParent(rowGo.transform, false);
@@ -480,25 +524,6 @@ internal static class RuntimeSelectionPanelFactory
         return text;
     }
 
-    private static ColorBlock ResolveColorBlock(CommonButtonWidget template)
-    {
-        if (template?.button != null)
-        {
-            return template.button.colors;
-        }
-
-        return new ColorBlock
-        {
-            normalColor = Color.white,
-            highlightedColor = new Color(1f, 1f, 0.85f, 1f),
-            pressedColor = new Color(0.88f, 0.88f, 0.88f, 1f),
-            selectedColor = new Color(1f, 1f, 0.85f, 1f),
-            disabledColor = new Color(0.45f, 0.45f, 0.45f, 0.65f),
-            colorMultiplier = 1f,
-            fadeDuration = 0.08f,
-        };
-    }
-
     private static void SetButtonLabel(Button button, string label)
     {
         if (button == null)
@@ -544,52 +569,6 @@ internal static class RuntimeSelectionPanelFactory
         }
 
         return target.GetComponentInParent<CommonButtonWidget>(true);
-    }
-
-    private static RectTransform TryFindCommonAncestorRect(RectTransform a, RectTransform b)
-    {
-        if (a == null || b == null)
-        {
-            return null;
-        }
-
-        System.Collections.Generic.HashSet<Transform> ancestors = new();
-        Transform current = a;
-        while (current != null)
-        {
-            ancestors.Add(current);
-            current = current.parent;
-        }
-
-        current = b;
-        while (current != null)
-        {
-            if (ancestors.Contains(current))
-            {
-                return current as RectTransform;
-            }
-
-            current = current.parent;
-        }
-
-        return null;
-    }
-
-    private static void CopyRectTransform(RectTransform destination, RectTransform source)
-    {
-        if (destination == null || source == null)
-        {
-            return;
-        }
-
-        destination.anchorMin = source.anchorMin;
-        destination.anchorMax = source.anchorMax;
-        destination.pivot = source.pivot;
-        destination.anchoredPosition = source.anchoredPosition;
-        destination.sizeDelta = source.sizeDelta;
-        destination.offsetMin = source.offsetMin;
-        destination.offsetMax = source.offsetMax;
-        destination.localScale = source.localScale;
     }
 
     private static T GetDialogField<T>(MessageDialog dialog, string fieldName) where T : class

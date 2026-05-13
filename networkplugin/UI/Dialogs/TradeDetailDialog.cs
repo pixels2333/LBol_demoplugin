@@ -34,12 +34,32 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
     private static GameRunController CurrentGameRun
         => GameStateUtils.GetCurrentGameRun();
 
+    private bool IsPlayerA(TradeSyncPatch.TradeSessionState state)
+        => state != null && string.Equals(state.PlayerAId, _selfId, StringComparison.Ordinal);
+
+    private static List<TradeSyncPatch.CardRef> GetLocalOffer(TradeSyncPatch.TradeSessionState state, bool localIsA)
+        => localIsA ? state.OfferA : state.OfferB;
+
+    private static int GetLocalMoney(TradeSyncPatch.TradeSessionState state, bool localIsA)
+        => localIsA ? state.MoneyA : state.MoneyB;
+
+    private static List<TradeSyncPatch.ExhibitRef> GetLocalExhibits(TradeSyncPatch.TradeSessionState state, bool localIsA)
+        => localIsA ? state.ExhibitsA : state.ExhibitsB;
+
+    private static List<TradeSyncPatch.CardRef> GetRemoteOffer(TradeSyncPatch.TradeSessionState state, bool localIsA)
+        => localIsA ? state.OfferB : state.OfferA;
+
+    private static int GetRemoteMoney(TradeSyncPatch.TradeSessionState state, bool localIsA)
+        => localIsA ? state.MoneyB : state.MoneyA;
+
+    private static List<TradeSyncPatch.ExhibitRef> GetRemoteExhibits(TradeSyncPatch.TradeSessionState state, bool localIsA)
+        => localIsA ? state.ExhibitsB : state.ExhibitsA;
+
     private CanvasGroup _canvasGroup;
 
     private RectTransform _panelRoot;
     private CommonButtonWidget _buttonTemplate;
     private TextMeshProUGUI _textTemplate;
-    private GameObject _rowTemplate;
     private RecordCardCell _cardCellTemplate;
     private ExhibitWidget _exhibitTemplate;
 
@@ -107,7 +127,6 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
     {
         _buttonTemplate = buttonTemplate;
         _textTemplate = textTemplate;
-        _rowTemplate = rowTemplate;
         _cardCellTemplate = cardCellTemplate;
         _exhibitTemplate = exhibitTemplate;
         _panelRoot = panelRoot;
@@ -161,7 +180,9 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             return;
         }
 
-        ResetLocalOffer();
+        _localCards.Clear();
+        _localMoney = 0;
+        _localExhibitIds.Clear();
         EnsureSubscribed();
 
         _canvasGroup.interactable = true;
@@ -192,21 +213,11 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
         if (_actionHandlerPushed)
         {
-            try
+            if (UiManager.IsInitialized)
             {
-                if (UiManager.IsInitialized)
-                {
-                    UiManager.PopActionHandler(this);
-                }
+                UiManager.PopActionHandler(this);
             }
-            catch
-            {
-                // 忽略
-            }
-            finally
-            {
-                _actionHandlerPushed = false;
-            }
+            _actionHandlerPushed = false;
         }
 
         // 如果 dialog 不是在明确取消/完成的情况下关闭，补发一次取消请求，避免服务端会话悬空。
@@ -217,24 +228,82 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             && _lastStatus != TradeSyncPatch.TradeStatus.Canceled
             && _lastStatus != TradeSyncPatch.TradeStatus.Completed)
         {
-            try
-            {
-                _cancelRequested = true;
-                TradeSyncPatch.RequestCancel(_tradeId, _selfId);
-            }
-            catch
-            {
-                // ignored
-            }
+            _cancelRequested = true;
+            TradeSyncPatch.RequestCancel(_tradeId, _selfId);
         }
 
-        TryUnsubscribe();
+        if (_subscribed)
+        {
+            TradeSyncPatch.OnTradeStateUpdated -= OnTradeStateUpdated;
+            _subscribed = false;
+        }
 
         // 如果选择器还开着，一并关掉。
         CloseCardPickerOverlay(applyChanges: false, closeOnly: true);
         _exhibitPickerRoot?.SetActive(false);
 
-        ScheduleReturnToTradePanel();
+        // 延后一帧执行，避免和 dialog 的 OnHiding 产生输入栈/布局冲突。
+        long scheduleNow = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        if (!(_lastReturnToTradePanelTimestamp > 0 && scheduleNow - _lastReturnToTradePanelTimestamp < 450))
+        {
+            _lastReturnToTradePanelTimestamp = scheduleNow;
+
+            // 仅在仍处于联机状态时回到 TradePanel，避免不断弹“交易不可用”。
+            var client = ModService.ServiceProvider.GetService<INetworkClient>();
+            if (client != null && client.IsConnected)
+            {
+                UniTask.Void(async () =>
+                {
+                    try
+                    {
+                        await UniTask.NextFrame();
+
+                        if (!UiManager.IsInitialized)
+                        {
+                            return;
+                        }
+
+                        Transform contextParent = null;
+                        var shop = UiManager.GetPanel<ShopPanel>();
+                        if (shop != null && shop.IsVisible && shop.transform != null)
+                        {
+                            contextParent = shop.transform.parent != null ? shop.transform.parent : shop.transform;
+                        }
+                        else
+                        {
+                            var gap = UiManager.GetPanel<GapOptionsPanel>();
+                            if (gap != null && gap.IsVisible && gap.transform != null)
+                            {
+                                contextParent = gap.transform.parent != null ? gap.transform.parent : gap.transform;
+                            }
+                        }
+
+                        if (contextParent == null)
+                        {
+                            return;
+                        }
+
+                        TradePanel panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>()
+                            ?? TradePanelRuntimeFactory.GetOrCreate(contextParent);
+                        if (panel == null)
+                        {
+                            return;
+                        }
+
+                        if (contextParent != null)
+                        {
+                            panel.transform.SetParent(contextParent, false);
+                        }
+
+                        panel.Show(new TradePayload());
+                    }
+                    catch
+                    {
+                        // 忽略
+                    }
+                });
+            }
+        }
     }
 
     public void OnConfirm()
@@ -265,15 +334,8 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             return;
         }
 
-        try
-        {
-            _cancelRequested = true;
-            TradeSyncPatch.RequestCancel(_tradeId, _selfId);
-        }
-        catch
-        {
-            // ignored
-        }
+        _cancelRequested = true;
+        TradeSyncPatch.RequestCancel(_tradeId, _selfId);
 
         Hide();
     }
@@ -312,91 +374,6 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         _subscribed = true;
     }
 
-    private void TryUnsubscribe()
-    {
-        if (!_subscribed)
-        {
-            return;
-        }
-
-        TradeSyncPatch.OnTradeStateUpdated -= OnTradeStateUpdated;
-        _subscribed = false;
-    }
-
-    private void ScheduleReturnToTradePanel()
-    {
-        // 按当前需求，dialog 关闭后返回 TradePanel，并重新显示 partner picker。
-        // 延后一帧执行，避免和 dialog 的 OnHiding 产生输入栈/布局冲突。
-        long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        if (_lastReturnToTradePanelTimestamp > 0 && now - _lastReturnToTradePanelTimestamp < 450)
-        {
-            return;
-        }
-        _lastReturnToTradePanelTimestamp = now;
-
-        // 仅在仍处于联机状态时回到 TradePanel，避免不断弹“交易不可用”。
-        var client = ModService.ServiceProvider.GetService<INetworkClient>();
-        if (client == null || !client.IsConnected)
-        {
-            return;
-        }
-
-        UniTask.Void(async () =>
-        {
-            try
-            {
-                await UniTask.NextFrame();
-
-                if (!UiManager.IsInitialized || !TryGetReturnContextParent(out Transform contextParent))
-                {
-                    return;
-                }
-
-                TradePanel panel = UnityEngine.Object.FindAnyObjectByType<TradePanel>()
-                    ?? TradePanelRuntimeFactory.GetOrCreate(contextParent);
-                if (panel == null)
-                {
-                    return;
-                }
-
-                if (contextParent != null)
-                {
-                    // 已存在面板时尽量挂回当前上下文。
-                    panel.transform.SetParent(contextParent, false);
-                }
-
-                panel.Show(new TradePayload());
-            }
-            catch
-            {
-                // 忽略
-            }
-        });
-    }
-
-    private static bool TryGetReturnContextParent(out Transform parent)
-    {
-        parent = null;
-
-        // 优先回到商店上下文。
-        var shop = UiManager.GetPanel<ShopPanel>();
-        if (shop != null && shop.IsVisible && shop.transform != null)
-        {
-            parent = shop.transform.parent != null ? shop.transform.parent : shop.transform;
-            return parent != null;
-        }
-
-        // 回退到 Gap 上下文。
-        var gap = UiManager.GetPanel<GapOptionsPanel>();
-        if (gap != null && gap.IsVisible && gap.transform != null)
-        {
-            parent = gap.transform.parent != null ? gap.transform.parent : gap.transform;
-            return parent != null;
-        }
-
-        return false;
-    }
-
     private void OnTradeStateUpdated(TradeSyncPatch.TradeSessionState state)
     {
         try
@@ -415,7 +392,34 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             {
                 if (!_cardPickerEditing)
                 {
-                    SyncLocalFromState(state);
+                    bool localIsA = IsPlayerA(state);
+
+                    _localMoney = Mathf.Max(0, GetLocalMoney(state, localIsA));
+
+                    _localExhibitIds.Clear();
+                    foreach (var ex in GetLocalExhibits(state, localIsA))
+                    {
+                        if (ex != null && !string.IsNullOrWhiteSpace(ex.ExhibitId))
+                        {
+                            _localExhibitIds.Add(ex.ExhibitId);
+                        }
+                    }
+
+                    _localCards.Clear();
+                    var localOffer = GetLocalOffer(state, localIsA);
+                    if (localOffer != null)
+                    {
+                        foreach (var cardRef in localOffer)
+                        {
+                            Card owned = TryFindDeckCard(cardRef);
+                            if (owned != null)
+                            {
+                                _localCards.Add(owned);
+                            }
+                        }
+                    }
+
+                    RefreshLocalUi();
                 }
                 RefreshRemoteUi(state);
                 UpdateConfirmInteractable(state);
@@ -501,16 +505,14 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             return false;
         }
 
-        bool localIsA = string.Equals(state.PlayerAId, _selfId, StringComparison.Ordinal);
+        bool localIsA = IsPlayerA(state);
 
-        List<TradeSyncPatch.CardRef> mine = localIsA ? state.OfferA : state.OfferB;
-        List<TradeSyncPatch.CardRef> theirs = localIsA ? state.OfferB : state.OfferA;
-
-        int myMoney = localIsA ? state.MoneyA : state.MoneyB;
-        int theirMoney = localIsA ? state.MoneyB : state.MoneyA;
-
-        List<TradeSyncPatch.ExhibitRef> myExhibits = localIsA ? state.ExhibitsA : state.ExhibitsB;
-        List<TradeSyncPatch.ExhibitRef> theirExhibits = localIsA ? state.ExhibitsB : state.ExhibitsA;
+        List<TradeSyncPatch.CardRef> mine = GetLocalOffer(state, localIsA);
+        List<TradeSyncPatch.CardRef> theirs = GetRemoteOffer(state, localIsA);
+        int myMoney = GetLocalMoney(state, localIsA);
+        int theirMoney = GetRemoteMoney(state, localIsA);
+        List<TradeSyncPatch.ExhibitRef> myExhibits = GetLocalExhibits(state, localIsA);
+        List<TradeSyncPatch.ExhibitRef> theirExhibits = GetRemoteExhibits(state, localIsA);
 
         using (TradeSyncPatch.EnterApplyingTradeScope())
         {
@@ -675,52 +677,16 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             return;
         }
 
-        bool localIsA = string.Equals(state.PlayerAId, _selfId, StringComparison.Ordinal);
-        bool localHasOffer = (localIsA ? (state.OfferA?.Count ?? 0) : (state.OfferB?.Count ?? 0)) > 0
-                          || (localIsA ? state.MoneyA : state.MoneyB) > 0
-                          || (localIsA ? (state.ExhibitsA?.Count ?? 0) : (state.ExhibitsB?.Count ?? 0)) > 0;
-        bool remoteHasOffer = (localIsA ? (state.OfferB?.Count ?? 0) : (state.OfferA?.Count ?? 0)) > 0
-                           || (localIsA ? state.MoneyB : state.MoneyA) > 0
-                           || (localIsA ? (state.ExhibitsB?.Count ?? 0) : (state.ExhibitsA?.Count ?? 0)) > 0;
-
-        _confirmButton.button.interactable = state.Status == TradeSyncPatch.TradeStatus.Open && localHasOffer && remoteHasOffer;
-    }
-
-    private void SyncLocalFromState(TradeSyncPatch.TradeSessionState state)
-    {
-        if (state == null)
-        {
-            return;
-        }
-
-        bool localIsA = string.Equals(state.PlayerAId, _selfId, StringComparison.Ordinal);
-
-        _localMoney = Mathf.Max(0, localIsA ? state.MoneyA : state.MoneyB);
-
-        _localExhibitIds.Clear();
-        foreach (var ex in localIsA ? state.ExhibitsA : state.ExhibitsB)
-        {
-            if (ex != null && !string.IsNullOrWhiteSpace(ex.ExhibitId))
-            {
-                _localExhibitIds.Add(ex.ExhibitId);
-            }
-        }
-
-        _localCards.Clear();
-        var localOffer = localIsA ? state.OfferA : state.OfferB;
-        if (localOffer != null)
-        {
-            foreach (var cardRef in localOffer)
-            {
-                Card owned = TryFindDeckCard(cardRef);
-                if (owned != null)
-                {
-                    _localCards.Add(owned);
-                }
-            }
-        }
-
-        RefreshLocalUi();
+        bool localIsA2 = IsPlayerA(state);
+        bool hasLocal = (GetLocalOffer(state, localIsA2)?.Count ?? 0) > 0
+            || GetLocalMoney(state, localIsA2) > 0
+            || (GetLocalExhibits(state, localIsA2)?.Count ?? 0) > 0;
+        bool localIsA3 = IsPlayerA(state);
+        bool hasRemote = (GetRemoteOffer(state, localIsA3)?.Count ?? 0) > 0
+            || GetRemoteMoney(state, localIsA3) > 0
+            || (GetRemoteExhibits(state, localIsA3)?.Count ?? 0) > 0;
+        _confirmButton.button.interactable = state.Status == TradeSyncPatch.TradeStatus.Open
+            && hasLocal && hasRemote;
     }
 
     private Card TryFindDeckCard(TradeSyncPatch.CardRef cardRef)
@@ -747,11 +713,11 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
         _lastPreparingHandledTimestamp = state.Timestamp;
 
-        bool localIsA = string.Equals(state.PlayerAId, _selfId, StringComparison.Ordinal);
+        bool localIsA = IsPlayerA(state);
 
-        List<TradeSyncPatch.CardRef> mine = localIsA ? state.OfferA : state.OfferB;
-        int myMoney = localIsA ? state.MoneyA : state.MoneyB;
-        List<TradeSyncPatch.ExhibitRef> myExhibits = localIsA ? state.ExhibitsA : state.ExhibitsB;
+        List<TradeSyncPatch.CardRef> mine = GetLocalOffer(state, localIsA);
+        int myMoney = GetLocalMoney(state, localIsA);
+        List<TradeSyncPatch.ExhibitRef> myExhibits = GetLocalExhibits(state, localIsA);
 
         if ((mine?.Count ?? 0) == 0 && myMoney <= 0 && (myExhibits?.Count ?? 0) == 0)
         {
@@ -821,13 +787,6 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         TradeSyncPatch.RequestPrepareResult(_tradeId, _selfId, true, null);
     }
 
-    private void ResetLocalOffer()
-    {
-        _localCards.Clear();
-        _localMoney = 0;
-        _localExhibitIds.Clear();
-    }
-
     private void RefreshLocalUi()
     {
         _localMoneyText.text = $"金币: {_localMoney}";
@@ -843,38 +802,33 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         {
             _remoteMoneyText.text = "金币: 0";
             _remoteExhibitsText.text = "遗物: 0";
-            RebuildCardList(_remoteCardsList, (List<TradeSyncPatch.CardRef>)null, isLocal: false);
+            RebuildCardList(_remoteCardsList, (List<TradeSyncPatch.CardRef>)null);
             RebuildExhibitList(_remoteExhibitsList, (List<string>)null, isLocal: false);
             return;
         }
 
-        bool localIsA = string.Equals(state.PlayerAId, _selfId, StringComparison.Ordinal);
+        bool localIsA = IsPlayerA(state);
 
-        int theirMoney = localIsA ? state.MoneyB : state.MoneyA;
-        List<TradeSyncPatch.ExhibitRef> theirEx = localIsA ? state.ExhibitsB : state.ExhibitsA;
+        int theirMoney = GetRemoteMoney(state, localIsA);
+        List<TradeSyncPatch.ExhibitRef> theirEx = GetRemoteExhibits(state, localIsA);
 
         _remoteMoneyText.text = $"金币: {Mathf.Max(0, theirMoney)}";
         _remoteExhibitsText.text = $"遗物: {theirEx?.Count ?? 0}";
 
-        var theirCards = localIsA ? state.OfferB : state.OfferA;
-        RebuildCardList(_remoteCardsList, theirCards, isLocal: false);
-        RebuildExhibitList(_remoteExhibitsList, theirEx, isLocal: false);
+        var theirCards = GetRemoteOffer(state, localIsA);
+        RebuildCardList(_remoteCardsList, theirCards);
+        RebuildExhibitList(_remoteExhibitsList, theirEx);
     }
 
     private void RebuildExhibitList(Transform listRoot, List<string> exhibitIds, bool isLocal)
     {
-        if (listRoot == null) return;
-        foreach (Transform c in listRoot) Destroy(c.gameObject);
-
-        if (exhibitIds == null || exhibitIds.Count == 0) return;
+        if (!BeginRebuildList(listRoot, exhibitIds, out _)) return;
 
         foreach (var exId in exhibitIds)
         {
             if (string.IsNullOrEmpty(exId)) continue;
-            
-            var label = exId;
 
-            var row = CloneListItem(listRoot, $"Ex_{exId}", label, false);
+            var row = CloneListItem(listRoot, $"Ex_{exId}", exId, false);
             if (isLocal)
             {
                 row.button.onClick.AddListener(() =>
@@ -892,12 +846,9 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         }
     }
 
-    private void RebuildExhibitList(Transform listRoot, List<TradeSyncPatch.ExhibitRef> exhibits, bool isLocal)
+    private void RebuildExhibitList(Transform listRoot, List<TradeSyncPatch.ExhibitRef> exhibits)
     {
-        if (listRoot == null) return;
-        foreach (Transform c in listRoot) Destroy(c.gameObject);
-
-        if (exhibits == null || exhibits.Count == 0) return;
+        if (!BeginRebuildList(listRoot, exhibits, out _)) return;
 
         foreach (var ex in exhibits)
         {
@@ -992,7 +943,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         _cancelButton = CloneButton(_panelRoot, "Cancel", "取消交易");
         SetRect(_cancelButton.GetComponent<RectTransform>(), 0.52f, 0.08f, 0.68f, 0.16f);
         _cancelButton.button.onClick.RemoveAllListeners();
-        _cancelButton.button.onClick.AddListener(new UnityAction(OnCancelClick));
+        _cancelButton.button.onClick.AddListener(new UnityAction(() => { AudioManager.Button(0); OnCancel(); }));
 
         DisableTooltipBehaviours(gameObject);
     }
@@ -1049,12 +1000,6 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         }
     }
 
-    private void OnCancelClick()
-    {
-        AudioManager.Button(0);
-        OnCancel();
-    }
-
     private void ChangeMoney(int delta)
     {
         if (_isApplyingState)
@@ -1087,13 +1032,19 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             $"[TradeDetailDialog] ShowCardPicker: tradeId={_tradeId ?? "<null>"}, localCards={_localCards.Count}, initialDeckCount={_initialDeckCards.Count}, hasRun={hasRun}, runSource={runSource ?? "<null>"}, currentDeckCount={currentDeckCount}, pickerExists={(_cardPickerRoot != null)}");
 
         AudioManager.Card(3);
-        EnsureCardPicker();
+        if (_cardPickerRoot == null)
+        {
+            _cardPickerRoot = CreateCardSelectionOverlay();
+            Plugin.Logger?.LogInfo($"[TradeDetailDialog] EnsureCardPicker created: tradeId={_tradeId ?? "<null>"}, pickerExists={(_cardPickerRoot != null)}");
+        }
         if (_cardPickerRoot == null)
         {
             TryShowTopMessage("卡牌选择界面不可用。");
             return;
         }
-        BeginCardPickerEdit();
+        _cardPickerOriginalCards.Clear();
+        _cardPickerOriginalCards.AddRange(_localCards.Where(c => c != null));
+        _cardPickerEditing = true;
         RebuildCardPicker();
         _cardPickerRoot.SetActive(true);
         _canvasGroup.interactable = false;
@@ -1122,28 +1073,13 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         }
 
         AudioManager.Card(3);
-        EnsureExhibitPicker();
+        if (_exhibitPickerRoot == null)
+        {
+            _exhibitPickerRoot = CreateFullOverlay("ExhibitPicker", "选择要交易的遗物");
+        }
         RebuildExhibitPicker();
         _exhibitPickerRoot.SetActive(true);
         _canvasGroup.interactable = false;
-    }
-
-    private void EnsureCardPicker()
-    {
-        if (_cardPickerRoot != null)
-        {
-            return;
-        }
-
-        _cardPickerRoot = CreateCardSelectionOverlay();
-        Plugin.Logger?.LogInfo($"[TradeDetailDialog] EnsureCardPicker created: tradeId={_tradeId ?? "<null>"}, pickerExists={(_cardPickerRoot != null)}");
-    }
-
-    private void BeginCardPickerEdit()
-    {
-        _cardPickerOriginalCards.Clear();
-        _cardPickerOriginalCards.AddRange(_localCards.Where(c => c != null));
-        _cardPickerEditing = true;
     }
 
     private void CloseCardPickerOverlay(bool applyChanges, bool closeOnly)
@@ -1169,28 +1105,6 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             RefreshLocalUi();
             RefreshRemoteUi(TradeSyncPatch.GetLastKnown(_tradeId));
         }
-    }
-
-    private void ConfirmCardPickerSelection()
-    {
-        if (_cardPickerRoot == null)
-        {
-            return;
-        }
-
-        CardPickerPanelTag tag = _cardPickerRoot.GetComponent<CardPickerPanelTag>();
-        int targetCount = tag?.TargetSelectCount ?? 0;
-        if (targetCount > 0 && _localCards.Count != targetCount)
-        {
-            if (tag?.HintText != null)
-            {
-                tag.HintText.text = $"请选择 {targetCount} 张卡牌（当前 {_localCards.Count}/{targetCount}）";
-            }
-            return;
-        }
-
-        CloseCardPickerOverlay(applyChanges: true, closeOnly: false);
-        TrySendOfferUpdate();
     }
 
     private GameObject CreateCardSelectionOverlay()
@@ -1300,7 +1214,27 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             CommonButtonWidget confirmButtonWidget = CloneButton(panelRect, "CardPickerConfirm", "确认选牌");
             SetRect(confirmButtonWidget.GetComponent<RectTransform>(), 0.56f, 0.05f, 0.74f, 0.11f);
             confirmButtonWidget.button.onClick.RemoveAllListeners();
-            confirmButtonWidget.button.onClick.AddListener(ConfirmCardPickerSelection);
+            confirmButtonWidget.button.onClick.AddListener(new UnityAction(() =>
+            {
+                if (_cardPickerRoot == null)
+                {
+                    return;
+                }
+
+                CardPickerPanelTag tag = _cardPickerRoot.GetComponent<CardPickerPanelTag>();
+                int targetCount = tag?.TargetSelectCount ?? 0;
+                if (targetCount > 0 && _localCards.Count != targetCount)
+                {
+                    if (tag?.HintText != null)
+                    {
+                        tag.HintText.text = $"请选择 {targetCount} 张卡牌（当前 {_localCards.Count}/{targetCount}）";
+                    }
+                    return;
+                }
+
+                CloseCardPickerOverlay(applyChanges: true, closeOnly: false);
+                TrySendOfferUpdate();
+            }));
 
             CardPickerPanelTag panelTag = root.AddComponent<CardPickerPanelTag>();
             panelTag.HintText = hint;
@@ -1316,16 +1250,6 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         {
             return null;
         }
-    }
-
-    private void EnsureExhibitPicker()
-    {
-        if (_exhibitPickerRoot != null)
-        {
-            return;
-        }
-
-        _exhibitPickerRoot = CreateFullOverlay("ExhibitPicker", "选择要交易的遗物");
     }
 
     private GameObject CreateFullOverlay(string name, string titleText)
@@ -1722,10 +1646,8 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
         // 渲染“对方已选卡牌”（只读）。
         TradeSyncPatch.TradeSessionState state = TradeSyncPatch.GetLastKnown(_tradeId);
-        bool localIsA = state != null && string.Equals(state.PlayerAId, _selfId, StringComparison.Ordinal);
-        List<TradeSyncPatch.CardRef> remoteCards = state == null
-            ? null
-            : (localIsA ? state.OfferB : state.OfferA);
+        bool localIsA = IsPlayerA(state);
+        List<TradeSyncPatch.CardRef> remoteCards = state != null ? GetRemoteOffer(state, localIsA) : null;
 
         if (remoteCards == null || remoteCards.Count == 0)
         {
@@ -1938,15 +1860,7 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
 
     private void RebuildCardList(Transform listRoot, List<Card> cards, bool isLocal)
     {
-        if (listRoot == null) return;
-        foreach (Transform c in listRoot) Destroy(c.gameObject);
-
-        if (cards == null || cards.Count == 0)
-        {
-            var empty = CloneText(listRoot as RectTransform, "Empty", 18, TextAlignmentOptions.Center);
-            empty.text = "(无)";
-            return;
-        }
+        if (!BeginRebuildList(listRoot, cards, out _)) return;
 
         foreach (var card in cards)
         {
@@ -1970,17 +1884,9 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
         }
     }
 
-    private void RebuildCardList(Transform listRoot, List<TradeSyncPatch.CardRef> cardRefs, bool isLocal)
+    private void RebuildCardList(Transform listRoot, List<TradeSyncPatch.CardRef> cardRefs)
     {
-        if (listRoot == null) return;
-        foreach (Transform c in listRoot) Destroy(c.gameObject);
-
-        if (cardRefs == null || cardRefs.Count == 0)
-        {
-            var empty = CloneText(listRoot as RectTransform, "Empty", 18, TextAlignmentOptions.Center);
-            empty.text = "(无)";
-            return;
-        }
+        if (!BeginRebuildList(listRoot, cardRefs, out _)) return;
 
         foreach (var cardRef in cardRefs)
         {
@@ -1989,6 +1895,20 @@ public sealed class TradeDetailDialog : UiDialog<TradeDetailPayload>, IInputActi
             var row = CloneListItem(listRoot, $"RemoteCard_{cardRef.InstanceId}", label, false);
             row.button.interactable = false;
         }
+    }
+
+    private bool BeginRebuildList<T>(Transform listRoot, List<T> items, out List<T> outItems)
+    {
+        outItems = items;
+        if (listRoot == null) return false;
+        foreach (Transform c in listRoot) Destroy(c.gameObject);
+        if (items == null || items.Count == 0)
+        {
+            var empty = CloneText(listRoot as RectTransform, "Empty", 18, TextAlignmentOptions.Center);
+            empty.text = "(无)";
+            return false;
+        }
+        return true;
     }
 
     private CommonButtonWidget CloneListItem(Transform parent, string name, string label, bool isActive = false)

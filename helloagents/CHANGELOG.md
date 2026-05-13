@@ -4,7 +4,16 @@
 
 ## [Unreleased]
 
-### 新增
+### 重构- **[networkplugin]**: 内联单次调用私有方法（Phase 1-4）。
+	- 方案: [202605071730_inline-single-call-methods](plan/202605071730_inline-single-call-methods/)
+	- 目标: 将项目中所有仅 1 处调用且 ≤50 行的私有方法内联，减少过度抽象
+	- 实施:
+		- Phase 1: `TradeDetailDialog.cs` — 内联 8 个方法（ResetLocalOffer, OnCancelClick, EnsureCardPicker, BeginCardPickerEdit, SyncLocalFromState, ConfirmCardPickerSelection, ScheduleReturnToTradePanel）
+		- Phase 2: `ResurrectPanel.cs` — 内联 3 个方法（CreatePlayerEntries, OnPlayerSelected, SendResurrectionEvent）
+		- Phase 3: 工厂文件 — 内联 14 个方法（GapSharedPanelTemplateFactory 2 个 + ResurrectPanelRuntimeFactory 3 个 + RuntimeSelectionPanelFactory 3 个 + TradeDetailDialogRuntimeFactory 2 个 + TradePanelRuntimeFactory 4 个）
+		- Phase 4: `TradePanel.cs` — 内联 4 个方法（HasLocalOffer, HasRemoteOffer, SendTradeEvent, ClearOfferPreview）
+		- 待完成: TradePanel.cs 剩余 27 个方法、Patch 文件 50+ 个方法
+	- 验证: `dotnet build networkplugin/NetWorkPlugin.csproj -v minimal` 通过（0 errors）
 - **[networkplugin]**: 新增“战斗胜利后自动复活死亡玩家”规则，统一覆盖普通战斗房与随机事件展开的战斗，并在全员死亡时放行原版失败结算。
 	- 方案: [202603211900_networkplugin-postbattle-auto-revive](archive/2026-03/202603211900_networkplugin-postbattle-auto-revive/)
 	- 决策: networkplugin-postbattle-auto-revive#D001(自动复活挂在 LeaveBattle 前), networkplugin-postbattle-auto-revive#D002(全员死亡判定优先复用 DeathRegistry)

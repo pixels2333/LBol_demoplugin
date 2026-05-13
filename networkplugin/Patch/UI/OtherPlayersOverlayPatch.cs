@@ -544,26 +544,6 @@ public static partial class OtherPlayersOverlayPatch
         }
     }
 
-    private static void SetGraphicTreeAlpha(Transform root, float alpha)
-    {
-        if (root == null)
-        {
-            return;
-        }
-
-        foreach (Graphic graphic in root.GetComponentsInChildren<Graphic>(true))
-        {
-            if (graphic == null)
-            {
-                continue;
-            }
-
-            Color color = graphic.color;
-            color.a = alpha;
-            graphic.color = color;
-        }
-    }
-
     private static void SetUltimateVisualFieldActive(UltimateSkillPanel panel, string fieldName, bool active)
     {
         if (panel == null || string.IsNullOrWhiteSpace(fieldName))
@@ -575,24 +555,6 @@ public static partial class OtherPlayersOverlayPatch
         {
             Component component = Traverse.Create(panel).Field(fieldName).GetValue<Component>();
             component?.gameObject.SetActive(active);
-        }
-        catch
-        {
-            // ignored
-        }
-    }
-
-    private static void HideUltimateVisualField(UltimateSkillPanel panel, string fieldName)
-    {
-        if (panel == null || string.IsNullOrWhiteSpace(fieldName))
-        {
-            return;
-        }
-
-        try
-        {
-            Component component = Traverse.Create(panel).Field(fieldName).GetValue<Component>();
-            component?.gameObject.SetActive(false);
         }
         catch
         {
@@ -917,25 +879,6 @@ public static partial class OtherPlayersOverlayPatch
         }
     }
 
-    private static Image CreateFallbackAvatarVisual(Transform parent)
-    {
-        GameObject go = new("Avatar");
-        go.transform.SetParent(parent, false);
-
-        RectTransform rect = go.AddComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.5f, 0.5f);
-        rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.sizeDelta = new Vector2(AvatarVisualSize * 0.85f, AvatarVisualSize * 0.85f);
-
-        Image image = go.AddComponent<Image>();
-        image.sprite = GetWhiteSprite();
-        image.color = Color.white;
-        image.raycastTarget = false;
-        image.preserveAspect = true;
-        return image;
-    }
-
     private static Image CreateCircularAvatarVisual(Transform parent, Image templateAvatar)
     {
         if (parent == null)
@@ -1027,22 +970,6 @@ public static partial class OtherPlayersOverlayPatch
         }
 
         return avatarImage;
-    }
-
-    private static void CopyRectTransform(RectTransform source, RectTransform target)
-    {
-        if (source == null || target == null)
-        {
-            return;
-        }
-
-        target.anchorMin = source.anchorMin;
-        target.anchorMax = source.anchorMax;
-        target.pivot = source.pivot;
-        target.anchoredPosition = source.anchoredPosition;
-        target.sizeDelta = source.sizeDelta;
-        target.localScale = source.localScale;
-        target.localEulerAngles = source.localEulerAngles;
     }
 
     private static Vector2 ResolveAvatarVisualSize(Image templateAvatar, RectTransform sourceRect)
@@ -1774,48 +1701,6 @@ public static partial class OtherPlayersOverlayPatch
         try
         {
             return ServiceProvider?.GetService<INetworkManager>();
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static RectTransform TryGetBaseManaAnchorRect()
-    {
-        try
-        {
-            SystemBoard board = UiManager.GetPanel<SystemBoard>();
-            if (board == null)
-            {
-                return null;
-            }
-
-            RectTransform baseManaContent = TryGetPrivateRectTransform(board, "baseManaContent");
-            if (baseManaContent != null)
-            {
-                return baseManaContent;
-            }
-
-            return TryGetPrivateRectTransform(board, "baseManaParent");
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static RectTransform TryGetPrivateRectTransform(object instance, string fieldName)
-    {
-        if (instance == null || string.IsNullOrWhiteSpace(fieldName))
-        {
-            return null;
-        }
-
-        try
-        {
-            Transform transform = Traverse.Create(instance).Field(fieldName).GetValue<Transform>();
-            return transform as RectTransform;
         }
         catch
         {

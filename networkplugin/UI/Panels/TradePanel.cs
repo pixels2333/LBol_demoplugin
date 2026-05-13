@@ -57,6 +57,9 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private GameRunController ActiveGameRun
         => GameRun ?? GameStateUtils.GetCurrentGameRun();
 
+    private bool IsPlayerA(TradeSyncPatch.TradeSessionState state)
+        => state != null && string.Equals(state.PlayerAId, _selfPlayerId, StringComparison.Ordinal);
+
     #endregion
 
     #region 序列化字段（UI 组件）
@@ -176,7 +179,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private float _partnerPickerInputReadyTime;
     private string _partnerPickerBuildError;
     private Button _partnerPickerCancelButton;
-    private Button _partnerPickerRefreshButton;
 
     // 打开面板后自动刷新一次 partner 列表（应对位置元数据稍晚到达的情况）。
     private Coroutine _partnerPickerAutoRefreshCo;
@@ -198,7 +200,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private Button _offerActionsPickCardsBtn;
     private Button _offerActionsPickExhibitsBtn;
     private GameObject _moneyTripletRoot;
-    private HorizontalLayoutGroup _moneyTripletLayout;
     private float _moneyValueBaseFontSize;
     private TextMeshProUGUI _ownedMoneyText;
     private TextMeshProUGUI _moneyValueText;
@@ -328,8 +329,9 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         EnsurePopupTopmost();
 
         // 本地 UI 测试：调试开关启用时允许在无服务器情况下打开面板。
-        _localDebugTradeMode = !TryEnsureNetworkConnected() && IsLocalDebugTradeAllowed();
-        if (!_localDebugTradeMode && !TryEnsureNetworkConnected())
+        bool networkConnected = TryEnsureNetworkConnected();
+        _localDebugTradeMode = !networkConnected && IsLocalDebugTradeAllowed();
+        if (!networkConnected && !_localDebugTradeMode)
         {
             Plugin.Logger?.LogWarning("[TradePanel] OnShowing aborted: network unavailable and local debug trade mode disabled.");
             Hide();
@@ -343,11 +345,8 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
         // 重要：在可能提前返回之前（即显示 partner picker 或 modal dialog 前）确保面板可交互。
         // 否则如果面板在上次隐藏后再次打开，picker 可能显示但无法点击。
-        if (_canvasGroup != null)
-        {
-            _canvasGroup.interactable = true;
-            _canvasGroup.blocksRaycasts = true;
-        }
+        _canvasGroup.interactable = true;
+        _canvasGroup.blocksRaycasts = true;
 
         // 缓存本次交易的参数
         _payload = payload;
@@ -387,13 +386,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         // 根据配置显示/隐藏取消按钮
         cancelButton?.gameObject.SetActive(_canCancel);
 
-        // 允许面板交互
-        if (_canvasGroup != null)
-        {
-            _canvasGroup.interactable = true;
-            _canvasGroup.blocksRaycasts = true;
-        }
-
         // 刷新本地化文案
         UpdateUIStrings();
     }
@@ -413,7 +405,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     protected override void OnHiding()
     {
         // 隐藏动画开始时禁用交互
-        _canvasGroup?.interactable = false;
+        _canvasGroup.interactable = false;
 
         // 取消注册输入处理器
         if (_actionHandlerPushed)
@@ -565,7 +557,8 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             }
         }
 
-        ClearOfferPreview();
+        ClearOfferPreviewPanel(_localOfferPreviewPanel);
+        ClearOfferPreviewPanel(_remoteOfferPreviewPanel);
 
         // 默认禁止点击确认按钮，直到双方都放入了卡牌
         if (confirmButton?.button != null)
@@ -693,8 +686,8 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private void CheckTradeReady()
     {
         // v2：允许交易任意资产（卡牌/道具/金币/展品）。
-        bool localHasOffer = HasLocalOffer();
-        bool remoteHasOffer = HasRemoteOffer();
+        bool localHasOffer = (_player1OfferedCards?.Count ?? 0) > 0 || _localMoneyOffer > 0 || _localExhibitOfferIds.Count > 0;
+        bool remoteHasOffer = (_player2OfferedCards?.Count ?? 0) > 0;
         bool bothPlayersReady = localHasOffer && remoteHasOffer;
 
         // 用户需求：确认按钮永不置灰，点击服务端未就绪时会显示状态提示但不发送确认。
@@ -714,11 +707,10 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
     }
 
-    private bool HasLocalOffer()
-        => (_player1OfferedCards?.Count ?? 0) > 0 || _localMoneyOffer > 0 || _localExhibitOfferIds.Count > 0;
-
-    private bool HasRemoteOffer()
-        => (_player2OfferedCards?.Count ?? 0) > 0;
+    private static bool HasOffer(TradeSyncPatch.TradeSessionState state, bool isOfferA)
+        => (isOfferA ? state.OfferA : state.OfferB)?.Count > 0
+        || (isOfferA ? state.MoneyA : state.MoneyB) > 0
+        || (isOfferA ? state.ExhibitsA : state.ExhibitsB)?.Count > 0;
 
     #endregion
 
@@ -739,13 +731,9 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 return;
             }
 
-            bool localIsA = string.Equals(state.PlayerAId, _selfPlayerId, StringComparison.Ordinal);
-            bool localHasOffer = (localIsA ? (state.OfferA?.Count ?? 0) : (state.OfferB?.Count ?? 0)) > 0
-                               || (localIsA ? state.MoneyA : state.MoneyB) > 0
-                               || (localIsA ? (state.ExhibitsA?.Count ?? 0) : (state.ExhibitsB?.Count ?? 0)) > 0;
-            bool remoteHasOffer = (localIsA ? (state.OfferB?.Count ?? 0) : (state.OfferA?.Count ?? 0)) > 0
-                                || (localIsA ? state.MoneyB : state.MoneyA) > 0
-                                || (localIsA ? (state.ExhibitsB?.Count ?? 0) : (state.ExhibitsA?.Count ?? 0)) > 0;
+            bool localIsA = IsPlayerA(state);
+            bool localHasOffer = HasOffer(state, localIsA);
+            bool remoteHasOffer = HasOffer(state, !localIsA);
 
             if (!localHasOffer || !remoteHasOffer)
             {
@@ -754,7 +742,10 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             }
 
             UpdateUIStatus("Trade.Confirmed".Localize());
-            TrySendConfirm();
+            if (TryIsNetworkTrade(out _))
+            {
+                TradeSyncPatch.RequestConfirm(_tradeId, _selfPlayerId);
+            }
             return;
         }
 
@@ -777,7 +768,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     {
         if (TryIsNetworkTrade(out _))
         {
-            TrySendCancel();
+            TradeSyncPatch.RequestCancel(_tradeId, _selfPlayerId);
         }
 
         Hide();
@@ -865,22 +856,11 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         UpdateUIStatus("Trade.Completed".Localize());
 
         // 发送网络事件通知其他玩家本次交易已经完成
-        SendTradeEvent();
-
         // 等待一小段时间，让玩家看清结果
         yield return new WaitForSeconds(TradeCompleteWaitTime);
 
         // 关闭交易面板
         Hide();
-    }
-
-    /// <summary>
-    /// 发送交易完成事件到同步管理器（网络广播）。
-    /// </summary>
-    private void SendTradeEvent()
-    {
-        // v1：交易完成事件由 TradeSyncPatch 统一发送/广播。
-        // 这里保留方法作为本地模式的扩展点。
     }
 
     private void SetupTradeSession(TradePayload payload)
@@ -1052,11 +1032,8 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         Plugin.Logger?.LogInfo($"[TradePanel] ShowPartnerPickerOverlay enter: tradeId={_tradeId ?? "<null>"}, self={_selfPlayerId ?? "<null>"}, currentPartner={_playerBId ?? "<null>"}");
 
         // 确保 overlay 获得点击响应（即使面板之前被隐藏过）。
-        if (_canvasGroup != null)
-        {
-            _canvasGroup.interactable = true;
-            _canvasGroup.blocksRaycasts = true;
-        }
+        _canvasGroup.interactable = true;
+        _canvasGroup.blocksRaycasts = true;
 
         // 懒创建 overlay。
         EnsurePartnerPickerOverlay();
@@ -1071,6 +1048,8 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     _partnerPickerInputReadyTime = Time.unscaledTime + 0.15f;
         _partnerPickerRoot.SetActive(true);
         EnsurePopupTopmost();
+        // 隐藏外层 Frame，避免与 picker 重叠。
+        transform.Find("NetworkPlugin_TradePanel_Frame")?.gameObject.SetActive(false);
     Plugin.Logger?.LogInfo($"[TradePanel] ShowPartnerPickerOverlay armed click guard until={_partnerPickerInputReadyTime:F3}");
 
         // 通过 prefab 实例化 MessageDialog 后其 CanvasGroup 默认可能不可交互，强制开启 raycasts。
@@ -1169,11 +1148,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
         foreach (var cg in root.GetComponentsInChildren<CanvasGroup>(true))
         {
-            if (cg == null)
-            {
-                continue;
-            }
-
             cg.interactable = true;
             cg.blocksRaycasts = true;
 
@@ -1230,14 +1204,14 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     _partnerPickerInputReadyTime = 0f;
         _partnerPickerRoot?.SetActive(false);
 
+        // 恢复外层 Frame。
+        transform.Find("NetworkPlugin_TradePanel_Frame")?.gameObject.SetActive(true);
+
         // 重新开启交易 UI。
         SetTradeDetailsVisible(true);
 
-        if (_canvasGroup != null)
-        {
-            _canvasGroup.interactable = true;
-            _canvasGroup.blocksRaycasts = true;
-        }
+        _canvasGroup.interactable = true;
+        _canvasGroup.blocksRaycasts = true;
 
         // 恢复底层取消按钮状态。
         cancelButton?.gameObject.SetActive(_canCancel);
@@ -1245,20 +1219,13 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void EnsurePopupTopmost()
     {
-        try
-        {
-            transform.SetAsLastSibling();
-            _partnerPickerRoot?.transform.SetAsLastSibling();
-            _cardPickerRoot?.transform.SetAsLastSibling();
-            _exhibitPickerRoot?.transform.SetAsLastSibling();
-            _offerPreviewRoot?.transform.SetAsLastSibling();
-            _offerEditorRoot?.transform.SetAsLastSibling();
-            _offerActionsRoot?.transform.SetAsLastSibling();
-        }
-        catch
-        {
-            // ignored
-        }
+        transform.SetAsLastSibling();
+        _partnerPickerRoot?.transform.SetAsLastSibling();
+        _cardPickerRoot?.transform.SetAsLastSibling();
+        _exhibitPickerRoot?.transform.SetAsLastSibling();
+        _offerPreviewRoot?.transform.SetAsLastSibling();
+        _offerEditorRoot?.transform.SetAsLastSibling();
+        _offerActionsRoot?.transform.SetAsLastSibling();
     }
 
     private void SetTradeDetailsVisible(bool visible)
@@ -1367,8 +1334,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 confirm.onClick.RemoveAllListeners();
                 confirm.gameObject.SetActive(true);
 
-                _partnerPickerRefreshButton = confirm;
-
                 var refreshLabel = confirm.GetComponentInChildren<TextMeshProUGUI>(true);
                 if (refreshLabel != null)
                 {
@@ -1443,17 +1408,10 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 scrollGo.transform.SetAsLastSibling();
 
                 var scrollRt = scrollGo.AddComponent<RectTransform>();
-                if (subTextRect != null)
-                {
-                    CopyRectTransform(scrollRt, subTextRect);
-                }
-                else
-                {
-                    scrollRt.anchorMin = new Vector2(0.06f, 0.20f);
-                    scrollRt.anchorMax = new Vector2(0.94f, 0.78f);
-                    scrollRt.offsetMin = Vector2.zero;
-                    scrollRt.offsetMax = Vector2.zero;
-                }
+                scrollRt.anchorMin = new Vector2(0.15f, 0.42f);
+                scrollRt.anchorMax = new Vector2(0.85f, 0.58f);
+                scrollRt.offsetMin = Vector2.zero;
+                scrollRt.offsetMax = Vector2.zero;
 
                 var scrollImg = scrollGo.AddComponent<Image>();
                 scrollImg.color = new Color(0f, 0f, 0f, 0f);
@@ -1483,10 +1441,10 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
                 var vlg = contentGo.AddComponent<VerticalLayoutGroup>();
                 vlg.childAlignment = TextAnchor.UpperCenter;
-                vlg.spacing = 8f;
-                vlg.padding = new RectOffset(10, 10, 10, 10);
+                vlg.spacing = 140f;
+                vlg.padding = new RectOffset(10, 10, 4, 4);
                 vlg.childControlWidth = true;
-                vlg.childControlHeight = false;
+                vlg.childControlHeight = true;
                 vlg.childForceExpandWidth = true;
                 vlg.childForceExpandHeight = false;
 
@@ -1749,7 +1707,9 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                     && (p.LocationX < 0 || selfX < 0 || p.LocationX == selfX)
                     && (p.LocationY < 0 || selfY < 0 || p.LocationY == selfY);
 
-                string where = BuildWhereText(p.LocationName, p.Stage, p.LocationX, p.LocationY, sameNode);
+                string loc2 = string.IsNullOrWhiteSpace(p.LocationName) ? "?" : p.LocationName;
+                string coord = (p.Stage >= 0 || p.LocationX >= 0 || p.LocationY >= 0) ? $"Act {p.Stage}, ({p.LocationX},{p.LocationY})" : "位置未知";
+                string where = sameNode ? $"{loc2} - {coord} - 同节点" : $"{loc2} - {coord}";
 
                 string label = string.IsNullOrWhiteSpace(where) ? displayName : $"{displayName}  {where}";
                 if (p.IsHost)
@@ -1760,7 +1720,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 Button btn = CreateTextButton(tag.TextTemplate, container, $"Player_{p.PlayerId}", label, tag.TextTemplate.fontSize * 0.5f);
 
                 var le = btn.gameObject.AddComponent<LayoutElement>();
-                le.preferredHeight = 40f;
+                le.preferredHeight = 28f;
                 le.flexibleWidth = 1f;
 
                 var cand = btn.gameObject.AddComponent<PartnerCandidateTag>();
@@ -1874,13 +1834,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
     }
 
-    private static string BuildWhereText(string locationName, int stage, int x, int y, bool sameNode)
-    {
-        string loc = string.IsNullOrWhiteSpace(locationName) ? "?" : locationName;
-        string coord = (stage >= 0 || x >= 0 || y >= 0) ? $"Act {stage}, ({x},{y})" : "位置未知";
-        return sameNode ? $"{loc} - {coord} - 同节点" : $"{loc} - {coord}";
-    }
-
     private string ResolveLocalPlayerDisplayName(TradePayload payload)
     {
         string id = _selfPlayerId;
@@ -1919,23 +1872,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             || locationName.IndexOf("商店", StringComparison.OrdinalIgnoreCase) >= 0
             || locationName.IndexOf("交易", StringComparison.OrdinalIgnoreCase) >= 0
             || locationName.IndexOf("间隙", StringComparison.OrdinalIgnoreCase) >= 0;
-    }
-
-    private static Sprite TryLoadAvatarSprite(string characterId)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(characterId))
-            {
-                return null;
-            }
-
-            return ResourcesHelper.LoadCharacterAvatarSprite(characterId);
-        }
-        catch
-        {
-            return null;
-        }
     }
 
     private void EnsureCardPickerOverlay()
@@ -2007,33 +1943,13 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             if (tag.ReturnButton != null)
             {
                 tag.ReturnButton.onClick.RemoveAllListeners();
-                tag.ReturnButton.onClick.AddListener(() =>
-                {
-                    try
-                    {
-                        HideCardPickerOverlay();
-                    }
-                    catch
-                    {
-                        // 忽略
-                    }
-                });
+                tag.ReturnButton.onClick.AddListener(HideCardPickerOverlay);
             }
 
             if (tag.TopHideButton != null)
             {
                 tag.TopHideButton.onClick.RemoveAllListeners();
-                tag.TopHideButton.onClick.AddListener(() =>
-                {
-                    try
-                    {
-                        HideCardPickerOverlay();
-                    }
-                    catch
-                    {
-                        // 忽略
-                    }
-                });
+                tag.TopHideButton.onClick.AddListener(HideCardPickerOverlay);
             }
 
             BindCardPickerToggle(tag.ActualOrderToggle, on =>
@@ -2275,11 +2191,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         RebuildOfferPreviewPanel(_remoteOfferPreviewPanel, _player2OfferedCards);
     }
 
-    private void ClearOfferPreview()
-    {
-        ClearOfferPreviewPanel(_localOfferPreviewPanel);
-        ClearOfferPreviewPanel(_remoteOfferPreviewPanel);
-    }
+
 
     private void RebuildOfferPreviewPanel(OfferPreviewPanelTag panel, IEnumerable<Card> cards)
     {
@@ -3133,10 +3045,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         // 以 Host 广播状态为准刷新 UI。
         using (new ApplyingStateScope(this))
         {
-            bool localIsA = string.Equals(state.PlayerAId, _selfPlayerId, StringComparison.Ordinal);
-
-            _playerAId = state.PlayerAId;
-            _playerBId = state.PlayerBId;
+            bool localIsA = IsPlayerA(state);
 
             // 清空现有 UI
             ResetTradeData();
@@ -3170,7 +3079,15 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             // 远端报价：显示在 player2（临时卡用于展示）
             foreach (var c in localIsA ? state.OfferB : state.OfferA)
             {
-                Card temp = TryCreateDisplayCard(c);
+                Card temp = null;
+                try
+                {
+                    if (c != null && !string.IsNullOrWhiteSpace(c.CardId))
+                    {
+                        temp = Library.TryCreateCard(c.CardId, c.IsUpgraded, c.UpgradeCounter);
+                    }
+                }
+                catch { }
                 if (temp != null)
                 {
                     AddCardToTrade(temp, false);
@@ -3178,7 +3095,13 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             }
 
             // 锁住远端槽位，避免误删
-            LockSlots(player2Slots);
+            if (player2Slots != null)
+            {
+                foreach (var s in player2Slots)
+                {
+                    s?.SetLocked(true);
+                }
+            }
         }
 
         // 用户需求：永不禁用确认按钮，点击时再做逻辑守卫。
@@ -3203,19 +3126,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
     }
 
-    private void LockSlots(TradeSlotWidget[] slots)
-    {
-        if (slots == null)
-        {
-            return;
-        }
-
-        foreach (var s in slots)
-        {
-            s?.SetLocked(true);
-        }
-    }
-
     private Card TryFindDeckCard(TradeSyncPatch.CardRef cardRef)
     {
         try
@@ -3233,28 +3143,9 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
     }
 
-    private Card TryCreateDisplayCard(TradeSyncPatch.CardRef cardRef)
-    {
-        try
-        {
-            if (cardRef == null || string.IsNullOrWhiteSpace(cardRef.CardId))
-            {
-                return null;
-            }
-
-            // 展示用临时卡：用 TryCreateCard 保证名称正确。
-            Card created = Library.TryCreateCard(cardRef.CardId, cardRef.IsUpgraded, cardRef.UpgradeCounter);
-            return created;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
     private void TrySendOfferUpdate()
     {
-        if (!TryIsNetworkTrade(out bool localIsA))
+        if (!TryIsNetworkTrade(out _))
         {
             return;
         }
@@ -3276,26 +3167,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             .ToList();
 
         TradeSyncPatch.RequestOfferUpdate(_tradeId, _selfPlayerId, refs, _localMoneyOffer, _localExhibitOfferIds.ToList());
-    }
-
-    private void TrySendConfirm()
-    {
-        if (!TryIsNetworkTrade(out _))
-        {
-            return;
-        }
-
-        TradeSyncPatch.RequestConfirm(_tradeId, _selfPlayerId);
-    }
-
-    private void TrySendCancel()
-    {
-        if (!TryIsNetworkTrade(out _))
-        {
-            return;
-        }
-
-        TradeSyncPatch.RequestCancel(_tradeId, _selfPlayerId);
     }
 
     private IEnumerator ApplyNetworkTradeAndClose(bool localIsA)
@@ -3499,7 +3370,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
         _lastPreparingHandledTimestamp = state.Timestamp;
 
-        bool localIsA = string.Equals(state.PlayerAId, _selfPlayerId, StringComparison.Ordinal);
+        bool localIsA = IsPlayerA(state);
 
         // 仅严格验证本地自身的报价。
         List<TradeSyncPatch.CardRef> mine = localIsA ? state.OfferA : state.OfferB;
@@ -3625,7 +3496,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             var cardsLabel = Instantiate(textTemplate, _offerEditorRoot.transform, false);
             cardsLabel.name = "CardsLabel";
             cardsLabel.text = "卡牌:";
-            cardsLabel.alignment = TextAlignmentOptions.Center;
+            cardsLabel.alignment = TextAlignmentOptions.Right;
             ConfigureSingleLineText(cardsLabel);
             SetRect(cardsLabel.rectTransform, 0.02f, 0.70f, 0.25f, 0.95f);
 
@@ -3640,7 +3511,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             var moneyLabel = Instantiate(textTemplate, _offerEditorRoot.transform, false);
             moneyLabel.name = "MoneyLabel";
             moneyLabel.text = "金币:";
-            moneyLabel.alignment = TextAlignmentOptions.Center;
+            moneyLabel.alignment = TextAlignmentOptions.Right;
             ConfigureSingleLineText(moneyLabel);
             SetRect(moneyLabel.rectTransform, 0.02f, 0.38f, 0.25f, 0.63f);
 
@@ -3709,7 +3580,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             var exLabel = Instantiate(textTemplate, _offerEditorRoot.transform, false);
             exLabel.name = "ExLabel";
             exLabel.text = "展品:";
-            exLabel.alignment = TextAlignmentOptions.Center;
+            exLabel.alignment = TextAlignmentOptions.Right;
             ConfigureSingleLineText(exLabel);
             SetRect(exLabel.rectTransform, 0.02f, 0.05f, 0.25f, 0.30f);
 
@@ -3818,41 +3689,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         {
             // 忽略
         }
-    }
-
-    private void ApplyMoneyValueSizingForDigits()
-    {
-        if (_moneyValueText == null)
-        {
-            return;
-        }
-
-        string s = _moneyValueText.text ?? string.Empty;
-        int digits = 0;
-        for (int i = 0; i < s.Length; i++)
-        {
-            char ch = s[i];
-            if (ch >= '0' && ch <= '9')
-            {
-                digits++;
-            }
-        }
-
-        float baseSize = _moneyValueBaseFontSize > 0f ? _moneyValueBaseFontSize : _moneyValueText.fontSize;
-        if (digits >= 4)
-        {
-            // 用户需求：数字 >= 4 位时仅缩小数字本身，最小保持 60%。
-            float scale = Mathf.Clamp(3f / digits, 0.6f, 1f);
-            _moneyValueText.fontSize = baseSize * scale;
-        }
-        else
-        {
-            _moneyValueText.fontSize = baseSize;
-        }
-
-        // 重建布局确保 '-' 和 '+' 在数字两侧等距。
-        if (_moneyTripletRoot != null)
-            LayoutRebuilder.ForceRebuildLayoutImmediate(_moneyTripletRoot.transform as RectTransform);
     }
 
     private bool TryGetOwnedMoney(out int ownedMoney)
@@ -4228,54 +4064,12 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
 
         // 备用：使用面板内已有引用（仍是游戏 UI，但兼容性稍差）。优先 confirmButton 而非 cancelButton。
-        textTemplate ??= statusText != null ? statusText : player1NameText;
-        buttonTemplate ??= confirmButton != null ? confirmButton : cancelButton;
+        textTemplate ??= statusText ?? player1NameText;
+        buttonTemplate ??= confirmButton ?? cancelButton;
 
         buttonTemplate = PreferSingleButtonWidget(buttonTemplate);
 
         return textTemplate != null && buttonTemplate != null;
-    }
-
-    private static void NormalizeButtonWidget(CommonButtonWidget widget)
-    {
-        if (widget == null)
-        {
-            return;
-        }
-
-        // 确保只有主按钮保持可交互。
-        Button keep = widget.button;
-        var buttons = widget.GetComponentsInChildren<Button>(true);
-        if (buttons != null && buttons.Length > 1)
-        {
-            foreach (var b in buttons)
-            {
-                if (b == null || b == keep)
-                {
-                    continue;
-                }
-
-                // 优先硬删除：模板带入的额外按钮不应存在于运行时 widget。
-                Destroy(b.gameObject);
-            }
-        }
-
-        // 禁用 tooltip / 额外 pointer handler。
-        DisableTooltipBehaviours(widget.gameObject);
-
-        // 禁用 gamepad cursor / 额外视觉效果。
-        DisableCursorBehaviours(widget.gameObject);
-
-        // 强制设置 behavior 为 Open（0，通常为非红色）。
-        try
-        {
-            Traverse traverse = HarmonyLib.Traverse.Create(widget);
-            traverse.Field("buttonBehavior").SetValue(0);
-        }
-        catch
-        {
-            // 忽略
-        }
     }
 
     private static CommonButtonWidget TryResolveCommonButtonWidget(Button target)
@@ -4435,7 +4229,29 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         if (_moneyValueText != null)
         {
             _moneyValueText.text = _localMoneyOffer.ToString();
-            ApplyMoneyValueSizingForDigits();
+            // 根据数字位数自动缩放字体
+            string s2 = _moneyValueText.text ?? string.Empty;
+            int digits = 0;
+            for (int i = 0; i < s2.Length; i++)
+            {
+                char ch = s2[i];
+                if (ch >= '0' && ch <= '9')
+                {
+                    digits++;
+                }
+            }
+            float baseSize = _moneyValueBaseFontSize > 0f ? _moneyValueBaseFontSize : _moneyValueText.fontSize;
+            if (digits >= 4)
+            {
+                float scale = Mathf.Clamp(3f / digits, 0.6f, 1f);
+                _moneyValueText.fontSize = baseSize * scale;
+            }
+            else
+            {
+                _moneyValueText.fontSize = baseSize;
+            }
+            if (_moneyTripletRoot != null)
+                LayoutRebuilder.ForceRebuildLayoutImmediate(_moneyTripletRoot.transform as RectTransform);
         }
 
         _exhibitValueText?.text = _localExhibitOfferIds.Count.ToString();
@@ -4596,11 +4412,27 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         if (tradable.Count == 0)
         {
             Plugin.Logger?.LogInfo($"[TradePanel] Exhibit picker empty: panelGameRun={(GameRun != null)}, activeGameRun={(run != null)}, exhibitCount={(run?.Player?.Exhibits?.Count ?? 0)}, selectedCount={_localExhibitOfferIds.Count}, tradeId={_tradeId ?? "<null>"}");
-            ShowPickerEmpty(tag.ScrollRect, tag.EmptyText, "没有可交易的展品。");
+            tag.ScrollRect?.gameObject.SetActive(false);
+            if (tag.EmptyText != null)
+            {
+                tag.EmptyText.gameObject.SetActive(true);
+                tag.EmptyText.text = "没有可交易的展品。";
+                Color c2 = tag.EmptyText.color;
+                c2.a = 1f;
+                tag.EmptyText.color = c2;
+            }
             return;
         }
 
-        HidePickerEmpty(tag.ScrollRect, tag.EmptyText);
+        if (tag.EmptyText != null)
+        {
+            tag.EmptyText.gameObject.SetActive(true);
+            tag.EmptyText.text = string.Empty;
+            Color c3 = tag.EmptyText.color;
+            c3.a = 0f;
+            tag.EmptyText.color = c3;
+        }
+        tag.ScrollRect?.gameObject.SetActive(true);
 
         foreach (var ex in tradable)
         {
@@ -4690,34 +4522,6 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             tmp.text = label;
             tmp.alignment = TextAlignmentOptions.Center;
         }
-    }
-
-    private static void ShowPickerEmpty(ScrollRect scrollRect, TextMeshProUGUI emptyText, string message)
-    {
-        scrollRect?.gameObject.SetActive(false);
-
-        if (emptyText != null)
-        {
-            emptyText.gameObject.SetActive(true);
-            emptyText.text = message ?? string.Empty;
-            Color c = emptyText.color;
-            c.a = 1f;
-            emptyText.color = c;
-        }
-    }
-
-    private static void HidePickerEmpty(ScrollRect scrollRect, TextMeshProUGUI emptyText)
-    {
-        if (emptyText != null)
-        {
-            emptyText.gameObject.SetActive(true);
-            emptyText.text = string.Empty;
-            Color c = emptyText.color;
-            c.a = 0f;
-            emptyText.color = c;
-        }
-
-        scrollRect?.gameObject.SetActive(true);
     }
 
     private readonly struct ApplyingStateScope : IDisposable

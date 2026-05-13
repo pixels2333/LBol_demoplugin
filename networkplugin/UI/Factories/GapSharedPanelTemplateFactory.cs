@@ -48,7 +48,18 @@ internal static class GapSharedPanelTemplateFactory
         }
 
         CommonButtonWidget cancelTemplate = TryPickButtonTemplate(preferConfirm: false) ?? confirmTemplate;
-        TextMeshProUGUI textTemplate = TryPickTextTemplate();
+        TextMeshProUGUI textTemplate;
+        try
+        {
+            GameObject dialogPrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
+            textTemplate = dialogPrefab?.GetComponentInChildren<TextMeshProUGUI>(true)
+                ?? UnityEngine.Object.FindObjectsByType<TextMeshProUGUI>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                    .FirstOrDefault(t => t != null && !IsUnderGeneratedRuntimePanel(t.transform));
+        }
+        catch
+        {
+            textTemplate = null;
+        }
 
         Transform parent = preferredParent ?? UiManager.Instance?.transform;
         if (parent == null)
@@ -329,7 +340,23 @@ internal static class GapSharedPanelTemplateFactory
                     Button button = preferConfirm
                         ? GetDialogField<Button>(dialog, "singleConfirmButton") ?? GetDialogField<Button>(dialog, "confirmButton")
                         : GetDialogField<Button>(dialog, "cancelButton") ?? GetDialogField<Button>(dialog, "confirmButton") ?? GetDialogField<Button>(dialog, "singleConfirmButton");
-                    CommonButtonWidget widget = TryResolveCommonButtonWidget(button);
+                    CommonButtonWidget widget = null;
+                    if (button != null)
+                    {
+                        CommonButtonWidget[] __widgets = button.GetComponentsInParent<CommonButtonWidget>(true);
+                        foreach (CommonButtonWidget w in __widgets)
+                        {
+                            if (ReferenceEquals(w.button, button))
+                            {
+                                widget = w;
+                                break;
+                            }
+                        }
+                        if (widget == null)
+                        {
+                            widget = button.GetComponentInParent<CommonButtonWidget>(true);
+                        }
+                    }
                     if (widget != null)
                     {
                         return widget;
@@ -371,48 +398,6 @@ internal static class GapSharedPanelTemplateFactory
             }
 
             return best;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static CommonButtonWidget TryResolveCommonButtonWidget(Button target)
-    {
-        if (target == null)
-        {
-            return null;
-        }
-
-        CommonButtonWidget[] widgets = target.GetComponentsInParent<CommonButtonWidget>(true);
-        foreach (CommonButtonWidget widget in widgets)
-        {
-            if (ReferenceEquals(widget.button, target))
-            {
-                return widget;
-            }
-        }
-
-        return target.GetComponentInParent<CommonButtonWidget>(true);
-    }
-
-    private static TextMeshProUGUI TryPickTextTemplate()
-    {
-        try
-        {
-            GameObject dialogPrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
-            if (dialogPrefab != null)
-            {
-                TextMeshProUGUI prefabText = dialogPrefab.GetComponentInChildren<TextMeshProUGUI>(true);
-                if (prefabText != null)
-                {
-                    return prefabText;
-                }
-            }
-
-            return UnityEngine.Object.FindObjectsByType<TextMeshProUGUI>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-                .FirstOrDefault(text => text != null && !IsUnderGeneratedRuntimePanel(text.transform));
         }
         catch
         {

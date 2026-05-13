@@ -29,8 +29,27 @@ internal static class TradeDetailDialogRuntimeFactory
                 return null;
             }
 
-            var buttonTemplate = TryPickButtonTemplate();
-            var textTemplate = TryPickTextTemplate();
+            CommonButtonWidget buttonTemplate;
+            {
+                var __candidates = UnityEngine.Object.FindObjectsByType<CommonButtonWidget>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                CommonButtonWidget __best = null;
+                int __bestScore = int.MaxValue;
+                if (__candidates != null)
+                {
+                    foreach (var __c in __candidates)
+                    {
+                        if (__c == null || __c.button == null) continue;
+                        int __buttons = __c.GetComponentsInChildren<Button>(true).Length;
+                        if (__buttons == 0) continue;
+                        int __nodes = __c.GetComponentsInChildren<Transform>(true).Length;
+                        int __score = (__buttons * 1000) + __nodes;
+                        if (__score < __bestScore) { __bestScore = __score; __best = __c; }
+                    }
+                }
+                buttonTemplate = __best;
+            }
+            var textTemplate = UnityEngine.Object.FindObjectsByType<TextMeshProUGUI>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                ?.FirstOrDefault(t => t != null);
             GameObject rowTemplate = null;
             RecordCardCell cardCellTemplate = null;
             ExhibitWidget exhibitTemplate = null;
@@ -249,45 +268,4 @@ internal static class TradeDetailDialogRuntimeFactory
         return null;
     }
 
-    private static CommonButtonWidget TryPickButtonTemplate()
-    {
-        var candidates = UnityEngine.Object.FindObjectsByType<CommonButtonWidget>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        if (candidates == null || candidates.Length == 0)
-        {
-            return null;
-        }
-
-        CommonButtonWidget best = null;
-        int bestScore = int.MaxValue;
-
-        foreach (var c in candidates)
-        {
-            if (c == null || c.button == null)
-            {
-                continue;
-            }
-
-            int buttons = c.GetComponentsInChildren<Button>(true).Length;
-            int nodes = c.GetComponentsInChildren<Transform>(true).Length;
-            if (buttons == 0)
-            {
-                continue;
-            }
-
-            int score = (buttons * 1000) + nodes;
-            if (score < bestScore)
-            {
-                bestScore = score;
-                best = c;
-            }
-        }
-
-        return best;
-    }
-
-    private static TextMeshProUGUI TryPickTextTemplate()
-    {
-        return UnityEngine.Object.FindObjectsByType<TextMeshProUGUI>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-            ?.FirstOrDefault(t => t != null);
-    }
 }

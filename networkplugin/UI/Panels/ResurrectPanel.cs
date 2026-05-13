@@ -249,7 +249,26 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		_canvasGroup.interactable = true;
 
 		// 创建UI条目
-		CreatePlayerEntries();
+		// 清除现有条目
+		if (deadPlayersContainer != null)
+		{
+			foreach (Transform child in deadPlayersContainer)
+			{
+				Destroy(child.gameObject);
+			}
+		}
+		_playerButtons.Clear();
+
+		for (int i = 0; i < _deadPlayers.Count; i++)
+		{
+			var player = _deadPlayers[i];
+			var btn = CreatePlayerRow(player, i);
+			if (btn != null)
+			{
+				_playerButtons.Add(btn);
+				Plugin.Logger?.LogDebug("[ResurrectPanel] 创建可点击文字行: index={i}, playerId={player?.PlayerId}, name={player?.PlayerName}");
+			}
+		}
 
 		// 更新UI字符串
 		UpdateUIStrings();
@@ -350,32 +369,7 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
                 statusText?.text = message;
         }
 
-	/// <summary>
-	/// 创建玩家条目（可点击文字行，仿 TradePanel partner picker）
-	/// </summary>
-	private void CreatePlayerEntries()
-	{
-		// 清除现有条目
-		if (deadPlayersContainer != null)
-		{
-			foreach (Transform child in deadPlayersContainer)
-			{
-				Destroy(child.gameObject);
-			}
-		}
-		_playerButtons.Clear();
 
-		for (int i = 0; i < _deadPlayers.Count; i++)
-		{
-			var player = _deadPlayers[i];
-			var btn = CreatePlayerRow(player, i);
-			if (btn != null)
-			{
-				_playerButtons.Add(btn);
-				Plugin.Logger?.LogDebug($"[ResurrectPanel] 创建可点击文字行: index={i}, playerId={player?.PlayerId}, name={player?.PlayerName}");
-			}
-		}
-	}
 
 	/// <summary>
 	/// 创建单行可点击文字条目（与 TradePanel CreateTextButton 相同风格）
@@ -438,45 +432,41 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 
 		var capturedPlayer = player;
 		btn.onClick.RemoveAllListeners();
-		btn.onClick.AddListener(() => OnPlayerSelected(capturedPlayer, btn));
+		btn.onClick.AddListener(() =>
+		{
+			// 检查是否可以治疗
+			if (!capturedPlayer.CanResurrect)
+			{
+				UpdateUIStatus("该玩家当前不需要治疗");
+				return;
+			}
+
+			if (!string.IsNullOrWhiteSpace(_pendingRequestId))
+			{
+				UpdateUIStatus("正在治疗中，请稍候...");
+				return;
+			}
+
+			// 设置当前选中的玩家
+			_selectedPlayer = capturedPlayer;
+
+			if ((ModService.ServiceProvider?.GetService<ConfigManager>())?.DebugVirtualPlayerAiDefault?.Value == true
+				&& (string.Equals(capturedPlayer.PlayerId, "aidefault", StringComparison.Ordinal)
+					|| string.Equals(capturedPlayer.PlayerId, "aidefault2", StringComparison.Ordinal)))
+			{
+				_pendingRequestId = Guid.NewGuid().ToString("N");
+				OnResurrectResult(_pendingRequestId, true, null);
+				return;
+			}
+
+			// 点击玩家即治疗，无需展开详情与二次确认。
+			OnResurrectPlayer();
+		});
 
 		tmp.gameObject.SetActive(true);
 		return btn;
 	}
 	#endregion
-
-	#region 玩家选择处理
-	/// <summary>
-	/// 玩家选择事件处理（可点击文字行点击时触发）
-	/// </summary>
-	private void OnPlayerSelected(DeadPlayerEntry player, Button btn)
-	{
-		// 检查是否可以治疗
-		if (!player.CanResurrect)
-		{
-			UpdateUIStatus("该玩家当前不需要治疗");
-			return;
-		}
-
-		if (!string.IsNullOrWhiteSpace(_pendingRequestId))
-		{
-			UpdateUIStatus("正在治疗中，请稍候...");
-			return;
-		}
-
-		// 设置当前选中的玩家
-		_selectedPlayer = player;
-
-		if (IsLocalDebugResurrectAllowed() && IsVirtualAiDebugPlayerId(player.PlayerId))
-		{
-			_pendingRequestId = Guid.NewGuid().ToString("N");
-			OnResurrectResult(_pendingRequestId, true, null);
-			return;
-		}
-
-		// 点击玩家即治疗，无需展开详情与二次确认。
-		OnResurrectPlayer();
-	}
 
 	private void SetPlayerButtonsInteractable(bool interactable)
 	{
@@ -493,7 +483,6 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 			btn.interactable = interactable && player != null && player.CanResurrect;
 		}
 	}
-	#endregion
 
 	#region 按钮事件处理
 	/// <summary>
@@ -510,7 +499,31 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 
 		// 先发请求，等待 Host 回包。
 		_pendingRequestId = Guid.NewGuid().ToString("N");
-		SendResurrectionEvent(_selectedPlayer);
+		try
+		{
+			INetworkClient client = ModService.ServiceProvider.GetService<INetworkClient>();
+			if (client != null)
+			{
+				ResurrectSyncPatch.EnsureSubscribed(client);
+				NetworkIdentityTracker.EnsureSubscribed(client);
+				string requesterId = _selfPlayerId ?? NetworkIdentityTracker.GetSelfPlayerId();
+				string targetId = _selectedPlayer.PlayerId;
+				if (!string.IsNullOrWhiteSpace(requesterId) && !string.IsNullOrWhiteSpace(targetId))
+				{
+					client.SendGameEventData(NetworkMessageTypes.OnGapHealRequest, new
+					{
+						RequestId = _pendingRequestId,
+						RequesterPlayerId = requesterId,
+						TargetPlayerId = targetId,
+						Timestamp = DateTime.UtcNow.Ticks,
+					});
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			Debug.LogError($"[ResurrectPanel] 发送治疗事件失败: {ex.Message}");
+		}
 		SetPlayerButtonsInteractable(false);
 
 		// 禁用按钮，等待结果
@@ -550,44 +563,6 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		}
 	}
 	#endregion
-
-	#region 复活执行
-	/// <summary>
-	/// 发送治疗事件到网络。
-	/// </summary>
-	/// <param name="player">被治疗的玩家。</param>
-	private void SendResurrectionEvent(DeadPlayerEntry player)
-	{
-		try
-		{
-			INetworkClient client = ModService.ServiceProvider.GetService<INetworkClient>();
-			if (client == null)
-			{
-				return;
-			}
-
-			ResurrectSyncPatch.EnsureSubscribed(client);
-			NetworkIdentityTracker.EnsureSubscribed(client);
-			string requesterId = _selfPlayerId ?? NetworkIdentityTracker.GetSelfPlayerId();
-			string targetId = player.PlayerId;
-			if (string.IsNullOrWhiteSpace(requesterId) || string.IsNullOrWhiteSpace(targetId))
-			{
-				return;
-			}
-
-			client.SendGameEventData(NetworkMessageTypes.OnGapHealRequest, new
-			{
-				RequestId = _pendingRequestId,
-				RequesterPlayerId = requesterId,
-				TargetPlayerId = targetId,
-				Timestamp = DateTime.UtcNow.Ticks,
-			});
-		}
-		catch (Exception ex)
-		{
-			Debug.LogError($"[ResurrectPanel] 发送治疗事件失败: {ex.Message}");
-		}
-	}
 
 	private void OnResurrectResult(string requestId, bool success, string reason)
 	{
@@ -629,18 +604,6 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		return Math.Max(1, Mathf.CeilToInt(maxHp * 0.2f));
 	}
 
-	private static bool IsLocalDebugResurrectAllowed()
-	{
-		var cfg = ModService.ServiceProvider?.GetService<ConfigManager>();
-		return cfg?.DebugVirtualPlayerAiDefault?.Value == true;
-	}
-
-	private static bool IsVirtualAiDebugPlayerId(string playerId)
-	{
-		return string.Equals(playerId, "aidefault", StringComparison.Ordinal)
-			|| string.Equals(playerId, "aidefault2", StringComparison.Ordinal);
-	}
-
 	private void EnsurePopupTopmost()
 	{
 		try
@@ -652,7 +615,6 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 			// ignored
 		}
 	}
-	#endregion
 
 	#region 辅助方法
 	/// <summary>

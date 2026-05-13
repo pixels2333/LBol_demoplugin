@@ -16,7 +16,7 @@ namespace NetworkPlugin.UI.Factories;
 internal static class TradePanelRuntimeFactory
 {
     private const string RuntimeRootName = "NetworkPlugin_TradePanel";
-    private const string RuntimeUiVersion = "2026-04-26-ui-v21";
+    private const string RuntimeUiVersion = "2026-04-26-ui-v22";
 
     internal static TradePanel GetOrCreate(Transform preferredParent)
     {
@@ -42,10 +42,14 @@ internal static class TradePanelRuntimeFactory
                 TradePanel currentRuntime = null;
                 foreach (var p in existingPanels)
                 {
-                    if (IsCurrentRuntimePanel(p))
+                    if (p != null)
                     {
-                        currentRuntime = p;
-                        break;
+                        var __marker = p.GetComponent<TradePanelRuntimeMarker>();
+                        if (__marker != null && string.Equals(__marker.Version, RuntimeUiVersion, StringComparison.Ordinal))
+                        {
+                            currentRuntime = p;
+                            break;
+                        }
                     }
                 }
 
@@ -192,22 +196,6 @@ internal static class TradePanelRuntimeFactory
         return string.Equals(panel.gameObject.name, RuntimeRootName, StringComparison.Ordinal);
     }
 
-    private static bool IsCurrentRuntimePanel(TradePanel panel)
-    {
-        if (panel == null)
-        {
-            return false;
-        }
-
-        var marker = panel.GetComponent<TradePanelRuntimeMarker>();
-        if (marker == null)
-        {
-            return false;
-        }
-
-        return string.Equals(marker.Version, RuntimeUiVersion, StringComparison.Ordinal);
-    }
-
     private static bool IsUnderRuntimeTradePanel(Transform t)
     {
         Transform cur = t;
@@ -273,26 +261,6 @@ internal static class TradePanelRuntimeFactory
         }
 
         return fi.GetValue(dialog) as T;
-    }
-
-    private static TextMeshProUGUI CloneTextOrCreate(TextMeshProUGUI template, Transform parent, string name)
-    {
-        TextMeshProUGUI text;
-        if (template != null)
-        {
-            text = UnityEngine.Object.Instantiate(template, parent, false);
-            text.name = name;
-        }
-        else
-        {
-            GameObject go = new GameObject(name);
-            go.transform.SetParent(parent, false);
-            text = go.AddComponent<TextMeshProUGUI>();
-        }
-
-        // 确保存在rectTransform。
-        _ = text.rectTransform;
-        return text;
     }
 
     private static void ConfigureAnchors(RectTransform rt, Vector2 min, Vector2 max)
@@ -472,54 +440,6 @@ internal static class TradePanelRuntimeFactory
         }
     }
 
-    private static void DisableExtraButtons(CommonButtonWidget widget)
-    {
-        if (widget == null)
-        {
-            return;
-        }
-
-        Button keep = widget.button;
-        var buttons = widget.GetComponentsInChildren<Button>(true);
-        if (buttons.Length <= 1)
-        {
-            return;
-        }
-
-        foreach (var b in buttons)
-        {
-            if (b == null || b == keep)
-            {
-                continue;
-            }
-
-            b.enabled = false;
-            b.interactable = false;
-        }
-    }
-
-    private static void DisableTooltipBehaviours(GameObject root)
-    {
-        if (root == null)
-        {
-            return;
-        }
-
-        foreach (var behaviour in root.GetComponentsInChildren<Behaviour>(true))
-        {
-            if (behaviour == null)
-            {
-                continue;
-            }
-
-            var name = behaviour.GetType().Name;
-            if (name != null && name.IndexOf("Tooltip", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                behaviour.enabled = false;
-            }
-        }
-    }
-
     private static TradeSlotWidget[] CreateSlotColumn(RectTransform area, TextMeshProUGUI textTemplate, CommonButtonWidget buttonTemplate, int count, string prefix)
     {
         TradeSlotWidget[] slots = new TradeSlotWidget[count];
@@ -529,8 +449,34 @@ internal static class TradePanelRuntimeFactory
             // 然后再挂上TradeSlotWidget（继承自CommonButtonWidget），补上卡牌Tooltip与移除逻辑。
             var slotWidget = UnityEngine.Object.Instantiate(buttonTemplate, area, false);
             slotWidget.name = $"{prefix}_Slot_{i + 1}";
-            DisableExtraButtons(slotWidget);
-            DisableTooltipBehaviours(slotWidget.gameObject);
+            if (slotWidget != null)
+            {
+                Button __keep = slotWidget.button;
+                var __btns = slotWidget.GetComponentsInChildren<Button>(true);
+                if (__btns.Length > 1)
+                {
+                    foreach (var __b in __btns)
+                    {
+                        if (__b != null && __b != __keep)
+                        {
+                            __b.enabled = false;
+                            __b.interactable = false;
+                        }
+                    }
+                }
+            }
+            if (slotWidget != null)
+            {
+                foreach (var __bh in slotWidget.GetComponentsInChildren<Behaviour>(true))
+                {
+                    if (__bh == null) continue;
+                    var __n = __bh.GetType().Name;
+                    if (__n != null && __n.IndexOf("Tooltip", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        __bh.enabled = false;
+                    }
+                }
+            }
 
             // 槽位组件不能继承模板里的子按钮和图标，否则可能堆出一串X标记。
             // 这里只保留主按钮对象。
@@ -629,7 +575,18 @@ internal static class TradePanelRuntimeFactory
             ConfigureAnchors(rawRt, new Vector2(0.02f, 0.12f), new Vector2(0.20f, 0.88f));
 
             // 优先复用模板里的标签；没有的话再克隆或创建一个。
-            var label = CloneTextOrCreate(textTemplate, slotGo.transform, "Name");
+            TextMeshProUGUI label;
+            if (textTemplate != null)
+            {
+                label = UnityEngine.Object.Instantiate(textTemplate, slotGo.transform, false);
+            }
+            else
+            {
+                GameObject __go = new GameObject("Name");
+                __go.transform.SetParent(slotGo.transform, false);
+                label = __go.AddComponent<TextMeshProUGUI>();
+            }
+            _ = label.rectTransform;
             label.name = "Name";
             // 给卡牌图像预留显示空间。
             ConfigureAnchors(label.rectTransform, new Vector2(0.22f, 0f), new Vector2(1f, 1f));

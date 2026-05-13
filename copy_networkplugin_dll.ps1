@@ -112,7 +112,7 @@ if (Test-Path -LiteralPath $destFile -PathType Leaf) {
 if ($sourceFull -ieq $destFull) {
   Write-Host "Source and destination are the same file; nothing to copy:" -ForegroundColor Yellow
   Write-Host "  $sourceFull"
-  exit 0
+  return
 }
 
 Copy-Item -LiteralPath $sourceFull -Destination $destFile -Force

@@ -26,7 +26,13 @@ internal static class ResurrectPanelRuntimeFactory
             ResurrectPanel[] existingPanels = UnityEngine.Object.FindObjectsByType<ResurrectPanel>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             if (existingPanels.Length > 0)
             {
-                ResurrectPanel currentRuntime = existingPanels.FirstOrDefault(IsCurrentRuntimePanel);
+                ResurrectPanel currentRuntime = existingPanels.FirstOrDefault(panel =>
+                {
+                    if (panel == null) return false;
+                    ResurrectPanelRuntimeMarker marker = panel.GetComponent<ResurrectPanelRuntimeMarker>();
+                    if (marker == null) return false;
+                    return string.Equals(marker.Version, RuntimeUiVersion, StringComparison.Ordinal);
+                });
                 if (currentRuntime != null)
                 {
                     return currentRuntime;
@@ -34,9 +40,14 @@ internal static class ResurrectPanelRuntimeFactory
 
                 foreach (ResurrectPanel panel in existingPanels)
                 {
-                    if (panel != null && IsRuntimeCreatedPanel(panel))
+                    if (panel != null)
                     {
-                        UnityEngine.Object.Destroy(panel.gameObject);
+                        bool isRuntimeCreated = panel.GetComponent<ResurrectPanelRuntimeMarker>() != null
+                            || string.Equals(panel.gameObject.name, RuntimeRootName, StringComparison.Ordinal);
+                        if (isRuntimeCreated)
+                        {
+                            UnityEngine.Object.Destroy(panel.gameObject);
+                        }
                     }
                 }
             }
@@ -118,8 +129,35 @@ internal static class ResurrectPanelRuntimeFactory
                 scaffold.StatusText.gameObject.SetActive(false);
             }
 
-            RectTransform panelRect = TryFindCommonAncestorRect(frameMainText?.rectTransform, frameCancel?.GetComponent<RectTransform>())
-                ?? (frameMainText != null ? frameMainText.rectTransform.parent as RectTransform : null)
+            RectTransform panelRect;
+            {
+                RectTransform __a = frameMainText?.rectTransform;
+                RectTransform __b = frameCancel?.GetComponent<RectTransform>();
+                RectTransform __result = null;
+                if (__a != null && __b != null)
+                {
+                    System.Collections.Generic.HashSet<Transform> ancestors = new System.Collections.Generic.HashSet<Transform>();
+                    Transform current = __a;
+                    while (current != null)
+                    {
+                        ancestors.Add(current);
+                        current = current.parent;
+                    }
+                    current = __b;
+                    while (current != null)
+                    {
+                        if (ancestors.Contains(current))
+                        {
+                            __result = current as RectTransform;
+                            break;
+                        }
+                        current = current.parent;
+                    }
+                }
+                panelRect = __result;
+            }
+            panelRect = panelRect
+                ?? frameMainText?.rectTransform.parent as RectTransform
                 ?? frameRect
                 ?? (RectTransform)scaffold.ContentRoot;
 
@@ -364,36 +402,6 @@ internal static class ResurrectPanelRuntimeFactory
         }
     }
 
-    private static bool IsRuntimeCreatedPanel(ResurrectPanel panel)
-    {
-        if (panel == null)
-        {
-            return false;
-        }
-
-        if (panel.GetComponent<ResurrectPanelRuntimeMarker>() != null)
-        {
-            return true;
-        }
-
-        return string.Equals(panel.gameObject.name, RuntimeRootName, StringComparison.Ordinal);
-    }
-
-    private static bool IsCurrentRuntimePanel(ResurrectPanel panel)
-    {
-        if (panel == null)
-        {
-            return false;
-        }
-
-        ResurrectPanelRuntimeMarker marker = panel.GetComponent<ResurrectPanelRuntimeMarker>();
-        if (marker == null)
-        {
-            return false;
-        }
-
-        return string.Equals(marker.Version, RuntimeUiVersion, StringComparison.Ordinal);
-    }
 
     private static bool TryAttachHistoryListWithRecordRow(
         RectTransform dialogPanelRect,
@@ -573,35 +581,6 @@ internal static class ResurrectPanelRuntimeFactory
         destination.offsetMin = source.offsetMin;
         destination.offsetMax = source.offsetMax;
         destination.localScale = source.localScale;
-    }
-
-    private static RectTransform TryFindCommonAncestorRect(RectTransform a, RectTransform b)
-    {
-        if (a == null || b == null)
-        {
-            return null;
-        }
-
-        System.Collections.Generic.HashSet<Transform> ancestors = new System.Collections.Generic.HashSet<Transform>();
-        Transform current = a;
-        while (current != null)
-        {
-            ancestors.Add(current);
-            current = current.parent;
-        }
-
-        current = b;
-        while (current != null)
-        {
-            if (ancestors.Contains(current))
-            {
-                return current as RectTransform;
-            }
-
-            current = current.parent;
-        }
-
-        return null;
     }
 
     private static T GetPrivateFieldValue<T>(object target, string fieldName) where T : class

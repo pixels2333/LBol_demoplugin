@@ -36,13 +36,6 @@ public class RelayServer : BaseGameServer
     /// 结构化日志输出。
     /// </summary>
     private readonly ILogger<RelayServer> _logger;
-
-    /// <summary>
-    /// 预留：后续如需按需解析服务（如房间工厂/鉴权器等）可通过 DI 获取。
-    /// 当前版本仅保存引用，不在本类内直接使用。
-    /// </summary>
-    private readonly IServiceProvider _serviceProvider;
-
     /// <summary>
     /// 配置管理器：提供监听端口、连接密钥、最大连接数等服务端参数。
     /// </summary>
@@ -104,7 +97,6 @@ public class RelayServer : BaseGameServer
         : base(CreateCore(configManager, logger))
     {
         _logger = logger;
-        _serviceProvider = serviceProvider;
         _configManager = configManager;
     }
 
@@ -143,129 +135,6 @@ public class RelayServer : BaseGameServer
         }
 
         _logger.LogInformation("[RelayServer] Server stopped");
-    }
-
-    #endregion
-
-    #region Core 事件注册（兼容旧实现）
-
-    private void RegisterCoreEvents()
-    {
-        // 说明：本方法为“直接订阅 _core 事件”的旧实现入口。
-        // 当前架构下，BaseGameServer 会统一托管连接/断线/消息分发，并回调本类底部的 override 方法。
-        // 之所以保留：便于回溯/对照逻辑；以及必要时可快速切回直接订阅模式排查问题。
-        _core.PeerConnected += peer =>
-        {
-            lock (_lock)
-            {
-                // 新连接进入：为其分配 PlayerId，并初始化会话（含 token，用于断线重连校验）。
-                string playerId = GeneratePlayerId();
-                PlayerSession session = new()
-                {
-                    Peer = peer,
-                    PlayerId = playerId,
-                    PlayerName = $"Player_{playerId[..6]}",
-                    ConnectedAt = DateTime.UtcNow,
-                    LastHeartbeat = DateTime.UtcNow,
-                    LastMessageAt = DateTime.UtcNow,
-                    IsConnected = true,
-                    IsHost = false,
-                    CurrentRoomId = string.Empty
-                };
-
-                // 每个会话生成一个重连 token：客户端后续发 Reconnect_REQUEST 时必须带回该 token。
-                session.Metadata["ReconnectToken"] = GenerateReconnectToken();
-
-                // 建立多索引：Peer -> Session / PlayerId -> Session / PlayerId -> Connection。
-                _sessionsByPeer[peer] = session;
-                _sessionsByPlayerId[playerId] = session;
-                _connectionsByPlayerId[playerId] = new NetworkConnection(peer, playerId);
-
-                // 握手：把 PlayerId + token 下发给客户端，客户端应保存以便重连/身份标识。
-                SendMessageToPeer(peer, new NetworkMessage
-                {
-                    Type = NetworkMessageTypes.Welcome,
-                    Payload = new
-                    {
-                        PlayerId = playerId,
-                        ReconnectToken = TryGetMetadataString(session.Metadata, "ReconnectToken"),
-                        ServerTime = DateTime.UtcNow.Ticks
-                    },
-                    SenderPlayerId = "SERVER"
-                }, DeliveryMethod.ReliableOrdered);
-
-                _logger.LogInformation($"[RelayServer] Client connected: {peer.EndPoint}, PlayerId={playerId}");
-            }
-        };
-
-        _core.PeerDisconnected += (peer, disconnectInfo) =>
-        {
-            lock (_lock)
-            {
-                // peer 断线：如果没有找到会话，说明它并未完成握手或已被清理。
-                if (!_sessionsByPeer.TryGetValue(peer, out var session))
-                {
-                    return;
-                }
-
-                _logger.LogInformation($"[RelayServer] Client disconnected: {peer.EndPoint}, Reason: {disconnectInfo.Reason}, PlayerId={session.PlayerId}");    
-
-                session.IsConnected = false;
-                // 记录断线时间：用于重连窗口判定（超过窗口则拒绝重连并清理状态）。
-                _disconnectedAtByPlayerId[session.PlayerId] = DateTime.UtcNow;
-
-                if (!string.IsNullOrEmpty(session.CurrentRoomId) && _rooms.TryGetValue(session.CurrentRoomId, out var room))
-                {
-                    // 从房间移除该玩家，并广播最新成员列表。
-                    room.RemovePlayer(session.PlayerId);
-                    BroadcastPlayerList(room);
-
-                    if (room.PlayerCount == 0)
-                    {
-                        // 房间空了就销毁：避免房间字典无限增长。
-                        _rooms.Remove(room.RoomId);
-                        _logger.LogInformation($"[RelayServer] Room {room.RoomId} destroyed (empty)");
-                    }
-                }
-
-                // 移除“连接态”索引；会话仍保留在 PlayerId 索引中以支持重连。
-                _connectionsByPlayerId.Remove(session.PlayerId);
-                _sessionsByPeer.Remove(peer);
-            }
-        };
-
-        _core.PeerLatencyUpdated += (peer, latency) =>
-        {
-            lock (_lock)
-            {
-                // 更新 ping：心跳响应会把 ping 回传给客户端，用于 UI 显示/诊断。
-                if (_sessionsByPeer.TryGetValue(peer, out var session))
-                {
-                    session.Ping = latency;
-                }
-            }
-        };
-
-        _core.MessageReceived += inbound =>
-        {
-            try
-            {
-                // 统一把底层 inbound 数据包装为 NetworkMessage，便于复用下方消息路由逻辑。
-                NetworkMessage message = new()
-                {
-                    Type = inbound.Type,
-                    Payload = inbound.JsonPayload,
-                    SenderPlayerId = GetPlayerId(inbound.FromPeer)
-                };
-
-                // 路由分发：根据 message.Type 做系统消息处理/房间转发/游戏事件广播。
-                ProcessMessage(inbound.FromPeer, message, inbound.DeliveryMethod);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"[RelayServer] Error processing message from {inbound.FromPeer?.EndPoint}");
-            }
-        };
     }
 
     #endregion

@@ -162,3 +162,8 @@ remove_tokens.py              # 令牌移除脚本（可能包含敏感信息）
 # 脚本和工具输出
 createproject.ps1            # 项目创建脚本（包含敏感信息）
 simplesolution.sln           # Visual Studio解决方案文件（可能包含用户特定路径）
+.github/hooks/auto-deploy.json
+.github/hooks/auto-deploy.ps1
+.github/hooks/play-completion-audio.json
+.github/hooks/play-completion-audio.ps1
+layout-preview.html
