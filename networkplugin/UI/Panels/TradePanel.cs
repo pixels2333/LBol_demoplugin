@@ -116,6 +116,11 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private int _localMoneyOffer;
     private readonly HashSet<string> _localExhibitOfferIds = new HashSet<string>(StringComparer.Ordinal);
 
+    // 运行时展品预览容器（位于 player1TradeArea / player2TradeArea 内）。
+    private GameObject _localExhibitContainer;
+    private GameObject _remoteExhibitContainer;
+    private ExhibitWidget _exhibitIconTemplate;
+
     // 状态转换时用于记录上一次已知状态（Preparing 阶段验证）。
     private TradeSyncPatch.TradeStatus? _lastTradeStatus;
     private long _lastPreparingHandledTimestamp;
@@ -3946,7 +3951,159 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
 
         if (_exhibitValueText is not null) _exhibitValueText.text = _localExhibitOfferIds.Count.ToString();
+        RebuildExhibitPreviews();
     }
+
+    #region 展品预览栏
+
+    private void EnsureExhibitPreviewContainers()
+    {
+        if (_localExhibitContainer != null) return;
+
+        if (_exhibitIconTemplate == null)
+        {
+            try
+            {
+                var systemBoard = UiManager.GetPanel<SystemBoard>();
+                if (systemBoard != null)
+                {
+                    var templateField = typeof(SystemBoard).GetField("exhibitTemplate",
+                        BindingFlags.Instance | BindingFlags.NonPublic);
+                    if (templateField != null)
+                        _exhibitIconTemplate = templateField.GetValue(systemBoard) as ExhibitWidget;
+                }
+            }
+            catch { }
+        }
+
+        _localExhibitContainer = new GameObject("LocalExhibitPreviews");
+        _localExhibitContainer.transform.SetParent(player1TradeArea, false);
+        var lRt = _localExhibitContainer.AddComponent<RectTransform>();
+        lRt.anchorMin = new Vector2(0f, 0f);
+        lRt.anchorMax = new Vector2(1f, 0f);
+        lRt.pivot = new Vector2(0.5f, 0f);
+        lRt.sizeDelta = new Vector2(0f, 30f);
+        lRt.anchoredPosition = new Vector2(0f, 6f);
+
+        _remoteExhibitContainer = new GameObject("RemoteExhibitPreviews");
+        _remoteExhibitContainer.transform.SetParent(player2TradeArea, false);
+        var rRt = _remoteExhibitContainer.AddComponent<RectTransform>();
+        rRt.anchorMin = new Vector2(0f, 0f);
+        rRt.anchorMax = new Vector2(1f, 0f);
+        rRt.pivot = new Vector2(0.5f, 0f);
+        rRt.sizeDelta = new Vector2(0f, 30f);
+        rRt.anchoredPosition = new Vector2(0f, 6f);
+    }
+
+    private void RebuildExhibitPreviews()
+    {
+        EnsureExhibitPreviewContainers();
+
+        RebuildSideExhibitPreviews(_localExhibitContainer, true);
+        RebuildSideExhibitPreviews(_remoteExhibitContainer, false);
+    }
+
+    private void RebuildSideExhibitPreviews(GameObject container, bool isLocal)
+    {
+        if (container == null) return;
+
+        foreach (Transform child in container.transform)
+            Destroy(child.gameObject);
+
+        GameRunController run = ActiveGameRun;
+        List<Exhibit> exhibits = new List<Exhibit>();
+
+        if (isLocal)
+        {
+            if (run?.Player?.Exhibits != null)
+            {
+                exhibits = run.Player.Exhibits
+                    .Where(e => e != null && _localExhibitOfferIds.Contains(e.Id))
+                    .ToList();
+            }
+        }
+        else
+        {
+            // 远端展品来自 trade state
+            TradeSyncPatch.TradeSessionState state = TradeSyncPatch.GetLastKnown(_tradeId);
+            if (state != null)
+            {
+                bool localIsA = IsPlayerA(state);
+                var remoteExhibitRefs = localIsA ? state.ExhibitsB : state.ExhibitsA;
+                if (remoteExhibitRefs != null && run?.Player?.Exhibits != null)
+                {
+                    var remoteIds = new HashSet<string>(
+                        remoteExhibitRefs.Where(ex => ex != null && !string.IsNullOrWhiteSpace(ex.ExhibitId))
+                                         .Select(ex => ex.ExhibitId),
+                        StringComparer.Ordinal);
+                    exhibits = run.Player.Exhibits
+                        .Where(e => e != null && remoteIds.Contains(e.Id))
+                        .ToList();
+                }
+            }
+        }
+
+        if (exhibits.Count == 0) return;
+
+        float iconSize = 26f;
+        float spacing = 4f;
+        float totalWidth = exhibits.Count * iconSize + (exhibits.Count - 1) * spacing;
+        float startX = -totalWidth * 0.5f + iconSize * 0.5f;
+
+        for (int i = 0; i < exhibits.Count; i++)
+        {
+            Exhibit exhibit = exhibits[i];
+            ExhibitWidget widget = null;
+
+            if (_exhibitIconTemplate != null)
+            {
+                widget = Instantiate(_exhibitIconTemplate, container.transform, false);
+                widget.Exhibit = exhibit;
+                widget.ShowBattleStatus = false;
+                widget.ShowCounter = false;
+            }
+            else
+            {
+                var iconGo = new GameObject($"ExIcon_{exhibit.Id}");
+                iconGo.transform.SetParent(container.transform, false);
+                var img = iconGo.AddComponent<Image>();
+                img.preserveAspect = true;
+                img.raycastTarget = true;
+                Sprite sprite = null;
+                try { sprite = ResourcesHelper.TryGetSprite<Exhibit>(exhibit.Id); }
+                catch { }
+                if (sprite != null) img.sprite = sprite;
+
+                var commonBtn = iconGo.AddComponent<CommonButtonWidget>();
+                var btnField = typeof(CommonButtonWidget).GetField("button", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                if (btnField != null)
+                {
+                    var btn = iconGo.AddComponent<Button>();
+                    btn.targetGraphic = img;
+                    btnField.SetValue(commonBtn, btn);
+                }
+
+                widget = iconGo.AddComponent<ExhibitWidget>();
+                var widgetExhibitField = typeof(ExhibitWidget).GetField("image", BindingFlags.Instance | BindingFlags.NonPublic);
+                if (widgetExhibitField != null)
+                    widgetExhibitField.SetValue(widget, img);
+                widget.Exhibit = exhibit;
+            }
+
+            var rt = widget.transform as RectTransform;
+            if (rt != null)
+            {
+                rt.anchorMin = new Vector2(0.5f, 0.5f);
+                rt.anchorMax = new Vector2(0.5f, 0.5f);
+                rt.pivot = new Vector2(0.5f, 0.5f);
+                rt.sizeDelta = new Vector2(iconSize, iconSize);
+                rt.anchoredPosition = new Vector2(startX + i * (iconSize + spacing), 0f);
+                rt.localScale = Vector3.one;
+            }
+        }
+    }
+
+    #endregion
 
     private void SetRect(RectTransform rt, float minX, float minY, float maxX, float maxY)
     {

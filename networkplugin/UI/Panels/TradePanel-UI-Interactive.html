@@ -287,103 +287,65 @@
 
       <!-- ========== 玩家 1（本地玩家 / Player A） ========== -->
       <div class="area-title" style="top:60px;left:30px;">◂ 玩家 1 · 本地侧</div>
-      <div class="ui-element" style="top:78px;left:24px;width:44%;height:84px;background:rgba(31,111,235,0.06);border:1px solid rgba(31,111,235,0.25);border-radius:10px;padding:6px;">
+      <div class="ui-element" style="top:78px;left:24px;width:44%;height:115px;background:rgba(31,111,235,0.06);border:1px solid rgba(31,111,235,0.25);border-radius:10px;padding:6px;">
         <div class="label" style="position:absolute;top:-6px;left:10px;background:#161b22;font-size:0.6rem;color:#58a6ff;padding:0 6px;border-radius:3px;">player1TradeArea</div>
+        
+        <!-- 卡牌槽位 -->
         <div style="display:flex;gap:4px;margin-top:16px;justify-content:center;">
           <div class="card-slot filled" style="width:52px;height:36px;">卡 1</div>
           <div class="card-slot filled" style="width:52px;height:36px;">卡 2</div>
           <div class="card-slot" style="width:52px;height:36px;">+</div>
         </div>
+
+        <!-- 本地展品预览 -->
+        <div style="margin-top:12px;padding:0 8px;display:flex;align-items:center;gap:6px;justify-content:center;">
+          <div id="exhibitBar" style="display:flex;gap:4px;align-items:center;">
+            <div class="ex-bar-icon" style="position:relative;width:24px;height:24px;cursor:pointer;" onmouseenter="this.querySelector('.ex-bar-tip').style.display='block'" onmouseleave="this.querySelector('.ex-bar-tip').style.display='none'">
+              <div style="width:24px;height:24px;background:linear-gradient(135deg,#1a2332,#0d1520);border:1px solid #58a6ff;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;">🪙</div>
+              <div class="ex-bar-tip" style="display:none;position:absolute;bottom:calc(100% + 4px);left:0;background:#1c2333;border:1px solid #30363d;border-radius:5px;padding:5px 8px;width:140px;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.6);pointer-events:none;">
+                <div style="font-size:0.55rem;color:#e6edf3;font-weight:600;margin-bottom:1px;">幸运金币</div>
+                <div style="font-size:0.5rem;color:#c9d1d9;">战斗开始时，获得 [E]。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="tooltip" style="bottom:100%;">
-          <h4>player1Slots (TradeSlotWidget[3])</h4>
-          <p>本地玩家（自己）的 3 个交易卡槽。点击卡牌可移除。卡牌上限 <code>DefaultMaxTradeSlots = 3</code>。</p>
-          <p class="code-ref">[TradePanel.cs#L496-L533](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Panels/TradePanel.cs#L496-L533)</p>
+          <h4>player1Slots & _localExhibits</h4>
+          <p>本地交易容器。包含卡牌槽位和展品横向列表。通过 <code>UpdateLocalExhibits()</code> 动态刷新。</p>
         </div>
       </div>
       <div class="ui-element" style="top:78px;left:24px;width:44%;height:20px;">
-        <div class="label" style="position:absolute;top:90px;left:10px;font-size:0.6rem;color:#8b949e;">name: <span id="p1name" style="color:#e6edf3;">玩家 1</span></div>
-        <div class="tooltip">
-          <h4>player1NameText (TextMeshProUGUI)</h4>
-          <p>显示本地玩家名称。通过 <code>ResolveLocalPlayerDisplayName()</code> 解析。</p>
-        </div>
+        <div class="label" style="position:absolute;top:120px;left:10px;font-size:0.6rem;color:#8b949e;">name: <span id="p1name" style="color:#e6edf3;">玩家 1</span></div>
       </div>
 
       <!-- ========== 玩家 2（远端 / Player B） ========== -->
       <div class="area-title" style="top:60px;right:30px;">玩家 2 · 远端侧 ▸</div>
-      <div class="ui-element" style="top:78px;right:24px;width:44%;height:84px;background:rgba(218,54,51,0.06);border:1px solid rgba(218,54,51,0.25);border-radius:10px;padding:6px;">
+      <div class="ui-element" style="top:78px;right:24px;width:44%;height:115px;background:rgba(218,54,51,0.06);border:1px solid rgba(218,54,51,0.25);border-radius:10px;padding:6px;">
         <div class="label" style="position:absolute;top:-6px;left:10px;background:#161b22;font-size:0.6rem;color:#ff7b72;padding:0 6px;border-radius:3px;">player2TradeArea</div>
+        
+        <!-- 卡牌槽位 -->
         <div style="display:flex;gap:4px;margin-top:16px;justify-content:center;">
           <div class="card-slot filled" style="width:52px;height:36px;">卡 A</div>
           <div class="card-slot" style="width:52px;height:36px;">+</div>
           <div class="card-slot" style="width:52px;height:36px;">+</div>
         </div>
+
+        <!-- 远端展品预览 -->
+        <div style="margin-top:12px;padding:0 8px;display:flex;align-items:center;gap:6px;justify-content:center;">
+          <div id="remoteExhibits" style="display:flex;gap:4px;align-items:center;">
+             <div style="width:24px;height:24px;background:#1a202c;border:1px solid #30363d;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;color:rgba(255,255,255,0.2);">?</div>
+          </div>
+        </div>
+
         <div class="overlay-badge">LOCKED</div>
         <div class="tooltip" style="bottom:100%;">
-          <h4>player2Slots (TradeSlotWidget[3]) — 远端锁定</h4>
-          <p>联机模式下远端（对方）报价展示区，所有槽位 <code>SetLocked(true)</code> 防误删。本地调试模式下可编辑。</p>
-          <p class="code-ref">[TradePanel.cs#L529-L532](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Panels/TradePanel.cs#L529-L532)</p>
+          <h4>player2Slots & _remoteExhibits</h4>
+          <p>远端交易容器。展示对方报价的卡牌和展品。</p>
         </div>
       </div>
       <div class="ui-element" style="top:78px;right:24px;width:44%;height:20px;">
-        <div class="label" style="position:absolute;top:90px;right:10px;font-size:0.6rem;color:#8b949e;text-align:right;">name: <span id="p2name" style="color:#e6edf3;">寻求交易...</span></div>
-        <div class="tooltip">
-          <h4>player2NameText (TextMeshProUGUI)</h4>
-          <p>显示交易伙伴名称。通过 <code>OtherPlayersOverlayPatch.ResolveDisplayName()</code> 解析。</p>
-        </div>
-      </div>
-
-      <!-- ========== PartnerPicker 选择交易对象 ========== -->
-      <div class="ui-element" style="top:72px;left:15%;width:70%;height:128px;background:rgba(240,136,62,0.08);border:1px solid rgba(240,136,62,0.35);border-radius:10px;z-index:5;">
-        <div class="frame-label" style="color:#f0883e;">_partnerPickerRoot · 选择交易对象 (overlay)</div>
-        <div style="position:absolute;top:12px;left:10%;right:10%;text-align:center;font-size:0.62rem;color:#e6edf3;">请选择交易对象</div>
-        <div style="position:absolute;top:32px;left:8%;right:8%;display:flex;flex-direction:column;gap:5px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 10px;background:rgba(255,255,255,0.04);border-radius:4px;font-size:0.58rem;cursor:pointer;" onmouseenter="this.style.background='rgba(255,255,255,0.1)';this.style.transform='scale(1.03)';this.style.transition='0.1s'" onmouseleave="this.style.background='rgba(255,255,255,0.04)';this.style.transform='scale(1)'" onmousedown="this.style.transform='scale(1.07)'" onmouseup="this.style.transform='scale(1.03)';alert('已选择玩家A')">
-            <span>🧑 玩家 A · Shop · (3,5) 同节点</span>
-            <span style="color:#8b949e;">+</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 10px;background:rgba(255,255,255,0.04);border-radius:4px;font-size:0.58rem;cursor:pointer;" onmouseenter="this.style.background='rgba(255,255,255,0.1)';this.style.transform='scale(1.03)';this.style.transition='0.1s'" onmouseleave="this.style.background='rgba(255,255,255,0.04)';this.style.transform='scale(1)'" onmousedown="this.style.transform='scale(1.07)'" onmouseup="this.style.transform='scale(1.03)';alert('已选择玩家B')">
-            <span>🧑 玩家 B · Shop · (3,5) 同节点 [Host]</span>
-            <span style="color:#8b949e;">+</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 10px;background:rgba(255,255,255,0.04);border-radius:4px;font-size:0.58rem;cursor:pointer;" onmouseenter="this.style.background='rgba(255,255,255,0.1)';this.style.transform='scale(1.03)';this.style.transition='0.1s'" onmouseleave="this.style.background='rgba(255,255,255,0.04)';this.style.transform='scale(1)'" onmousedown="this.style.transform='scale(1.07)'" onmouseup="this.style.transform='scale(1.03)';alert('已选择 AI Default')">
-            <span>🤖 AI Default · Trade · (3,5) 同节点</span>
-            <span style="color:#8b949e;">+</span>
-          </div>
-        </div>
-        <div style="position:absolute;bottom:5px;left:10%;right:10%;display:flex;justify-content:space-between;font-size:0.55rem;">
-          <span style="color:#f0883e;cursor:pointer;">🔄 刷新</span>
-          <span style="color:#ff7b72;cursor:pointer;">✕ 取消</span>
-        </div>
-        <div class="tooltip" style="bottom:100%;">
-          <h4>TradePartnerPicker</h4>
-          <p>选择交易对象。复用 MessageDialog prefab 构建 ScrollRect 列表。<br>
-          过滤同节点 + <code>IsShopLikeLocation()</code>。<br>
-          <code>CreateTextButton</code> 构建玩家条目，含 TextButtonHover 缩放效果。</p>
-          <p class="code-ref">[TradePanel.cs#L1114-L1400](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Panels/TradePanel.cs#L1114-L1400)</p>
-        </div>
-      </div>
-
-      <!-- ========== 报价预览区（预览双方卡牌缩略） ========== -->
-      <div class="ui-element" style="top:210px;left:24px;right:24px;height:120px;background:rgba(210,153,34,0.05);border:1px solid rgba(210,153,34,0.2);border-radius:10px;">
-        <div class="frame-label" style="color:#d29922;">_offerPreviewRoot · 双方报价预览</div>
-        <div style="position:absolute;top:14px;left:2%;width:46%;height:calc(100% - 24px);background:rgba(31,111,235,0.04);border:1px dashed rgba(31,111,235,0.15);border-radius:6px;">
-          <div class="label" style="font-size:0.6rem;color:#58a6ff;text-align:center;margin-top:4px;">LocalOfferPreview（本地报价）</div>
-          <div style="display:flex;gap:2px;justify-content:center;margin-top:6px;">
-            <div style="background:#1a202c;border:1px solid #30363d;border-radius:4px;width:38px;height:20px;font-size:0.5rem;text-align:center;color:#7ee787;"></div>
-            <div style="background:#1a202c;border:1px solid #30363d;border-radius:4px;width:38px;height:20px;font-size:0.5rem;text-align:center;color:#7ee787;"></div>
-          </div>
-        </div>
-        <div style="position:absolute;top:14px;right:2%;width:46%;height:calc(100% - 24px);background:rgba(218,54,51,0.04);border:1px dashed rgba(218,54,51,0.15);border-radius:6px;">
-          <div class="label" style="font-size:0.6rem;color:#ff7b72;text-align:center;margin-top:4px;">RemoteOfferPreview（远端报价）</div>
-          <div style="display:flex;gap:2px;justify-content:center;margin-top:6px;">
-            <div style="background:#1a202c;border:1px solid #30363d;border-radius:4px;width:38px;height:20px;font-size:0.5rem;text-align:center;color:#ff7b72;"></div>
-          </div>
-        </div>
-        <div class="tooltip" style="bottom:100%;">
-          <h4>OfferPreviewOverlay</h4>
-          <p>在状态文字下方展示双方已选卡牌的小尺寸缩略预览。<code>RefreshOfferPreview()</code> 驱动。</p>
-          <p class="code-ref">[TradePanel.cs#L2048-L2060](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Panels/TradePanel.cs#L2048-L2060)</p>
-        </div>
+        <div class="label" style="position:absolute;top:120px;right:10px;font-size:0.6rem;color:#8b949e;text-align:right;">name: <span id="p2name" style="color:#e6edf3;">寻求交易...</span></div>
       </div>
 
       <!-- ========== 报价编辑器（左下） ========== -->
@@ -413,13 +375,11 @@
           <p class="code-ref">[TradePanel.cs#L3285-L3480](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Panels/TradePanel.cs#L3285-L3480)</p>
         </div>
       </div>
-
-      <!-- ========== 报价操作按钮（右下） ========== -->
       <div class="ui-element" style="bottom:100px;right:24px;width:22%;height:130px;background:rgba(63,185,80,0.05);border:1px solid rgba(63,185,80,0.2);border-radius:10px;">
         <div class="frame-label" style="color:#3fb950;">_offerActionsRoot · 操作区</div>
         <div style="padding:16px 8px 4px;display:flex;flex-direction:column;gap:10px;height:100%;justify-content:center;">
-          <div class="btn-region btn-primary" style="padding:8px 0;">📋 选择卡牌</div>
-          <div class="btn-region btn-secondary" style="padding:8px 0;">💎 选择展品</div>
+          <div class="btn-region btn-primary" style="padding:8px 0;cursor:pointer;transition:transform 0.12s ease;" onmouseenter="this.style.transform='scale(1.08)'" onmouseleave="this.style.transform='scale(1)'" onmousedown="this.style.transform='scale(1.12)'" onmouseup="this.style.transform='scale(1.08)';setTimeout(()=>{if (1) {const c=document.getElementById('cardCount');const v=parseInt(c.textContent)+1;if(v<=3)c.textContent=v;}},50)">📋 选择卡牌</div>
+          <div class="btn-region btn-secondary" style="padding:8px 0;cursor:pointer;transition:transform 0.12s ease;" onmouseenter="this.style.transform='scale(1.08)'" onmouseleave="this.style.transform='scale(1)'" onmousedown="this.style.transform='scale(1.12)'" onmouseup="this.style.transform='scale(1.08)'">💎 选择展品</div>
         </div>
         <div class="tooltip" style="bottom:100%;">
           <h4>OfferActionsOverlay</h4>
@@ -449,6 +409,110 @@
     </div>
   </div>
 
+  <!-- ========== PartnerPicker 选择交易对象 ========== -->
+  <div class="panel-wrapper">
+    <h3 style="font-size:0.95rem;color:#f0883e;margin-bottom:14px;">👤 TradePartnerPicker — 选择交易对象 (overlay)</h3>
+    <p style="font-size:0.78rem;color:#8b949e;margin-bottom:12px;">交易对象不明时弹出，复用 MessageDialog prefab 运行时构建。</p>
+    <div style="background:rgba(13,17,23,0.6);border:1px dashed #21262d;border-radius:12px;padding:20px;position:relative;min-height:220px;">
+      <div style="text-align:center;font-size:0.8rem;color:#e6edf3;margin-bottom:10px;">请选择交易对象</div>
+      <div style="display:flex;flex-direction:column;gap:6px;max-width:400px;margin:0 auto;">
+        <div class="player-row" style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:rgba(255,255,255,0.04);border:1px solid #30363d;border-radius:6px;font-size:0.75rem;cursor:pointer;transition:transform 0.12s ease, background 0.12s, border-color 0.12s;" onmouseenter="this.style.background='rgba(255,255,255,0.1)';this.style.borderColor='#58a6ff';this.style.transform='scale(1.08)'" onmouseleave="this.style.background='rgba(255,255,255,0.04)';this.style.borderColor='#30363d';this.style.transform='scale(1)'" onmousedown="this.style.transform='scale(1.12)'" onmouseup="this.style.transform='scale(1.08)';this.style.background='rgba(255,255,255,0.1)';alert('已选择 玩家 A')">
+          <span>🧑 玩家 A</span>
+          <span style="color:#8b949e;font-size:0.65rem;">Shop · Act 1, (3,5) · 同节点</span>
+        </div>
+        <div class="player-row" style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:rgba(255,255,255,0.04);border:1px solid #30363d;border-radius:6px;font-size:0.75rem;cursor:pointer;transition:transform 0.12s ease, background 0.12s, border-color 0.12s;" onmouseenter="this.style.background='rgba(255,255,255,0.1)';this.style.borderColor='#58a6ff';this.style.transform='scale(1.08)'" onmouseleave="this.style.background='rgba(255,255,255,0.04)';this.style.borderColor='#30363d';this.style.transform='scale(1)'" onmousedown="this.style.transform='scale(1.12)'" onmouseup="this.style.transform='scale(1.08)';this.style.background='rgba(255,255,255,0.1)';alert('已选择 玩家 B')">
+          <span>🧑 玩家 B</span>
+          <span style="color:#8b949e;font-size:0.65rem;">Shop · Act 1, (3,5) · 同节点 [Host]</span>
+        </div>
+        <div class="player-row" style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:rgba(255,255,255,0.04);border:1px solid #30363d;border-radius:6px;font-size:0.75rem;cursor:pointer;transition:transform 0.12s ease, background 0.12s, border-color 0.12s;" onmouseenter="this.style.background='rgba(255,255,255,0.1)';this.style.borderColor='#58a6ff';this.style.transform='scale(1.08)'" onmouseleave="this.style.background='rgba(255,255,255,0.04)';this.style.borderColor='#30363d';this.style.transform='scale(1)'" onmousedown="this.style.transform='scale(1.12)'" onmouseup="this.style.transform='scale(1.08)';this.style.background='rgba(255,255,255,0.1)';alert('已选择 AI Default')">
+          <span>🤖 AI Default</span>
+          <span style="color:#8b949e;font-size:0.65rem;">Trade · Act 1, (3,5) · 同节点 (本地调试)</span>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:center;gap:24px;margin-top:14px;">
+        <span style="color:#f0883e;cursor:pointer;font-size:0.7rem;padding:4px 16px;border:1px solid rgba(240,136,62,0.3);border-radius:6px;">🔄 刷新</span>
+        <span style="color:#ff7b72;cursor:pointer;font-size:0.7rem;padding:4px 16px;border:1px solid rgba(218,54,51,0.3);border-radius:6px;">✕ 取消</span>
+      </div>
+      <div style="margin-top:10px;font-size:0.6rem;color:#484f58;text-align:center;">
+        ScrollRect 列表 · 过滤同节点 + IsShopLikeLocation() · 通过 CreateTextButton 构建
+      </div>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+      <span class="tag">EnsurePartnerPickerOverlay()</span>
+      <span class="tag">RebuildPartnerPickerList()</span>
+      <span class="tag">OnPartnerSelected()</span>
+      <span class="tag">IsShopLikeLocation()</span>
+    </div>
+  </div>
+
+  <!-- ========== ExhibitPicker 选择展品 ========== -->
+  <div class="panel-wrapper">
+    <h3 style="font-size:0.95rem;color:#3fb950;margin-bottom:14px;">💎 TradeExhibitPicker — 选择要交易的展品 (overlay)</h3>
+    <p style="font-size:0.78rem;color:#8b949e;margin-bottom:12px;">通过 <code>RuntimeSelectionPanelFactory</code> 创建模态对话框，展品选择器内展品图标横向排列，类似游戏战斗场景顶部栏的展品栏。</p>
+    <div style="background:rgba(13,17,23,0.6);border:1px dashed #21262d;border-radius:12px;padding:24px 20px;min-height:200px;">
+      <div style="text-align:center;font-size:0.8rem;color:#e6edf3;margin-bottom:18px;">选择要交易的展品（点击切换选中）</div>
+      <div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;">
+        <!-- 展品图标 1：已选中 -->
+        <div class="ex-icon" data-selected="true" style="position:relative;width:56px;height:56px;cursor:pointer;" onmouseenter="this.querySelector('.ex-tooltip').style.display='block'" onmouseleave="this.querySelector('.ex-tooltip').style.display='none'" onclick="this.dataset.selected=this.dataset.selected==='true'?'false':'true';this.querySelector('.ex-check').style.display=this.dataset.selected==='true'?'flex':'none';this.style.borderColor=this.dataset.selected==='true'?'#58a6ff':'#30363d'">
+          <div style="width:56px;height:56px;background:linear-gradient(135deg,#1a2332,#0d1520);border:2px solid #58a6ff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;transition:border-color 0.15s;">
+            🪙
+          </div>
+          <!-- 选中勾 -->
+          <div class="ex-check" style="position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:#3fb950;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.55rem;color:#fff;border:2px solid #0d1117;">✓</div>
+          <!-- 悬停 tooltip -->
+          <div class="ex-tooltip" style="display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1c2333;border:1px solid #30363d;border-radius:8px;padding:10px 14px;width:200px;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,0.6);pointer-events:none;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <div style="width:28px;height:28px;background:linear-gradient(135deg,#1a2332,#0d1520);border:1px solid #30363d;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:0.9rem;">🪙</div>
+              <div><div style="font-size:0.72rem;color:#e6edf3;font-weight:600;">幸运金币</div><div style="font-size:0.55rem;color:#8b949e;">稀有</div></div>
+            </div>
+            <div style="font-size:0.62rem;color:#c9d1d9;line-height:1.5;">战斗开始时，获得 [E]。</div>
+          </div>
+        </div>
+        <!-- 展品图标 2 -->
+        <div class="ex-icon" data-selected="false" style="position:relative;width:56px;height:56px;cursor:pointer;" onmouseenter="this.querySelector('.ex-tooltip').style.display='block'" onmouseleave="this.querySelector('.ex-tooltip').style.display='none'" onclick="this.dataset.selected=this.dataset.selected==='true'?'false':'true';this.querySelector('.ex-check').style.display=this.dataset.selected==='true'?'flex':'none';this.style.borderColor=this.dataset.selected==='true'?'#58a6ff':'#30363d'">
+          <div style="width:56px;height:56px;background:linear-gradient(135deg,#1a2332,#0d1520);border:2px solid #30363d;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;transition:border-color 0.15s;">
+            🛡️
+          </div>
+          <div class="ex-check" style="display:none;position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:#3fb950;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.55rem;color:#fff;border:2px solid #0d1117;">✓</div>
+          <div class="ex-tooltip" style="display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1c2333;border:1px solid #30363d;border-radius:8px;padding:10px 14px;width:200px;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,0.6);pointer-events:none;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <div style="width:28px;height:28px;background:linear-gradient(135deg,#1a2332,#0d1520);border:1px solid #30363d;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:0.9rem;">🛡️</div>
+              <div><div style="font-size:0.72rem;color:#e6edf3;font-weight:600;">铁甲</div><div style="font-size:0.55rem;color:#8b949e;">普通</div></div>
+            </div>
+            <div style="font-size:0.62rem;color:#c9d1d9;line-height:1.5;">获得 2 点护甲。</div>
+          </div>
+        </div>
+        <!-- 展品图标 3 -->
+        <div class="ex-icon" data-selected="false" style="position:relative;width:56px;height:56px;cursor:pointer;" onmouseenter="this.querySelector('.ex-tooltip').style.display='block'" onmouseleave="this.querySelector('.ex-tooltip').style.display='none'" onclick="this.dataset.selected=this.dataset.selected==='true'?'false':'true';this.querySelector('.ex-check').style.display=this.dataset.selected==='true'?'flex':'none';this.style.borderColor=this.dataset.selected==='true'?'#58a6ff':'#30363d'">
+          <div style="width:56px;height:56px;background:linear-gradient(135deg,#1a2332,#0d1520);border:2px solid #30363d;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;transition:border-color 0.15s;">
+            🔮
+          </div>
+          <div class="ex-check" style="display:none;position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:#3fb950;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.55rem;color:#fff;border:2px solid #0d1117;">✓</div>
+          <div class="ex-tooltip" style="display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1c2333;border:1px solid #30363d;border-radius:8px;padding:10px 14px;width:200px;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,0.6);pointer-events:none;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <div style="width:28px;height:28px;background:linear-gradient(135deg,#1a2332,#0d1520);border:1px solid #30363d;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:0.9rem;">🔮</div>
+              <div><div style="font-size:0.72rem;color:#e6edf3;font-weight:600;">水晶球</div><div style="font-size:0.55rem;color:#8b949e;">普通</div></div>
+            </div>
+            <div style="font-size:0.62rem;color:#c9d1d9;line-height:1.5;">回合开始时，抽 1 张牌。</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:center;gap:24px;margin-top:24px;">
+        <span style="color:#3fb950;cursor:pointer;font-size:0.7rem;padding:4px 16px;border:1px solid rgba(63,185,80,0.3);border-radius:6px;">✅ 确定</span>
+        <span style="color:#ff7b72;cursor:pointer;font-size:0.7rem;padding:4px 16px;border:1px solid rgba(218,54,51,0.3);border-radius:6px;">✕ 取消</span>
+      </div>
+      <div style="margin-top:14px;font-size:0.6rem;color:#484f58;text-align:center;">
+        横向排列 · 每个图标 56x56 · 选中时蓝框 + 右上绿色 ✓ · 悬停弹出 tooltip（图标 + 名称 + 稀有度 + 描述）
+      </div>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+      <span class="tag">EnsureExhibitPickerOverlay()</span>
+      <span class="tag">ShowExhibitPickerOverlay()</span>
+      <span class="tag">RebuildExhibitPickerList()</span>
+      <span class="tag">TradeExhibitRules.IsTradable()</span>
+    </div>
+  </div>
+
   <!-- ========== 覆盖层 (Overlays) 说明 ========== -->
   <div class="overlay-group">
     <h3>🧩 运行时覆盖层 (Runtime Overlays)</h3>
@@ -456,26 +520,9 @@
     <div class="overlay-list">
 
       <div class="overlay-tag" style="flex-basis:100%;">
-        <strong>1. PartnerPickerOverlay — 选择交易对象</strong>
-        <p style="font-size:0.72rem;margin-top:4px;color:#c9d1d9;">交易对象不明时弹出。复用 MessageDialog prefab，运行时构建 ScrollRect 列表。<br>
-        列表过滤：同 Stage + 同坐标 + <code>IsShopLikeLocation()</code>（匹配 Shop/Trade/Gap 等）。<br>
-        支持本地调试虚拟玩家 AI Default / AI Default 2。<br>
-        构建失败时回退到 <code>ShowTradeTargetUnavailableDialog</code> 错误弹窗。<br>
-        <span class="tag">EnsurePartnerPickerOverlay()</span> <span class="tag">RebuildPartnerPickerList()</span> <span class="tag">OnPartnerSelected()</span></p>
-        <div style="margin-top:10px;padding:10px;background:#0d1117;border-radius:8px;border:1px solid #21262d;">
-          <div style="font-size:0.68rem;color:#8b949e;margin-bottom:6px;">🎯 可点击玩家列表（通过 <code>CreateTextButton</code> 构建，悬停放大 1.08，按下放大 1.12）</div>
-          <div style="display:flex;flex-direction:column;gap:4px;">
-            <div class="player-row" style="padding:5px 10px;cursor:pointer;border-radius:4px;background:#1a202c;border:1px solid #30363d;font-size:0.72rem;color:#c9d1d9;transition:transform 0.12s;" onmouseenter="this.style.transform='scale(1.08)';this.style.background='#21262d';this.style.borderColor='#58a6ff'" onmouseleave="this.style.transform='scale(1)';this.style.background='#1a202c';this.style.borderColor='#30363d'" onmousedown="this.style.transform='scale(1.12)'" onmouseup="this.style.transform='scale(1.08)';alert('已选择交易对象（互动示意）')">
-              🧑 玩家A  Shop - Act 1, (3,5) - 同节点
-            </div>
-            <div class="player-row" style="padding:5px 10px;cursor:pointer;border-radius:4px;background:#1a202c;border:1px solid #30363d;font-size:0.72rem;color:#c9d1d9;transition:transform 0.12s;" onmouseenter="this.style.transform='scale(1.08)';this.style.background='#21262d';this.style.borderColor='#58a6ff'" onmouseleave="this.style.transform='scale(1)';this.style.background='#1a202c';this.style.borderColor='#30363d'" onmousedown="this.style.transform='scale(1.12)'" onmouseup="this.style.transform='scale(1.08)';alert('已选择交易对象（互动示意）')">
-              🧑 玩家B  Shop - Act 1, (3,5) - 同节点 [Host]
-            </div>
-            <div class="player-row" style="padding:5px 10px;cursor:pointer;border-radius:4px;background:#1a202c;border:1px solid #30363d;font-size:0.72rem;color:#777;transition:transform 0.12s;" onmouseenter="this.style.transform='scale(1.08)';this.style.background='#21262d';this.style.borderColor='#58a6ff'" onmouseleave="this.style.transform='scale(1)';this.style.background='#1a202c';this.style.borderColor='#30363d'" onmousedown="this.style.transform='scale(1.12)'" onmouseup="this.style.transform='scale(1.08)';alert('已选择交易对象（互动示意）')">
-              🤖 AI Default  Trade - Act 1, (3,5) - 同节点 (本地调试)
-            </div>
-          </div>
-        </div>
+        <strong>1. PartnerPickerOverlay</strong>
+        <p style="font-size:0.72rem;margin-top:4px;color:#c9d1d9;">见上方独立卡片 👆 可交互玩家列表。<br>
+        <span class="tag">EnsurePartnerPickerOverlay()</span> <span class="tag">RebuildPartnerPickerList()</span></p>
       </div>
 
       <div class="overlay-tag">
@@ -486,7 +533,7 @@
 
       <div class="overlay-tag">
         <strong>3. ExhibitPickerOverlay</strong>
-        <p style="font-size:0.72rem;margin-top:4px;color:#c9d1d9;">选择要交易的展品。通过 <code>RuntimeSelectionPanelFactory</code> 创建模态对话框，展示所有可交易展品列表。<br>
+        <p style="font-size:0.72rem;margin-top:4px;color:#c9d1d9;">见上方独立卡片 👆 可交互展品列表。<br>
         <span class="tag">EnsureExhibitPickerOverlay()</span> <span class="tag">ShowExhibitPickerOverlay()</span></p>
       </div>
 
@@ -613,17 +660,43 @@
 <!-- 简单交互模拟 -->
 <script>
   // 模拟点击加减改变数值
+  const exhibitIcons = ['🪙', '🛡️', '🔮'];
+  const exhibitData = [
+    { name: '幸运金币', desc: '战斗开始时，获得 [E]。' },
+    { name: '铁甲', desc: '获得 2 点护甲。' },
+    { name: '水晶球', desc: '回合开始时，抽 1 张牌。' }
+  ];
+  let exhibitIdx = 0;
+
+  function addExhibitPreview() {
+    const container = document.getElementById('exhibitBar');
+    const count = document.getElementById('exCount');
+    let v = parseInt(count.textContent);
+    if (v >= exhibitIcons.length) return;
+    const idx = exhibitIdx % exhibitIcons.length;
+    exhibitIdx++;
+    const d = exhibitData[idx];
+    const icon = exhibitIcons[idx];
+    const html = `<div class="ex-bar-icon" style="position:relative;width:24px;height:24px;cursor:pointer;" onmouseenter="this.querySelector('.ex-bar-tip').style.display='block'" onmouseleave="this.querySelector('.ex-bar-tip').style.display='none'">
+      <div style="width:24px;height:24px;background:linear-gradient(135deg,#1a2332,#0d1520);border:1px solid #58a6ff;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;">${icon}</div>
+      <div class="ex-bar-tip" style="display:none;position:absolute;bottom:calc(100% + 4px);left:0;background:#1c2333;border:1px solid #30363d;border-radius:5px;padding:5px 8px;width:140px;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.6);pointer-events:none;">
+        <div style="font-size:0.55rem;color:#e6edf3;font-weight:600;margin-bottom:1px;">${d.name}</div>
+        <div style="font-size:0.5rem;color:#c9d1d9;">${d.desc}</div>
+      </div>
+    </div>`;
+    container.insertAdjacentHTML('beforeend', html);
+    count.textContent = v + 1;
+  }
+
   document.querySelectorAll('.btn-region').forEach(el => {
     el.addEventListener('click', function(e) {
       if (this.textContent.includes('选择卡牌')) {
         const count = document.getElementById('cardCount');
         const v = parseInt(count.textContent) + 1;
-        if (v <= 5) count.textContent = v;
+        if (v <= 3) count.textContent = v;
       }
       if (this.textContent.includes('选择展品')) {
-        const count = document.getElementById('exCount');
-        const v = parseInt(count.textContent) + 1;
-        if (v <= 3) count.textContent = v;
+        addExhibitPreview();
       }
       if (this.textContent.includes('确认交易')) {
         alert('✅ 确认交易！\n(此弹窗为 HTML 互动示意)');
@@ -647,3 +720,7 @@
 </script>
 </body>
 </html>
+
+
+
+
