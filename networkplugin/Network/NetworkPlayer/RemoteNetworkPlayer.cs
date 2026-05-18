@@ -279,4 +279,3 @@ public sealed class RemoteNetworkPlayer : INetworkPlayer
     /// <param name="y">目标 Y 坐标。</param>
     public void Teleport(int x, int y) { }
 }
-

@@ -1028,37 +1028,7 @@ public static class TradeSyncPatch
     }
 
     private static bool TryGetJsonElement(object payload, out JsonElement root)
-    {
-        try
-        {
-            if (payload is JsonElement je)
-            {
-                root = je;
-                return true;
-            }
-
-            if (payload is string s)
-            {
-                root = JsonDocument.Parse(s).RootElement;
-                return true;
-            }
-
-            // Host 侧 SendToHost 会把匿名对象直接回灌到本地处理，这里补一层序列化以便解析。
-            if (payload != null)
-            {
-                string json = JsonCompat.Serialize(payload);
-                root = JsonDocument.Parse(json).RootElement;
-                return true;
-            }
-        }
-        catch
-        {
-            // ignored
-        }
-
-        root = default;
-        return false;
-    }
+        => NetworkEventHelper.TryGetJsonElement(payload, out root);
 
     private static bool IsDuplicateRequest_NoLock(string tradeId, string requestId, long timestamp)
     {
@@ -1104,130 +1074,30 @@ public static class TradeSyncPatch
         }
     }
 
-    private static string GetString(JsonElement elem, string property)
-    {
-        try
-        {
-            if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
-            {
-                return null;
-            }
-
-            return p.ValueKind == JsonValueKind.String ? p.GetString() : p.GetRawText();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+    private static string GetString(JsonElement root, string name)
+        => NetworkEventHelper.GetString(root, name);
 
     private static int GetInt(JsonElement elem, string property, int defaultValue)
     {
-        try
-        {
-            if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
-            {
-                return defaultValue;
-            }
-
-            if (p.ValueKind == JsonValueKind.Number && p.TryGetInt32(out int i))
-            {
-                return i;
-            }
-
-            if (p.ValueKind == JsonValueKind.String && int.TryParse(p.GetString(), out i))
-            {
-                return i;
-            }
-        }
-        catch
-        {
-            // ignored
-        }
-
+        if (NetworkEventHelper.TryGetInt(elem, property, out int v))
+            return v;
         return defaultValue;
     }
 
     private static long GetLong(JsonElement elem, string property, long defaultValue)
     {
-        try
-        {
-            if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
-            {
-                return defaultValue;
-            }
-
-            if (p.ValueKind == JsonValueKind.Number && p.TryGetInt64(out long l))
-            {
-                return l;
-            }
-
-            if (p.ValueKind == JsonValueKind.String && long.TryParse(p.GetString(), out l))
-            {
-                return l;
-            }
-        }
-        catch
-        {
-            // ignored
-        }
-
+        if (NetworkEventHelper.TryGetLong(elem, property, out long v))
+            return v;
         return defaultValue;
     }
 
-    private static bool GetBool(JsonElement elem, string property)
-    {
-        try
-        {
-            if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
-            {
-                return false;
-            }
-
-            return p.ValueKind switch
-            {
-                JsonValueKind.True => true,
-                JsonValueKind.False => false,
-                JsonValueKind.Number => p.TryGetInt32(out int i) && i != 0,
-                JsonValueKind.String => bool.TryParse(p.GetString(), out bool b) && b,
-                _ => false,
-            };
-        }
-        catch
-        {
-            return false;
-        }
-    }
+    private static bool GetBool(JsonElement root, string name)
+        => NetworkEventHelper.GetBool(root, name);
 
     private static int? TryGetNullableInt(JsonElement elem, string property)
     {
-        try
-        {
-            if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
-            {
-                return null;
-            }
-
-            if (p.ValueKind == JsonValueKind.Null)
-            {
-                return null;
-            }
-
-            if (p.ValueKind == JsonValueKind.Number && p.TryGetInt32(out int i))
-            {
-                return i;
-            }
-
-            if (p.ValueKind == JsonValueKind.String && int.TryParse(p.GetString(), out i))
-            {
-                return i;
-            }
-        }
-        catch
-        {
-            // ignored
-        }
-
+        if (NetworkEventHelper.TryGetInt(elem, property, out int v))
+            return v;
         return null;
     }
 

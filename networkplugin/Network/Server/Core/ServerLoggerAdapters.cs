@@ -46,4 +46,3 @@ public sealed class MicrosoftServerLogger : IServerLogger
     public void Error(string message) => _logger?.LogError(message);
     public void Error(Exception ex, string message) => _logger?.LogError(ex, message);
 }
-

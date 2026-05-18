@@ -133,17 +133,9 @@ public static partial class OtherPlayersOverlayPatch
     {
         PlayerStateSnapshot latest = null;
 
-        if (TurnStartSnapshotReceivePatch.TryGetLastTurnStart(playerId, out TurnStartStateSnapshot turnStart) && turnStart?.playerStateSnapshot != null)
+        if (TurnBoundaryReceivePatch.TryGetLastSnapshot(playerId, out TurnBoundarySnapshot snapshot) && snapshot?.PlayerState != null)
         {
-            latest = turnStart.playerStateSnapshot;
-        }
-
-        if (TurnEndSnapshotReceivePatch.TryGetLastTurnEnd(playerId, out TurnEndStateSnapshot turnEnd) && turnEnd?.playerStateSnapshot != null)
-        {
-            if (latest == null || turnEnd.playerStateSnapshot.Timestamp >= latest.Timestamp)
-            {
-                latest = turnEnd.playerStateSnapshot;
-            }
+            latest = snapshot.PlayerState;
         }
 
         return latest;

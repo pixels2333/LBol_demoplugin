@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -47,7 +48,7 @@ public static class DebutBonusSyncPatch
     }
 
     private static INetworkClient TryGetNetworkClient()
-        => ServiceProvider?.GetService<INetworkClient>();
+        => NetworkEventHelper.TryGetNetworkClient();
 
     [HarmonyPatch(typeof(GameDirector), "Update")]
     private static class SubscribeHook
@@ -256,37 +257,12 @@ public static class DebutBonusSyncPatch
         return true;
     }
 
-    private static bool TryGetInt(JsonElement root, string prop, out int value)
-    {
-        value = default;
-        if (!TryGetProperty(root, prop, out JsonElement el))
-        {
-            return false;
-        }
+    private static bool TryGetInt(JsonElement root, string name, out int value)
+        => NetworkEventHelper.TryGetInt(root, name, out value);
 
-        return el.ValueKind switch
-        {
-            JsonValueKind.Number => el.TryGetInt32(out value),
-            JsonValueKind.String => int.TryParse(el.GetString(), out value),
-            _ => false,
-        };
-    }
+    private static bool TryGetLong(JsonElement root, string name, out long value)
+        => NetworkEventHelper.TryGetLong(root, name, out value);
 
-    private static bool TryGetLong(JsonElement root, string prop, out long value)
-    {
-        value = default;
-        if (!TryGetProperty(root, prop, out JsonElement el))
-        {
-            return false;
-        }
-
-        return el.ValueKind switch
-        {
-            JsonValueKind.Number => el.TryGetInt64(out value),
-            JsonValueKind.String => long.TryParse(el.GetString(), out value),
-            _ => false,
-        };
-    }
     [HarmonyPatch(typeof(Debut), nameof(Debut.RollBonus))]
     private static class Debut_RollBonus_Sync
     {

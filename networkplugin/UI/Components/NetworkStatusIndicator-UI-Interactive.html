@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetworkStatusIndicator 互动 UI 指南</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  .container { max-width: 1300px; margin: 0 auto; }
+
+  .header {
+    text-align: center;
+    padding: 30px 0 20px;
+    border-bottom: 1px solid #30363d;
+    margin-bottom: 30px;
+  }
+  .header h1 { font-size: 2rem; font-weight: 700; background: linear-gradient(135deg, #3fb950, #58a6ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .header p { color: #8b949e; margin-top: 8px; font-size: 0.95rem; }
+  .header p span { color: #f0883e; }
+
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 12px 24px;
+    background: #161b22; border: 1px solid #30363d; border-radius: 10px;
+    padding: 14px 20px; margin-bottom: 28px;
+    justify-content: center;
+  }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-size: 0.82rem; color: #c9d1d9; }
+  .legend-color { width: 14px; height: 14px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); }
+
+  .panel-wrapper {
+    position: relative;
+    background: linear-gradient(145deg, #161b22, #0d1117);
+    border: 1px solid #30363d;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 28px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+
+  /* 指示器 UI 示意图 */
+  .indicator-sim {
+    display: flex; flex-direction: column; gap: 16px;
+    background: rgba(13,17,23,0.6);
+    border: 1px dashed #21262d;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+  .indicator-row {
+    display: flex; align-items: center; gap: 16px;
+    padding: 8px 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid #30363d;
+    border-radius: 8px;
+  }
+  .indicator-row:hover { background: rgba(255,255,255,0.06); border-color: #58a6ff; }
+  .indicator-label {
+    font-size: 0.72rem; color: #8b949e;
+    min-width: 80px; flex-shrink: 0;
+  }
+  .status-dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    transition: background 0.3s;
+  }
+  .status-dot.connected { background: #3fb950; box-shadow: 0 0 8px rgba(63,185,80,0.5); }
+  .status-dot.connecting { background: #d29922; box-shadow: 0 0 8px rgba(210,153,34,0.5); animation: pulse 1s ease-in-out infinite; }
+  .status-dot.disconnected { background: #da3633; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 18px;
+    margin-top: 20px;
+  }
+  .feature-card {
+    background: #161b22; border: 1px solid #30363d;
+    border-radius: 12px; padding: 18px 20px;
+    transition: border-color 0.2s;
+  }
+  .feature-card:hover { border-color: #58a6ff; }
+  .feature-card h3 { font-size: 0.95rem; margin-bottom: 8px; color: #58a6ff; }
+  .feature-card ul { list-style: none; }
+  .feature-card li {
+    font-size: 0.82rem; color: #c9d1d9; padding: 3px 0;
+    position: relative; padding-left: 16px;
+  }
+  .feature-card li::before { content: "·"; position: absolute; left: 2px; color: #3fb950; font-weight: bold; }
+  .feature-card .code-ref {
+    display: block; font-size: 0.7rem; color: #8b949e; margin-top: 4px;
+    background: #0d1117; padding: 3px 8px; border-radius: 4px;
+  }
+
+  .tag { font-size: 0.65rem; color: #f0883e; background: rgba(240,136,62,0.1); padding: 1px 6px; border-radius: 3px; }
+
+  .state-machine {
+    background: #161b22; border: 1px solid #30363d;
+    border-radius: 12px; padding: 20px; margin-top: 20px;
+  }
+  .state-machine h3 { font-size: 0.95rem; margin-bottom: 14px; color: #58a6ff; }
+  .states { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .state-node {
+    background: #0d1117; border: 1px solid #30363d;
+    border-radius: 8px; padding: 8px 14px;
+    font-size: 0.78rem; font-weight: 500;
+  }
+  .state-node.active { border-color: #3fb950; color: #7ee787; }
+  .state-node.warn { border-color: #d29922; color: #d29922; }
+  .state-node.closed { border-color: #da3633; color: #ff7b72; }
+  .state-arrow { color: #30363d; font-size: 1.2rem; }
+  .state-desc { margin-left: 6px; font-size: 0.7rem; color: #8b949e; }
+
+  .stats-bar {
+    display: flex; gap: 16px;
+    background: #0d1117; border: 1px solid #21262d;
+    border-radius: 8px; padding: 8px 16px;
+    justify-content: center; margin-top: 16px;
+  }
+  .stat-item { font-size: 0.72rem; color: #8b949e; }
+  .stat-item strong { color: #e6edf3; }
+
+  .btn-region {
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 6px; font-size: 0.7rem; font-weight: 600;
+    transition: all 0.15s;
+    cursor: pointer;
+    padding: 6px 16px;
+  }
+  .btn-region:active { transform: scale(0.95); }
+  .btn-primary { background: linear-gradient(135deg, #1f6feb, #1158c7); border: 1px solid #388bfd; color: #fff; }
+  .btn-primary:hover { background: linear-gradient(135deg, #388bfd, #1f6feb); }
+
+  .ping-bar {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .ping-value {
+    font-size: 0.75rem; font-weight: 600;
+    transition: color 0.3s;
+  }
+  .ping-value.low { color: #3fb950; }
+  .ping-value.medium { color: #d29922; }
+  .ping-value.high { color: #da3633; }
+
+  .connection-panel {
+    background: rgba(13,17,23,0.5);
+    border: 1px solid #21262d;
+    border-radius: 10px;
+    padding: 16px 20px;
+  }
+
+  .flow-section { margin-top: 24px; }
+  .flow-section h3 { font-size: 0.95rem; color: #58a6ff; margin-bottom: 12px; }
+  .flow-steps { display: flex; flex-wrap: wrap; gap: 6px 4px; align-items: center; }
+  .flow-step {
+    background: #0d1117; border: 1px solid #30363d;
+    border-radius: 6px; padding: 6px 12px;
+    font-size: 0.72rem; color: #c9d1d9;
+  }
+  .flow-arrow { color: #30363d; font-size: 0.9rem; }
+
+  @media (max-width: 640px) {
+    .indicator-sim { max-width: 100%; }
+    .indicator-row { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>📡 NetworkStatusIndicator — 网络状态指示器</h1>
+    <p><span>NetworkPlugin</span> · 实时显示连接状态/延迟/玩家数/NAT 状态 · 轻量 UI 组件</p>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-color" style="background:#3fb950;"></div> 已连接/低延迟</div>
+    <div class="legend-item"><div class="legend-color" style="background:#d29922;"></div> 连接中/中延迟</div>
+    <div class="legend-item"><div class="legend-color" style="background:#da3633;"></div> 未连接/高延迟</div>
+    <div class="legend-item"><div class="legend-color" style="background:#1f6feb;"></div> UI 控件/标题区</div>
+  </div>
+
+  <!-- 模拟指示器 -->
+  <div class="panel-wrapper">
+    <h3 style="font-size:0.95rem;color:#e6edf3;margin-bottom:16px;">🖥️ 连接面板 (connectionPanel) — 实时状态展示</h3>
+
+    <div class="indicator-sim">
+
+      <!-- 连接状态 -->
+      <div class="indicator-row">
+        <span class="indicator-label">连接状态</span>
+        <span class="status-dot connected" id="statusDot"></span>
+        <span style="font-size:0.78rem;font-weight:600;color:#3fb950;" id="statusText">已连接</span>
+        <span style="margin-left:auto;font-size:0.6rem;color:#484f58;">_connectionStatusIcon</span>
+      </div>
+
+      <!-- 延迟 -->
+      <div class="indicator-row">
+        <span class="indicator-label">延迟 (Ping)</span>
+        <div class="ping-bar">
+          <span class="ping-value low" id="pingText">延迟: 32ms</span>
+          <span style="font-size:0.55rem;color:#484f58;">_pingText</span>
+        </div>
+        <span style="margin-left:auto;display:flex;gap:4px;">
+          <span style="font-size:0.55rem;color:#8b949e;cursor:pointer;" onclick="setPing(32,'low')">🟢</span>
+          <span style="font-size:0.55rem;color:#8b949e;cursor:pointer;" onclick="setPing(150,'medium')">🟡</span>
+          <span style="font-size:0.55rem;color:#8b949e;cursor:pointer;" onclick="setPing(350,'high')">🔴</span>
+        </span>
+      </div>
+
+      <!-- 玩家数 -->
+      <div class="indicator-row">
+        <span class="indicator-label">玩家数量</span>
+        <span style="font-size:0.78rem;color:#e6edf3;" id="playerCountText">玩家: 4</span>
+        <span style="margin-left:auto;font-size:0.6rem;color:#484f58;">_playerCountText</span>
+      </div>
+
+      <!-- NAT 状态 -->
+      <div class="indicator-row">
+        <span class="indicator-label">NAT 状态</span>
+        <span style="font-size:0.75rem;color:#8b949e;" id="natText">NAT: FullCone · 端口已映射</span>
+        <span style="margin-left:auto;font-size:0.6rem;color:#484f58;">_natStatusText</span>
+      </div>
+
+      <!-- 重连按钮 -->
+      <div style="display:flex;justify-content:center;gap:12px;margin-top:4px;">
+        <div class="btn-region btn-primary" onclick="simulateReconnect()">🔄 重新连接</div>
+        <span style="font-size:0.6rem;color:#484f58;line-height:32px;">_reconnectButton (断开连接时显示)</span>
+      </div>
+
+    </div>
+
+    <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+      <span class="tag">connectionStatusIcon (Image)</span>
+      <span class="tag">statusText (TMP)</span>
+      <span class="tag">pingText (TMP)</span>
+      <span class="tag">playerCountText (TMP)</span>
+      <span class="tag">natStatusText (TMP)</span>
+      <span class="tag">reconnectButton (Button)</span>
+    </div>
+  </div>
+
+  <!-- ========== 功能卡片 ========== -->
+  <div class="features-grid">
+
+    <div class="feature-card">
+      <h3>🔌 连接状态显示</h3>
+      <ul>
+        <li><code>connectionStatusIcon</code> — 状态圆点颜色变换</li>
+        <li><code>statusText</code> — 文本显示：<code>已连接</code>/<code>连接中...</code>/<code>未连接</code>/<code>重连中...</code></li>
+        <li><code>UpdateConnectionStatusUI(state)</code> — 根据 ConnectionState 枚举更新</li>
+        <li>状态变化自动检测，仅变更时刷新 UI</li>
+      </ul>
+      <span class="code-ref">[NetworkStatusIndicator.cs L80-L110](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Components/NetworkStatusIndicator.cs#L80-L110)</span>
+    </div>
+
+    <div class="feature-card">
+      <h3>📊 延迟监控</h3>
+      <ul>
+        <li><code>pingUpdateInterval</code> = 1s 刷新间隔</li>
+        <li><code>highPingThreshold</code> = 200ms, <code>mediumPingThreshold</code> = 100ms</li>
+        <li>颜色表: ≤100ms 🟢，≤200ms 🟡，&gt;200ms 🔴</li>
+        <li>数据源: <code>_networkClient.Ping</code></li>
+      </ul>
+      <span class="code-ref">[NetworkStatusIndicator.cs L115-L140](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Components/NetworkStatusIndicator.cs#L115-L140)</span>
+    </div>
+
+    <div class="feature-card">
+      <h3>👥 玩家数量</h3>
+      <ul>
+        <li><code>playerCountText</code> — "玩家: N" 格式</li>
+        <li>数据源: <code>NetworkIdentityTracker.GetPlayerIdsSnapshot().Count</code></li>
+        <li>断连时显示 0</li>
+        <li>在 <code>UpdateConnectionStatus()</code> 中同步更新</li>
+      </ul>
+      <span class="code-ref">[NetworkStatusIndicator.cs L145-L165](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Components/NetworkStatusIndicator.cs#L145-L165)</span>
+    </div>
+
+    <div class="feature-card">
+      <h3>🌐 NAT 状态</h3>
+      <ul>
+        <li><code>natStatusText</code> — 显示 NAT 穿透状态摘要</li>
+        <li>通过 <code>NatTraversal.GetStatusSummary()</code> 获取</li>
+        <li>未配置专用文本时自动追加到 statusText 第二行</li>
+        <li>帮助玩家排查联机连接问题</li>
+      </ul>
+      <span class="code-ref">[NetworkStatusIndicator.cs L170-L195](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Components/NetworkStatusIndicator.cs#L170-L195)</span>
+    </div>
+
+    <div class="feature-card">
+      <h3>🔄 重连机制</h3>
+      <ul>
+        <li><code>reconnectButton</code> — 仅断开连接时可见 + 可交互</li>
+        <li>读取 <code>ServerIP</code> / <code>ServerPort</code> 配置</li>
+        <li>调用 <code>_networkClient.ConnectToServer()</code></li>
+        <li>启用自动重连 <code>EnableAutoReconnect(true)</code></li>
+        <li>操作日志通过 <code>AddSystemLog()</code> 输出</li>
+      </ul>
+      <span class="code-ref">[NetworkStatusIndicator.cs L200-L240](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Components/NetworkStatusIndicator.cs#L200-L240)</span>
+    </div>
+
+    <div class="feature-card">
+      <h3>🧠 生命周期与注入</h3>
+      <ul>
+        <li><code>Start()</code> → 获取 <code>INetworkClient</code>、注册事件、初始化 UI</li>
+        <li><code>Update()</code> → 帧节流刷新延迟 + 连接状态</li>
+        <li><code>OnDestroy()</code> → 取消注册网络事件</li>
+        <li>依赖 <code>IServiceProvider</code> 注入</li>
+      </ul>
+      <span class="code-ref">[NetworkStatusIndicator.cs L50-L75](c:/Users/oft-Enginner PC/Desktop/LBol_demoplugin/networkplugin/UI/Components/NetworkStatusIndicator.cs#L50-L75)</span>
+    </div>
+
+  </div>
+
+  <!-- ========== 状态机 ========== -->
+  <div class="state-machine">
+    <h3>⚙️ 连接状态机 (ConnectionState)</h3>
+    <div class="states">
+      <div class="state-node active">Connected <span class="state-desc">🟢 已连接，正常通信</span></div>
+      <span class="state-arrow">→</span>
+      <div class="state-node warn">Connecting <span class="state-desc">🟡 正在连接</span></div>
+      <span class="state-arrow">→</span>
+      <div class="state-node warn">Reconnecting <span class="state-desc">🟡 断线重连中</span></div>
+      <span class="state-arrow">→</span>
+      <div class="state-node closed">Disconnected <span class="state-desc">🔴 未连接</span></div>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:12px;font-size:0.7rem;color:#8b949e;justify-content:center;">
+      <span>自动重连: <code>EnableAutoReconnect(true)</code></span>
+      <span>轮询间隔: <code>pingUpdateInterval = 1s</code></span>
+      <span>阈值: 100ms / 200ms</span>
+    </div>
+  </div>
+
+  <!-- ========== 工作流 ========== -->
+  <div class="flow-section">
+    <h3>🔄 状态更新流程</h3>
+    <div class="flow-steps">
+      <div class="flow-step">🔄 Update() 帧循环</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">📊 GetConnectionState()</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">🔍 状态变化检测</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">🎨 UpdateConnectionStatusUI()</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">📡 GetPingValue() → UpdatePingDisplay()</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">👥 GetConnectedPlayerCount()</div>
+    </div>
+  </div>
+
+  <!-- ========== 控件映射表 ========== -->
+  <div class="panel-wrapper">
+    <h3 style="font-size:0.95rem;color:#58a6ff;margin-bottom:14px;">📋 SerializeField 控件映射</h3>
+    <div style="background:rgba(13,17,23,0.6);border:1px dashed #21262d;border-radius:12px;padding:20px;overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
+        <thead>
+          <tr style="border-bottom:1px solid #30363d;color:#8b949e;">
+            <th style="text-align:left;padding:8px 12px;">字段名</th>
+            <th style="text-align:left;padding:8px 12px;">类型</th>
+            <th style="text-align:left;padding:8px 12px;">说明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #21262d;">
+            <td style="padding:8px 12px;"><code>connectionStatusIcon</code></td>
+            <td style="padding:8px 12px;">Image</td>
+            <td style="padding:8px 12px;color:#c9d1d9;">状态指示圆点，颜色对应连接状态</td>
+          </tr>
+          <tr style="border-bottom:1px solid #21262d;">
+            <td style="padding:8px 12px;"><code>statusText</code></td>
+            <td style="padding:8px 12px;">TextMeshProUGUI</td>
+            <td style="padding:8px 12px;color:#c9d1d9;">连接状态文字："已连接"/"连接中..."/"未连接"</td>
+          </tr>
+          <tr style="border-bottom:1px solid #21262d;">
+            <td style="padding:8px 12px;"><code>pingText</code></td>
+            <td style="padding:8px 12px;">TextMeshProUGUI</td>
+            <td style="padding:8px 12px;color:#c9d1d9;">延迟显示："延迟: XXms"</td>
+          </tr>
+          <tr style="border-bottom:1px solid #21262d;">
+            <td style="padding:8px 12px;"><code>playerCountText</code></td>
+            <td style="padding:8px 12px;">TextMeshProUGUI</td>
+            <td style="padding:8px 12px;color:#c9d1d9;">在线玩家数量："玩家: N"</td>
+          </tr>
+          <tr style="border-bottom:1px solid #21262d;">
+            <td style="padding:8px 12px;"><code>natStatusText</code></td>
+            <td style="padding:8px 12px;">TextMeshProUGUI</td>
+            <td style="padding:8px 12px;color:#c9d1d9;">NAT 穿透状态摘要</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 12px;"><code>reconnectButton</code></td>
+            <td style="padding:8px 12px;">Button</td>
+            <td style="padding:8px 12px;color:#c9d1d9;">重连按钮，仅断开连接时显示</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div style="margin-top:32px;padding:16px 0;border-top:1px solid #21262d;text-align:center;font-size:0.72rem;color:#484f58;">
+    NetworkPlugin · NetworkStatusIndicator.cs · 互动 UI 示意 · Unity uGUI 组件
+  </div>
+
+</div>
+
+<script>
+  let currentPing = 32;
+  let currentPingClass = 'low';
+  let isConnected = true;
+
+  function setPing(val, cls) {
+    currentPing = val;
+    currentPingClass = cls;
+    const el = document.getElementById('pingText');
+    el.textContent = '延迟: ' + val + 'ms';
+    el.className = 'ping-value ' + cls;
+  }
+
+  function simulateReconnect() {
+    const dot = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+
+    if (isConnected) {
+      // 模拟断开
+      isConnected = false;
+      dot.className = 'status-dot disconnected';
+      text.textContent = '未连接';
+      text.style.color = '#da3633';
+      document.querySelector('.btn-region').textContent = '🔄 重新连接 (已断开)';
+    } else {
+      // 模拟连接中
+      dot.className = 'status-dot connecting';
+      text.textContent = '连接中...';
+      text.style.color = '#d29922';
+      document.querySelector('.btn-region').style.opacity = '0.5';
+      document.querySelector('.btn-region').textContent = '⏳ 连接中...';
+
+      setTimeout(() => {
+        isConnected = true;
+        dot.className = 'status-dot connected';
+        text.textContent = '已连接';
+        text.style.color = '#3fb950';
+        document.querySelector('.btn-region').style.opacity = '1';
+        document.querySelector('.btn-region').textContent = '🔄 重新连接';
+      }, 2000);
+    }
+  }
+</script>
+</body>
+</html>

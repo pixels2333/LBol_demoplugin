@@ -32,4 +32,3 @@ namespace NetworkPlugin.Network.Snapshot
         }
     }
 }
-

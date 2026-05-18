@@ -684,166 +684,49 @@ public static partial class RemoteCardUsePatch
     }
 
     private static bool TryGetJsonElement(object payload, out JsonElement root)
-    {
-        try
-        {
-            if (payload is JsonElement je)
-            {
-                root = je;
-                return true;
-            }
+        => NetworkEventHelper.TryGetJsonElement(payload, out root);
 
-            if (payload is string s)
-            {
-                root = JsonDocument.Parse(s).RootElement;
-                return true;
-            }
-        }
-        catch
-        {
-            // ignored
-        }
-
-        root = default;
-        return false;
-    }
-
-    private static string GetString(JsonElement elem, string property)
-    {
-        try
-        {
-            if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
-            {
-                return null;
-            }
-
-            return p.ValueKind switch
-            {
-                JsonValueKind.String => p.GetString(),
-                JsonValueKind.Number => p.GetRawText(),
-                JsonValueKind.True => "true",
-                JsonValueKind.False => "false",
-                _ => null,
-            };
-        }
-        catch
-        {
-            return null;
-        }
-    }
+    private static string GetString(JsonElement root, string name)
+        => NetworkEventHelper.GetString(root, name);
 
     private static int? GetInt(JsonElement elem, string property)
     {
-        try
-        {
-            if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
-            {
-                return null;
-            }
-
-            if (p.ValueKind == JsonValueKind.Number && p.TryGetInt32(out int i))
-            {
-                return i;
-            }
-
-            if (p.ValueKind == JsonValueKind.String && int.TryParse(p.GetString(), out int s))
-            {
-                return s;
-            }
-        }
-        catch
-        {
-            // ignored
-        }
-
+        if (NetworkEventHelper.TryGetInt(elem, property, out int v))
+            return v;
         return null;
     }
 
     private static long? GetLong(JsonElement elem, string property)
     {
-        try
-        {
-            if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
-            {
-                return null;
-            }
-
-            if (p.ValueKind == JsonValueKind.Number && p.TryGetInt64(out long i))
-            {
-                return i;
-            }
-
-            if (p.ValueKind == JsonValueKind.Number && p.TryGetInt32(out int i32))
-            {
-                return i32;
-            }
-
-            if (p.ValueKind == JsonValueKind.String && long.TryParse(p.GetString(), out long s))
-            {
-                return s;
-            }
-        }
-        catch
-        {
-            // ignored
-        }
-
+        if (NetworkEventHelper.TryGetLong(elem, property, out long v))
+            return v;
         return null;
     }
 
     private static float? GetFloat(JsonElement elem, string property)
     {
-        try
-        {
-            if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
-            {
-                return null;
-            }
-
-            if (p.ValueKind == JsonValueKind.Number && p.TryGetSingle(out float f))
-            {
-                return f;
-            }
-
-            if (p.ValueKind == JsonValueKind.Number && p.TryGetDouble(out double d))
-            {
-                return (float)d;
-            }
-
-            if (p.ValueKind == JsonValueKind.String && float.TryParse(p.GetString(), out float s))
-            {
-                return s;
-            }
-        }
-        catch
-        {
-            // ignored
-        }
-
+        if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
+            return null;
+        if (p.ValueKind == JsonValueKind.Number && p.TryGetSingle(out float f))
+            return f;
+        if (p.ValueKind == JsonValueKind.Number && p.TryGetDouble(out double d))
+            return (float)d;
+        if (p.ValueKind == JsonValueKind.String && float.TryParse(p.GetString(), out float s))
+            return s;
         return null;
     }
 
     private static bool? GetBool(JsonElement elem, string property)
     {
-        try
-        {
-            if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
-            {
-                return null;
-            }
-
-            return p.ValueKind switch
-            {
-                JsonValueKind.True => true,
-                JsonValueKind.False => false,
-                JsonValueKind.String => bool.TryParse(p.GetString(), out bool b) ? b : null,
-                _ => null,
-            };
-        }
-        catch
-        {
+        if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
             return null;
-        }
+        return p.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String => bool.TryParse(p.GetString(), out bool b) ? b : null,
+            _ => null,
+        };
     }
 
     #endregion

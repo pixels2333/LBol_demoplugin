@@ -12,4 +12,3 @@ public interface IServerLogger
     void Error(string message);
     void Error(Exception ex, string message);
 }
-

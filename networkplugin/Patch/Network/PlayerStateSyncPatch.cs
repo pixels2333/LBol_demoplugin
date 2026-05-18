@@ -28,14 +28,13 @@ public static class PlayerStateSyncPatch
     /// <summary>
     /// 依赖注入服务提供者。
     /// </summary>
-    private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
     /// <summary>
     /// 尝试解析网络客户端。
     /// </summary>
     /// <returns>解析成功返回客户端，否则返回 null。</returns>
     private static INetworkClient TryGetClient()
-        => ServiceProvider?.GetService<INetworkClient>();
+        => SendSyncHelper.TryGetClient();
 
     /// <summary>
     /// 判断当前是否允许发送同步事件。
@@ -43,43 +42,14 @@ public static class PlayerStateSyncPatch
     /// <returns>允许发送返回 true，否则返回 false。</returns>
     private static bool ShouldSend()
     {
-        // 获取客户端并确认已连接。
-        var client = TryGetClient();
-        if (client == null || !client.IsConnected)
-        {
-            return false;
-        }
-
-        // 确保已订阅/具备自身玩家标识。
-        NetworkIdentityTracker.EnsureSubscribed(client);
-        return !string.IsNullOrWhiteSpace(NetworkIdentityTracker.GetSelfPlayerId());
+        return SendSyncHelper.IsReady();
     }
 
-    /// <summary>
-    /// 发送一条游戏事件（带容错）。
-    /// </summary>
-    /// <param name="eventType">事件类型。</param>
-    /// <param name="payload">事件负载（可序列化对象）。</param>
     private static void Send(string eventType, object payload)
     {
-        try
-        {
-            // 再次确认连接状态，避免在发送时因断线抛异常。
-            var client = TryGetClient();
-            if (client == null || !client.IsConnected)
-            {
-                return;
-            }
-
-            // 确保订阅状态与身份信息就绪。
-            NetworkIdentityTracker.EnsureSubscribed(client);
-            client.SendGameEventData(eventType, payload);
-        }
-        catch (Exception ex)
-        {
-            // 记录错误但不打断游戏流程。
-            Plugin.Logger?.LogError($"[PlayerStateSync] 发送事件 {eventType} 失败: {ex.Message}");
-        }
+        var client = SendSyncHelper.TryGetClient();
+        if (client == null) return;
+        client.SendGameEventData(eventType, payload);
     }
 
     #endregion
@@ -92,7 +62,7 @@ public static class PlayerStateSyncPatch
     /// <param name="battle">战斗控制器。</param>
     /// <returns>本地玩家正在控制该战斗返回 true，否则返回 false。</returns>
     private static bool ShouldSyncLocalBattle(BattleController battle)
-        => battle != null && battle.Player != null && battle.Player == GameStateUtils.GetCurrentPlayer();
+        => SendSyncHelper.ShouldSyncBattle(battle);
 
     /// <summary>
     /// 构建玩家单位快照，用于日志/调试与回放辅助。

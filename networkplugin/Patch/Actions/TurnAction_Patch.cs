@@ -74,99 +74,7 @@ public class TurnAction_Patch
                 return;
             }
 
-            PlayerUnit source = battle.Player;
-            if (source == null)
-            {
-                Plugin.Logger?.LogDebug("[TurnSync] battle.Player 为空（StartPlayerTurn）");
-                return;
-            }
-
-            GameRunController run = battle.GameRun ?? GameStateUtils.GetCurrentGameRun();
-            string selfPlayerId = NetworkIdentityTracker.GetSelfPlayerId();
-            if (string.IsNullOrWhiteSpace(selfPlayerId))
-            {
-                // 兼容：还未拿到 Welcome 时，先回退到角色 Id（不保证跨客户端唯一）。
-                selfPlayerId = GameStateUtils.GetCurrentPlayerId();
-            }
-
-            int gold = 0;
-            int maxMana = 0;
-            try
-            {
-                gold = run?.Money ?? 0;
-                maxMana = run != null ? ManaUtils.GetTotalMana(run.BaseMana) : 0;
-            }
-            catch
-            {
-                gold = 0;
-                maxMana = 0;
-            }
-
-            // 状态效果快照：同步本回合开始时玩家身上的状态效果（轻量；不直接回放，只用于展示/诊断/对齐）。
-            List<StatusEffectStateSnapshot> statusEffectsSnapshot = CaptureStatusEffects(source);
-
-            // 构建玩家状态快照。
-            PlayerStateSnapshot playerStateSnapshot = new PlayerStateSnapshot
-            {
-                PlayerId = selfPlayerId,
-                UserName = networkClient.GetSelf().userName,
-                Health = source.Hp,
-                MaxHealth = source.MaxHp,
-                Block = source.Block,
-                Shield = source.Shield,
-                ManaGroup = ManaUtils.ManaGroupToArray(battle.BattleMana),
-                MaxMana = maxMana,
-                Gold = gold,
-                TurnNumber = source.TurnCounter,
-                IsInBattle = true,
-                IsAlive = source.IsAlive,
-                IsPlayersTurn = source is PlayerUnit,
-                IsInTurn = source.IsInTurn,
-                IsExtraTurn = source.IsExtraTurn,
-                CharacterType = source is PlayerUnit ? "Player" : "Enemy",
-                ReconnectToken = string.Empty,
-                DisconnectTime = 0,
-                LastUpdateTime = DateTime.Now.Ticks,
-                TurnCounter = source.TurnCounter,
-                Timestamp = DateTime.Now,
-            };
-
-            // 位置快照：与 ReconnectionManager 的恢复口径一致。
-            try
-            {
-                var node = run?.CurrentMap?.VisitingNode;
-                if (node != null)
-                {
-                    playerStateSnapshot.GameLocation = new LocationSnapshot
-                    {
-                        X = node.X,
-                        Y = node.Y,
-                        NodeId = $"Act{node.Act}:{node.X}:{node.Y}:{node.StationType}",
-                        NodeType = node.StationType.ToString(),
-                        VisitTime = DateTime.UtcNow.Ticks,
-                    };
-                }
-            }
-            catch
-            {
-                // ignored
-            }
-
-            // 构建意图快照（由 IntentionSnapshot 内部根据战斗控制器提取）。
-            IntentionSnapshot intentionSnapshot = new IntentionSnapshot(battleController: battle);
-
-            // 构建回合开始同步数据。
-            TurnStartStateSnapshot turnData = new TurnStartStateSnapshot(
-                statusEffectStateSnapshot: statusEffectsSnapshot,
-                playerStateSnapshot: playerStateSnapshot,
-                intentionSnapshot: intentionSnapshot
-            );
-
-            // 序列化并发送回合开始事件。
-            string json = JsonCompat.Serialize(turnData);
-
-            networkClient.SendRequest(NetworkMessageTypes.OnTurnStart, json);
-
+            SendTurnBoundarySnapshot(battle, networkClient, BoundaryType.Start);
             Plugin.Logger?.LogInfo("[TurnSync] 玩家回合开始已同步");
         }
         catch (Exception ex)
@@ -218,102 +126,11 @@ public class TurnAction_Patch
                 return;
             }
 
-            PlayerUnit source = battle.Player;
-            if (source == null)
-            {
-                Plugin.Logger?.LogDebug("[TurnSync] battle.Player 为空（EndPlayerTurn）");
-                return;
-            }
-
             GameRunController run = battle.GameRun ?? GameStateUtils.GetCurrentGameRun();
-            string selfPlayerId = NetworkIdentityTracker.GetSelfPlayerId();
-            if (string.IsNullOrWhiteSpace(selfPlayerId))
-            {
-                selfPlayerId = GameStateUtils.GetCurrentPlayerId();
-            }
-
-            int gold = 0;
-            int maxMana = 0;
-            try
-            {
-                gold = run?.Money ?? 0;
-                maxMana = run != null ? ManaUtils.GetTotalMana(run.BaseMana) : 0;
-            }
-            catch
-            {
-                gold = 0;
-                maxMana = 0;
-            }
-
-            // 状态效果快照：回合结束时玩家身上的状态效果。
-            List<StatusEffectStateSnapshot> statusEffectsSnapshot = CaptureStatusEffects(source);
-
-            // 构建玩家状态快照（回合结束后的最终状态）。
-            PlayerStateSnapshot playerStateSnapshot = new PlayerStateSnapshot
-            {
-                PlayerId = selfPlayerId,
-                UserName = networkClient.GetSelf().userName,
-                Health = source.Hp,
-                MaxHealth = source.MaxHp,
-                Block = source.Block,
-                Shield = source.Shield,
-                ManaGroup = ManaUtils.ManaGroupToArray(battle.BattleMana),
-                MaxMana = maxMana,
-                Gold = gold,
-                TurnNumber = source.TurnCounter,
-                IsInBattle = true,
-                IsAlive = source.IsAlive,
-                IsPlayersTurn = false,
-                IsInTurn = source.IsInTurn,
-                IsExtraTurn = source.IsExtraTurn,
-                CharacterType = source is PlayerUnit ? "Player" : "Enemy",
-                ReconnectToken = string.Empty,
-                DisconnectTime = 0,
-                LastUpdateTime = DateTime.Now.Ticks,
-                TurnCounter = source.TurnCounter,
-                Timestamp = DateTime.Now,
-            };
-
-            try
-            {
-                var node = run?.CurrentMap?.VisitingNode;
-                if (node != null)
-                {
-                    playerStateSnapshot.GameLocation = new LocationSnapshot
-                    {
-                        X = node.X,
-                        Y = node.Y,
-                        NodeId = $"Act{node.Act}:{node.X}:{node.Y}:{node.StationType}",
-                        NodeType = node.StationType.ToString(),
-                        VisitTime = DateTime.UtcNow.Ticks,
-                    };
-                }
-            }
-            catch
-            {
-                // ignored
-            }
-
-            // 构建意图快照（回合结束后通常进入敌方回合；意图可能已变化，仍以当前战斗控制器提取为准）。
-            IntentionSnapshot intentionSnapshot = new IntentionSnapshot(battleController: battle);
-
-            // 复用 EndTurnSyncPatch 的 battleId 生成策略，保证跨客户端一致。
             string battleId = GetBattleId(run);
-
             int round = battle.RoundCounter;
 
-            // 构建回合结束同步数据。
-            TurnEndStateSnapshot turnEndData = new TurnEndStateSnapshot(
-                statusEffectStateSnapshot: statusEffectsSnapshot,
-                playerStateSnapshot: playerStateSnapshot,
-                intentionSnapshot: intentionSnapshot,
-                battleId: battleId,
-                round: round
-            );
-
-            // 序列化并发送回合结束事件。
-            string json = JsonCompat.Serialize(turnEndData);
-            networkClient.SendRequest(NetworkMessageTypes.OnTurnEnd, json);
+            SendTurnBoundarySnapshot(battle, networkClient, BoundaryType.End, battleId, round);
 
             Plugin.Logger?.LogInfo("[TurnSync] 玩家回合结束已同步");
         }
@@ -578,6 +395,89 @@ public class TurnAction_Patch
         }
 
         return enemyTypes.ToArray();
+    }
+
+    private static void SendTurnBoundarySnapshot(
+        BattleController battle, INetworkClient networkClient,
+        BoundaryType boundaryType, string battleId = null, int round = 0)
+    {
+        PlayerUnit source = battle.Player;
+        if (source == null) return;
+
+        GameRunController run = battle.GameRun ?? GameStateUtils.GetCurrentGameRun();
+        string selfPlayerId = NetworkIdentityTracker.GetSelfPlayerId();
+        if (string.IsNullOrWhiteSpace(selfPlayerId))
+            selfPlayerId = GameStateUtils.GetCurrentPlayerId();
+
+        int gold = 0;
+        int maxMana = 0;
+        try
+        {
+            gold = run?.Money ?? 0;
+            maxMana = run != null ? ManaUtils.GetTotalMana(run.BaseMana) : 0;
+        }
+        catch { }
+
+        List<StatusEffectStateSnapshot> statusEffects = CaptureStatusEffects(source);
+
+        var playerState = new PlayerStateSnapshot
+        {
+            PlayerId = selfPlayerId,
+            UserName = networkClient.GetSelf().userName,
+            Health = source.Hp,
+            MaxHealth = source.MaxHp,
+            Block = source.Block,
+            Shield = source.Shield,
+            ManaGroup = ManaUtils.ManaGroupToArray(battle.BattleMana),
+            MaxMana = maxMana,
+            Gold = gold,
+            TurnNumber = source.TurnCounter,
+            IsInBattle = true,
+            IsAlive = source.IsAlive,
+            IsPlayersTurn = boundaryType == BoundaryType.Start,
+            IsInTurn = source.IsInTurn,
+            IsExtraTurn = source.IsExtraTurn,
+            CharacterType = "Player",
+            ReconnectToken = string.Empty,
+            DisconnectTime = 0,
+            LastUpdateTime = DateTime.Now.Ticks,
+            TurnCounter = source.TurnCounter,
+            Timestamp = DateTime.Now,
+        };
+
+        try
+        {
+            var node = run?.CurrentMap?.VisitingNode;
+            if (node != null)
+            {
+                playerState.GameLocation = new LocationSnapshot
+                {
+                    X = node.X,
+                    Y = node.Y,
+                    NodeId = $"Act{node.Act}:{node.X}:{node.Y}:{node.StationType}",
+                    NodeType = node.StationType.ToString(),
+                    VisitTime = DateTime.UtcNow.Ticks,
+                };
+            }
+        }
+        catch { }
+
+        var intentions = new IntentionSnapshot(battleController: battle);
+
+        var data = new TurnBoundarySnapshot(
+            statusEffects: statusEffects,
+            playerState: playerState,
+            intentions: intentions,
+            boundaryType: boundaryType,
+            battleId: battleId,
+            round: round);
+
+        string json = JsonCompat.Serialize(data);
+        string msgType = boundaryType == BoundaryType.Start
+            ? NetworkMessageTypes.OnTurnStart
+            : NetworkMessageTypes.OnTurnEnd;
+
+        networkClient.SendRequest(msgType, json);
     }
 
     private static string GetBattleId(GameRunController run)

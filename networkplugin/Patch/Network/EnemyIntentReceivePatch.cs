@@ -95,7 +95,7 @@ public static class EnemyIntentReceivePatch
     }
 
     private static INetworkClient TryGetNetworkClient()
-        => ServiceProvider?.GetService<INetworkClient>();
+        => NetworkEventHelper.TryGetNetworkClient();
 
     private static void EnsureSubscribed(INetworkClient client)
     {
@@ -499,129 +499,20 @@ public static class EnemyIntentReceivePatch
     }
 
     private static bool TryGetJsonElement(object payload, out JsonElement root)
-    {
-        root = default;
-
-        try
-        {
-            if (payload is JsonElement el)
-            {
-                root = el;
-                return true;
-            }
-
-            if (payload is string s && !string.IsNullOrWhiteSpace(s))
-            {
-                using JsonDocument doc = JsonDocument.Parse(s);
-                root = doc.RootElement.Clone();
-                return true;
-            }
-
-            // anonymous object / dictionary fallback
-            string json = JsonCompat.Serialize(payload);
-            if (!string.IsNullOrWhiteSpace(json))
-            {
-                using JsonDocument doc = JsonDocument.Parse(json);
-                root = doc.RootElement.Clone();
-                return true;
-            }
-        }
-        catch
-        {
-            // ignored
-        }
-
-        return false;
-    }
+        => NetworkEventHelper.TryGetJsonElement(payload, out root);
 
     private static string GetString(JsonElement root, string name)
-    {
-        try
-        {
-            return root.ValueKind == JsonValueKind.Object && root.TryGetProperty(name, out JsonElement el) && el.ValueKind == JsonValueKind.String
-                ? el.GetString()
-                : null;
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => NetworkEventHelper.GetString(root, name);
 
     private static bool GetBool(JsonElement root, string name)
-    {
-        try
-        {
-            if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty(name, out JsonElement el))
-            {
-                return false;
-            }
-
-            return el.ValueKind switch
-            {
-                JsonValueKind.True => true,
-                JsonValueKind.False => false,
-                JsonValueKind.String => bool.TryParse(el.GetString(), out bool b) && b,
-                _ => false,
-            };
-        }
-        catch
-        {
-            return false;
-        }
-    }
+        => NetworkEventHelper.GetBool(root, name);
 
     private static bool GetBool(JsonElement el)
-    {
-        try
-        {
-            return el.ValueKind switch
-            {
-                JsonValueKind.True => true,
-                JsonValueKind.False => false,
-                JsonValueKind.String => bool.TryParse(el.GetString(), out bool b) && b,
-                _ => false,
-            };
-        }
-        catch
-        {
-            return false;
-        }
-    }
+        => NetworkEventHelper.GetBool(el);
 
     private static bool TryGetInt(JsonElement root, string name, out int value)
-    {
-        value = default;
-        try
-        {
-            if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty(name, out JsonElement el) || el.ValueKind != JsonValueKind.Number)
-            {
-                return false;
-            }
-
-            return el.TryGetInt32(out value);
-        }
-        catch
-        {
-            return false;
-        }
-    }
+        => NetworkEventHelper.TryGetInt(root, name, out value);
 
     private static bool TryGetLong(JsonElement root, string name, out long value)
-    {
-        value = default;
-        try
-        {
-            if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty(name, out JsonElement el) || el.ValueKind != JsonValueKind.Number)
-            {
-                return false;
-            }
-
-            return el.TryGetInt64(out value);
-        }
-        catch
-        {
-            return false;
-        }
-    }
+        => NetworkEventHelper.TryGetLong(root, name, out value);
 }

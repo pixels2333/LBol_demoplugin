@@ -372,4 +372,3 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
     public void Resurrect(string username, int newhp) { }
     public void Teleport(int x, int y) { }
 }
-

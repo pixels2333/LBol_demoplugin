@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -505,61 +505,15 @@ public class EventSyncPatch
     }
 
     private static bool TryGetJsonElement(object payload, out JsonElement root)
-    {
-        if (payload is JsonElement elem)
-        {
-            root = elem;
-            return true;
-        }
-
-        if (payload is string s)
-        {
-            try
-            {
-                root = JsonSerializer.Deserialize<JsonElement>(s);
-                return true;
-            }
-            catch
-            {
-                // ignored
-            }
-        }
-
-        root = default;
-        return false;
-    }
-
-    private static bool TryGetProperty(JsonElement root, string name, out JsonElement prop)
-    {
-        prop = default;
-        return root.ValueKind == JsonValueKind.Object && root.TryGetProperty(name, out prop);
-    }
+        => NetworkEventHelper.TryGetJsonElement(payload, out root);
 
     private static string GetString(JsonElement root, string name)
-    {
-        if (TryGetProperty(root, name, out JsonElement prop) && prop.ValueKind == JsonValueKind.String)
-        {
-            return prop.GetString() ?? string.Empty;
-        }
-
-        return string.Empty;
-    }
+        => NetworkEventHelper.GetString(root, name) ?? string.Empty;
 
     private static int GetInt(JsonElement root, string name, int fallback = 0)
     {
-        if (TryGetProperty(root, name, out JsonElement prop))
-        {
-            if (prop.ValueKind == JsonValueKind.Number && prop.TryGetInt32(out int v))
-            {
-                return v;
-            }
-
-            if (prop.ValueKind == JsonValueKind.String && int.TryParse(prop.GetString(), out int vs))
-            {
-                return vs;
-            }
-        }
-
+        if (NetworkEventHelper.TryGetInt(root, name, out int v))
+            return v;
         return fallback;
     }
 

@@ -264,47 +264,10 @@ public static class GapOptionsSyncPatch
 	}
 
 	private static bool TryGetJsonElement(object payload, out JsonElement root)
-	{
-		try
-		{
-			if (payload is JsonElement je)
-			{
-				root = je;
-				return true;
-			}
+		=> NetworkEventHelper.TryGetJsonElement(payload, out root);
 
-			if (payload is string s)
-			{
-				using JsonDocument doc = JsonDocument.Parse(s);
-				root = doc.RootElement.Clone();
-				return true;
-			}
-		}
-		catch
-		{
-			// ignored
-		}
-
-		root = default;
-		return false;
-	}
-
-	private static string GetString(JsonElement elem, string property)
-	{
-		try
-		{
-			if (!TryGetProperty(elem, property, out JsonElement p))
-			{
-				return null;
-			}
-
-			return p.ValueKind == JsonValueKind.String ? p.GetString() : p.GetRawText();
-		}
-		catch
-		{
-			return null;
-		}
-	}
+	private static string GetString(JsonElement root, string name)
+		=> NetworkEventHelper.GetString(root, name);
 
 	private static long? TryGetLong(JsonElement elem, string property)
 	{

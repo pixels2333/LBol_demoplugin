@@ -746,4 +746,3 @@ public static class ShopTradeIconPatch
         }
     }
 }
-

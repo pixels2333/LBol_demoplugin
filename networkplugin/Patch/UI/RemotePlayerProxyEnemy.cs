@@ -35,4 +35,3 @@ internal sealed class RemotePlayerProxyEnemy : EnemyUnit
     protected override string LocalizeProperty(string key, bool decorated = false, bool required = true)
         => key == "Name" ? Name : string.Empty;
 }
-

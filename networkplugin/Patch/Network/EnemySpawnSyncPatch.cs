@@ -12,6 +12,7 @@ using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Patch.EnemyUnits;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -106,7 +107,7 @@ public static class EnemySpawnSyncPatch
     /// </summary>
     /// <returns>网络客户端实例，如果获取失败则返回null</returns>
     private static INetworkClient TryGetNetworkClient()
-        => ServiceProvider?.GetService<INetworkClient>();
+        => NetworkEventHelper.TryGetNetworkClient();
 
     /// <summary>
     /// 确保订阅指定网络客户端的事件
@@ -496,29 +497,8 @@ public static class EnemySpawnSyncPatch
     /// <param name="elem">JSON元素</param>
     /// <param name="property">属性名</param>
     /// <returns>属性值字符串，如果获取失败则返回null</returns>
-    private static string GetString(JsonElement elem, string property)
-    {
-        try
-        {
-            if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
-            {
-                return null;
-            }
-
-            return p.ValueKind switch
-            {
-                JsonValueKind.String => p.GetString(),
-                JsonValueKind.Number => p.GetRawText(),
-                JsonValueKind.True => "true",
-                JsonValueKind.False => "false",
-                _ => null,
-            };
-        }
-        catch
-        {
-            return null;
-        }
-    }
+    private static string GetString(JsonElement root, string name)
+        => NetworkEventHelper.GetString(root, name);
 
     /// <summary>
     /// 从JsonElement获取整数属性值
@@ -529,28 +509,8 @@ public static class EnemySpawnSyncPatch
     /// <returns>属性值整数</returns>
     private static int GetInt(JsonElement elem, string property, int fallback)
     {
-        try
-        {
-            if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
-            {
-                return fallback;
-            }
-
-            if (p.ValueKind == JsonValueKind.Number && p.TryGetInt32(out int v))
-            {
-                return v;
-            }
-
-            if (p.ValueKind == JsonValueKind.String && int.TryParse(p.GetString(), out int vs))
-            {
-                return vs;
-            }
-        }
-        catch
-        {
-            // 忽略解析异常
-        }
-
+        if (NetworkEventHelper.TryGetInt(elem, property, out int v))
+            return v;
         return fallback;
     }
 
@@ -562,31 +522,7 @@ public static class EnemySpawnSyncPatch
     /// <param name="fallback">失败时的默认值</param>
     /// <returns>属性值布尔值</returns>
     private static bool GetBool(JsonElement elem, string property, bool fallback)
-    {
-        try
-        {
-            if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
-            {
-                return fallback;
-            }
-
-            if (p.ValueKind == JsonValueKind.True || p.ValueKind == JsonValueKind.False)
-            {
-                return p.GetBoolean();
-            }
-
-            if (p.ValueKind == JsonValueKind.String && bool.TryParse(p.GetString(), out bool vb))
-            {
-                return vb;
-            }
-        }
-        catch
-        {
-            // 忽略解析异常
-        }
-
-        return fallback;
-    }
+        => NetworkEventHelper.GetBool(elem, property, fallback);
 
     #endregion
 }

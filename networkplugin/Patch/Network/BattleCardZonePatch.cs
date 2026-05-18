@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using HarmonyLib;
 using LBoL.Core;
 using LBoL.Core.Battle;
@@ -97,15 +97,7 @@ public static class BattleCardZoneSyncPatch
     /// <param name="battle">当前战斗控制器实例。</param>
     /// <returns>如果需要同步则为 true，否则为 false。</returns>
     private static bool ShouldSync(BattleController battle)
-    {
-        if (battle == null)
-        {
-            return false; // 没有战斗上下文时直接跳过
-        }
-
-        // 只同步本地玩家战斗（多人模式下远端回放由网络层驱动，不应再次发送）
-        return battle.Player != null && battle.Player == GameStateUtils.GetCurrentPlayer(); // 确认是当前本地玩家的 BattleController
-    }
+        => SendSyncHelper.ShouldSyncBattle(battle);
 
     #region MoveCard 补丁
 

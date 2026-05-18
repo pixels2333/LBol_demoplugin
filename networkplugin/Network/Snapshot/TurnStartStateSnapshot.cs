@@ -19,4 +19,3 @@ public class TurnStartStateSnapshot
     public IntentionSnapshot intentionSnapshot { get; set; }
 
 }
-

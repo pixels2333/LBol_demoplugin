@@ -32,7 +32,7 @@ public static class EnemyStateReceivePatch
     private static readonly Dictionary<string, PendingState> _pendingByEnemyKey = new(StringComparer.Ordinal);
 
     private static INetworkClient TryGetNetworkClient()
-        => ServiceProvider?.GetService<INetworkClient>();
+        => NetworkEventHelper.TryGetNetworkClient();
 
     private static bool IsSelfHost()
         => NetworkIdentityTracker.GetSelfIsHost();
@@ -317,126 +317,17 @@ public static class EnemyStateReceivePatch
     }
 
     private static bool TryGetJsonElement(object payload, out JsonElement root)
-    {
-        root = default;
-
-        try
-        {
-            if (payload is JsonElement el)
-            {
-                root = el;
-                return true;
-            }
-
-            if (payload is string s && !string.IsNullOrWhiteSpace(s))
-            {
-                using JsonDocument doc = JsonDocument.Parse(s);
-                root = doc.RootElement.Clone();
-                return true;
-            }
-
-            string json = JsonCompat.Serialize(payload);
-            if (!string.IsNullOrWhiteSpace(json))
-            {
-                using JsonDocument doc = JsonDocument.Parse(json);
-                root = doc.RootElement.Clone();
-                return true;
-            }
-        }
-        catch
-        {
-            // ignored
-        }
-
-        return false;
-    }
-
-    private static bool TryGetProperty(JsonElement root, string name, out JsonElement element)
-    {
-        element = default;
-        return root.ValueKind == JsonValueKind.Object && root.TryGetProperty(name, out element);
-    }
+        => NetworkEventHelper.TryGetJsonElement(payload, out root);
 
     private static string GetString(JsonElement root, string name)
-    {
-        try
-        {
-            return root.ValueKind == JsonValueKind.Object && root.TryGetProperty(name, out JsonElement el) && el.ValueKind == JsonValueKind.String
-                ? el.GetString()
-                : null;
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => NetworkEventHelper.GetString(root, name);
 
     private static bool GetBool(JsonElement root, string name)
-    {
-        try
-        {
-            if (!TryGetProperty(root, name, out JsonElement el))
-            {
-                return false;
-            }
-
-            return el.ValueKind switch
-            {
-                JsonValueKind.True => true,
-                JsonValueKind.False => false,
-                JsonValueKind.String => bool.TryParse(el.GetString(), out bool b) && b,
-                _ => false,
-            };
-        }
-        catch
-        {
-            return false;
-        }
-    }
+        => NetworkEventHelper.GetBool(root, name);
 
     private static bool TryGetInt(JsonElement root, string name, out int value)
-    {
-        value = default;
-        try
-        {
-            if (!TryGetProperty(root, name, out JsonElement el))
-            {
-                return false;
-            }
-
-            if (el.ValueKind == JsonValueKind.Number && el.TryGetInt32(out value))
-            {
-                return true;
-            }
-
-            return el.ValueKind == JsonValueKind.String && int.TryParse(el.GetString(), out value);
-        }
-        catch
-        {
-            return false;
-        }
-    }
+        => NetworkEventHelper.TryGetInt(root, name, out value);
 
     private static bool TryGetLong(JsonElement root, string name, out long value)
-    {
-        value = default;
-        try
-        {
-            if (!TryGetProperty(root, name, out JsonElement el))
-            {
-                return false;
-            }
-
-            if (el.ValueKind == JsonValueKind.Number && el.TryGetInt64(out value))
-            {
-                return true;
-            }
-
-            return el.ValueKind == JsonValueKind.String && long.TryParse(el.GetString(), out value);
-        }
-        catch
-        {
-            return false;
-        }
-    }
+        => NetworkEventHelper.TryGetLong(root, name, out value);
 }

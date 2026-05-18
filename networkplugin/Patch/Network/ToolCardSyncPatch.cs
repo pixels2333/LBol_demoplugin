@@ -19,37 +19,17 @@ namespace NetworkPlugin.Patch.Network;
 /// </summary>
 public static class ToolCardSyncPatch
 {
-    private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
-
     private static INetworkClient TryGetNetworkClient()
-        => ServiceProvider?.GetService<INetworkClient>();
+        => SendSyncHelper.TryGetClient();
 
     private static bool ShouldSync(BattleController battle)
-    {
-        if (battle == null)
-        {
-            return false;
-        }
-
-        return battle.Player != null && battle.Player == GameStateUtils.GetCurrentPlayer();
-    }
+        => SendSyncHelper.ShouldSyncBattle(battle);
 
     private static void SendGameEvent(string eventType, object eventData)
     {
-        try
-        {
-            INetworkClient networkClient = TryGetNetworkClient();
-            if (networkClient == null || !networkClient.IsConnected)
-            {
-                return;
-            }
-
-            networkClient.SendGameEventData(eventType, eventData);
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[ToolCardSync] Error sending game event {eventType}: {ex.Message}");
-        }
+        var client = SendSyncHelper.TryGetClient();
+        if (client == null) return;
+        client.SendGameEventData(eventType, eventData);
     }
 
     private static object SnapshotToolCard(Card card)

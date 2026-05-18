@@ -23,10 +23,8 @@ namespace NetworkPlugin.Patch.Network;
 [HarmonyPatch]
 public static class RoomStateSyncPatch
 {
-    private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
-
     private static INetworkClient TryGetClient()
-        => ServiceProvider?.GetService<INetworkClient>();
+        => SendSyncHelper.TryGetClient();
 
     private static bool ShouldUploadRoomState(BattleController battle, out string roomKey)
     {

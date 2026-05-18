@@ -226,29 +226,5 @@ public static class BattleReportForwardPatch
 	}
 
 	private static bool TryGetJsonElement(object payload, out JsonElement root)
-	{
-		try
-		{
-			if (payload is JsonElement je)
-			{
-				root = je;
-				return true;
-			}
-
-			if (payload is string s)
-			{
-				using JsonDocument doc = JsonDocument.Parse(s);
-				root = doc.RootElement.Clone();
-				return true;
-			}
-		}
-		catch
-		{
-			// ignored
-		}
-
-		root = default;
-		return false;
-	}
-
+		=> NetworkEventHelper.TryGetJsonElement(payload, out root);
 }

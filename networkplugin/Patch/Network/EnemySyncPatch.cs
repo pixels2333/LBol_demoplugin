@@ -34,21 +34,7 @@ public class EnemySyncPatch
     private static IServiceProvider serviceProvider => ModService.ServiceProvider;
 
     private static INetworkClient TryGetHostNetworkClient()
-    {
-        if (serviceProvider == null)
-        {
-            return null;
-        }
-
-        INetworkClient networkClient = serviceProvider.GetService<INetworkClient>();
-        if (networkClient == null || !networkClient.IsConnected)
-        {
-            return null;
-        }
-
-        NetworkIdentityTracker.EnsureSubscribed(networkClient);
-        return NetworkIdentityTracker.GetSelfIsHost() ? networkClient : null;
-    }
+        => SendSyncHelper.TryGetHostClient();
 
     private static void SendEnemyStateUpdate(INetworkClient networkClient, string json)
     {

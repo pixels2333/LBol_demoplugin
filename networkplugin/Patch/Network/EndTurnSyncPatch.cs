@@ -944,94 +944,18 @@ public static class EndTurnSyncPatch
     }
 
     private static bool TryGetJsonElement(object payload, out JsonElement root)
-    {
-        try
-        {
-            if (payload is JsonElement je)
-            {
-                root = je;
-                return true;
-            }
+        => NetworkEventHelper.TryGetJsonElement(payload, out root);
 
-            if (payload is string s)
-            {
-                root = JsonDocument.Parse(s).RootElement;
-                return true;
-            }
-        }
-        catch
-        {
-            // ignored
-        }
-
-        root = default;
-        return false;
-    }
-
-    private static string GetString(JsonElement elem, string property)
-    {
-        try
-        {
-            if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
-            {
-                return null;
-            }
-
-            return p.ValueKind == JsonValueKind.String ? p.GetString() : p.GetRawText();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+    private static string GetString(JsonElement root, string name)
+        => NetworkEventHelper.GetString(root, name);
 
     private static int GetInt(JsonElement elem, string property, int defaultValue)
     {
-        try
-        {
-            if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
-            {
-                return defaultValue;
-            }
-
-            if (p.ValueKind == JsonValueKind.Number && p.TryGetInt32(out int i))
-            {
-                return i;
-            }
-
-            if (p.ValueKind == JsonValueKind.String && int.TryParse(p.GetString(), out int s))
-            {
-                return s;
-            }
-        }
-        catch
-        {
-            // ignored
-        }
-
+        if (NetworkEventHelper.TryGetInt(elem, property, out int v))
+            return v;
         return defaultValue;
     }
 
-    private static bool GetBool(JsonElement elem, string property)
-    {
-        try
-        {
-            if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement p))
-            {
-                return false;
-            }
-
-            return p.ValueKind switch
-            {
-                JsonValueKind.True => true,
-                JsonValueKind.False => false,
-                JsonValueKind.String => bool.TryParse(p.GetString(), out bool b) && b,
-                _ => false,
-            };
-        }
-        catch
-        {
-            return false;
-        }
-    }
+    private static bool GetBool(JsonElement root, string name)
+        => NetworkEventHelper.GetBool(root, name);
 }

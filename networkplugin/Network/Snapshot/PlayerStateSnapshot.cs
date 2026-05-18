@@ -45,4 +45,3 @@ namespace NetworkPlugin.Network.Snapshot
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     }
 }
-

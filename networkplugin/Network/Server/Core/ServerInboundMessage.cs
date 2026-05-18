@@ -21,4 +21,3 @@ public readonly struct ServerInboundMessage
         Priority = priority;
     }
 }
-

@@ -16,4 +16,3 @@ public sealed class ServerOptions
     public bool UseBackgroundThread { get; set; } = false;
     public int BackgroundThreadSleepMs { get; set; } = 15;
 }
-

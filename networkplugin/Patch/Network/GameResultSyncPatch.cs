@@ -43,16 +43,13 @@ public static class GameResultSyncPatch
     private static readonly Action<string, object> _onGameEventReceived = OnGameEventReceived;
     private static readonly Action<bool> _onConnectionStateChanged = OnConnectionStateChanged;
 
-    private static INetworkClient TryGetNetworkClient()
-        => ServiceProvider?.GetService<INetworkClient>();
-
-    [HarmonyPatch(typeof(GameDirector), "Update")]
+        [HarmonyPatch(typeof(GameDirector), "Update")]
     private static class SubscribeHook
     {
         [HarmonyPostfix]
         public static void Postfix()
         {
-            INetworkClient client = TryGetNetworkClient();
+            INetworkClient client = NetworkEventHelper.TryGetNetworkClient();
             if (client == null)
             {
                 return;
@@ -203,7 +200,7 @@ public static class GameResultSyncPatch
     {
         LastLocalResult = resultType;
 
-        INetworkClient client = TryGetNetworkClient();
+        INetworkClient client = NetworkEventHelper.TryGetNetworkClient();
         if (client?.IsConnected != true)
         {
             return;
@@ -260,28 +257,5 @@ public static class GameResultSyncPatch
     }
 
     private static bool TryGetJsonElement(object payload, out JsonElement root)
-    {
-        try
-        {
-            if (payload is JsonElement je)
-            {
-                root = je;
-                return true;
-            }
-
-            if (payload is string s)
-            {
-                using JsonDocument doc = JsonDocument.Parse(s);
-                root = doc.RootElement.Clone();
-                return true;
-            }
-        }
-        catch
-        {
-            // ignored
-        }
-
-        root = default;
-        return false;
-    }
+        => NetworkEventHelper.TryGetJsonElement(payload, out root);
 }

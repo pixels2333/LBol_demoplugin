@@ -408,4 +408,3 @@ public static class ExitGamePatch
 
     #endregion
 }
-
