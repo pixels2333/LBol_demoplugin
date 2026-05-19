@@ -5,6 +5,7 @@ using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Dialogs;
 using LBoL.Presentation.UI.Widgets;
 using NetworkPlugin.Patch.UI;
+using NetworkPlugin.UI.Components;
 using NetworkPlugin.UI.Panels;
 using NetworkPlugin.UI.Widgets;
 using TMPro;

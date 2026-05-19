@@ -17,6 +17,7 @@
       https://nuget.samboy.dev/v3/index.json
     </RestoreAdditionalProjectSources>
     <RootNamespace>NetworkPlugin</RootNamespace>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Tests/**/*.cs</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="BepInEx.Analyzers" Version="1.0.8" PrivateAssets="all" />
@@ -48,5 +49,15 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Patch\EnemyUnits\Map\" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Tests/**/*.cs;Benchmarks/**/*.cs</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>NetworkPlugin.Tests</_Parameter1>
+    </AssemblyAttribute>
   </ItemGroup>
 </Project>

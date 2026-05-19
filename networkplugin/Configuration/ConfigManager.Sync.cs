@@ -169,6 +169,7 @@ public partial class ConfigManager
             EnableManaSync = EnableManaSync?.Value ?? true,
             EnableBattleSync = EnableBattleSync?.Value ?? true,
             EnableMapSync = EnableMapSync?.Value ?? true,
+            EnableStatusEffectSync = EnableStatusEffectSync?.Value ?? true,
             EnableNatDetection = EnableNatDetection?.Value ?? true,
             EnableUpnpExperimental = EnableUpnpExperimental?.Value ?? false,
             // SyncConfiguration 里暂未声明该字段；这里保持兼容，patch 层自己读取 EnableSaveLoadSync。

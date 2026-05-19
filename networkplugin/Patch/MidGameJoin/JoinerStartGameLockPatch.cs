@@ -5,7 +5,7 @@ using LBoL.Core;
 using LBoL.Core.Cards;
 using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.MidGameJoin;
 using NetworkPlugin.Network.Snapshot;

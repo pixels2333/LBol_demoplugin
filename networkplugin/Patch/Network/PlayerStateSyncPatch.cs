@@ -4,7 +4,6 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Utils;

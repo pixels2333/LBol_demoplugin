@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Utils;
 using NetworkPlugin.Network.Messages;

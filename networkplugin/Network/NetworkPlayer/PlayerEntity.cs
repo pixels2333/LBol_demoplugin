@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
 using NetworkPlugin.Network.Snapshot;
+using NetworkPlugin.Network.Sync;
 
-namespace NetworkPlugin.Network;
+namespace NetworkPlugin.Network.NetworkPlayer;
 
 /// <summary>
 /// 玩家实体类 - 使用SyncVar实现自动同步的核心玩家数据

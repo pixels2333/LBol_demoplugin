@@ -7,7 +7,7 @@ using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Patch.UI;

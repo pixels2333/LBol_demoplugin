@@ -13,7 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using LBoL.Presentation.UI.ExtraWidgets;
 using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.UI.Widgets;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Patch.Network;
 using NetworkPlugin.Patch.UI;
@@ -33,7 +33,7 @@ namespace NetworkPlugin.UI.Panels;
 /// <summary>
 /// 交易面板类，处理玩家之间的物品（卡牌）交易界面与逻辑。
 /// </summary>
-public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
+public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 {
     #region 常量
 
@@ -2893,7 +2893,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 .Select(c =>
                 {
                     try { return Library.TryCreateCard(c.CardId, c.IsUpgraded, c.UpgradeCounter); }
-                    catch { return null; }
+                    catch (Exception ex) { Plugin.Logger?.LogWarning($"[TradePanel] 远端报价创建临时卡失败: CardId={c.CardId}, {ex.Message}"); return null; }
                 })
                 .Where(temp => temp != null)
                 .ToList()
@@ -3973,7 +3973,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                         _exhibitIconTemplate = templateField.GetValue(systemBoard) as ExhibitWidget;
                 }
             }
-            catch { }
+            catch (Exception ex) { Plugin.Logger?.LogWarning($"[TradePanel] 获取 ExhibitTemplate 失败: {ex.Message}"); }
         }
 
         _localExhibitContainer = new GameObject("LocalExhibitPreviews");
@@ -4071,7 +4071,7 @@ public class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 img.raycastTarget = true;
                 Sprite sprite = null;
                 try { sprite = ResourcesHelper.TryGetSprite<Exhibit>(exhibit.Id); }
-                catch { }
+                catch (Exception ex) { Plugin.Logger?.LogWarning($"[TradePanel] 加载展品图标失败: ExhibitId={exhibit.Id}, {ex.Message}"); }
                 if (sprite != null) img.sprite = sprite;
 
                 var commonBtn = iconGo.AddComponent<CommonButtonWidget>();

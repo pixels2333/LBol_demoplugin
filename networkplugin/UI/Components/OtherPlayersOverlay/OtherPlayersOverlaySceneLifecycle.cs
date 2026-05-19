@@ -99,7 +99,7 @@ public static partial class OtherPlayersOverlayPatch
         }
     }
 
-    private static int GetUnityObjectSignature(Object obj)
+    private static int GetUnityObjectSignature(UnityEngine.Object obj)
     {
         return obj != null ? obj.GetInstanceID() : 0;
     }

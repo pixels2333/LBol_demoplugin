@@ -1,7 +1,7 @@
 using LBoL.Base;
 using LBoL.Core.GapOptions;
 
-namespace NetworkPlugin.Patch.UI;
+namespace NetworkPlugin.UI.Models;
 
 internal abstract class RuntimeGapOption : GapOption
 {

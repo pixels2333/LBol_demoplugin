@@ -14,117 +14,53 @@ namespace NetworkPlugin.Core;
 /// 同步管理器类
 /// LBoL联机MOD的核心组件，负责协调所有游戏状态的同步功能
 /// 整合所有Harmony补丁点和网络通信，基于LiteNetLib网络框架实现多人游戏状态同步
+///
+/// 重构说明：已将缓冲区管理、状态缓存、网络可用性跟踪分别委托给
+/// <see cref="NetworkEventBufferManager"/>、<see cref="StateCacheManager"/>、<see cref="NetworkAvailabilityTracker"/>。
 /// </summary>
-
 public class SynchronizationManager : ISynchronizationManager
 {
-    #region 依赖注入和网络服务
+    #region 依赖注入和服务
 
-    /// <summary>
-    /// 依赖注入服务提供者
-    /// 用于获取和管理其他MOD服务的依赖关系
-    /// </summary>
     private readonly IServiceProvider _serviceProvider;
-
-    /// <summary>
-    /// 网络客户端接口
-    /// 负责与LiteNetLib网络框架的通信
-    /// </summary>
     private INetworkClient _networkClient;
 
-    #endregion
-
-    #region 状态管理和缓存
+    private readonly NetworkEventBufferManager _eventBufferManager;
+    private readonly StateCacheManager _stateCacheManager;
+    private readonly NetworkAvailabilityTracker _netAvailTracker;
 
     /// <summary>
     /// 网络不可用时的事件队列
-    /// 存储在断线或连接问题时需要同步的游戏事件
     /// </summary>
-
     private readonly Queue<GameEvent> _eventQueue = new();
-
-    private readonly SortedList<long, NetworkEventBuffer> _remoteEventBuffer = [];
-
-    // SortedList does not allow duplicate keys; network bursts can share the same tick.
-    private readonly object _remoteEventBufferLock = new();
-
-    /// <summary>
-    /// 本地状态缓存字典
-    /// 存储最近的游戏状态快照，用于避免重复同步和状态验证
-    /// </summary>
-
-    private readonly Dictionary<string, object> _stateCache = [];
-
-    /// <summary>
-    /// 远程事件缓冲区清理阈值
-    /// 超过此时间的事件将被视为超时并自动清理
-    /// </summary>
-    private static readonly TimeSpan EventBufferTimeout = TimeSpan.FromSeconds(30);
 
     /// <summary>
     /// 同步配置对象
-    /// 包含各种同步行为和性能参数的配置选项
     /// </summary>
     private readonly SyncConfiguration _config = new();
 
     #endregion
 
-    #region 网络状态管理
-
-    /// <summary>
-    /// 网络连接状态标志
-    /// 标识当前是否可以与远程玩家进行网络通信
-    /// </summary>
-    private bool _isNetworkAvailable = false;
-
-    /// <summary>
-    /// 最后网络连接时间
-    /// 记录最近一次成功建立网络连接的时间戳
-    /// 用于连接状态监控和重连策略
-    /// </summary>
-    private DateTime _lastConnectionTime = DateTime.MinValue;
-
-    /// <summary>
-    /// 最后状态同步时间
-    /// 记录最近一次成功完成状态同步的时间戳
-    /// 用于同步频率控制和性能监控
-    /// </summary>
-    private DateTime _lastSyncTime = DateTime.MinValue;
-
-    // 节流：避免重连等路径在短时间内重复发起 FullStateSyncRequest。
-    private long _lastFullSyncRequestAtTicks;
-
-    #endregion
-
-    /// <summary>
-    /// 通过依赖注入创建同步管理器。
-    /// </summary>
-    /// <param name="serviceProvider">服务提供者。</param>
     public SynchronizationManager(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;
-        Plugin.Logger?.LogInfo("[SyncManager] 同步管理器初始化完成");
+        _eventBufferManager = new NetworkEventBufferManager();
+        _stateCacheManager = new StateCacheManager(_config);
+        _netAvailTracker = new NetworkAvailabilityTracker(serviceProvider);
+        Plugin.Logger?.LogInfo("[SyncManager] 同步管理器初始化完成（委托模式）");
     }
 
-    /// <summary>
-    /// 从依赖注入容器获取并初始化网络客户端
-    /// 建立与LiteNetLib网络框架的连接
-    /// </summary>
+    #region 网络客户端初始化
 
     private void InitializeNetworkClient()
     {
         try
         {
             _networkClient = _serviceProvider?.GetService<INetworkClient>();
-
             if (_networkClient != null)
-            {
                 Plugin.Logger?.LogInfo("[SyncManager] 网络客户端初始化成功");
-            }
             else
-            {
                 Plugin.Logger?.LogWarning("[SyncManager] 网络客户端不可用 - 运行在离线模式");
-            }
         }
         catch (Exception ex)
         {
@@ -132,11 +68,34 @@ public class SynchronizationManager : ISynchronizationManager
         }
     }
 
-    /// <summary>
-    /// 处理游戏事件的主要入口点
-    /// 这是所有游戏状态同步的核心方法，协调本地和远程状态的一致性
-    /// </summary>
-    /// <param name="gameEvent">需要处理的游戏事件对象</param>
+    #endregion
+
+    #region 网络可用性检查
+
+    private bool IsNetworkAvailable()
+    {
+        try
+        {
+            if (_networkClient == null)
+                InitializeNetworkClient();
+
+            _netAvailTracker.SetAvailable();
+            bool available = _networkClient?.IsConnected ?? false;
+            if (!available) _netAvailTracker.SetUnavailable();
+            return available;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[SyncManager] 网络可用性检查异常: {ex.Message}");
+            _netAvailTracker.SetUnavailable();
+            return false;
+        }
+    }
+
+    #endregion
+
+    #region ISynchronizationManager 实现
+
     public void SyncGameEventToNetwork(GameEvent gameEvent)
     {
         if (gameEvent == null)
@@ -161,7 +120,6 @@ public class SynchronizationManager : ISynchronizationManager
             }
 
             SendGameEvent(gameEvent);
-            UpdateLocalState(gameEvent);
 
             Plugin.Logger?.LogDebug($"[SyncManager] 事件处理完成: {gameEvent.EventType} 来自 {gameEvent.UserName}");
         }
@@ -171,15 +129,8 @@ public class SynchronizationManager : ISynchronizationManager
         }
     }
 
-    /// <summary>
-    /// 接收并处理来自网络的远程事件
-    /// 将网络传输的事件数据按时间戳有序地应用到本地游戏状态中
-    /// </summary>
-    /// <param name="eventData">来自网络的原始事件数据</param>
-
     public void ProcessEventFromNetwork(object eventData)
     {
-        // 参数验证：确保事件数据不为空
         if (eventData == null)
         {
             Plugin.Logger?.LogWarning("[SyncManager] 接收到空的网络事件数据");
@@ -188,425 +139,23 @@ public class SynchronizationManager : ISynchronizationManager
 
         try
         {
-            if (!TryNormalizeNetworkEvent(eventData, out Dictionary<string, object> eventDict))
+            _eventBufferManager.EnqueueEvent(eventData);
+            _eventBufferManager.ProcessBufferedEvents(gameEvent =>
             {
-                Plugin.Logger?.LogWarning($"[SyncManager] 无效的网络事件数据格式: type={eventData.GetType().FullName}, head200={DescribePayloadHead200(eventData)}");
-                return;
-            }
-
-            // 提取时间戳，如果不存在则使用当前时间。
-            long timestamp = eventDict.ContainsKey("Timestamp")
-                ? Convert.ToInt64(eventDict["Timestamp"])
-                : DateTime.Now.Ticks;
-
-            // SortedList 不允许重复 key；同一 tick 内收到多条消息时会触发“same key already added”。
-            // 这里在锁内为 timestamp 找到一个可用的“下一刻”，保持总体顺序。
-            long key = timestamp;
-            lock (_remoteEventBufferLock)
-            {
-                while (_remoteEventBuffer.ContainsKey(key))
-                {
-                    if (key == long.MaxValue)
-                    {
-                        // 极端情况下避免溢出：回退到“当前时间”，并继续探测空位。
-                        key = DateTime.Now.Ticks;
-                        continue;
-                    }
-
-                    key++;
-                }
-
-                NetworkEventBuffer eventBuffer = new(key, eventDict);
-                _remoteEventBuffer.Add(key, eventBuffer);
-            }
-
-            string eventType = eventDict["EventType"].ToString();
-            Plugin.Logger?.LogDebug($"[SyncManager] 接收到网络事件: {eventType}, 时间戳: {key}");
-
-            ProcessBufferedEvents();
+                _stateCacheManager.ApplyRemoteEvent(gameEvent);
+            });
         }
         catch (Exception ex)
         {
-            // 捕获并记录处理异常，不影响网络通信的继续进行
             Plugin.Logger?.LogError($"[SyncManager] 网络事件处理异常: {ex.Message}");
         }
     }
 
-    private static bool TryNormalizeNetworkEvent(object eventData, out Dictionary<string, object> eventDict)
-    {
-        eventDict = null;
-        if (eventData == null)
-            return false;
-
-        // 1) 已经是期望结构
-        if (eventData is Dictionary<string, object> dict)
-        {
-            if (dict.ContainsKey("EventType"))
-            {
-                eventDict = dict;
-                return true;
-            }
-
-            return false;
-        }
-
-        // 2) 兼容匿名对象/DTO：{ EventType, Payload, Timestamp }
-        var t = eventData.GetType();
-        var pEventType = t.GetProperty("EventType");
-        if (pEventType == null)
-        {
-            return false;
-        }
-
-        object et = pEventType.GetValue(eventData, null);
-        if (et == null)
-        {
-            return false;
-        }
-
-        Dictionary<string, object> d = new Dictionary<string, object>(StringComparer.Ordinal);
-        d["EventType"] = et;
-
-        var pPayload = t.GetProperty("Payload");
-        if (pPayload != null)
-        {
-            d["Payload"] = pPayload.GetValue(eventData, null);
-        }
-
-        var pTimestamp = t.GetProperty("Timestamp");
-        if (pTimestamp != null)
-        {
-            d["Timestamp"] = pTimestamp.GetValue(eventData, null);
-        }
-
-        eventDict = d;
-        return true;
-    }
-
-    private static string DescribePayloadHead200(object maybeEvent)
-    {
-        if (maybeEvent == null)
-            return string.Empty;
-
-        try
-        {
-            var t = maybeEvent.GetType();
-            var pPayload = t.GetProperty("Payload");
-            object payload = pPayload != null ? pPayload.GetValue(maybeEvent, null) : maybeEvent;
-
-            string s = payload switch
-            {
-                null => string.Empty,
-                string str => str,
-                _ => JsonCompat.Serialize(payload)
-            };
-
-            s = (s ?? string.Empty).Replace("\r", " ").Replace("\n", " ");
-            return s.Length > 200 ? s.Substring(0, 200) : s;
-        }
-        catch
-        {
-            string fallback = (maybeEvent.ToString() ?? string.Empty).Replace("\r", " ").Replace("\n", " ");
-            return fallback.Length > 200 ? fallback.Substring(0, 200) : fallback;
-        }
-    }
-
-    #region 有序事件处理方法
-
-    /// <summary>
-    /// 处理缓冲区中的网络事件
-    /// 按时间戳顺序处理所有可用的网络事件
-    /// </summary>
-    private void ProcessBufferedEvents()
-    {
-        try
-        {
-            CleanupTimeoutEvents();
-
-            List<long> timestampsToRemove = [];
-
-            List<KeyValuePair<long, NetworkEventBuffer>> snapshot;
-            lock (_remoteEventBufferLock)
-            {
-                snapshot = _remoteEventBuffer.ToList();
-            }
-
-            foreach (var kvp in snapshot)
-            {
-                long timestamp = kvp.Key;
-                NetworkEventBuffer eventBuffer = kvp.Value;
-
-                if (eventBuffer.Status != NetworkEventBuffer.ProcessingStatus.Pending)
-                {
-                    continue;
-                }
-
-                if (eventBuffer.IsTimeout(EventBufferTimeout))
-                {
-                    Plugin.Logger?.LogWarning($"[SyncManager] 事件超时，丢弃: {eventBuffer.OriginalData["EventType"]}, 时间戳: {timestamp}");
-                    eventBuffer.Status = NetworkEventBuffer.ProcessingStatus.Discarded;
-                    timestampsToRemove.Add(timestamp);
-                    continue;
-                }
-
-                try
-                {
-                    eventBuffer.Status = NetworkEventBuffer.ProcessingStatus.Processing;
-                    ProcessSingleNetworkEvent(eventBuffer);
-                    eventBuffer.Status = NetworkEventBuffer.ProcessingStatus.Completed;
-
-                    string eventType = eventBuffer.OriginalData["EventType"].ToString();
-                    Plugin.Logger?.LogDebug($"[SyncManager] 事件处理成功: {eventType}, 时间戳: {timestamp}");
-                }
-                catch (Exception ex)
-                {
-                    Plugin.Logger?.LogError($"[SyncManager] 事件处理失败 - 时间戳: {timestamp}, 错误: {ex.Message}");
-                    eventBuffer.Status = NetworkEventBuffer.ProcessingStatus.Discarded;
-                    timestampsToRemove.Add(timestamp);
-                }
-            }
-
-            lock (_remoteEventBufferLock)
-            {
-                foreach (long timestamp in timestampsToRemove)
-                {
-                    _remoteEventBuffer.Remove(timestamp);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[SyncManager] 缓冲区事件处理异常: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 处理单个网络事件
-    /// 将事件数据转换为游戏事件并应用到本地状态
-    /// </summary>
-    /// <param name="eventBuffer">网络事件缓冲区</param>
-    private void ProcessSingleNetworkEvent(NetworkEventBuffer eventBuffer)
-    {
-        Dictionary<string, object> eventDict = eventBuffer.OriginalData;
-
-        string eventType = eventDict["EventType"].ToString();
-        object payload = eventDict.ContainsKey("Payload") ? eventDict["Payload"] : string.Empty;
-
-        // 从时间戳创建DateTime对象
-        DateTime timestamp = new(eventBuffer.Timestamp);
-
-        // 根据网络数据创建对应的游戏事件对象
-        GameEvent gameEvent = CreateGameEventFromNetworkData(eventType, payload, timestamp) ?? throw new InvalidOperationException($"无法创建游戏事件: {eventType}");
-
-        // 将远程事件应用到本地游戏状态
-        ApplyRemoteEvent(gameEvent);
-
-        // 记录事件应用的详细信息
-        Plugin.Logger?.LogDebug($"[SyncManager] 单个事件应用成功: {gameEvent.EventType} 来自 {gameEvent.UserName} (时间戳: {timestamp})");
-    }
-
-    private GameEvent CreateGameEventFromNetworkData(string eventType, object payload, DateTime timestamp)
-    {
-        // 最小可用实现：将网络载荷包装为 GameEvent，供后续缓存/排序/追赶逻辑使用。
-        // 注意：这里不直接“应用到游戏”，避免与上层 OnGameEventReceived 重复触发。
-        if (string.IsNullOrWhiteSpace(eventType))
-        {
-            eventType = "Unknown";
-        }
-
-        string playerName = ResolvePlayerName(payload);
-
-        return new GameEvent
-        {
-            EventType = eventType,
-            Data = payload ?? string.Empty,
-            Timestamp = timestamp.Ticks,
-            UserName = playerName,
-            Source = "Network",
-            IsProcessed = false,
-        };
-    }
-
-    private static string ResolvePlayerName(object payload)
-    {
-        if (payload is Dictionary<string, object> dict)
-        {
-            if (TryGetNonEmptyString(dict, "PlayerName", out string playerName))
-                return playerName;
-            if (TryGetNonEmptyString(dict, "UserName", out string legacyUserName))
-                return legacyUserName;
-            if (TryGetNonEmptyString(dict, "username", out string legacyUserNameLower))
-                return legacyUserNameLower;
-        }
-
-        return "remote";
-    }
-
-    private static bool TryGetNonEmptyString(Dictionary<string, object> dict, string key, out string value)
-    {
-        value = null;
-        if (!dict.TryGetValue(key, out object raw) || raw == null)
-        {
-            return false;
-        }
-
-        if (raw is string s && !string.IsNullOrWhiteSpace(s))
-        {
-            value = s;
-            return true;
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// 清理缓冲区中的超时事件
-    /// 移除超过指定时间未处理的事件，防止内存泄漏
-    /// </summary>
-
-
-    private void CleanupTimeoutEvents()
-    {
-        try
-        {
-            List<long> timestampsToRemove = [];
-
-            List<KeyValuePair<long, NetworkEventBuffer>> snapshot;
-            lock (_remoteEventBufferLock)
-            {
-                snapshot = _remoteEventBuffer.ToList();
-            }
-
-            foreach (var kvp in snapshot)
-            {
-                long timestamp = kvp.Key;
-                var eventBuffer = kvp.Value;
-
-                // 只清理等待处理且超时的事件
-                if (eventBuffer.Status == NetworkEventBuffer.ProcessingStatus.Pending &&
-                    eventBuffer.IsTimeout(EventBufferTimeout))
-                {
-                    Plugin.Logger?.LogWarning($"[SyncManager] 清理超时事件: {eventBuffer.OriginalData["EventType"]}, 时间戳: {timestamp}");
-                    timestampsToRemove.Add(timestamp);
-                }
-            }
-
-            // 移除超时事件
-            lock (_remoteEventBufferLock)
-            {
-                foreach (long timestamp in timestampsToRemove)
-                {
-                    _remoteEventBuffer.Remove(timestamp);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[SyncManager] 超时事件清理异常: {ex.Message}");
-        }
-    }
-
-    #endregion
-
-    /// <summary>
-    /// 获取远程事件缓冲区统计信息
-    /// 用于调试和监控有序事件处理的状态
-    /// </summary>
-    /// <returns>包含缓冲区统计信息的对象</returns>
-    public object GetEventBufferStatistics()
-    {
-        try
-        {
-            Dictionary<NetworkEventBuffer.ProcessingStatus, int> statusCounts = [];
-
-            // 初始化状态计数
-            foreach (NetworkEventBuffer.ProcessingStatus status in Enum.GetValues(typeof(NetworkEventBuffer.ProcessingStatus)))
-            {
-                statusCounts[status] = 0;
-            }
-
-            // 统计各状态的事件数量
-            lock (_remoteEventBufferLock)
-            {
-                foreach (var kvp in _remoteEventBuffer)
-                {
-                    var status = kvp.Value.Status;
-                    statusCounts[status]++;
-                }
-            }
-
-            // 计算时间戳范围
-            long? oldestTimestamp = null;
-            long? newestTimestamp = null;
-
-            if (_remoteEventBuffer.Count > 0)
-            {
-                lock (_remoteEventBufferLock)
-                {
-                    if (_remoteEventBuffer.Count > 0)
-                    {
-                        oldestTimestamp = _remoteEventBuffer.Keys[0];
-                        newestTimestamp = _remoteEventBuffer.Keys[_remoteEventBuffer.Count - 1];
-                    }
-                }
-            }
-
-            int total;
-            int cap;
-            lock (_remoteEventBufferLock)
-            {
-                total = _remoteEventBuffer.Count;
-                cap = _remoteEventBuffer.Capacity;
-            }
-
-            return new
-            {
-                // 缓冲区基本信息
-                TotalEvents = total,
-                BufferSize = cap,
-
-                // 状态分布统计
-                StatusDistribution = statusCounts.ToDictionary(kvp => kvp.Key.ToString(), kvp => kvp.Value),
-
-                // 时间戳信息
-                OldestTimestamp = oldestTimestamp,
-                NewestTimestamp = newestTimestamp,
-                TimeRange = oldestTimestamp.HasValue && newestTimestamp.HasValue
-                    ? TimeSpan.FromTicks(newestTimestamp.Value - oldestTimestamp.Value)
-                    : (TimeSpan?)null,
-
-                // 超时信息
-                TimeoutThreshold = EventBufferTimeout.TotalSeconds,
-                ActiveTimeoutCheck = true
-            };
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[SyncManager] 获取缓冲区统计异常: {ex.Message}");
-            return new { Error = ex.Message };
-        }
-    }
-
-    #region 专用事件发送方法
-
-    /// <summary>
-    /// 发送卡牌使用事件
-    /// 同步卡牌基本信息、法力消耗和目标选择等卡牌使用相关的状态
-    /// </summary>
-    /// <param name="cardId">使用的卡牌唯一标识符</param>
-    /// <param name="cardName">卡牌显示名称</param>
-    /// <param name="cardType">卡牌类型（攻击/技能/能力牌等）</param>
-    /// <param name="manaCost">法力消耗数组[红,蓝,绿,白]</param>
-    /// <param name="targetSelector">目标选择器字符串描述</param>
-    /// <param name="playerState">使用卡牌时的玩家状态快照</param>
     public void SendCardPlayEvent(string cardId, string cardName, string cardType,
         int[] manaCost, string targetSelector, object playerState)
     {
-        // 获取当前玩家ID，用于标识事件来源
         string playerId = GameStateUtils.GetCurrentPlayerId();
-
-        // 创建卡牌使用事件的详细数据
-        Dictionary<string, object> eventData = new Dictionary<string, object>
+        var eventData = new Dictionary<string, object>
         {
             ["CardId"] = cardId,
             ["CardName"] = cardName,
@@ -615,282 +164,164 @@ public class SynchronizationManager : ISynchronizationManager
             ["TargetSelector"] = targetSelector,
             ["PlayerState"] = playerState ?? ""
         };
-
-        // 创建卡牌使用事件并发送到网络
-        GameEvent cardPlayEvent = new("CardPlayed", playerId, eventData);
-        SendGameEvent(cardPlayEvent);
+        SendGameEvent(new GameEvent("CardPlayed", playerId, eventData));
     }
 
-    /// <summary>
-    /// 发送法力消耗事件
-    /// 同步法力变化给远程玩家，保持法力状态的一致性
-    /// </summary>
-    /// <param name="manaBefore">消耗前的法力值数组[红,蓝,绿,白]</param>
-    /// <param name="manaConsumed">消耗的法力值数组[红,蓝,绿,白]</param>
-    /// <param name="source">法力消耗的来源描述</param>
     public void SendManaConsumeEvent(int[] manaBefore, int[] manaConsumed, string source)
     {
-        // 获取当前玩家ID，用于标识事件来源
         string playerId = GameStateUtils.GetCurrentPlayerId();
-
-        // 创建法力消耗事件的详细数据
-        Dictionary<string, object> eventData = new Dictionary<string, object>
+        var eventData = new Dictionary<string, object>
         {
             ["ManaBefore"] = ConvertManaArray(manaBefore),
             ["ManaConsumed"] = ConvertManaArray(manaConsumed),
             ["Source"] = source
         };
-
-        // 发送法力消耗事件到网络
-        GameEvent manaEvent = new("ManaConsumeStarted", playerId, eventData);
-        SendGameEvent(manaEvent);
+        SendGameEvent(new GameEvent("ManaConsumeStarted", playerId, eventData));
     }
 
-    /// <summary>
-    /// 发送 GapOptions 选项事件
-    /// 同步 GapStation / GapOptions 的选择和操作给远程玩家，协调多人游戏的决策
-    /// </summary>
-    /// <param name="eventType">GapOptions 事件类型（如喝茶、升级、移除卡牌等）</param>
-    /// <param name="optionData">选项的详细数据和参数</param>
-    /// <param name="playerState">选择时的玩家状态快照</param>
     public void SendGapStationEvent(string eventType, object optionData, object playerState)
     {
-        // 获取当前玩家ID，用于标识事件来源
         string playerId = GameStateUtils.GetCurrentPlayerId();
-
-        // 创建 GapOptions 选项事件的详细数据
-        Dictionary<string, object> eventData = new Dictionary<string, object>
+        var eventData = new Dictionary<string, object>
         {
             ["OptionData"] = optionData ?? "",
             ["PlayerState"] = playerState ?? ""
         };
-
-        // 发送 GapOptions 事件到网络
-        GameEvent gapEvent = new(eventType, playerId, eventData);
-        SendGameEvent(gapEvent);
+        SendGameEvent(new GameEvent(eventType, playerId, eventData));
     }
 
-    /// <summary>
-    /// 请求完整状态同步
-    /// 用于新玩家加入游戏或断线重连时获取完整的游戏状态
-    /// </summary>
     public void RequestFullSync()
     {
         try
         {
-            // 检查网络连接状态
             if (!IsNetworkAvailable())
             {
                 Plugin.Logger?.LogWarning("[SyncManager] 无法请求完整状态同步 - 网络连接不可用");
                 return;
             }
 
-            // 连接恢复/重连路径可能在短时间内重复触发；这里做一次轻量节流，避免刷屏。
-            long nowTicks = DateTime.UtcNow.Ticks;
-            long minIntervalTicks = TimeSpan.FromSeconds(2).Ticks;
-            if (_lastFullSyncRequestAtTicks > 0 &&
-                (nowTicks - _lastFullSyncRequestAtTicks) >= 0 &&
-                (nowTicks - _lastFullSyncRequestAtTicks) < minIntervalTicks)
+            if (!_netAvailTracker.CanRequestFullSync())
             {
                 Plugin.Logger?.LogDebug("[SyncManager] FullStateSyncRequest 节流：距离上次请求过近，已跳过");
                 return;
             }
 
-            _lastFullSyncRequestAtTicks = nowTicks;
-
-            // 创建完整状态同步请求数据
-            Dictionary<string, object> syncRequestData = new Dictionary<string, object>
+            var syncRequestData = new Dictionary<string, object>
             {
-                ["RequestType"] = "FullSync",                       // 请求类型标识
-                ["RequestReason"] = "ManualRequest",                  // 请求原因描述
-                ["RequestId"] = nowTicks                               // 便于日志对账（短时间内可区分即可）
+                ["RequestType"] = "FullSync",
+                ["RequestReason"] = "ManualRequest",
+                ["RequestId"] = DateTime.UtcNow.Ticks
             };
             string playerId = GameStateUtils.GetCurrentPlayerId();
-
-            // 发送完整状态同步请求到网络
-            GameEvent syncEvent = new(NetworkMessageTypes.FullStateSyncRequest.ToString(), playerId, syncRequestData);
+            var syncEvent = new GameEvent(NetworkMessageTypes.FullStateSyncRequest.ToString(), playerId, syncRequestData);
             SendGameEvent(syncEvent);
 
-            // 更新最后同步时间戳
-            _lastSyncTime = DateTime.Now;
-
-            // 记录完整同步请求日志
-            Plugin.Logger?.LogInfo($"[SyncManager] 发起完整状态同步请求: playerId={playerId}, requestId={nowTicks}");
+            Plugin.Logger?.LogInfo($"[SyncManager] 发起完整状态同步请求: playerId={playerId}, requestId={DateTime.UtcNow.Ticks}");
         }
         catch (Exception ex)
         {
-            // 捕获并记录同步请求异常
             Plugin.Logger?.LogError($"[SyncManager] 完整状态同步请求异常: {ex.Message}");
         }
     }
 
-    #endregion
-
-    #region 网络连接状态处理方法
-
-    /// <summary>
-    /// 处理网络连接恢复事件
-    /// 当网络重新连接可用时，处理队列中的待处理事件并请求状态同步
-    /// </summary>
     public void OnConnectionRestored()
     {
         try
         {
-            // 更新网络连接状态
-            _isNetworkAvailable = true;
-
-            // 记录连接恢复时间戳
-            _lastConnectionTime = DateTime.Now;
-
-            // 记录连接恢复的日志信息
+            _netAvailTracker.SetAvailable();
             Plugin.Logger?.LogInfo("[SyncManager] 网络连接已恢复，开始处理队列事件");
 
-            // 处理队列中的所有待处理事件
             while (_eventQueue.Count > 0 && IsNetworkAvailable())
             {
                 var gameEvent = _eventQueue.Dequeue();
                 SyncGameEventToNetwork(gameEvent);
             }
 
-            // 请求完整状态同步以确保状态一致性
             RequestFullSync();
 
-            // 发送连接建立事件通知其他玩家
-            Dictionary<string, object> connectionData = new Dictionary<string, object>
+            var connectionData = new Dictionary<string, object>
             {
-                ["Timestamp"] = DateTime.Now.Ticks,                  // 连接建立时间戳
-                ["PlayerId"] = GameStateUtils.GetCurrentPlayerId()   // 当前玩家ID
+                ["Timestamp"] = DateTime.Now.Ticks,
+                ["PlayerId"] = GameStateUtils.GetCurrentPlayerId()
             };
-            SendGameEvent(new GameEvent(NetworkMessageTypes.OnConnectionEstablished, GameStateUtils.GetCurrentPlayerId(), connectionData));
+            SendGameEvent(new GameEvent(NetworkMessageTypes.OnConnectionEstablished.ToString(), GameStateUtils.GetCurrentPlayerId(), connectionData));
         }
         catch (Exception ex)
         {
-            // 捕获并记录连接恢复处理异常
             Plugin.Logger?.LogError($"[SyncManager] 连接恢复处理异常: {ex.Message}");
         }
     }
 
-    /// <summary>
-    /// 处理网络连接丢失事件
-    /// 当网络连接断开时，切换到离线模式并通知其他玩家
-    /// </summary>
     public void OnConnectionLost()
     {
         try
         {
-            // 更新网络连接状态为不可用
-            _isNetworkAvailable = false;
-
-            // 记录连接丢失的警告日志
+            _netAvailTracker.SetUnavailable();
             Plugin.Logger?.LogWarning("[SyncManager] 网络连接丢失，切换到离线模式");
 
-            // 发送连接丢失事件通知其他玩家
             string playerId = GameStateUtils.GetCurrentPlayerId();
-            Dictionary<string, object> eventData = new Dictionary<string, object>
-            {
-                ["QueuedEvents"] = _eventQueue.Count
-            };
-            GameEvent connectionLostEvent = new("ConnectionLost", playerId, eventData);
-            SendGameEvent(connectionLostEvent);
+            var eventData = new Dictionary<string, object> { ["QueuedEvents"] = _eventQueue.Count };
+            SendGameEvent(new GameEvent("ConnectionLost", playerId, eventData));
         }
         catch (Exception ex)
         {
-            // 捕获并记录连接丢失处理异常
             Plugin.Logger?.LogError($"[SyncManager] 连接丢失处理异常: {ex.Message}");
         }
     }
 
-    /// <summary>
-    /// 获取同步统计信息
-    /// 返回同步管理器的运行状态和性能指标，用于调试和系统监控
-    /// </summary>
-    /// <returns>包含同步统计数据的对象</returns>
     public object GetSyncStatistics()
     {
-        // 获取远程事件缓冲区的统计信息
-        object bufferStats = GetEventBufferStatistics();
-
-        // 创建包含所有统计信息的对象
         return new
         {
-            // 队列状态统计
-            QueuedEvents = _eventQueue.Count,              // 队列中待处理事件数量
-            MaxQueueSize = _config.MaxQueueSize,           // 队列最大容量
-
-            // 缓冲区状态统计
-            EventBuffer = bufferStats,                     // 远程事件缓冲区统计
-
-            // 缓存状态统计
-            CachedStates = _stateCache.Count,                  // 状态缓存条目数量
-            CacheExpiry = _config.StateCacheExpiry,           // 缓存过期时间
-
-            // 网络连接状态
-            IsNetworkAvailable = _isNetworkAvailable,          // 网络连接可用性
-            LastSyncTime = _lastSyncTime,                   // 最后同步时间戳
-            LastConnectionTime = _lastConnectionTime,           // 最后连接时间戳
-
-            // 配置参数
-            Configuration = _config                           // 完整的配置对象
+            QueuedEvents = _eventQueue.Count,
+            MaxQueueSize = _config.MaxQueueSize,
+            EventBuffer = _eventBufferManager.GetStatistics(),
+            CachedStates = _stateCacheManager.CachedStateCount,
+            CacheExpiry = _config.StateCacheExpiry,
+            IsNetworkAvailable = _netAvailTracker.IsAvailable,
+            LastSyncTime = _netAvailTracker.LastSyncTime,
+            LastConnectionTime = _netAvailTracker.LastConnectionTime,
+            Configuration = _config
         };
+    }
+
+    public object GetEventBufferStatistics() => _eventBufferManager.GetStatistics();
+
+    public void SendGameEvent(GameEvent gameEvent)
+    {
+        try
+        {
+            if (!IsNetworkAvailable())
+            {
+                Plugin.Logger?.LogDebug($"[SyncManager] 网络不可用，跳过事件发送: {gameEvent.EventType}");
+                return;
+            }
+
+            if (_networkClient is NetworkClient liteNetClient)
+                _networkClient.SendGameEventData(gameEvent.EventType.ToString(), gameEvent.Data);
+            else
+                _networkClient.SendRequest(gameEvent.EventType.ToString(), gameEvent.Data);
+
+            _netAvailTracker.MarkSyncCompleted();
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[SyncManager] 游戏事件发送异常 - 类型: {gameEvent.EventType}, 错误: {ex.Message}");
+        }
     }
 
     #endregion
 
-    #region 私有辅助方法
+    #region 事件过滤
 
-    /// <summary>
-    /// 验证网络客户端的连接状态
-    /// 检查网络客户端是否可用，必要时尝试重新初始化
-    /// </summary>
-    /// <returns>如果网络可用返回true，否则返回false</returns>
-    private bool IsNetworkAvailable()
-    {
-        try
-        {
-            // 检查网络客户端是否为空
-            if (_networkClient == null)
-            {
-                // 尝试重新初始化网络客户端
-                InitializeNetworkClient();
-            }
-
-            // 更新网络可用性状态
-            _isNetworkAvailable = _networkClient?.IsConnected ?? false;
-
-            // 返回网络可用性状态
-            return _isNetworkAvailable;
-        }
-        catch (Exception ex)
-        {
-            // 捕获网络检查异常
-            Plugin.Logger?.LogError($"[SyncManager] 网络可用性检查异常: {ex.Message}");
-
-            // 设置网络状态为不可用
-            _isNetworkAvailable = false;
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// 根据事件类型、玩家权限和游戏阶段判断是否需要同步事件
-    /// 实现事件过滤逻辑，避免不必要的网络传输
-    /// </summary>
-    /// <param name="gameEvent">需要判断同步的游戏事件</param>
-    /// <returns>如果事件需要同步返回true，否则返回false</returns>
     private bool ShouldSyncEvent(GameEvent gameEvent)
     {
-        // 最小可用实现：根据配置开关对“明显类别”的事件做过滤，其余事件默认允许同步。
         if (gameEvent == null || string.IsNullOrWhiteSpace(gameEvent.EventType))
-        {
             return false;
-        }
 
         try
         {
-            if (Plugin.ConfigManager == null)
-            {
-                return true;
-            }
+            if (Plugin.ConfigManager == null) return true;
 
             string t = gameEvent.EventType;
 
@@ -941,24 +372,13 @@ public class SynchronizationManager : ISynchronizationManager
                 string.Equals(t, NetworkMessageTypes.OnShopExit, StringComparison.Ordinal);
 
             if (isCard && Plugin.ConfigManager.EnableCardSync != null)
-            {
                 return Plugin.ConfigManager.EnableCardSync.Value;
-            }
-
             if (isMana && Plugin.ConfigManager.EnableManaSync != null)
-            {
                 return Plugin.ConfigManager.EnableManaSync.Value;
-            }
-
             if (isBattle && Plugin.ConfigManager.EnableBattleSync != null)
-            {
                 return Plugin.ConfigManager.EnableBattleSync.Value;
-            }
-
             if (isMap && Plugin.ConfigManager.EnableMapSync != null)
-            {
                 return Plugin.ConfigManager.EnableMapSync.Value;
-            }
 
             return true;
         }
@@ -969,221 +389,24 @@ public class SynchronizationManager : ISynchronizationManager
         }
     }
 
+    #endregion
 
-    /// <summary>
-    /// 更新本地状态缓存
-    /// 将事件数据存储到本地缓存中，避免重复同步和状态验证
-    /// </summary>
-    /// <param name="gameEvent">需要缓存的游戏事件</param>
-    private void UpdateLocalState(GameEvent gameEvent)
-    {
-        try
-        {
-            // 创建状态缓存键
-            string stateKey = $"{gameEvent.EventType}_{gameEvent.UserName}";
+    #region 辅助方法
 
-            // 将事件数据存储到缓存中
-            _stateCache[stateKey] = gameEvent.Data;
-
-            // 清理过期的状态缓存条目
-            CleanupOldStates();
-        }
-        catch (Exception ex)
-        {
-            // 捕获状态更新异常并记录错误日志
-            Plugin.Logger?.LogError($"[SyncManager] 本地状态更新异常: {ex.Message}");
-        }
-    }
-
-
-
-
-    /// <summary>
-    /// 验证事件时间戳的有效性
-    /// 检查时间戳的合理性和一致性
-    /// </summary>
-    /// <param name="timestamp">要验证的时间戳</param>
-    /// <returns>如果时间戳有效返回true，否则返回false</returns>
-    private bool ValidateEventTimestamp(DateTime timestamp)
-    {
-        try
-        {
-            var now = DateTime.Now;
-            var maxFutureTime = now.AddSeconds(5);  // 允许5秒的未来偏差
-            var minValidTime = now.AddHours(-1);    // 1小时前的事件视为有效
-
-            // 检查时间戳是否在未来（允许合理偏差）
-            if (timestamp > maxFutureTime)
-            {
-                Plugin.Logger?.LogWarning($"[SyncManager] 事件时间戳在未来: {timestamp}, 当前时间: {now}");
-                return false;
-            }
-
-            // 检查时间戳是否太早（超过1小时）
-            if (timestamp < minValidTime)
-            {
-                Plugin.Logger?.LogWarning($"[SyncManager] 事件时间戳太早: {timestamp}, 当前时间: {now}");
-                return false;
-            }
-
-            // 检查时间戳是否为最小值或最大值（可能的数据损坏）
-            if (timestamp == DateTime.MinValue || timestamp == DateTime.MaxValue)
-            {
-                Plugin.Logger?.LogWarning($"[SyncManager] 事件时间戳异常: {timestamp}");
-                return false;
-            }
-
-            // 时间戳验证通过
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[SyncManager] 时间戳验证异常: {ex.Message}");
-            return false;
-        }
-    }
-
-
-
-
-    /// <summary>
-    /// 将从网络接收的远程事件应用到本地游戏状态
-    /// 协调远程事件与本地游戏状态的一致性
-    /// </summary>
-    /// <param name="gameEvent">需要应用的远程游戏事件</param>
-    private void ApplyRemoteEvent(GameEvent gameEvent)
-    {
-        // 最小可用实现：更新本地状态缓存，标记为已处理，供诊断与后续追赶/对账使用。
-        if (gameEvent == null)
-        {
-            return;
-        }
-
-        try
-        {
-            if (!ValidateEventTimestamp(new DateTime(gameEvent.Timestamp)))
-            {
-                Plugin.Logger?.LogWarning($"[SyncManager] Remote event timestamp invalid: {gameEvent.EventType} ({gameEvent.Timestamp})");
-                return;
-            }
-
-            // 避免将控制类消息写入状态缓存（缓存仅用于“业务状态”粗粒度对账）。
-            if (string.Equals(gameEvent.EventType, NetworkMessageTypes.FullStateSyncRequest, StringComparison.Ordinal) ||
-                string.Equals(gameEvent.EventType, NetworkMessageTypes.FullStateSyncResponse, StringComparison.Ordinal) ||
-                string.Equals(gameEvent.EventType, "DirectMessage", StringComparison.Ordinal))
-            {
-                gameEvent.IsProcessed = true;
-                return;
-            }
-
-            UpdateLocalState(gameEvent);
-            gameEvent.IsProcessed = true;
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[SyncManager] Failed to apply remote event: {gameEvent.EventType}, err={ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 底层的网络发送方法
-    /// 负责实际的事件数据传输和网络通信
-    /// </summary>
-    /// <param name="eventType">事件类型字符串</param>
-    /// <param name="eventData">事件数据对象</param>
-    public void SendGameEvent(GameEvent gameEvent)
-    {
-        try
-        {
-            // 检查网络连接状态
-            if (!IsNetworkAvailable())
-            {
-                Plugin.Logger?.LogDebug($"[SyncManager] 网络不可用，跳过事件发送: {gameEvent.EventType}");
-                return;
-            }
-
-            // 根据网络客户端类型选择发送方法
-            if (_networkClient is NetworkClient liteNetClient)
-            {
-                // 使用游戏事件专用发送方法
-                _networkClient.SendGameEventData(gameEvent.EventType.ToString(), gameEvent.Data);
-            }
-            else
-            {
-                // 使用通用请求发送方法
-                _networkClient.SendRequest(gameEvent.EventType.ToString(), gameEvent.Data);
-            }
-
-            // 更新最后同步时间戳
-            _lastSyncTime = DateTime.Now;
-        }
-        catch (Exception ex)
-        {
-            // 捕获网络发送异常并记录错误日志
-            Plugin.Logger?.LogError($"[SyncManager] 游戏事件发送异常 - 类型: {gameEvent.EventType}, 错误: {ex.Message}");
-        }
-    }
-
-
-    /// <summary>
-    /// 将法力数组转换为结构化对象
-    /// 将四色法力值转换为便于传输和显示的对象格式
-    /// </summary>
-    /// <param name="manaArray">法力数组[红,蓝,绿,白]</param>
-    /// <returns>结构化的法力对象</returns>
     private object ConvertManaArray(int[] manaArray)
     {
-        // 检查数组是否为空或长度不足
         if (manaArray == null || manaArray.Length < 4)
-        {
-            // 返回默认的空法力对象
             return new { Red = 0, Blue = 0, Green = 0, White = 0, Total = 0 };
-        }
 
-        // 创建结构化的法力对象
         return new
         {
-            Red = manaArray[0],    // 红色法力值
-            Blue = manaArray[1],   // 蓝色法力值
-            Green = manaArray[2],  // 绿色法力值
-            White = manaArray[3],  // 白色法力值
-            Total = manaArray[0] + manaArray[1] + manaArray[2] + manaArray[3] // 法力总量
+            Red = manaArray[0],
+            Blue = manaArray[1],
+            Green = manaArray[2],
+            White = manaArray[3],
+            Total = manaArray[0] + manaArray[1] + manaArray[2] + manaArray[3]
         };
     }
 
-
-
-    private void CleanupOldStates()
-    {
-        try
-        {
-            // 计算状态缓存的截止时间
-            var cutoffTime = DateTime.UtcNow - _config.StateCacheExpiry;
-            List<string> keysToRemove = [];
-
-            // 遍历状态缓存查找过期条目
-            foreach (var kvp in _stateCache)
-            {
-                // 识别临时和过期的状态键
-                if (kvp.Key.Contains("Old") || kvp.Key.Contains("Temp"))
-                {
-                    keysToRemove.Add(kvp.Key);
-                }
-            }
-
-            // 删除识别出的过期状态
-            foreach (string key in keysToRemove)
-            {
-                _stateCache.Remove(key);
-            }
-        }
-        catch (Exception ex)
-        {
-            // 捕获状态清理异常
-            Plugin.Logger?.LogError($"[SyncManager] 状态缓存清理异常: {ex.Message}");
-        }
-    }
-
     #endregion
-
 }

@@ -6,6 +6,7 @@ using LBoL.Presentation.Units;
 using NetworkPlugin.UI.Factories;
 using NetworkPlugin.UI.Payloads;
 using NetworkPlugin.UI.Panels;
+using NetworkPlugin.UI.Components;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;

@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using LBoL.Core;
 using LBoL.Core.Stations;
 using LBoL.Presentation.UI.Panels;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Reconnection;
 using NetworkPlugin.Utils;

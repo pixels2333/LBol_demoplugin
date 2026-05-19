@@ -13,6 +13,7 @@ using LBoL.Presentation.UI.Panels;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.RoomSync;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Snapshot;
 using NetworkPlugin.Utils;
 

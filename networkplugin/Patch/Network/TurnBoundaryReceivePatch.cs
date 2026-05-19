@@ -4,7 +4,7 @@ using System.Text.Json;
 using HarmonyLib;
 using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Utils;
 using NetworkPlugin.Network.Messages;
@@ -52,7 +52,7 @@ public static class TurnBoundaryReceivePatch
             if (_subscribedClient != null)
                 _subscribedClient.OnGameEventReceived -= _onGameEventReceived;
         }
-        catch { }
+        catch (Exception ex) { Plugin.Logger?.LogWarning($"[TurnBoundaryRecv] 取消订阅事件失败: {ex.Message}"); }
 
         try
         {
@@ -117,7 +117,7 @@ public static class TurnBoundaryReceivePatch
                             player.location = ps.GameLocation.NodeType;
                     }
                 }
-                catch { }
+                catch (Exception ex) { Plugin.Logger?.LogWarning($"[TurnBoundaryRecv] 更新远程玩家位置失败: senderId={senderId}, {ex.Message}"); }
             }
 
             Plugin.Logger?.LogDebug($"[TurnBoundaryRecv] {eventType} received: player={senderId}");

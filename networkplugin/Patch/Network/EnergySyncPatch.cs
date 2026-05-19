@@ -3,7 +3,6 @@ using HarmonyLib;
 using LBoL.Base;
 using LBoL.Core.Battle;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Utils;

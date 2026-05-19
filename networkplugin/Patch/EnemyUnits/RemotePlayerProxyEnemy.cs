@@ -1,7 +1,7 @@
 using LBoL.Core;
 using LBoL.Core.Units;
 
-namespace NetworkPlugin.Patch.UI;
+namespace NetworkPlugin.Patch.EnemyUnits;
 
 /// <summary>
 /// 将“远端玩家”映射为一个可被 TargetSelector/UnitSelector 当作 EnemyUnit 的代理目标。

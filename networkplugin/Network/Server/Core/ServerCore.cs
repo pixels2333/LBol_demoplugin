@@ -80,7 +80,9 @@ public sealed class ServerCore : IServerCore
         }
 
         _isRunning = false;
-        try { _cts?.Cancel(); } catch { /* ignore */ }
+        try { _cts?.Cancel(); }
+        catch (ObjectDisposedException) { /* cancellation source already disposed */ }
+        catch (Exception ex) { Logger?.Warn($"[ServerCore] 取消 CancellationTokenSource 失败: {ex.Message}"); }
 
         try
         {
@@ -164,7 +166,9 @@ public sealed class ServerCore : IServerCore
             catch (Exception ex)
             {
                 Logger.Error(ex, "[ServerCore] Error handling connection request");
-                try { request.Reject(); } catch { /* ignore */ }
+                try { request.Reject(); }
+                catch (ObjectDisposedException) { /* peer already disconnected */ }
+                catch (Exception rejectEx) { Logger?.Warn($"[ServerCore] 拒绝连接请求失败: {rejectEx.Message}"); }
             }
         };
 

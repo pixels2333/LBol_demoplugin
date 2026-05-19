@@ -10,7 +10,7 @@ using LBoL.Presentation.UI.Widgets;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Configuration;
 using LBoL.Presentation.Units;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.NetworkPlayer;
 using TMPro;
@@ -145,7 +145,8 @@ public static partial class OtherPlayersOverlayPatch
             if (client != null)
             {
                 EnsureSubscribed(client);
-                try { client.PollEvents(); } catch { }
+                try { client.PollEvents(); }
+                catch (Exception ex) { Plugin.Logger?.LogWarning($"[OtherPlayersOverlay] PollEvents 失败: {ex.Message}"); }
             }
 
             // 帧节流：非脏标记触发时跳过完整 UI 刷新

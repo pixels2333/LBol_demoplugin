@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace NetworkPlugin.Network;
+namespace NetworkPlugin.Network.Sync;
 
 /// <summary>
 /// 同步变量类 - 用于网络同步的可观察变量

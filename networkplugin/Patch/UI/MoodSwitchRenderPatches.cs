@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using HarmonyLib;
 using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 
 namespace NetworkPlugin.Patch.UI;

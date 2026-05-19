@@ -62,7 +62,7 @@ public class NetworkClient : INetworkClient
     /// 自动重连功能配置
     /// </summary>
     private bool _autoReconnectEnabled = false;
-    private int _retryInterval = 5000;
+    private int _retryInterval = NetworkConstants.ReconnectIntervalMs;
     // Keep consistent with server defaults (30s). Too small here causes "end turn -> idle -> disconnect".
     private int _connectionTimeout = 30_000;
     private string _lastConnectHost;
@@ -730,7 +730,7 @@ public class NetworkClient : INetworkClient
     /// </summary>
     /// <param name="enabled">true 启用自动重连，false 禁用自动重连</param>
     /// <param name="retryInterval">重试间隔时间，单位为毫秒，默认 5000ms</param>
-    public void EnableAutoReconnect(bool enabled, int retryInterval = 5000)
+    public void EnableAutoReconnect(bool enabled, int retryInterval = NetworkConstants.ReconnectIntervalMs)
     {
         // 更新自动重连功能状态
         _autoReconnectEnabled = enabled;

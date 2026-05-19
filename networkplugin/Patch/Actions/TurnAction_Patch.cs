@@ -9,7 +9,7 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Reconnection;
 using NetworkPlugin.Utils;
@@ -416,7 +416,7 @@ public class TurnAction_Patch
             gold = run?.Money ?? 0;
             maxMana = run != null ? ManaUtils.GetTotalMana(run.BaseMana) : 0;
         }
-        catch { }
+        catch (Exception ex) { Plugin.Logger?.LogWarning($"[TurnAction] 获取金币/法力值失败: {ex.Message}"); }
 
         List<StatusEffectStateSnapshot> statusEffects = CaptureStatusEffects(source);
 
@@ -460,7 +460,7 @@ public class TurnAction_Patch
                 };
             }
         }
-        catch { }
+        catch (Exception ex) { Plugin.Logger?.LogWarning($"[TurnBoundaryCapture] 捕获地图位置失败: {ex.Message}"); }
 
         var intentions = new IntentionSnapshot(battleController: battle);
 

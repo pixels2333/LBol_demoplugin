@@ -10,7 +10,7 @@ using HarmonyLib;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Configuration;
 using NetworkPlugin.Core;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.MidGameJoin;
 using NetworkPlugin.Network.NetworkPlayer;
@@ -66,7 +66,7 @@ public class Plugin : BaseUnityPlugin
     /// 服务提供者，负责管理和解析所有注册的服务接口
     /// 使用依赖注入模式，管理网络管理器、客户端等核心服务的生命周期
     /// </summary>
-    private ServiceProvider serviceProvider;
+    private ServiceProvider _serviceProvider;
 
     /// <summary>
     /// Harmony补丁实例，用于运行时修改和扩展游戏逻辑
@@ -107,18 +107,18 @@ public class Plugin : BaseUnityPlugin
         ConfigureServices(services);
 
         // 第3步：构建服务提供者，完成依赖注入容器的初始化
-        serviceProvider = services.BuildServiceProvider();
+        _serviceProvider = services.BuildServiceProvider();
 
         // 将服务提供者注册到模块服务中，供其他组件使用
-        ModService.ServiceProvider = serviceProvider;
+        ModService.ServiceProvider = _serviceProvider;
 
         // 一次性输出同步管理器 wiring 自检，用于确认 DI 别名与客户端注入一致。
-        LogSynchronizationManagerWiringOnce(serviceProvider);
+        LogSynchronizationManagerWiringOnce(_serviceProvider);
 
         // 初始化断线重连管理器（即使未连接，也会保持低开销监听）。
         try
         {
-            serviceProvider.GetService<ReconnectionManager>()?.Initialize();
+            _serviceProvider.GetService<ReconnectionManager>()?.Initialize();
         }
         catch (Exception ex)
         {
@@ -128,7 +128,7 @@ public class Plugin : BaseUnityPlugin
         // 初始化中途加入管理器（订阅必要的网络事件；幂等可重复调用）。
         try
         {
-            serviceProvider.GetService<MidGameJoinManager>()?.Initialize();
+            _serviceProvider.GetService<MidGameJoinManager>()?.Initialize();
         }
         catch (Exception ex)
         {
@@ -172,7 +172,8 @@ public class Plugin : BaseUnityPlugin
             FileInfo fi = null;
             if (!string.IsNullOrWhiteSpace(asmPath))
             {
-                try { fi = new FileInfo(asmPath); } catch { }
+                try { fi = new FileInfo(asmPath); }
+                catch (Exception ex) { Logger?.LogWarning($"无法获取 Assembly 文件信息: {asmPath}, {ex.Message}"); }
             }
 
             var size = fi != null ? fi.Length : -1;
@@ -361,7 +362,7 @@ public class Plugin : BaseUnityPlugin
         // 2) Periodically pump mid-game catch-up (works even when MapPanel is never opened).
         try
         {
-            if (serviceProvider == null)
+            if (_serviceProvider == null)
             {
                 return;
             }
@@ -373,7 +374,7 @@ public class Plugin : BaseUnityPlugin
             }
 
             _lastCatchUpPumpAtRealtime = now;
-            serviceProvider.GetService<MapCatchUpOrchestrator>()?.PumpMainThread();
+            _serviceProvider.GetService<MapCatchUpOrchestrator>()?.PumpMainThread();
         }
         catch
         {
@@ -391,7 +392,7 @@ public class Plugin : BaseUnityPlugin
         // 防止内存泄漏和资源未释放问题
         // 如果serviceProvider实现了IDisposable接口，需要在此处进行Dispose操作
 
-        serviceProvider?.Dispose();
+        _serviceProvider?.Dispose();
 
         // 记录插件销毁日志
         Logger?.LogInfo("Plugin has been destroyed and resources cleaned up.");

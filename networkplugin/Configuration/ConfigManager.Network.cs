@@ -1,4 +1,5 @@
 using BepInEx.Configuration;
+using NetworkPlugin.Network;
 
 namespace NetworkPlugin.Configuration;
 
@@ -85,7 +86,7 @@ public partial class ConfigManager
         ServerPort = configFile.Bind(
             "Network",
             "ServerPort",
-            7777,
+            NetworkConstants.DefaultPort,
             "联机服务器监听的端口号"
         );
 
@@ -107,7 +108,7 @@ public partial class ConfigManager
         RelayServerPort = configFile.Bind(
             "RelayServer",
             "Port",
-            8888,
+            NetworkConstants.RelayPort,
             "中继服务器监听端口"
         );
 

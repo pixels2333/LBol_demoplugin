@@ -3,7 +3,7 @@ using HarmonyLib;
 using LBoL.Core.Battle;
 using LBoL.Presentation.UI.Panels;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using UnityEngine;
 using UnityEngine.UI;
@@ -19,7 +19,7 @@ namespace NetworkPlugin.Patch.UI;
 /// </summary>
 public class EndTurnTimerPatch
 {
-    private static IServiceProvider serviceProvider => ModService.ServiceProvider; // 统一的 DI 入口，用于取网络客户端等服务
+    private static IServiceProvider ServiceProvider => ModService.ServiceProvider; // 统一的 DI 入口
 
     /// <summary>
     /// 回合时限（秒）。设为 0 或负数表示禁用。
@@ -48,7 +48,7 @@ public class EndTurnTimerPatch
     /// 判断当前是否已经连接到联机服务。
     /// </summary>
     private static bool IsNetworkConnected()
-        => serviceProvider?.GetService<INetworkClient>()?.IsConnected == true;
+        => ServiceProvider?.GetService<INetworkClient>()?.IsConnected == true;
 
     /// <summary>
     /// 通过反射获取当前 PlayBoard 上的战斗实例。

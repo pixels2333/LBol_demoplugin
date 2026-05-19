@@ -3,10 +3,10 @@ using Microsoft.Extensions.DependencyInjection;
 using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Panels;
 using NetworkPlugin.Configuration;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 
-namespace NetworkPlugin.Patch.UI;
+namespace NetworkPlugin.UI.Components;
 
 /// <summary>
 /// 统一管理 Trade 入口的用户提示文案。

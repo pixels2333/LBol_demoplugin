@@ -1,6 +1,6 @@
 using System;
 
-namespace NetworkPlugin.Network;
+namespace NetworkPlugin.Network.Services;
 
 /// <summary>
 /// 模块服务静态类

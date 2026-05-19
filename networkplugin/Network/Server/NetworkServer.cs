@@ -1,5 +1,3 @@
-
-
 // NOTE: 这里使用了日志系统和依赖注入；如果后续引入分离服务器，需要相应调整日志系统与依赖注入。
 // 直连房主服务器：用于房主/客机直连联机，管理会话与广播游戏事件。
 using System;
@@ -144,10 +142,7 @@ public class NetworkServer : BaseGameServer
 
             _logger?.LogInfo($"[RouteProbe] {routeKey}: {details}");
         }
-        catch
-        {
-            // ignored
-        }
+        catch (Exception ex) { _logger?.LogWarning($"[RouteProbe] LogRouteProbeOnce error: {ex.Message}"); }
     }
 
     private PlayerSession GetConnectedHostSession()

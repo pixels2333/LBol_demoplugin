@@ -6,7 +6,7 @@ using LBoL.Core.Cards;
 using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Configuration;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Utils;
 using NetworkPlugin.Network.Messages;

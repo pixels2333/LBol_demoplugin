@@ -16,9 +16,11 @@ using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.NetworkPlayer;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Patch.Network;
 using NetworkPlugin.UI.Factories;
 using NetworkPlugin.UI.Models;
+using NetworkPlugin.UI.Components;
 using NetworkPlugin.UI.Payloads;
 using NetworkPlugin.UI.Panels;
 using NetworkPlugin.Utils;
@@ -38,12 +40,12 @@ public class GapOptionsPanel_Patch
     /// <summary>
     /// 服务提供者实例
     /// </summary>
-    private static IServiceProvider serviceProvider => ModService.ServiceProvider;
+    private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
     /// <summary>
     /// 配置管理器实例
     /// </summary>
-    private static ConfigManager ConfigManager => serviceProvider?.GetService<ConfigManager>();
+    private static ConfigManager ConfigManager => ServiceProvider?.GetService<ConfigManager>();
 
     private static bool _pendingDrinkTeaCompletion;
     private static string _pendingDrinkTeaOptionId;
@@ -56,7 +58,7 @@ public class GapOptionsPanel_Patch
     {
         try
         {
-            return serviceProvider?.GetService<INetworkManager>();
+            return ServiceProvider?.GetService<INetworkManager>();
         }
         catch
         {
@@ -882,7 +884,7 @@ public class GapOptionsPanel_Patch
             // 其次：从场景中查找已存在的 TradePanel（例如由 Prefab/其他模块创建）。
             try
             {
-                panel = UnityEngine.Object.FindObjectOfType<TradePanel>(true);
+                panel = UnityEngine.Object.FindFirstObjectByType<TradePanel>();
                 if (panel != null)
                 {
                     Plugin.Logger?.LogInfo($"[GapOptionsPanel_Patch] 从场景中找到 TradePanel: name={panel.name}, activeSelf={panel.gameObject.activeSelf}");
@@ -946,7 +948,7 @@ public class GapOptionsPanel_Patch
 
             try
             {
-                var scenePanel = UnityEngine.Object.FindObjectOfType<ResurrectPanel>(true);
+                var scenePanel = UnityEngine.Object.FindFirstObjectByType<ResurrectPanel>();
                 if (scenePanel != null)
                 {
                     Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 使用场景中已存在的治疗面板实例。");

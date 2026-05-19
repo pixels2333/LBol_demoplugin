@@ -2,7 +2,7 @@
 using System.Text.Json;
 using LBoL.Core.Battle;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 namespace NetworkPlugin.Utils;
 public static class NetworkEventHelper

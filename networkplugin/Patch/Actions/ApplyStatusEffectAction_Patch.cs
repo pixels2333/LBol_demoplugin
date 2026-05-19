@@ -8,7 +8,7 @@ using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Configuration;
 using NetworkPlugin.Core;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Event;
 using NetworkPlugin.Network.Messages;

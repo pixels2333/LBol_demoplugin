@@ -8,7 +8,7 @@ using LBoL.Core.Units;
 using LBoL.Presentation;
 using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Patch.EnemyUnits;
@@ -438,9 +438,9 @@ public static class EnemySpawnSyncPatch
                 {
                     Traverse.Create(spawned).Property("MaxHp").SetValue(maxHp);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // 忽略设置异常
+                    Plugin.Logger?.LogWarning($"[EnemySpawnSync] 设置属性异常（可接受）: {ex.Message}");
                 }
             }
 
@@ -451,11 +451,12 @@ public static class EnemySpawnSyncPatch
                 Traverse.Create(spawned).Property("Block").SetValue(block);
                 Traverse.Create(spawned).Property("Shield").SetValue(shield);
             }
-            catch { /* 忽略设置异常 */ }
+            catch (Exception ex) { Plugin.Logger?.LogWarning($"[EnemySpawnSync] Traverse 设置敌人属性失败: Hp={currentHp}, Block={block}, Shield={shield}, {ex.Message}"); }
         }
-        catch
+        catch (Exception ex)
         {
-            // 忽略应用快照异常
+            // 记录但继续——Traverse 设置属性是可接受失败的（internal setter 可能被 Unity 拦截）
+            Plugin.Logger?.LogWarning($"[EnemySpawnSync] 应用快照异常: {ex.Message}");
         }
     }
 

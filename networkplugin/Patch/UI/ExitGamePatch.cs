@@ -7,7 +7,7 @@ using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Dialogs;
 using LBoL.Presentation.UI.Panels;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using UnityEngine.UI;
 

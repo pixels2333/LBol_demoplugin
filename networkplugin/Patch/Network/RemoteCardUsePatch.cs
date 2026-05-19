@@ -18,6 +18,8 @@ using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Patch.UI;
+using NetworkPlugin.Patch.EnemyUnits;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
@@ -288,7 +290,7 @@ public static partial class RemoteCardUsePatch
                     if (se.HasDuration) duration = se.Duration;
                     limit = se.Limit;
                 }
-                catch { /* ignored */ }
+                catch (Exception ex) { Plugin.Logger?.LogDebug($"[RemoteCardUse] 获取 StatusEffect 属性失败: Id={se?.Id}, {ex.Message}"); }
 
                 list.Add(new
                 {

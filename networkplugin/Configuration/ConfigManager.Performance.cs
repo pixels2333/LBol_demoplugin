@@ -9,7 +9,8 @@ public partial class ConfigManager
     /// </summary>
     #region 性能参数
 
-    // MaxQueueSize / StateCacheExpiryMinutes 统一声明于 Configuration/ConfigManager.Sync.cs。
+    // MaxQueueSize / StateCacheExpiryMinutes 的声明和绑定统一在 Configuration/ConfigManager.Sync.cs 的 Sync.Performance 区域。
+    // 此处不再重复 Bind()，避免覆盖覆盖 Sync.Performance 区域的配置值。
 
     /// <summary>
     /// 网络超时时间（秒）
@@ -32,20 +33,7 @@ public partial class ConfigManager
     /// </summary>
     private void BindPerformanceSettings(ConfigFile configFile)
     {
-        // 在Performance区域下绑定性能相关配置
-        MaxQueueSize = configFile.Bind(
-            "Performance",
-            "MaxQueueSize",
-            100,
-            "网络不可用时事件队列的最大条目数量，超过此容量的新事件会被丢弃"
-        );
-
-        StateCacheExpiryMinutes = configFile.Bind(
-            "Performance",
-            "StateCacheExpiryMinutes",
-            5.0f,
-            "本地状态缓存的存活时间（分钟），超过此时间的缓存会被清理"
-        );
+        // MaxQueueSize / StateCacheExpiryMinutes 已在 ConfigManager.Sync.cs 的 Sync.Performance 区域绑定，此处不重复。
 
         NetworkTimeoutSeconds = configFile.Bind(
             "Performance",

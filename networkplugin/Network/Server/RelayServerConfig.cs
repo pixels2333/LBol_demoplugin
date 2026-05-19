@@ -5,7 +5,7 @@ namespace NetworkPlugin.Network.Server;
 /// </summary>
 public class RelayServerConfig
 {
-    public int Port { get; set; } = 8888; // 服务器监听端口：默认8888端口
+    public int Port { get; set; } = ServerConstants.DefaultRelayPort;
     public int MaxConnections { get; set; } = 1000; // 最大连接数：服务器最多支持的客户端连接数
     public int MaxRooms { get; set; } = 100; // 最大房间数：服务器最多支持的游戏房间数量
     public int MaxPlayersPerRoom { get; set; } = 4; // 每间房最大玩家数：单个房间支持的最大玩家数量

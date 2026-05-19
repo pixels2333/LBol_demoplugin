@@ -5,7 +5,7 @@ using LBoL.Core.Dialogs;
 using LBoL.EntityLib.Adventures;
 using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Utils;

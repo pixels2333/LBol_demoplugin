@@ -8,7 +8,7 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Core;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Event;
 using NetworkPlugin.Network.Messages;

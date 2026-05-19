@@ -2,7 +2,7 @@ using System;
 using HarmonyLib;
 using LBoL.Core.Battle;
 using LBoL.Core.Units;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.UI.State;
 

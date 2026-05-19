@@ -6,7 +6,6 @@ using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.RoomSync;
 using NetworkPlugin.Network.Snapshot;
@@ -200,7 +199,7 @@ public static class RoomStateSyncPatch
                     Traverse.Create(local).Property("Block").SetValue(remote.Block);
                     Traverse.Create(local).Property("Shield").SetValue(remote.Shield);
                 }
-                catch { }
+                catch (Exception ex) { Plugin.Logger?.LogWarning($"[RoomStateSync] Traverse 设置属性失败: {ex.Message}"); }
             }
         }
         catch

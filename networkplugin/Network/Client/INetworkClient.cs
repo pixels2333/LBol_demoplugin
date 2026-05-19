@@ -139,7 +139,7 @@ public interface INetworkClient
     /// </summary>
     /// <param name="enabled">是否启用自动重连</param>
     /// <param name="retryInterval">重试间隔（毫秒）</param>
-    void EnableAutoReconnect(bool enabled, int retryInterval = 5000);
+    void EnableAutoReconnect(bool enabled, int retryInterval = NetworkConstants.ReconnectIntervalMs);
 
     #endregion
 }

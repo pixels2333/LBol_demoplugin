@@ -4,7 +4,7 @@ using LBoL.Core;
 using LBoL.Presentation;
 using LBoL.Presentation.UI;
 using LBoL.Core.Units;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 
 namespace NetworkPlugin.Utils
 {

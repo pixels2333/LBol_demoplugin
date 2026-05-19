@@ -10,6 +10,8 @@ using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Services;
+using NetworkPlugin.Patch.EnemyUnits;
 using UnityEngine;
 using UnityEngine.InputSystem;
 

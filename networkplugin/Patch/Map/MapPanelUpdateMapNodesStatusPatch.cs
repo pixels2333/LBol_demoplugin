@@ -3,7 +3,7 @@ using HarmonyLib;
 using LBoL.Core;
 using LBoL.Presentation.UI.Panels;
 using Microsoft.Extensions.DependencyInjection;
-using NetworkPlugin.Network;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.MidGameJoin;
 using NetworkPlugin.Utils;

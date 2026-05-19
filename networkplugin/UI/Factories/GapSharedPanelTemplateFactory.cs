@@ -64,7 +64,7 @@ internal static class GapSharedPanelTemplateFactory
         Transform parent = preferredParent ?? UiManager.Instance?.transform;
         if (parent == null)
         {
-            Canvas canvas = UnityEngine.Object.FindObjectOfType<Canvas>(true);
+            Canvas canvas = UnityEngine.Object.FindFirstObjectByType<Canvas>();
             parent = canvas?.transform;
         }
 
