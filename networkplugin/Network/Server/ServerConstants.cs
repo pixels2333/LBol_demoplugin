@@ -25,4 +25,10 @@ public static class ServerConstants
 
     /// <summary>心跳超时（秒）</summary>
     public const int HeartbeatTimeoutSeconds = 30;
+
+    /// <summary>每间房默认最大玩家数</summary>
+    public const int DefaultMaxPlayersPerRoom = 4;
+
+    /// <summary>断开连接超时（秒）</summary>
+    public const int DisconnectTimeoutSeconds = 30;
 }

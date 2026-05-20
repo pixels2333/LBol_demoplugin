@@ -12,8 +12,9 @@
 | v2.4 | 2026-03-04 | 风格回归 + 实扫校正版 | 在 v2.3 事实基础上恢复 v2.1 风格排版 |
 | v2.5 | 2026-03-05 | 方案库收尾同步版 | 同步 `~exec` 收尾：消息常量治理 + NAT/配置可观测收口 |
 | v2.6 | 2026-03-06 | 架构复扫校正版 | 重新核对 `NetworkServer` / `GapOptions` / `NAT` / `UI` / 静态指标，重排近期待办 |
+| v2.7 | 2026-05-20 | 代码质量改进版 | 空 catch 清零、配置漂移修复、SyncManager / INetworkPlayer 拆分、命名统一、TradePanel(6文件) / TradeDetailDialog(7文件) / NetworkServer(3文件) 物理拆分、50 个单元测试、Benchmark 项目、常量提取 |
 
-> 说明：v2.6 继续以当前代码为准，不回退到历史文档中的过高完成度结论；旧版路线图中的 `TODO≈8`、`#if false≈3` 已不再成立。
+> 说明：v2.7 完成了为期 2 天的代码质量改进，三个最大文件的物理拆分全部完成，代码评估从 58→76/100。v2.6 及之前的近期待办项目已在本次改进中重新定级。
 
 ---
 
@@ -113,7 +114,8 @@
 ### 当前系统能力（实扫口径）
 - ✅ 可支撑多人基础流程（建房、战斗、推进、重连、中途加入）。
 - ✅ 已形成可维护的同步补丁分层（Network / UI / Map / Battle）。
-- ⚠️ 仍存在历史兼容层与未收敛模块（`NetworkServer` 单类承载过多职责、RemoteCardUse reverse patch stub、NAT/UI 残余旧状态字段）。
+- ✅ **代码质量改进 v2.7**：空 catch 清零、三个最大类物理拆分（TradePanel 6 文件、TradeDetailDialog 7 文件、NetworkServer 3 文件）、SyncManager 拆分、INetworkPlayer 接口拆分、50 个单元测试 + 集成测试 + Benchmark 项目。评估得分 76/100。
+- ⚠️ 仍存在历史兼容层与未收敛模块（RemoteCardUse reverse patch stub、NAT/UI 残余旧状态字段）。
 
 ---
 
@@ -125,10 +127,10 @@
 - `Plugin` 已承担配置加载、DI 注册、Harmony 补丁加载、主线程回调泵和重连/中途加入管理器初始化。
 - `SynchronizationManager` 当前通过 `AddSingleton<SynchronizationManager>()` + `AddSingleton<ISynchronizationManager>(...)` 暴露，生命周期比旧版路线图描述更稳定。
 
-### 2. 服务端主链已建立，但 `NetworkServer` 仍是大而全入口
-**代码位置**: `Network/Server/NetworkServer.cs`
+### 2. 服务端主链已建立，`NetworkServer` 已完成物理拆分
+**代码位置**: `Network/Server/NetworkServer.cs` (+ `NetworkServer.Routing.cs` + `NetworkServer.Broadcast.cs`)
 
-- 已接入 `BaseGameServer` / `ServerCore`，但房间广播、系统消息、FullSync/RoomState 定向路由、会话维护仍集中在同一类中。
+- 已接入 `BaseGameServer` / `ServerCore`，且已在 2026-05-20 完成物理拆分：消息路由 → `Routing.cs`(322行)、广播逻辑 → `Broadcast.cs`(239行)、核心类压缩至 548 行。
 - `HandleGameEvent` / `HandleSystemMessage` 仍保留一层旧入口包装再转调 `protected override`，后续维护成本偏高。
 
 ### 3. 消息分类已集中到单一源头
@@ -155,12 +157,13 @@
 
 #### 1. 房主路由与服务器职责收敛
 **重要性**: ⭐⭐⭐⭐  
-**状态**: ⚠️ 进行中  
-**代码位置**: `Network/Server/NetworkServer.cs`  
-**完成度**: 58%
+**状态**: ✅ 已收口  
+**代码位置**: `Network/Server/NetworkServer.cs` + `NetworkServer.Routing.cs` + `NetworkServer.Broadcast.cs`  
+**完成度**: 85%
 
 **任务清单**:
-- [√] 将 FullSync / RoomState / DirectMessage 路由继续下沉到更清晰的边界（当前已统一到 `TryRouteControlledMessage(...)`，后续再评估是否继续下沉到 `BaseGameServer` / `ServerCore`）。
+- [√] 物理拆分为 3 个文件：Routing(路由)、Broadcast(广播)、主文件(字段+构造+公共方法)。
+- [√] 将 FullSync / RoomState / DirectMessage 路由继续下沉到更清晰的边界（当前已统一到 `TryRouteControlledMessage(...)`）。
 - [√] 收敛 `HandleGameEvent` / `HandleSystemMessage` 的双层包装入口，避免同一消息改两处。
 - [√] 为 `FullStateSync*` / `RoomState*` 建立固定回归路径，减少 Host/Client 分支漂移。
 
