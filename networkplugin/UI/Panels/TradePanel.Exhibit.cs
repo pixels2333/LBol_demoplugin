@@ -385,13 +385,20 @@ public sealed partial class TradePanel
             {
                 bool nowSelected = !_localExhibitOfferIds.Contains(exhibit.Id);
                 if (nowSelected)
+                {
+                    // 限制最多选择 1 个展品，取消之前选中的展品
+                    _localExhibitOfferIds.Clear();
                     _localExhibitOfferIds.Add(exhibit.Id);
+                }
                 else
+                {
                     _localExhibitOfferIds.Remove(exhibit.Id);
+                }
 
-                row.SetSelected(nowSelected);
-                row.SetSecondaryText(BuildExhibitSecondaryText(exhibit.Id, nowSelected));
+                // 重新构建整个展品列表以刷新所有行的选中状态
+                RebuildExhibitPickerList();
                 RefreshOfferEditorTexts();
+                TrySendOfferUpdate();
             });
         }
         catch

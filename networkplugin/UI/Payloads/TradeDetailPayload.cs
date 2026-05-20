@@ -13,7 +13,7 @@ public sealed class TradeDetailPayload
 
     public string PartnerPlayerName { get; set; }
 
-    public int MaxTradeSlots { get; set; } = 5;
+    public int MaxTradeSlots { get; set; } = 3;
 
     public List<Card> InitialDeckCards { get; set; }
 }

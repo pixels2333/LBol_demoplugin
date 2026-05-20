@@ -423,8 +423,8 @@ public sealed partial class TradePanel
                 scrollGo.transform.SetAsLastSibling();
 
                 var scrollRt = scrollGo.AddComponent<RectTransform>();
-                scrollRt.anchorMin = new Vector2(0.15f, 0.42f);
-                scrollRt.anchorMax = new Vector2(0.85f, 0.58f);
+                scrollRt.anchorMin = new Vector2(0.12f, 0.28f);
+                scrollRt.anchorMax = new Vector2(0.88f, 0.64f);
                 scrollRt.offsetMin = Vector2.zero;
                 scrollRt.offsetMax = Vector2.zero;
 

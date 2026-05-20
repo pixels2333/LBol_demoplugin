@@ -280,8 +280,15 @@ public class GapOptionsPanel_Patch
                     INetworkManager networkManager = GetNetworkManager();
                     if (networkManager == null || !networkManager.IsConnected)
                     {
-                        TradeUiMessages.ShowTopMessage("治疗不可用：网络未连接。");
-                        return false;
+                        if (ConfigManager?.DebugVirtualPlayerAiDefault?.Value == true || ConfigManager?.DebugFakePlayersForTrade?.Value == true)
+                        {
+                            Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 调试模式：跳过网络检查，允许离线治疗");
+                        }
+                        else
+                        {
+                            TradeUiMessages.ShowTopMessage("治疗不可用：网络未连接。");
+                            return false;
+                        }
                     }
 
                     ResurrectPanel resurrectPanel = GetOrCreateResurrectPanel(__instance?.transform.parent);

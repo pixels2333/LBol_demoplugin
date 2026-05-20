@@ -150,8 +150,8 @@ internal static class TradePanelRuntimeFactory
             var p2Area = p2AreaGo.AddComponent<RectTransform>();
             GapSharedPanelTemplateFactory.ConfigureAnchors(p2Area, new Vector2(0.74f, -0.35f), new Vector2(1.00f, -0.06f));
 
-            var p1Slots = CreateSlotColumn(p1Area, textTemplate, scaffold.ConfirmButton, 5, "P1");
-            var p2Slots = CreateSlotColumn(p2Area, textTemplate, scaffold.ConfirmButton, 5, "P2");
+            var p1Slots = CreateSlotColumn(p1Area, textTemplate, scaffold.ConfirmButton, 3, "P1");
+            var p2Slots = CreateSlotColumn(p2Area, textTemplate, scaffold.ConfirmButton, 3, "P2");
 
             var panel = scaffold.Root.AddComponent<TradePanel>();
 

@@ -161,7 +161,7 @@ internal static class ResurrectPanelRuntimeFactory
                 ?? frameRect
                 ?? (RectTransform)scaffold.ContentRoot;
 
-            RuntimeSelectionPanelFactory.ScrollAreaScaffold scrollArea = RuntimeSelectionPanelFactory.CreateScrollArea(panelRect, subTextRect, "PlayersScroll");
+            RuntimeSelectionPanelFactory.ScrollAreaScaffold scrollArea = RuntimeSelectionPanelFactory.CreateScrollArea(panelRect, null, "PlayersScroll");
             if (scrollArea == null)
             {
                 Plugin.Logger?.LogWarning("[ResurrectPanelRuntimeFactory] 无法创建共享治疗列表滚动区域。");
