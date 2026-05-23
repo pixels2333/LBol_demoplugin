@@ -46,8 +46,8 @@ private void EnsureOfferEditorOverlay()
             _offerEditorRoot.transform.SetParent(GetTradePanelContentParent(), false);
 
             RectTransform rootRect = _offerEditorRoot.AddComponent<RectTransform>();
-            rootRect.anchorMin = new Vector2(0.00f, -0.35f);
-            rootRect.anchorMax = new Vector2(0.26f, -0.06f);
+            rootRect.anchorMin = new Vector2(0.00f, 0.02f);
+            rootRect.anchorMax = new Vector2(0.28f, 0.38f);
             rootRect.offsetMin = Vector2.zero;
             rootRect.offsetMax = Vector2.zero;
 
@@ -319,8 +319,8 @@ private void EnsureOfferEditorOverlay()
             var rt = _offerActionsRoot.AddComponent<RectTransform>();
 
             // 右下区域（绿色框区域），与详情列对齐，保持与报价编辑器的间距一致。
-            rt.anchorMin = new Vector2(0.74f, -0.35f);
-            rt.anchorMax = new Vector2(1.00f, -0.06f);
+            rt.anchorMin = new Vector2(0.72f, 0.02f);
+            rt.anchorMax = new Vector2(1.00f, 0.38f);
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
 

@@ -226,7 +226,16 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     #region Unity 生命周期
 
-        // [removed] Awake (exists in partial file)
+    public void Awake()
+    {
+        // 获取或添加 CanvasGroup，用于控制面板交互
+        _canvasGroup = GetComponent<CanvasGroup>();
+        _canvasGroup ??= gameObject.AddComponent<CanvasGroup>();
+
+        // 注册按钮点击事件
+        confirmButton?.button?.onClick.AddListener(OnConfirmTrade);
+        cancelButton?.button?.onClick.AddListener(OnCancelTrade);
+    }
 
     #endregion
 

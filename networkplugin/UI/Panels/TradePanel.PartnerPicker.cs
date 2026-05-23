@@ -423,8 +423,8 @@ public sealed partial class TradePanel
                 scrollGo.transform.SetAsLastSibling();
 
                 var scrollRt = scrollGo.AddComponent<RectTransform>();
-                scrollRt.anchorMin = new Vector2(0.12f, 0.28f);
-                scrollRt.anchorMax = new Vector2(0.88f, 0.64f);
+                scrollRt.anchorMin = new Vector2(0.15f, 0.42f);
+                scrollRt.anchorMax = new Vector2(0.85f, 0.58f);
                 scrollRt.offsetMin = Vector2.zero;
                 scrollRt.offsetMax = Vector2.zero;
 
@@ -724,13 +724,10 @@ public sealed partial class TradePanel
 
                 string loc2 = string.IsNullOrWhiteSpace(p.LocationName) ? "?" : p.LocationName;
                 string coord = (p.Stage >= 0 || p.LocationX >= 0 || p.LocationY >= 0) ? $"Act {p.Stage}, ({p.LocationX},{p.LocationY})" : "位置未知";
-                string where = sameNode ? $"{loc2} - {coord} - 同节点" : $"{loc2} - {coord}";
 
-                string label = string.IsNullOrWhiteSpace(where) ? displayName : $"{displayName}  {where}";
-                if (p.IsHost)
-                {
-                    label += " [Host]";
-                }
+                string label = string.IsNullOrWhiteSpace(coord) ? displayName : $"{displayName}  {loc2} {coord}";
+                if (sameNode) label += " - 同节点";
+                if (p.IsHost) label += " [Host]";
 
                 Button btn = CreateTextButton(tag.TextTemplate, container, $"Player_{p.PlayerId}", label, tag.TextTemplate.fontSize * 0.5f);
 

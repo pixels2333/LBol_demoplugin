@@ -143,12 +143,12 @@ internal static class TradePanelRuntimeFactory
             GameObject p1AreaGo = new GameObject("Player1Area");
             p1AreaGo.transform.SetParent(uiParent, false);
             var p1Area = p1AreaGo.AddComponent<RectTransform>();
-            GapSharedPanelTemplateFactory.ConfigureAnchors(p1Area, new Vector2(0.00f, -0.35f), new Vector2(0.26f, -0.06f));
+            GapSharedPanelTemplateFactory.ConfigureAnchors(p1Area, new Vector2(0.00f, 0.48f), new Vector2(0.46f, 0.78f));
 
             GameObject p2AreaGo = new GameObject("Player2Area");
             p2AreaGo.transform.SetParent(uiParent, false);
             var p2Area = p2AreaGo.AddComponent<RectTransform>();
-            GapSharedPanelTemplateFactory.ConfigureAnchors(p2Area, new Vector2(0.74f, -0.35f), new Vector2(1.00f, -0.06f));
+            GapSharedPanelTemplateFactory.ConfigureAnchors(p2Area, new Vector2(0.54f, 0.48f), new Vector2(1.00f, 0.78f));
 
             var p1Slots = CreateSlotColumn(p1Area, textTemplate, scaffold.ConfirmButton, 3, "P1");
             var p2Slots = CreateSlotColumn(p2Area, textTemplate, scaffold.ConfirmButton, 3, "P2");
