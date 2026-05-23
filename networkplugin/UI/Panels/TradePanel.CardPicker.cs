@@ -7,7 +7,6 @@ using HarmonyLib;
 using LBoL.Core;
 using LBoL.Core.Cards;
 using LBoL.Presentation;
-using LBoL.Presentation.I10N;
 using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Dialogs;
 using Microsoft.Extensions.DependencyInjection;
@@ -98,17 +97,16 @@ private void EnsureCardPickerOverlay()
                 tag.MinimizedButton.SetActive(false);
             }
 
-            // ReturnButton → 确认选择（覆盖当前报价）
             if (tag.ReturnButton is not null)
             {
                 tag.ReturnButton.onClick.RemoveAllListeners();
-                tag.ReturnButton.onClick.AddListener(() => ApplyCardPickerSelection(tag));
+                tag.ReturnButton.onClick.AddListener(HideCardPickerOverlay);
             }
 
-            // TopHideButton → 取消（关闭选择器，不应用变更）
             if (tag.TopHideButton != null)
             {
                 tag.TopHideButton.onClick.RemoveAllListeners();
+                tag.TopHideButton.onClick.AddListener(HideCardPickerOverlay);
                 tag.TopHideButton.onClick.AddListener(HideCardPickerOverlay);
             }
 
@@ -251,23 +249,6 @@ private void EnsureCardPickerOverlay()
         {
             tag.CurrentOrder = CardPickerOrderStatus.Actual;
             tag.CurrentFilter = CardPickerFilterStatus.AllCards;
-
-            // 每次打开选择器，把 returnButton 的文字强制设为"确认"
-            if (tag.ReturnButton is not null)
-            {
-                var localizedTexts = tag.ReturnButton.GetComponentsInChildren<LocalizedText>(true);
-                foreach (var lt in localizedTexts)
-                {
-                    if (lt is not null)
-                        UnityEngine.Object.Destroy(lt);
-                }
-                var allTmps = tag.ReturnButton.GetComponentsInChildren<TextMeshProUGUI>(true);
-                foreach (var tmp in allTmps)
-                {
-                    if (tmp is not null)
-                        tmp.text = "确认";
-                }
-            }
         }
 
         _cardPickerRoot.SetActive(true);
@@ -494,11 +475,21 @@ private void EnsureCardPickerOverlay()
             deck = new List<Card>();
         }
 
-        // 覆盖模式：从完整牌组中选择，已有报价在打开选择器时已被清空
-        List<Card> candidates = deck.Where(c => c is not null).ToList();
+        // 删除已报价的卡牌。
+        HashSet<int> offered;
+        try
+        {
+            offered = _player1OfferedCards.Where(c => c is not null).Select(c => c.InstanceId).ToHashSet();
+        }
+        catch
+        {
+            offered = new HashSet<int>();
+        }
+
+        List<Card> candidates = deck.Where(c => c is not null && !offered.Contains(c.InstanceId)).ToList();
         if (candidates.Count == 0)
         {
-            Plugin.Logger?.LogInfo($"[TradePanel] Card picker empty: panelGameRun={(GameRun is not null)}, activeGameRun={(run is not null)}, deckCount={deck.Count}, tradeId={_tradeId ?? "<null>"}");
+            Plugin.Logger?.LogInfo($"[TradePanel] Card picker empty: panelGameRun={(GameRun is not null)}, activeGameRun={(run is not null)}, deckCount={deck.Count}, offeredCount={offered.Count}, tradeId={_tradeId ?? "<null>"}");
             tag.SourceCards.Clear();
             tag.TargetSelectCount = 0;
             tag.DeckHolder.Clear();
@@ -506,10 +497,21 @@ private void EnsureCardPickerOverlay()
             return;
         }
 
+        int remaining = Math.Max(0, _maxTradeSlots - (_player1OfferedCards?.Count ?? 0));
+        if (remaining <= 0)
+        {
+            Plugin.Logger?.LogInfo($"[TradePanel] RebuildCardPickerList blocked: no remaining slots, tradeId={_tradeId ?? "<null>"}, maxSlots={_maxTradeSlots}, offeredLocal={_player1OfferedCards.Count}");
+            tag.SourceCards.Clear();
+            tag.TargetSelectCount = 0;
+            tag.DeckHolder.Clear();
+            tag.DeckHolder.SetTitle("Game.Deck".Localize(true), "卡槽已满。");
+            return;
+        }
+
         tag.SourceCards.Clear();
         tag.SourceCards.AddRange(candidates);
-        tag.TargetSelectCount = Math.Min(_maxTradeSlots, candidates.Count);
-        Plugin.Logger?.LogInfo($"[TradePanel] RebuildCardPickerList prepared: tradeId={_tradeId ?? "<null>"}, candidateCount={candidates.Count}, maxSlots={_maxTradeSlots}, targetSelectCount={tag.TargetSelectCount}");
+        tag.TargetSelectCount = Math.Max(1, Math.Min(remaining, candidates.Count));
+        Plugin.Logger?.LogInfo($"[TradePanel] RebuildCardPickerList prepared: tradeId={_tradeId ?? "<null>"}, candidateCount={candidates.Count}, remaining={remaining}, targetSelectCount={tag.TargetSelectCount}");
 
         if (tag.Portrait is not null)
         {
@@ -599,7 +601,9 @@ private void EnsureCardPickerOverlay()
         }
 
         List<Card> displayCards = GetCardPickerDisplayCards(tag);
-        string description = $"请选择 0~{_maxTradeSlots} 张卡牌交易（选满自动截断）";
+        string description = tag.TargetSelectCount == 3
+            ? "请选择3张牌交易"
+            : $"请选择{tag.TargetSelectCount}张牌交易";
 
         if (displayCards.Count == 0)
         {
@@ -741,6 +745,13 @@ private void EnsureCardPickerOverlay()
                     firstWidget.SetSelected(false, false);
                 }
             }
+
+            selectedCount = tag.SelectWidgets.Count(w => w is not null && w.IsSelected);
+        }
+
+        if (selectedCount >= tag.TargetSelectCount)
+        {
+            ApplyCardPickerSelection(tag);
         }
     }
 
@@ -754,12 +765,6 @@ private void EnsureCardPickerOverlay()
         _cardPickerApplyingSelection = true;
         try
         {
-            // 清除已选卡牌，以本次选择为准
-            foreach (var card in _player1OfferedCards.ToList())
-            {
-                RemoveCardFromTrade(card, true);
-            }
-
             foreach (int index in tag.SelectIndexOrder.ToList())
             {
                 if (index < 0 || index >= tag.SelectWidgets.Count)
