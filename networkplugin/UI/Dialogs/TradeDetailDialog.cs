@@ -11,6 +11,7 @@ using LBoL.Presentation.UI.Dialogs;
 using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.UI.Widgets;
 using Microsoft.Extensions.DependencyInjection;
+using NetworkPlugin.Configuration;
 using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Patch.Network;
@@ -345,11 +346,21 @@ public sealed partial class TradeDetailDialog : UiDialog<TradeDetailPayload>, II
         Hide();
     }
 
+    private static bool IsLocalDebugTradeAllowed()
+    {
+        var cfg = ModService.ServiceProvider?.GetService<ConfigManager>();
+        return cfg?.DebugVirtualPlayerAiDefault?.Value == true || cfg?.DebugFakePlayersForTrade?.Value == true;
+    }
+
     private bool TryEnsureNetworkConnected()
     {
         var client = ModService.ServiceProvider.GetService<INetworkClient>();
         if (client == null || !client.IsConnected)
         {
+            if (IsLocalDebugTradeAllowed())
+            {
+                return true;
+            }
             TryShowTopMessage("交易仅在联机模式下可用。");
             return false;
         }

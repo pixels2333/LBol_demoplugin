@@ -393,6 +393,23 @@ private void EnsureOfferEditorOverlay()
         private void Awake()
         {
             _rt = transform as RectTransform;
+            ResetScale();
+        }
+
+        private void OnEnable()
+        {
+            ResetScale();
+        }
+
+        private void OnDisable()
+        {
+            _hovering = false;
+            _pressed = false;
+            ResetScale();
+        }
+
+        private void ResetScale()
+        {
             _targetScale = 1f;
             if (_rt is not null) _rt.localScale = Vector3.one;
         }
@@ -447,6 +464,8 @@ private void EnsureOfferEditorOverlay()
         tmp.text = text;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.raycastTarget = true;
+        // 强制初始缩放 1.0，避免模板 scale 残留
+        tmp.transform.localScale = Vector3.one;
         ConfigureSingleLineText(tmp);
         if (fontSize > 0f)
         {

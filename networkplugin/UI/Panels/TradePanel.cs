@@ -7,6 +7,7 @@ using HarmonyLib;
 using LBoL.Core;
 using LBoL.Core.Cards;
 using LBoL.Presentation;
+using LBoL.Presentation.I10N;
 using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Dialogs;
 using Microsoft.Extensions.DependencyInjection;
@@ -769,7 +770,7 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             _playerAId = payload?.Player1Id ?? _selfPlayerId;
             _playerBId = payload?.Player2Id;
 
-            // 需求：无法明确确定 partner 时必须显示 partner picker UI。
+            // 需求：无法明确确定 partner 时必须显示 partner picker UI.
             if (string.IsNullOrWhiteSpace(_playerBId) || string.Equals(_playerBId, _selfPlayerId, StringComparison.Ordinal))
             {
                 Plugin.Logger?.LogInfo($"[TradePanel] SetupTradeSession: partner unresolved, showing picker. self={_selfPlayerId ?? "<null>"}, playerB={_playerBId ?? "<null>"}");
@@ -873,6 +874,179 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         if (UiManager.IsInitialized)
             UiManager.GetPanel<TopMessagePanel>().ShowMessage(message);
     }
+
+        // [removed] ShowPartnerPickerOverlay (exists in partial file)
+
+        // [removed] TryShowPartnerPickerWaiting (exists in partial file)
+
+        // [removed] CoPartnerPickerAutoRefreshOnce (exists in partial file)
+
+        // [removed] ForceEnableRaycasts (exists in partial file)
+
+        // [removed] ShowTradeTargetUnavailableDialog (exists in partial file)
+
+        // [removed] HidePartnerPickerOverlay (exists in partial file)
+
+        // [removed] EnsurePopupTopmost (exists in partial file)
+
+        // [removed] SetTradeDetailsVisible (exists in partial file)
+
+        // [removed] SetCanvasInteractable (exists in partial file)
+
+        // [removed] EnsurePartnerPickerOverlay (exists in partial file)
+
+        // [removed] OnPartnerPickerRefreshClicked (exists in partial file)
+
+        // [removed] CopyRectTransform (exists in partial file)
+
+    // [removed] GetDialogField (exists in partial file)
+    // [removed] GetPrivateFieldValue (exists in partial file)
+
+        // [removed] TryFindCommonAncestorRect (exists in partial file)
+
+        // [removed] RebuildPartnerPickerList (exists in partial file)
+
+        // [removed] OnPartnerSelected (exists in partial file)
+
+        // [removed] PopulateLocalDebugRemoteOffer (exists in partial file)
+
+        // [removed] ResolveLocalPlayerDisplayName (exists in partial file)
+
+        // [removed] ResolvePartnerDisplayName (exists in partial file)
+
+        // [removed] IsShopLikeLocation (exists in partial file)
+
+        // [removed] EnsureCardPickerOverlay (exists in partial file)
+
+        // [removed] CardPickerOrderStatus (exists in partial file)
+
+        // [removed] CardPickerFilterStatus (exists in partial file)
+
+        // [removed] CardPickerTag (exists in partial file)
+
+        // [removed] ShowCardPickerOverlay (exists in partial file)
+
+        // [removed] HideCardPickerOverlay (exists in partial file)
+
+        // [removed] EnsureOfferPreviewOverlay (exists in partial file)
+
+        // [removed] CreateOfferPreviewPanel (exists in partial file)
+
+        // [removed] RefreshOfferPreview (exists in partial file)
+
+
+
+        // [removed] RebuildOfferPreviewPanel (exists in partial file)
+
+        // [removed] ClearOfferPreviewPanel (exists in partial file)
+
+        // [removed] OfferPreviewPanelTag (exists in partial file)
+
+        // [removed] RebuildCardPickerList (exists in partial file)
+
+        // [removed] BindCardPickerToggle (exists in partial file)
+
+        // [removed] ApplyCardPickerToggleStates (exists in partial file)
+
+        // [removed] PopulateCardPickerWidgets (exists in partial file)
+
+        // [removed] GetCardPickerDisplayCards (exists in partial file)
+
+        // [removed] CreateCardPickerCardWidget (exists in partial file)
+
+        // [removed] CreateCardPickerSelectionMarker (exists in partial file)
+
+        // [removed] OnCardPickerSelectionChanged (exists in partial file)
+
+        // [removed] ApplyCardPickerSelection (exists in partial file)
+
+    // 标记组件：用于在运行时 overlay 下定位列表容器。
+        // [removed] PartnerPickerTag (exists in partial file)
+
+        // [removed] PartnerCandidateTag (exists in partial file)
+
+        // [removed] PartnerPickerClickCatcher (exists in partial file)
+
+        // [removed] TryIsNetworkTrade (exists in partial file)
+
+        // [removed] TrySubscribeTradeEvents (exists in partial file)
+
+        // [removed] TryUnsubscribeTradeEvents (exists in partial file)
+
+        // [removed] OnTradeStateUpdated (exists in partial file)
+
+        // [removed] ApplyStateToUi (exists in partial file)
+
+        // [removed] TryFindDeckCard (exists in partial file)
+
+        // [removed] TrySendOfferUpdate (exists in partial file)
+
+        // [removed] ApplyNetworkTradeAndClose (exists in partial file)
+
+        // [removed] TryHandlePreparing (exists in partial file)
+
+        // [removed] EnsureOfferEditorOverlay (exists in partial file)
+
+        // [removed] PruneOfferEditorExtraButtons (exists in partial file)
+
+        // [removed] TryGetOwnedMoney (exists in partial file)
+
+        // [removed] EnsureOfferActionsOverlay (exists in partial file)
+
+        // [removed] TextButtonHover (exists in partial file)
+
+        // [removed] CreateTextButton (exists in partial file)
+
+        // [removed] ConfigureSingleLineText (exists in partial file)
+
+        // [removed] TryPickOfferEditorTemplates (exists in partial file)
+
+        // [removed] TryResolveCommonButtonWidget (exists in partial file)
+
+        // [removed] PreferSingleButtonWidget (exists in partial file)
+
+        // [removed] CanEditOffer (exists in partial file)
+
+        // [removed] RefreshOfferEditorTexts (exists in partial file)
+
+    #region 展品预览栏
+
+        // [removed] EnsureExhibitPreviewContainers (exists in partial file)
+
+        // [removed] RebuildExhibitPreviews (exists in partial file)
+
+        // [removed] RebuildSideExhibitPreviews (exists in partial file)
+
+    #endregion
+
+        // [removed] SetRect (exists in partial file)
+
+    // [removed] _exhibitPickerRoot (exists in partial file)
+
+        // [removed] ShowExhibitPickerOverlay (exists in partial file)
+
+        // [removed] HideExhibitPickerOverlay (exists in partial file)
+
+        // [removed] EnsureExhibitPickerOverlay (exists in partial file)
+
+        // [removed] ExhibitPickerTag (exists in partial file)
+
+        // [removed] RebuildExhibitPickerList (exists in partial file)
+
+        // [removed] CreateExhibitRecordRow (exists in partial file)
+
+        // [removed] BuildExhibitSecondaryText (exists in partial file)
+
+        // [removed] SetButtonText (exists in partial file)
+
+        // [removed] ApplyingStateScope (exists in partial file)
+
+    /// <summary>
+    /// 显示交易 UI 的协程方法，调用方可等待该协程直到面板被关闭。
+    /// </summary>
+    /// <param name="payload">交易配置参数。</param>
+    /// <returns>用于等待面板关闭的协程。</returns>
+        // [removed] ShowTradeAsync (exists in partial file)
 
     #endregion
 }

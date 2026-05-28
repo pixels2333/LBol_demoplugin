@@ -21,7 +21,7 @@ public sealed class TradeDetailPayload
     public string PartnerPlayerName { get; set; }
 
     /// <summary>最大交易槽位数</summary>
-    public int MaxTradeSlots { get; set; } = 5;
+    public int MaxTradeSlots { get; set; } = 3;
 
     /// <summary>初始牌组卡牌列表（用于挑选交易物品）</summary>
     public List<Card> InitialDeckCards { get; set; }

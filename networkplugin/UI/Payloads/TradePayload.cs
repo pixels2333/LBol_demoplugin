@@ -31,5 +31,5 @@ public class TradePayload
 	public bool CanCancel { get; set; } = true;
 
 	/// <summary>最大交易槽位数</summary>
-	public int MaxTradeSlots { get; set; } = 5;
+	public int MaxTradeSlots { get; set; } = 3;
 }

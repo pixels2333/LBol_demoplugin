@@ -16,7 +16,11 @@ internal static class TradeUiMessages
 {
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
-
+    private static bool IsDebugMode()
+    {
+        var cfg = ServiceProvider?.GetService<ConfigManager>();
+        return cfg?.DebugVirtualPlayerAiDefault?.Value == true || cfg?.DebugFakePlayersForTrade?.Value == true;
+    }
 
     /// <summary>
     /// 检查交易功能是否已启用且已连接到服务器
@@ -38,6 +42,10 @@ internal static class TradeUiMessages
         var client = serviceProvider?.GetService<INetworkClient>();
         if (client == null || !client.IsConnected)
         {
+            if (IsDebugMode())
+            {
+                return true;
+            }
             reason = "交易不可用（未连接到服务器）。";
             return false;
         }
