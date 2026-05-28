@@ -7,7 +7,6 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using BepInEx.Logging;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Event;
@@ -45,9 +44,9 @@ public sealed class ReconnectionManager : IDisposable
     private readonly ManualLogSource? _fallbackLogger;
 
     /// <summary>
-    /// 服务提供器：用于按需解析网络组件，降低强依赖/初始化顺序要求。
+    /// 网络管理器：用于获取在线玩家列表、创建玩家状态快照。
     /// </summary>
-    private readonly IServiceProvider _serviceProvider;
+    private readonly INetworkManager _networkManager;
 
     /// <summary>
     /// 同步锁：保护快照/心跳/事件历史等共享状态（定时器与网络回调可能并发）。
@@ -55,9 +54,9 @@ public sealed class ReconnectionManager : IDisposable
     private readonly object _syncLock = new();
 
     /// <summary>
-    /// 网络客户端（初始化后缓存；某些场景会按需从 DI 再获取一次以防对象变更）。
+    /// 网络客户端（构造函数注入，非空）。
     /// </summary>
-    private INetworkClient? _client;
+    private readonly INetworkClient _client;
 
     /// <summary>
     /// 初始化标记（0=未初始化，1=已初始化），用于保证 <see cref="Initialize"/> 幂等。
@@ -132,17 +131,20 @@ public sealed class ReconnectionManager : IDisposable
     /// </summary>
     /// <param name="config">重连配置；为 null 时使用默认配置。</param>
     /// <param name="logger">可选日志（DI 注入）。</param>
-    /// <param name="serviceProvider">服务提供器，用于按需解析网络组件。</param>
+    /// <param name="networkClient">网络客户端（DI 注入）。</param>
+    /// <param name="networkManager">网络管理器（DI 注入）。</param>
     /// <param name="fallbackLogger">备选日志源；默认使用 <see cref="Plugin.Logger"/>。</param>
     public ReconnectionManager(
         ReconnectionConfig config,
         ILogger<ReconnectionManager>? logger,
-        IServiceProvider serviceProvider,
+        INetworkClient networkClient,
+        INetworkManager networkManager,
         ManualLogSource? fallbackLogger = null)
     {
         _config = config ?? new ReconnectionConfig();
         _logger = logger;
-        _serviceProvider = serviceProvider;
+        _client = networkClient ?? throw new ArgumentNullException(nameof(networkClient));
+        _networkManager = networkManager ?? throw new ArgumentNullException(nameof(networkManager));
         _fallbackLogger = fallbackLogger ?? Plugin.Logger;
 
         // 这里使用 InfiniteTimeSpan，确保在 Initialize 后才开始周期任务（避免依赖未就绪）。
@@ -166,7 +168,7 @@ public sealed class ReconnectionManager : IDisposable
 
         try
         {
-            _client = _serviceProvider.GetService<INetworkClient>();
+            // 网络客户端已通过构造函数注入，直接使用。
             if (_client == null)
             {
                 LogWarning("[ReconnectionManager] Initialize skipped: INetworkClient not available.");
@@ -212,8 +214,8 @@ public sealed class ReconnectionManager : IDisposable
 
         try
         {
-            // 定时器回调中尽量不假设 _client 一定已就绪：必要时从 DI 再解析一次。
-            INetworkClient? client = _client ?? _serviceProvider.GetService<INetworkClient>();
+            // 网络客户端已通过构造函数注入，直接使用。
+            INetworkClient? client = _client;
             if (client == null || !client.IsConnected)
             {
                 return;
@@ -258,7 +260,7 @@ public sealed class ReconnectionManager : IDisposable
                 snapshot.MapState.LastCheckpointAtUtcTicks = _lastMapCheckpointAtUtcTicks;
             }
 
-            INetworkManager? manager = _serviceProvider.GetService<INetworkManager>();
+            INetworkManager? manager = _networkManager;
             if (manager != null)
             {
                 foreach (INetworkPlayer p in manager.GetAllPlayers() ?? Enumerable.Empty<INetworkPlayer>())
@@ -692,7 +694,7 @@ public sealed class ReconnectionManager : IDisposable
     {
         try
         {
-            INetworkManager? manager = _serviceProvider.GetService<INetworkManager>();
+            INetworkManager? manager = _networkManager;
             INetworkPlayer? player = null;
 
             if (manager != null)
@@ -813,7 +815,7 @@ public sealed class ReconnectionManager : IDisposable
     {
         try
         {
-            INetworkClient? client = _client ?? _serviceProvider.GetService<INetworkClient>();
+            INetworkClient? client = _client;
             if (client == null || !client.IsConnected)
             {
                 LogWarning($"[ReconnectionManager] 跳过发送重连恢复包：客户端未连接 (target={playerId})");
@@ -861,7 +863,7 @@ public sealed class ReconnectionManager : IDisposable
     {
         try
         {
-            INetworkClient? client = _client ?? _serviceProvider.GetService<INetworkClient>();
+            INetworkClient? client = _client;
             if (client != null && client.IsConnected && NetworkIdentityTracker.GetSelfIsHost())
             {
                 // 广播重连尝试事件，便于其他模块（UI/逻辑）感知与响应。

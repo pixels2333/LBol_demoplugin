@@ -26,9 +26,15 @@ public static class ResurrectSyncPatch
     private static bool _subscribed;
     private static INetworkClient _subscribedClient;
 
-    // 本地 UI 等待结果用（不强依赖 UI 层引用，避免循环依赖）。
-    public static event Action<string, bool, string> OnResurrectResult; // requestId, success, reason
+    /// <summary>
+    /// 复活操作结果事件：（requestId, success, reason）
+    /// </summary>
+    public static event Action<string, bool, string> OnResurrectResult;
 
+    /// <summary>
+    /// 确保已订阅网络客户端事件
+    /// </summary>
+    /// <param name="client">网络客户端实例</param>
     public static void EnsureSubscribed(INetworkClient client)
     {
         if (client == null)

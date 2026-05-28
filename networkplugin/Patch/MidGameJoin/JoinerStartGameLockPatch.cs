@@ -36,6 +36,9 @@ public static class JoinerStartGameLockPatch
         => ServiceProvider?.GetService<MapCatchUpOrchestrator>();
 
     // Patch the seed overload (the non-seed overload delegates to this one).
+    /// <summary>
+    /// 开始游戏前置：将加入者的种子/难度/开局配置对齐到主机的快照
+    /// </summary>
     [HarmonyPatch(typeof(LBoL.Presentation.GameMaster), nameof(LBoL.Presentation.GameMaster.StartGame),
         new[]
         {

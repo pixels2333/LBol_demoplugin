@@ -319,8 +319,9 @@ public class BattleController_Patch
     /// <param name="damageinfo">本次伤害信息（结构体）。</param>
     /// <param name="target">伤害目标单位。</param>
     // BattleController.Damage 的真实签名为:
-    // internal DamageInfo Damage(Unit source, Unit target, DamageInfo info, GameEntity actionSource)
-    // 这里用 __result 获取最终结算(含格挡/护盾等)后的 DamageInfo。
+    /// <summary>
+    /// 伤害事件后置：将本地玩家造成的伤害同步到网络
+    /// </summary>
     [HarmonyPatch(typeof(BattleController), "Damage")]
     [HarmonyPostfix]
     public static void Damage_Postfix(

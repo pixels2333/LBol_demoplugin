@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
-using Microsoft.Extensions.DependencyInjection;
+using BepInEx.Logging;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
-using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Snapshot;
 using NetworkPlugin.Patch.Network;
 using NetworkPlugin.Utils;
@@ -16,25 +15,32 @@ namespace NetworkPlugin.Network.RoomSync;
 /// - 客户端：进入节点后向主机请求 RoomStateSnapshot，并在战斗开始/回合结束/战斗结束时上传。
 /// - 主机：缓存每个 RoomKey 的最新状态，并对请求方定向响应。
 /// </summary>
-public static class RoomSyncManager
+public class RoomSyncManager
 {
-    private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
+    private readonly INetworkClient _client;
+    private readonly ManualLogSource _logger;
 
-    private static readonly object _lock = new();
+    private readonly object _lock = new();
 
-    private static INetworkClient _subscribedClient;
-    private static bool _subscribed;
+    private INetworkClient _subscribedClient;
+    private bool _subscribed;
 
     // Host-only: RoomKey -> latest snapshot
-    private static readonly Dictionary<string, RoomStateSnapshot> _hostRoomStates = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, RoomStateSnapshot> _hostRoomStates = new(StringComparer.Ordinal);
 
     // Client-only: pending response cache (latest per RoomKey)
-    private static readonly Dictionary<string, RoomStateSnapshot> _clientRoomStates = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, RoomStateSnapshot> _clientRoomStates = new(StringComparer.Ordinal);
 
     // Local helper: last entered node (for computing room key & metadata)
-    private static (string roomKey, int act, int x, int y, string stationType, long atUtcTicks)? _lastEntered;
+    private (string roomKey, int act, int x, int y, string stationType, long atUtcTicks)? _lastEntered;
 
-    public static void EnsureSubscribed(INetworkClient client)
+    public RoomSyncManager(INetworkClient networkClient, ManualLogSource logger)
+    {
+        _client = networkClient ?? throw new ArgumentNullException(nameof(networkClient));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    public void EnsureSubscribed(INetworkClient client)
     {
         if (client == null)
         {
@@ -57,7 +63,7 @@ public static class RoomSyncManager
         }
     }
 
-    public static void Unsubscribe()
+    public void Unsubscribe()
     {
         lock (_lock)
         {
@@ -77,7 +83,7 @@ public static class RoomSyncManager
         return $"{act}:{x}:{y}:{stationType}";
     }
 
-    public static void SetLastEnteredNode(int act, int x, int y, string stationType)
+    public void SetLastEnteredNode(int act, int x, int y, string stationType)
     {
         try
         {
@@ -90,12 +96,12 @@ public static class RoomSyncManager
         }
     }
 
-    public static string GetLastEnteredRoomKey()
+    public string GetLastEnteredRoomKey()
     {
         return _lastEntered.HasValue ? _lastEntered.Value.roomKey : null;
     }
 
-    public static RoomStateSnapshot TryGetClientRoomState(string roomKey)
+    public RoomStateSnapshot TryGetClientRoomState(string roomKey)
     {
         if (string.IsNullOrWhiteSpace(roomKey))
         {
@@ -112,7 +118,7 @@ public static class RoomSyncManager
     /// 客户端：进入节点后请求主机返回该房间的最新状态。
     /// Host 模式下，事件会在本地直接回调（参考 TradeSyncPatch 的模式）。
     /// </summary>
-    public static void RequestRoomState(string roomKey, long knownVersion)
+    public void RequestRoomState(string roomKey, long knownVersion)
     {
         try
         {
@@ -121,7 +127,8 @@ public static class RoomSyncManager
                 return;
             }
 
-            var client = ServiceProvider?.GetService<INetworkClient>();
+            // 网络客户端已通过构造函数注入，直接使用。
+            var client = _client;
             if (client == null || !client.IsConnected)
             {
                 return;
@@ -162,7 +169,7 @@ public static class RoomSyncManager
     /// <summary>
     /// 上传房间状态（战斗开始/回合结束/战斗结束）。
     /// </summary>
-    public static void UploadRoomState(RoomStateSnapshot snapshot)
+    public void UploadRoomState(RoomStateSnapshot snapshot)
     {
         try
         {
@@ -171,7 +178,7 @@ public static class RoomSyncManager
                 return;
             }
 
-            var client = ServiceProvider?.GetService<INetworkClient>();
+            var client = _client;
             if (client == null || !client.IsConnected)
             {
                 return;
@@ -223,7 +230,7 @@ public static class RoomSyncManager
         }
     }
 
-    private static void OnGameEventReceived(string eventType, object payload)
+    private void OnGameEventReceived(string eventType, object payload)
     {
         if (string.IsNullOrWhiteSpace(eventType))
         {
@@ -261,7 +268,7 @@ public static class RoomSyncManager
         }
     }
 
-    private static void HandleRoomStateRequest(JsonElement root)
+    private void HandleRoomStateRequest(JsonElement root)
     {
         // Only host answers.
         if (!NetworkIdentityTracker.GetSelfIsHost())
@@ -304,7 +311,7 @@ public static class RoomSyncManager
         SendRoomStateResponseTo(requesterId, snapshot);
     }
 
-    private static void HandleRoomStateUpload(JsonElement root)
+    private void HandleRoomStateUpload(JsonElement root)
     {
         // Only host stores.
         if (!NetworkIdentityTracker.GetSelfIsHost())
@@ -385,7 +392,7 @@ public static class RoomSyncManager
         // Optional: host can broadcast updates, but default to "request on enter".
     }
 
-    private static void HandleRoomStateResponse(JsonElement root)
+    private void HandleRoomStateResponse(JsonElement root)
     {
         string roomKey = TryGetString(root, "RoomKey");
         if (string.IsNullOrWhiteSpace(roomKey))
@@ -425,11 +432,11 @@ public static class RoomSyncManager
         GapOptionsSyncPatch.MergeCatchupGapOptionsEvents(snapshot.RoomKey, snapshot.GapOptionsEvents);
     }
 
-    private static void SendRoomStateResponseTo(string targetPlayerId, RoomStateSnapshot snapshot)
+    private void SendRoomStateResponseTo(string targetPlayerId, RoomStateSnapshot snapshot)
     {
         try
         {
-            var client = ServiceProvider?.GetService<INetworkClient>();
+            var client = _client;
             if (client == null || !client.IsConnected)
             {
                 return;

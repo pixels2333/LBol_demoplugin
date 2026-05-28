@@ -11,8 +11,9 @@ namespace NetworkPlugin.Patch;
 /// </summary>
 [HarmonyPatch(typeof(GameRunController), nameof(GameRunController.LeaveBattle))]
 public static class BattleEndAutoRevivePatch
-{
-    [HarmonyPrefix]
+{    /// <summary>
+    /// LeaveBattle 前置补丁：检查本地玩家是否处于假死状态，若是则自动复活后再执行原逻辑。
+    /// </summary>    [HarmonyPrefix]
     public static void Prefix(GameRunController __instance)
     {
         try

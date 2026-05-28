@@ -114,6 +114,7 @@ public class NetWorkPlayer
 
     #region Runtime aliases
 
+    /// <summary>运行时玩家名称别名</summary>
     [JsonIgnore]
     public string PlayerName
     {
@@ -121,6 +122,7 @@ public class NetWorkPlayer
         set => username = string.IsNullOrWhiteSpace(value) ? "Player" : value;
     }
 
+    /// <summary>运行时角色ID别名</summary>
     [JsonIgnore]
     public string CharacterId
     {
@@ -128,6 +130,7 @@ public class NetWorkPlayer
         set => chara = value ?? string.Empty;
     }
 
+    /// <summary>运行时位置名称别名</summary>
     [JsonIgnore]
     public string LocationName
     {
@@ -135,6 +138,7 @@ public class NetWorkPlayer
         set => location = value ?? string.Empty;
     }
 
+    /// <summary>运行时X坐标别名</summary>
     [JsonIgnore]
     public int LocationX
     {
@@ -142,6 +146,7 @@ public class NetWorkPlayer
         set => location_X = value;
     }
 
+    /// <summary>运行时Y坐标别名</summary>
     [JsonIgnore]
     public int LocationY
     {

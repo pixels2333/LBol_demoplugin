@@ -73,3 +73,4 @@ powershell -ExecutionPolicy Bypass -File copy_networkplugin_dll.ps1
 - **Partial 文件**: TradePanel/TradeDetailDialog/NetworkServer 已拆为多文件，新增方法请加到对应分片文件，不要集中到主文件。
 - **魔数**: 已有 5 个常量文件（`NetworkConstants`, `SyncConstants`, `UIConstants`, `LogConstants`, `ServerConstants`），不要硬编码字面量。
 - **配置文件漂移**: 同名配置项只在 `ConfigManager` 中绑定一次。
+- **Harmony Patch 与 DI**: Harmony 通过反射实例化 Patch 类，**无法使用构造函数注入**。因此 Patch 类必须通过 `ModService.ServiceProvider?.GetService<T>()` 静态获取 DI 服务。这是 Harmony 机制决定的必要模式，不是反模式。非 Patch 类（普通服务/管理器/工具类）仍应使用构造函数注入，不要模仿 Patch 类的写法。

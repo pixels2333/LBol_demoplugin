@@ -163,7 +163,9 @@ namespace NetworkPlugin.Network.Messages
         /// </summary>
         public const string OnCardRemove = "OnCardRemove";
 
-        public const string OnRemoteCardUse = "OnRemoteCardUse";
+/// <summary>远程玩家使用卡牌事件</summary>
+    public const string OnRemoteCardUse = "OnRemoteCardUse";
+    /// <summary>远程玩家卡牌结算完成事件</summary>
         public const string OnRemoteCardResolved = "OnRemoteCardResolved";
 
         // === 法力/能量同步消息 ===
@@ -230,8 +232,11 @@ namespace NetworkPlugin.Network.Messages
         /// </summary>
         public const string OnStatusEffectRemoved = "OnStatusEffectRemoved";
 
-        public const string OnMoodEffectLoopStarted = "OnMoodEffectLoopStarted";
-        public const string OnMoodEffectLoopEnded = "OnMoodEffectLoopEnded";
+/// <summary>心境效果循环开始事件</summary>
+    public const string OnMoodEffectLoopStarted = "OnMoodEffectLoopStarted";
+    /// <summary>心境效果循环结束事件</summary>
+    public const string OnMoodEffectLoopEnded = "OnMoodEffectLoopEnded";
+    /// <summary>心境效果状态同步事件</summary>
         public const string OnMoodEffectStateSync = "OnMoodEffectStateSync";
 
         // === 玩家状态同步消息 ===
@@ -295,8 +300,11 @@ namespace NetworkPlugin.Network.Messages
         /// </summary>
         public const string OnTurnEnd = "OnTurnEnd";
 
-        public const string EndTurnRequest = "EndTurnRequest";
-        public const string EndTurnStatus = "EndTurnStatus";
+/// <summary>结束回合请求</summary>
+    public const string EndTurnRequest = "EndTurnRequest";
+    /// <summary>结束回合状态</summary>
+    public const string EndTurnStatus = "EndTurnStatus";
+    /// <summary>结束回合确认</summary>
         public const string EndTurnConfirm = "EndTurnConfirm";
 
         /// <summary>

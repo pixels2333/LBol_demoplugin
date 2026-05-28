@@ -25,10 +25,10 @@
 - `networkplugin/`：联机 MOD 的核心代码目录（当前主开发区）。
   - `Chat/`：聊天消息与聊天控制台。
   - `Configuration/`：联机、同步、性能等配置管理。
-  - `Core/`：同步管理核心接口与实现。
-  - `Network/`：网络通信主逻辑（客户端/服务端/房间/消息/重连/中途加入/快照等）。
+  - `Core/`：同步管理核心接口与实现（SyncManager 已拆分为 EventBufferManager / StateCacheManager / AvailabilityTracker）。
+  - `Network/`：网络通信主逻辑（客户端/服务端/房间/消息/重连/中途加入/快照等）。`NetworkServer` 已拆分为主文件 + `Routing` + `Broadcast`。
   - `Patch/`：对游戏行为打补丁的同步逻辑（战斗、地图、网络、UI 等）。
-  - `UI/`：联机功能界面组件、对话框、面板、控件。
+  - `UI/`：联机功能界面组件、对话框、面板、控件。`TradePanel`(6文件)、`TradeDetailDialog`(7文件) 已物理拆分。
   - `Utils/`：卡牌、法力、状态、日志、事件缓冲等辅助工具。
 
 - `MyFirstPlugin/`：示例/实验插件工程。

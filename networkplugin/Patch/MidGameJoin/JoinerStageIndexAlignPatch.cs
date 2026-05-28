@@ -38,6 +38,9 @@ public static class JoinerStageIndexAlignPatch
     private static MapCatchUpOrchestrator TryGetCatchUp()
         => ServiceProvider?.GetService<MapCatchUpOrchestrator>();
 
+    /// <summary>
+    /// 进入下一阶段前置：将加入者的初始阶段索引对齐到主机的快照
+    /// </summary>
     [HarmonyPatch(typeof(GameRunController), nameof(GameRunController.EnterNextStage))]
     [HarmonyPrefix]
     public static void GameRunController_EnterNextStage_Prefix(GameRunController __instance)

@@ -1,5 +1,5 @@
 using System;
-using Microsoft.Extensions.DependencyInjection;
+using BepInEx.Logging;
 using NetworkPlugin.Network.Client;
 
 namespace NetworkPlugin.Core;
@@ -8,22 +8,32 @@ namespace NetworkPlugin.Core;
 /// 网络可用性跟踪器
 /// 负责跟踪网络客户端连接状态、处理连接恢复/断开事件
 /// </summary>
-internal sealed class NetworkAvailabilityTracker
+public sealed class NetworkAvailabilityTracker
 {
-    private readonly IServiceProvider _serviceProvider;
-    private INetworkClient _networkClient;
+    private readonly INetworkClient _networkClient;
+    private readonly ManualLogSource _logger;
 
+    /// <summary>网络客户端是否可用</summary>
     public bool IsAvailable { get; private set; }
+    /// <summary>最近一次网络连接时间</summary>
     public DateTime LastConnectionTime { get; private set; } = DateTime.MinValue;
+    /// <summary>最近一次同步完成时间</summary>
     public DateTime LastSyncTime { get; private set; } = DateTime.MinValue;
+    /// <summary>最近一次 FullSync 请求的 Tick 计数（用于节流）</summary>
     public long LastFullSyncRequestAtTicks { get; set; }
 
     // 节流：避免重连等路径在短时间内重复发起 FullStateSyncRequest
     private static readonly TimeSpan FullSyncThrottleInterval = TimeSpan.FromSeconds(2);
 
-    public NetworkAvailabilityTracker(IServiceProvider serviceProvider)
+    /// <summary>
+    /// 初始化网络可用性跟踪器
+    /// </summary>
+    /// <param name="networkClient">网络客户端实例</param>
+    /// <param name="logger">日志记录器</param>
+    public NetworkAvailabilityTracker(INetworkClient networkClient, ManualLogSource logger)
     {
-        _serviceProvider = serviceProvider;
+        _networkClient = networkClient;
+        _logger = logger;
     }
 
     /// <summary>
@@ -35,21 +45,18 @@ internal sealed class NetworkAvailabilityTracker
     }
 
     /// <summary>
-    /// 检查网络客户端是否可用，必要时尝试重新初始化
+    /// 检查网络客户端是否可用
     /// </summary>
     public bool CheckAvailability()
     {
         try
         {
-            if (_networkClient == null)
-                InitializeNetworkClient();
-
             IsAvailable = _networkClient?.IsConnected ?? false;
             return IsAvailable;
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[NetAvailTracker] 网络可用性检查异常: {ex.Message}");
+            _logger?.LogError($"[NetAvailTracker] 网络可用性检查异常: {ex.Message}");
             IsAvailable = false;
             return false;
         }
@@ -86,17 +93,5 @@ internal sealed class NetworkAvailabilityTracker
 
         LastFullSyncRequestAtTicks = nowTicks;
         return true;
-    }
-
-    /// <summary>
-    /// 从 DI 容器获取并初始化网络客户端
-    /// </summary>
-    private void InitializeNetworkClient()
-    {
-        _networkClient = _serviceProvider?.GetService<INetworkClient>();
-        if (_networkClient != null)
-            Plugin.Logger?.LogInfo("[NetAvailTracker] 网络客户端初始化成功");
-        else
-            Plugin.Logger?.LogWarning("[NetAvailTracker] 网络客户端不可用 - 运行在离线模式");
     }
 }

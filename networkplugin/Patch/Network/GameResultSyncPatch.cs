@@ -43,7 +43,10 @@ public static class GameResultSyncPatch
     private static readonly Action<string, object> _onGameEventReceived = OnGameEventReceived;
     private static readonly Action<bool> _onConnectionStateChanged = OnConnectionStateChanged;
 
-        [HarmonyPatch(typeof(GameDirector), "Update")]
+    /// <summary>
+    /// 订阅钩子：在 GameDirector.Update 时确保订阅并处理抑制超时
+    /// </summary>
+    [HarmonyPatch(typeof(GameDirector), "Update")]
     private static class SubscribeHook
     {
         [HarmonyPostfix]
@@ -241,6 +244,9 @@ public static class GameResultSyncPatch
         }
     }
 
+    /// <summary>
+    /// 结算面板显示时后置：处理本地游戏结束结果并广播
+    /// </summary>
     [HarmonyPatch(typeof(GameResultPanel), "OnShowing")]
     private static class GameResultPanel_OnShowing_Patch
     {

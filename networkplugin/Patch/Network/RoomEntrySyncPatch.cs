@@ -53,6 +53,9 @@ public static class RoomEntrySyncPatch
     [HarmonyPatch(typeof(GameMap), nameof(GameMap.EnterNode))]
     private static class GameMap_EnterNode_Patch
     {
+        /// <summary>
+        /// 进入地图节点后置补丁：标记检查点并广播进入节点事件
+        /// </summary>
         [HarmonyPostfix]
         public static void Postfix(GameMap __instance, MapNode node, bool freeMove, bool forced)
         {

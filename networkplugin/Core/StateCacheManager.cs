@@ -12,9 +12,15 @@ namespace NetworkPlugin.Core;
 /// </summary>
 internal sealed class StateCacheManager
 {
+    /// <summary>本地状态缓存字典</summary>
     private readonly Dictionary<string, object> _stateCache = new(StringComparer.Ordinal);
+    /// <summary>同步配置</summary>
     private readonly SyncConfiguration _config;
 
+    /// <summary>
+    /// 初始化状态缓存管理器
+    /// </summary>
+    /// <param name="config">同步配置</param>
     public StateCacheManager(SyncConfiguration config)
     {
         _config = config ?? throw new ArgumentNullException(nameof(config));
@@ -90,6 +96,9 @@ internal sealed class StateCacheManager
     /// </summary>
     public int CachedStateCount => _stateCache.Count;
 
+    /// <summary>
+    /// 清理过期的旧状态缓存条目
+    /// </summary>
     private void CleanupOldStates()
     {
         var cutoffTime = DateTime.UtcNow - _config.StateCacheExpiry;

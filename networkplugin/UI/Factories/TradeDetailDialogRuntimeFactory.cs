@@ -12,14 +12,19 @@ using UnityEngine.UI;
 
 namespace NetworkPlugin.UI.Factories;
 
+/// <summary>
+/// 交易详情弹窗运行时工厂：在运行时创建或复用 TradeDetailDialog 实例
+/// </summary>
 internal static class TradeDetailDialogRuntimeFactory
 {
+    /// <summary>
+    /// 获取或创建 TradeDetailDialog 实例
+    /// </summary>
     internal static TradeDetailDialog GetOrCreate()
     {
         try
         {
             var existing = UnityEngine.Object.FindAnyObjectByType<TradeDetailDialog>();
-            if (existing != null)
             {
                 return existing;
             }

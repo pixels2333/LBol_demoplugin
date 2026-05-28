@@ -10,6 +10,7 @@ using HarmonyLib;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Configuration;
 using NetworkPlugin.Core;
+using NetworkPlugin.Network.RoomSync;
 using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.MidGameJoin;
@@ -317,19 +318,25 @@ public class Plugin : BaseUnityPlugin
         services.AddSingleton<LocalNetworkPlayer>();
         services.AddSingleton<INetworkPlayer>(sp => sp.GetRequiredService<LocalNetworkPlayer>());
         services.AddSingleton<INetworkManager, NetworkManager>(); // 注册网络管理器服务
+        services.AddSingleton<NetworkAvailabilityTracker>();
         services.AddSingleton<SynchronizationManager>();
         services.AddSingleton<ISynchronizationManager>(sp => sp.GetRequiredService<SynchronizationManager>()); // 注册同步管理器服务
         services.AddSingleton<INetworkClient, NetworkClient>(); // 注册网络客户端服务
+        services.AddSingleton<RoomSyncManager>();
 
         // 断线重连：作为单例服务提供；内部通过 INetworkClient 事件监听连接状态并维护快照/事件历史。
-        services.AddSingleton(sp => new ReconnectionManager(new ReconnectionConfig(), null, sp, Logger));
+        services.AddSingleton(sp => new ReconnectionManager(
+            new ReconnectionConfig(), null,
+            sp.GetRequiredService<INetworkClient>(),
+            sp.GetRequiredService<INetworkManager>(),
+            Logger));
 
-        // 中途加入：按“可用优先”先跑通 DirectMessage 协作闭环。
+        // 中途加入：按"可用优先"先跑通 DirectMessage 协作闭环。
         services.AddSingleton(new MidGameJoinConfig());
         services.AddSingleton<MidGameJoinManager>();
 
         // 客户端追赶：接收 FullSnapshot 后在本地地图界面尽力对齐节点状态。
-        services.AddSingleton(sp => new MapCatchUpOrchestrator(Logger));
+        services.AddSingleton(sp => new MapCatchUpOrchestrator(Logger, sp.GetRequiredService<RoomSyncManager>()));
     }
 
     /// <summary>

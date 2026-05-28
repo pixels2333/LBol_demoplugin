@@ -165,6 +165,9 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private CardWidget _offerPreviewCardTemplate;
     private RectTransform _runtimeContentRoot;
 
+    /// <summary>
+    /// 运行时绑定 UI 组件和参数
+    /// </summary>
     internal void BindRuntimeUi(
         RectTransform runtimeContentRoot,
         RectTransform runtimePlayer1TradeArea,
@@ -225,6 +228,9 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     #region Unity 生命周期
 
+    /// <summary>
+    /// Awake 生命周期：初始化组件引用
+    /// </summary>
     public void Awake()
     {
         // 获取或添加 CanvasGroup，用于控制面板交互

@@ -107,6 +107,11 @@ internal sealed class NetworkEventBufferManager
         }
     }
 
+    /// <summary>
+    /// 处理单个网络事件：解析事件数据、创建 GameEvent 并应用到本地状态
+    /// </summary>
+    /// <param name="eventBuffer">待处理的事件缓冲区条目</param>
+    /// <param name="applyEventCallback">将 GameEvent 应用到本地状态的回调</param>
     private void ProcessSingleNetworkEvent(NetworkEventBuffer eventBuffer, Action<GameEvent> applyEventCallback)
     {
         var eventDict = eventBuffer.OriginalData;
@@ -126,6 +131,13 @@ internal sealed class NetworkEventBufferManager
         Plugin.Logger?.LogDebug($"[EventBufferManager] 单个事件应用成功: {gameEvent.EventType} (时间戳: {timestamp})");
     }
 
+    /// <summary>
+    /// 从网络事件数据创建 GameEvent 对象
+    /// </summary>
+    /// <param name="eventType">事件类型</param>
+    /// <param name="payload">事件载荷</param>
+    /// <param name="timestamp">事件时间戳</param>
+    /// <returns>创建的 GameEvent 实例</returns>
     private static GameEvent CreateGameEventFromNetworkData(string eventType, object payload, DateTime timestamp)
     {
         if (string.IsNullOrWhiteSpace(eventType)) eventType = "Unknown";
@@ -143,6 +155,11 @@ internal sealed class NetworkEventBufferManager
         };
     }
 
+    /// <summary>
+    /// 从事件载荷中解析玩家名称
+    /// </summary>
+    /// <param name="payload">事件载荷</param>
+    /// <returns>解析出的玩家名称，失败时返回 "remote"</returns>
     private static string ResolvePlayerName(object payload)
     {
         if (payload is Dictionary<string, object> dict)
@@ -157,6 +174,13 @@ internal sealed class NetworkEventBufferManager
         return "remote";
     }
 
+    /// <summary>
+    /// 尝试从字典中获取非空字符串值
+    /// </summary>
+    /// <param name="dict">源字典</param>
+    /// <param name="key">键名</param>
+    /// <param name="value">获取到的字符串值</param>
+    /// <returns>成功获取且非空时返回 true</returns>
     private static bool TryGetNonEmptyString(Dictionary<string, object> dict, string key, out string value)
     {
         value = null;
@@ -169,6 +193,9 @@ internal sealed class NetworkEventBufferManager
         return false;
     }
 
+    /// <summary>
+    /// 清理缓冲区中超时的待处理事件
+    /// </summary>
     private void CleanupTimeoutEvents()
     {
         List<long> timestampsToRemove = [];
@@ -230,6 +257,9 @@ internal sealed class NetworkEventBufferManager
     /// <summary>
     /// 将原始网络事件数据标准化为 Dictionary 格式
     /// </summary>
+    /// <param name="eventData">原始事件数据</param>
+    /// <param name="eventDict">标准化后的字典</param>
+    /// <returns>标准化成功时返回 true</returns>
     public static bool TryNormalizeNetworkEvent(object eventData, out Dictionary<string, object> eventDict)
     {
         eventDict = null;
@@ -264,6 +294,11 @@ internal sealed class NetworkEventBufferManager
         return true;
     }
 
+    /// <summary>
+    /// 描述事件载荷的前 200 个字符（用于日志调试）
+    /// </summary>
+    /// <param name="maybeEvent">事件对象</param>
+    /// <returns>载荷的前 200 字符描述</returns>
     internal static string DescribePayloadHead200(object maybeEvent)
     {
         if (maybeEvent == null) return string.Empty;

@@ -50,6 +50,9 @@ public static class EnemyIntentSyncPatch
     private static INetworkClient TryGetNetworkClient()
         => ServiceProvider?.GetService<INetworkClient>();
 
+    /// <summary>
+    /// 订阅钩子：在 GameDirector.Update 时确保订阅网络事件
+    /// </summary>
     [HarmonyPatch(typeof(GameDirector), "Update")]
     private static class SubscribeHook
     {
@@ -134,6 +137,9 @@ public static class EnemyIntentSyncPatch
         TryBroadcastCurrentBattleIntentions();
     }
 
+    /// <summary>
+    /// 主阶段开始前置：标记即将广播回合开始的意图
+    /// </summary>
     [HarmonyPatch(typeof(StartRoundAction), "MainPhase")]
     [HarmonyPrefix]
     public static void StartRoundAction_MainPhase_Prefix()
@@ -141,6 +147,9 @@ public static class EnemyIntentSyncPatch
         _generatingRoundStartIntentions = true;
     }
 
+    /// <summary>
+    /// 主阶段结束后置：清除回合开始意图标记
+    /// </summary>
     [HarmonyPatch(typeof(StartRoundAction), "MainPhase")]
     [HarmonyPostfix]
     public static void StartRoundAction_MainPhase_Postfix()
@@ -148,6 +157,9 @@ public static class EnemyIntentSyncPatch
         _generatingRoundStartIntentions = false;
     }
 
+    /// <summary>
+    /// 敌人更新行动回合后置：广播该敌人的最新意图给其他客户端
+    /// </summary>
     [HarmonyPatch(typeof(EnemyUnit), nameof(EnemyUnit.UpdateTurnMoves))]
     [HarmonyPostfix]
     public static void EnemyUnit_UpdateTurnMoves_Postfix(EnemyUnit __instance)

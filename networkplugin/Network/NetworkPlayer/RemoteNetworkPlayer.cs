@@ -24,6 +24,7 @@ public sealed class RemoteNetworkPlayer : INetworkPlayer
         exhibits = Array.Empty<string>(); // 默认无展品，避免空引用
     }
 
+    /// <summary>远程玩家的玩家ID</summary>
     public string playerId { get; set; } = string.Empty;
 
     /// <summary>

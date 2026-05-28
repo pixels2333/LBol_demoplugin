@@ -29,6 +29,7 @@ namespace NetworkPlugin.Network.MidGameJoin;
 public sealed class MapCatchUpOrchestrator
 {
     private readonly ManualLogSource _logger;
+    private readonly RoomSyncManager _roomSyncManager;
 
     private readonly object _lock = new();
 
@@ -46,36 +47,56 @@ public sealed class MapCatchUpOrchestrator
     // Prevent spamming room-state requests for the same checkpoint/location.
     private string _lastRoomStateRequestedCheckpointId = string.Empty;
 
+    /// <summary>
+    /// 追赶会话，记录地图状态追赶进度
+    /// </summary>
     private sealed class CatchUpSession
     {
+        /// <summary>完整状态快照</summary>
         public FullStateSnapshot Snapshot;
+        /// <summary>检查点ID</summary>
         public string CheckpointId;
+        /// <summary>快照接收时间（UTC刻度）</summary>
         public long ReceivedAtUtcTicks;
+        /// <summary>会话创建时间（UTC刻度）</summary>
         public long CreatedAtUtcTicks;
 
+        /// <summary>路径是否已初始化</summary>
         public bool PathInitialized;
+        /// <summary>路径索引</summary>
         public int PathIndex;
 
+        /// <summary>节点状态键值对列表</summary>
         public List<KeyValuePair<string, string>> NodeStatePairs;
+        /// <summary>节点状态索引</summary>
         public int NodeStateIndex;
 
+        /// <summary>当前位置是否已应用</summary>
         public bool CurrentLocationApplied;
+        /// <summary>房间状态是否已请求</summary>
         public bool RoomStateRequested;
+        /// <summary>追赶是否已完成</summary>
         public bool Completed;
 
+        /// <summary>已清除的节点键集合</summary>
         public HashSet<string> ClearedNodeKeys;
+        /// <summary>已结算的节点键集合</summary>
         public HashSet<string> SettledNodeKeys;
 
-        // When not empty, catch-up pauses and drives reward/settlement UI for this node.
+        /// <summary>待结算的节点键（非空时暂停追赶）</summary>
         public string PendingSettlementNodeKey;
+        /// <summary>待结算的车站实例</summary>
         public Station PendingSettlementStation;
+        /// <summary>Boss遗物弹窗是否已显示</summary>
         public bool PendingBossExhibitShown;
+        /// <summary>奖励弹窗是否已显示</summary>
         public bool PendingRewardShown;
     }
 
-    public MapCatchUpOrchestrator(ManualLogSource logger)
+    public MapCatchUpOrchestrator(ManualLogSource logger, RoomSyncManager roomSyncManager)
     {
         _logger = logger ?? Plugin.Logger;
+        _roomSyncManager = roomSyncManager ?? throw new ArgumentNullException(nameof(roomSyncManager));
     }
 
     /// <summary>
@@ -1022,11 +1043,11 @@ public sealed class MapCatchUpOrchestrator
             }
 
             // Keep RoomSyncManager's local helpers aligned so battle patches can reuse the last-entered room.
-            RoomSyncManager.SetLastEnteredNode(act, x, y, stationType);
+            _roomSyncManager.SetLastEnteredNode(act, x, y, stationType);
 
             string roomKey = RoomSyncManager.BuildRoomKey(act, x, y, stationType);
-            long knownVersion = RoomSyncManager.TryGetClientRoomState(roomKey)?.RoomVersion ?? 0;
-            RoomSyncManager.RequestRoomState(roomKey, knownVersion);
+            long knownVersion = _roomSyncManager.TryGetClientRoomState(roomKey)?.RoomVersion ?? 0;
+            _roomSyncManager.RequestRoomState(roomKey, knownVersion);
         }
         catch
         {

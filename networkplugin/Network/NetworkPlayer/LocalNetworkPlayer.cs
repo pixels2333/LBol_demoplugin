@@ -37,6 +37,7 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
     private static PlayerUnit CurrentPlayer => GameStateUtils.GetCurrentPlayer();
     private static GameRunController CurrentGameRun => GameStateUtils.GetCurrentGameRun();
 
+    /// <summary>本地玩家的玩家ID</summary>
     public string playerId
     {
         get
@@ -57,6 +58,7 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
         }
     }
 
+    /// <summary>本地玩家的显示名称</summary>
     public string userName
     {
         get
@@ -79,36 +81,42 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
         set => _userName = string.IsNullOrWhiteSpace(value) ? "Player" : value;
     }
 
+    /// <summary>本地玩家的当前生命值（从本地游戏实例读取）</summary>
     public int HP
     {
         get => CurrentPlayer?.Hp ?? 0;
         set { }
     }
 
+    /// <summary>本地玩家的最大生命值（从本地游戏实例读取）</summary>
     public int maxHP
     {
         get => CurrentPlayer?.MaxHp ?? 0;
         set { }
     }
 
+    /// <summary>本地玩家的格挡值（从本地游戏实例读取）</summary>
     public int block
     {
         get => CurrentPlayer?.Block ?? 0;
         set { }
     }
 
+    /// <summary>本地玩家的护盾值（从本地游戏实例读取）</summary>
     public int shield
     {
         get => CurrentPlayer?.Shield ?? 0;
         set { }
     }
 
+    /// <summary>本地玩家的金币数量（从本地游戏实例读取）</summary>
     public int coins
     {
         get => CurrentGameRun?.Money ?? 0;
         set { }
     }
 
+    /// <summary>本地玩家的角色标识（从本地游戏实例读取）</summary>
     public string chara
     {
         get
@@ -131,6 +139,7 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
         set => _chara = value ?? string.Empty;
     }
 
+    /// <summary>本地玩家的位置名称</summary>
     public string location
     {
         get
@@ -153,6 +162,7 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
         set => _location = value ?? string.Empty;
     }
 
+    /// <summary>本地玩家的当前章节</summary>
     public int stage
     {
         get
@@ -175,12 +185,14 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
         set => _stage = value;
     }
 
+    /// <summary>是否已结束回合</summary>
     public bool endturn
     {
         get => _endTurn;
         set => _endTurn = value;
     }
 
+    /// <summary>法力数组（红蓝绿白四色）</summary>
     public int[] mana
     {
         get
@@ -206,36 +218,42 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
         set => _mana = value ?? new int[4];
     }
 
+    /// <summary>本地玩家的姿势/姿态（从本地游戏实例读取）</summary>
     public string stance
     {
         get => _mood;
         set => _mood = value ?? string.Empty;
     }
 
+    /// <summary>本地玩家的心境标识</summary>
     public string mood
     {
         get => _mood;
         set => _mood = value ?? string.Empty;
     }
 
+    /// <summary>本地玩家的遗物列表</summary>
     public string[] exhibits
     {
         get => _exhibits;
         set => _exhibits = value ?? Array.Empty<string>();
     }
 
+    /// <summary>交易状态标记</summary>
     public bool tradingStatus
     {
         get => _tradingStatus;
         set => _tradingStatus = value;
     }
 
+    /// <summary>是否处于终极技能可用状态</summary>
     public bool ultimatePower
     {
         get => _ultimatePower;
         set => _ultimatePower = value;
     }
 
+    /// <summary>地图位置X坐标</summary>
     public int location_X
     {
         get
@@ -258,6 +276,7 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
         set => _locationX = value;
     }
 
+    /// <summary>地图位置Y坐标</summary>
     public int location_Y
     {
         get
@@ -280,11 +299,18 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
         set => _locationY = value;
     }
 
+    /// <summary>
+    /// 发送玩家数据（由各 SyncPatch 负责同步，此处为空实现）
+    /// </summary>
     public void SendData()
     {
         // 当前项目中，同步由各个 Patch.*SyncPatch 负责，此处保持空实现即可。
     }
 
+    /// <summary>
+    /// 判断该玩家是否为大厅房主
+    /// </summary>
+    /// <returns>是否为房主</returns>
     public bool IsLobbyOwner()
     {
         try
@@ -297,6 +323,9 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
         }
     }
 
+    /// <summary>
+    /// 存档/读档后的回调处理，重置本地回合状态
+    /// </summary>
     public void PostSaveLoad()
     {
         endturn = false;
@@ -304,29 +333,53 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
         shield = 0;
     }
 
+    /// <summary>判断玩家是否在同一房间</summary>
     public bool IsPlayerInSameRoom() => true;
+    /// <summary>判断玩家是否处于同一章节</summary>
     public bool IsPlayerOnSameAct() => true;
 
+    /// <summary>
+    /// 处理濒死状态判定
+    /// </summary>
+    /// <param name="updateServer">是否需要同步到服务器</param>
     public void IsNearDeath(bool updateServer)
     {
         // 可扩展：当 HP 低于阈值时上报。
     }
 
+    /// <summary>是否渲染角色本体</summary>
     public bool ShouldRenderCharacter() => true;
+    /// <summary>是否渲染角色信息框</summary>
     public bool ShouldRenderCharacterInfoBox() => true;
 
+    /// <summary>更新生命值显示/同步</summary>
     public void UpdateHealth(bool updateServer) { }
+    /// <summary>更新格挡值显示/同步</summary>
     public void UpdateBlock(bool updateServer) { }
+    /// <summary>更新最大生命值显示/同步</summary>
     public void UpdateMaxHP(bool updateServer) { }
+    /// <summary>更新金币显示/同步</summary>
     public void UpdateCoins(bool updateServer) { }
+    /// <summary>更新玩家信息显示/同步</summary>
     public void UpdatePlayerInfo(bool updateServer) { }
+    /// <summary>更新心境显示/同步</summary>
     public void UpdateMood(bool updateServer) { }
+    /// <summary>更新状态效果显示/同步</summary>
     public void UpdateStatusEffects(bool updateServer) { }
+    /// <summary>更新终极技能能量显示/同步</summary>
     public void UpdateUltimatePower(bool updateServer) { }
+    /// <summary>更新遗物显示/同步</summary>
     public void UpdateExhibits(bool updateServer) { }
+    /// <summary>更新法力显示/同步</summary>
     public void UpdateMana(bool updateServer) { }
+    /// <summary>更新结束回合标记/同步</summary>
     public void UpdateEndTurn(bool updateServer) { }
 
+    /// <summary>
+    /// 更新玩家位置信息并可选同步到服务器
+    /// </summary>
+    /// <param name="visitingnode">当前访问的地图节点</param>
+    /// <param name="updateServer">是否同步到服务器</param>
     public void UpdateLocation(MapNode visitingnode, bool updateServer = true)
     {
         if (visitingnode != null)
@@ -365,10 +418,15 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
         }
     }
 
+    /// <summary>更新生存状态</summary>
     public void UpdateLiveStatus(bool updateServer) { }
 
+    /// <summary>本地玩家受到伤害</summary>
     public void Takedamage(int damage) { }
+    /// <summary>本地玩家造成伤害</summary>
     public void DealDamage(int damage) { }
+    /// <summary>复活本地玩家</summary>
     public void Resurrect(string username, int newhp) { }
+    /// <summary>传送本地玩家到指定坐标</summary>
     public void Teleport(int x, int y) { }
 }

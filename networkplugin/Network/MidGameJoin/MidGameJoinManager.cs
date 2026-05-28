@@ -6,7 +6,6 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using BepInEx.Logging;
-using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Event;
 using NetworkPlugin.Network.Messages;
@@ -25,28 +24,46 @@ public sealed class MidGameJoinManager
 {
     #region 私有类型定义
     private readonly ManualLogSource _logger;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly INetworkClient _client;
+    private readonly ReconnectionManager _reconnectionManager;
+    private readonly MapCatchUpOrchestrator _mapCatchUp;
     private readonly MidGameJoinConfig _config;
-    private INetworkClient? _client;
     private NetworkClient? _concreteClient;
     private int _initialized;
     private string? _lastKnownHostPlayerId;
 
+    /// <summary>
+    /// 已颁发的加入令牌，包含验证和安全信息
+    /// </summary>
     private sealed class IssuedJoinToken
     {
+        /// <summary>加入令牌字符串</summary>
         public string JoinToken { get; set; } = string.Empty;
+        /// <summary>客户端玩家ID</summary>
         public string ClientPlayerId { get; set; } = string.Empty;
+        /// <summary>房间ID</summary>
         public string RoomId { get; set; } = string.Empty;
+        /// <summary>过期时间（UTC刻度）</summary>
         public long ExpiresAtUtcTicks { get; set; }
     }
 
+    /// <summary>
+    /// 待处理的完整同步请求，用于等待主机响应
+    /// </summary>
     private sealed class PendingFullSyncRequest : IDisposable
     {
+        /// <summary>等待句柄，用于阻塞等待响应</summary>
         public ManualResetEventSlim WaitHandle { get; } = new(false);
+        /// <summary>完整状态快照</summary>
         public FullStateSnapshot? FullSnapshot { get; set; }
+        /// <summary>错过的事件列表</summary>
         public List<GameEvent> MissedEvents { get; set; } = [];
+        /// <summary>错误消息</summary>
         public string? ErrorMessage { get; set; }
 
+        /// <summary>
+        /// 释放等待句柄资源
+        /// </summary>
         public void Dispose()
         {
             WaitHandle.Dispose();
@@ -91,12 +108,21 @@ public sealed class MidGameJoinManager
     /// </summary>
     /// <param name="config">中途加入配置</param>
     /// <param name="logger">日志记录器</param>
-    /// <param name="serviceProvider">服务提供者</param>
-    public MidGameJoinManager(MidGameJoinConfig config, ManualLogSource logger, IServiceProvider serviceProvider)
+    /// <param name="networkClient">网络客户端</param>
+    /// <param name="reconnectionManager">重连管理器</param>
+    /// <param name="mapCatchUp">地图追赶执行器</param>
+    public MidGameJoinManager(
+        MidGameJoinConfig config,
+        ManualLogSource logger,
+        INetworkClient networkClient,
+        ReconnectionManager reconnectionManager,
+        MapCatchUpOrchestrator mapCatchUp)
     {
         _config = config ?? new MidGameJoinConfig();
         _logger = logger ?? Plugin.Logger;
-        _serviceProvider = serviceProvider;
+        _client = networkClient ?? throw new ArgumentNullException(nameof(networkClient));
+        _reconnectionManager = reconnectionManager ?? throw new ArgumentNullException(nameof(reconnectionManager));
+        _mapCatchUp = mapCatchUp ?? throw new ArgumentNullException(nameof(mapCatchUp));
         _pendingRequests = [];
         _approvedJoins = [];
         _fastSyncService = new FastSyncService(_logger);
@@ -120,7 +146,6 @@ public sealed class MidGameJoinManager
 
         try
         {
-            _client = _serviceProvider.GetService<INetworkClient>();
             _concreteClient = _client as NetworkClient; // 保存具体类型引用用于事件注入
 
             if (_client == null)
@@ -170,7 +195,7 @@ public sealed class MidGameJoinManager
                 return JoinRequestResult.Denied("缺少 playerName");
             }
 
-            INetworkClient? client = _client ?? _serviceProvider.GetService<INetworkClient>();
+            INetworkClient? client = _client;
             if (client?.IsConnected != true) // 未连接则拒绝
             {
                 return JoinRequestResult.Denied("未连接到服务器");
@@ -342,7 +367,7 @@ public sealed class MidGameJoinManager
                 return JoinExecutionResult.Failed("缺少 joinToken");
             }
 
-            INetworkClient? client = _client ?? _serviceProvider.GetService<INetworkClient>();
+            INetworkClient? client = _client;
             if (client?.IsConnected != true) // 未连接则无法执行加入
             {
                 return JoinExecutionResult.Failed("未连接到服务器");
@@ -397,7 +422,7 @@ public sealed class MidGameJoinManager
                 // 将 MapState 暂存给追赶执行器：本地 GameRun 可用后再尽力应用。
                 try
                 {
-                    _serviceProvider.GetService<MapCatchUpOrchestrator>()?.SetPendingFullSnapshot(snapshot);
+                    _mapCatchUp.SetPendingFullSnapshot(snapshot);
                 }
                 catch
                 {
@@ -486,7 +511,7 @@ public sealed class MidGameJoinManager
     {
         try
         {
-            INetworkClient? client = _client ?? _serviceProvider.GetService<INetworkClient>();
+            INetworkClient? client = _client;
             if (client?.IsConnected != true)
             {
                 Plugin.RunOnMainThread(() => onCompleted?.Invoke(JoinExecutionResult.Failed("未连接到服务器")));
@@ -727,7 +752,7 @@ public sealed class MidGameJoinManager
     {
         try
         {
-            ReconnectionManager? reconnection = _serviceProvider.GetService<ReconnectionManager>(); // 获取重连管理器
+            ReconnectionManager? reconnection = _reconnectionManager; // 获取重连管理器
             return reconnection?.CreateFullSnapshot() ?? new FullStateSnapshot // 优先使用重连系统的快照
             {
                 Timestamp = DateTime.UtcNow.Ticks,
@@ -758,7 +783,7 @@ public sealed class MidGameJoinManager
     /// <param name="innerPayload">内部消息载荷</param>
     private void SendDirectMessage(string targetPlayerId, string innerType, object innerPayload)
     {
-        INetworkClient? client = _client ?? _serviceProvider.GetService<INetworkClient>(); // 获取网络客户端
+        INetworkClient? client = _client; // 获取网络客户端
         if (client?.IsConnected != true) // 检查连接状态
         {
             _logger.LogWarning($"[MidGameJoinManager] DirectMessage 已丢弃（未连接）: type={innerType}");
@@ -1199,7 +1224,7 @@ public sealed class MidGameJoinManager
             return;
         }
 
-        ReconnectionManager? reconnection = _serviceProvider.GetService<ReconnectionManager>(); // 获取重连管理器
+        ReconnectionManager? reconnection = _reconnectionManager; // 获取重连管理器
         FullStateSnapshot snapshot = reconnection?.CreateFullSnapshot() ?? TryCreateFullSnapshot(); // 生成 FullSnapshot
         List<GameEvent> missed = reconnection?.GetMissedEvents(lastKnownEventIndex) ?? []; // 提供 lastKnownEventIndex 之后的事件用于追赶
 
@@ -1420,12 +1445,16 @@ public sealed class MidGameJoinManager
 }
 
 /// <summary>
-/// 中途加入配置
+/// 中途加入请求状态
 /// </summary>
 public enum JoinRequestStatus
 {
+    /// <summary>待处理</summary>
     Pending,
+    /// <summary>已批准</summary>
     Approved,
+    /// <summary>已拒绝</summary>
     Denied,
+    /// <summary>已过期</summary>
     Expired
 }

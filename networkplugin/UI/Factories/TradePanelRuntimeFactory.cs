@@ -14,11 +14,17 @@ using UnityEngine.UI;
 
 namespace NetworkPlugin.UI.Factories;
 
+/// <summary>
+/// 交易面板运行时工厂：在运行时创建或复用 TradePanel 实例
+/// </summary>
 internal static class TradePanelRuntimeFactory
 {
     private const string RuntimeRootName = "NetworkPlugin_TradePanel";
     private const string RuntimeUiVersion = "2026-04-26-ui-v22";
 
+    /// <summary>
+    /// 获取或创建 TradePanel 实例
+    /// </summary>
     internal static TradePanel GetOrCreate(Transform preferredParent)
     {
         try

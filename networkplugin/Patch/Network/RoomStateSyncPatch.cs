@@ -8,6 +8,7 @@ using LBoL.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.RoomSync;
+using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Snapshot;
 using NetworkPlugin.Utils;
 
@@ -24,6 +25,9 @@ public static class RoomStateSyncPatch
 {
     private static INetworkClient TryGetClient()
         => SendSyncHelper.TryGetClient();
+
+    private static RoomSyncManager TryGetRoomSync()
+        => ModService.ServiceProvider?.GetService<RoomSyncManager>();
 
     private static bool ShouldUploadRoomState(BattleController battle, out string roomKey)
     {
@@ -44,10 +48,13 @@ public static class RoomStateSyncPatch
             return false;
         }
 
-        roomKey = RoomSyncManager.GetLastEnteredRoomKey();
+        roomKey = TryGetRoomSync()?.GetLastEnteredRoomKey();
         return !string.IsNullOrWhiteSpace(roomKey);
     }
 
+    /// <summary>
+    /// 进入节点时请求房间状态快照
+    /// </summary>
     [HarmonyPatch(typeof(GameMap), nameof(GameMap.EnterNode))]
     private static class GameMap_EnterNode_RequestRoomState
     {
@@ -76,12 +83,13 @@ public static class RoomStateSyncPatch
 
                 // 记录本地“最后进入节点”，供后续上传/应用时构造 RoomKey。
                 string stationType = node.StationType.ToString();
-                RoomSyncManager.SetLastEnteredNode(node.Act, node.X, node.Y, stationType);
+                var roomSync = TryGetRoomSync();
+                roomSync?.SetLastEnteredNode(node.Act, node.X, node.Y, stationType);
 
                 // 每次进入节点都向主机请求一次该房间快照（LAN 下不做防刷）。
                 string roomKey = RoomSyncManager.BuildRoomKey(node.Act, node.X, node.Y, stationType);
-                RoomStateSnapshot known = RoomSyncManager.TryGetClientRoomState(roomKey);
-                RoomSyncManager.RequestRoomState(roomKey, known?.RoomVersion ?? 0);
+                RoomStateSnapshot known = roomSync?.TryGetClientRoomState(roomKey);
+                roomSync?.RequestRoomState(roomKey, known?.RoomVersion ?? 0);
             }
             catch
             {
@@ -90,6 +98,9 @@ public static class RoomStateSyncPatch
         }
     }
 
+    /// <summary>
+    /// 战斗开始时上传房间快照并应用主机缓存（如果有）
+    /// </summary>
     [HarmonyPatch(typeof(BattleController), "StartBattle")]
     private static class BattleController_StartBattle_UploadAndApply
     {
@@ -107,7 +118,7 @@ public static class RoomStateSyncPatch
                 ApplyHostSnapshotIfAny(__instance, roomKey);
 
                 // 上传一次初始快照：怪物清单 + 初始状态。
-                RoomSyncManager.UploadRoomState(BuildSnapshot(__instance, roomKey, RoomPhase.InBattle));
+                TryGetRoomSync()?.UploadRoomState(BuildSnapshot(__instance, roomKey, RoomPhase.InBattle));
             }
             catch
             {
@@ -116,6 +127,9 @@ public static class RoomStateSyncPatch
         }
     }
 
+    /// <summary>
+    /// 回合结束时上传房间状态
+    /// </summary>
     [HarmonyPatch(typeof(BattleController), nameof(BattleController.RequestEndPlayerTurn))]
     private static class BattleController_EndTurn_Upload
     {
@@ -130,7 +144,7 @@ public static class RoomStateSyncPatch
                 }
 
                 // 这里做一次节流：只在敌方回合结束/或每回合一次更合适；暂用 EndPlayerTurn 作为近似。
-                RoomSyncManager.UploadRoomState(BuildSnapshot(__instance, roomKey, RoomPhase.InBattle));
+                TryGetRoomSync()?.UploadRoomState(BuildSnapshot(__instance, roomKey, RoomPhase.InBattle));
             }
             catch
             {
@@ -139,6 +153,9 @@ public static class RoomStateSyncPatch
         }
     }
 
+    /// <summary>
+    /// 战斗结束时上传最终快照
+    /// </summary>
     [HarmonyPatch(typeof(BattleController), "EndBattle")]
     private static class BattleController_EndBattle_UploadFinished
     {
@@ -152,7 +169,7 @@ public static class RoomStateSyncPatch
                     return;
                 }
 
-                RoomSyncManager.UploadRoomState(BuildSnapshot(__instance, roomKey, RoomPhase.BattleFinished));
+                TryGetRoomSync()?.UploadRoomState(BuildSnapshot(__instance, roomKey, RoomPhase.BattleFinished));
             }
             catch
             {
@@ -165,7 +182,7 @@ public static class RoomStateSyncPatch
     {
         try
         {
-            RoomStateSnapshot snapshot = RoomSyncManager.TryGetClientRoomState(roomKey);
+            RoomStateSnapshot snapshot = TryGetRoomSync()?.TryGetClientRoomState(roomKey);
             if (snapshot == null || snapshot.Phase != RoomPhase.InBattle || snapshot.Enemies == null || snapshot.Enemies.Count == 0)
             {
                 return;

@@ -30,7 +30,11 @@ public static class GapOptionsSyncPatch
 	private static readonly Dictionary<string, Queue<GapOptionsEventSnapshot>> RoomEventsByRoomKey = new(StringComparer.Ordinal);
 	private const int MaxRoomEventsPerRoom = 8;
 
-	public static void EnsureSubscribed(INetworkClient client)
+    /// <summary>
+    /// 确保已订阅网络客户端事件（去重）
+    /// </summary>
+    /// <param name="client">网络客户端实例</param>
+    public static void EnsureSubscribed(INetworkClient client)
 	{
 		if (client == null)
 		{
@@ -74,7 +78,13 @@ public static class GapOptionsSyncPatch
 		}
 	}
 
-	public static void BroadcastGapOptionsEvent(string eventType, string cardId = null, string cardName = null)
+    /// <summary>
+    /// 广播 GapOptions 事件到网络（附带当前房间/卡牌上下文）
+    /// </summary>
+    /// <param name="eventType">事件类型</param>
+    /// <param name="cardId">关联的卡牌 ID</param>
+    /// <param name="cardName">关联的卡牌名称</param>
+    public static void BroadcastGapOptionsEvent(string eventType, string cardId = null, string cardName = null)
 	{
 		if (!IsGapOptionsEvent(eventType))
 		{
@@ -94,7 +104,7 @@ public static class GapOptionsSyncPatch
 		}
 
 		string actionId = Guid.NewGuid().ToString("N");
-		string roomKey = RoomSyncManager.GetLastEnteredRoomKey() ?? string.Empty;
+		string roomKey = ModService.ServiceProvider?.GetService<RoomSyncManager>()?.GetLastEnteredRoomKey() ?? string.Empty;
 		long timestampUtcTicks = DateTime.UtcNow.Ticks;
 
 		GapOptionsEventSnapshot snapshot = new()

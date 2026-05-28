@@ -35,6 +35,10 @@ public class LocationSnapshot
     /// </summary>
     public long VisitTime { get; set; } = 0;
 
+    /// <summary>
+    /// 返回位置的字符串表示形式
+    /// </summary>
+    /// <returns>格式如 "Location(x, y): NodeType" 的字符串</returns>
     public override string ToString()
     {
         return $"Location({X}, {Y}): {NodeType}";

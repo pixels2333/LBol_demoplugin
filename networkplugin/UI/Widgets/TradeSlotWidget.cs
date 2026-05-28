@@ -62,11 +62,19 @@ public class TradeSlotWidget : CommonButtonWidget
 		new TooltipPosition(TooltipDirection.Bottom, TooltipAlignment.Center)
 	};
 
-	public Card Card => _currentCard;
-	public RectTransform RectTransform => transform as RectTransform;
-	public TooltipPosition[] TooltipPositions => DefaultTooltipPositions;
+    /// <summary>
+    /// 当前绑定的卡牌
+    /// </summary>
+    public Card => _currentCard;
+    /// <summary>控件的 RectTransform</summary>
+    public RectTransform RectTransform => transform as RectTransform;
+    /// <summary>卡牌提示框位置配置</summary>
+    public TooltipPosition[] TooltipPositions => DefaultTooltipPositions;
 
-	internal void BindRuntime(TextMeshProUGUI runtimeCardNameText, RawImage runtimeCardImage = null)
+    /// <summary>
+    /// 运行时绑定 UI 组件（运行时创建的槽位没有 prefab 绑定）
+    /// </summary>
+    internal void BindRuntime(TextMeshProUGUI runtimeCardNameText, RawImage runtimeCardImage = null)
 	{
 		// 运行时创建的槽位不会自带 prefab 绑定引用。
 		cardNameText = runtimeCardNameText;
@@ -224,7 +232,10 @@ public class TradeSlotWidget : CommonButtonWidget
 		}
 	}
 
-	public void ClearSlot()
+    /// <summary>
+    /// 清空槽位
+    /// </summary>
+    public void ClearSlot()
 	{
 		_currentCard = null;
 		_onRemoveCard = null;
@@ -250,7 +261,10 @@ public class TradeSlotWidget : CommonButtonWidget
 		lockedOverlay?.SetActive(false);
 	}
 
-	public override void OnPointerEnter(PointerEventData eventData)
+    /// <summary>
+    /// 鼠标进入事件：显示卡牌提示
+    /// </summary>
+    public override void OnPointerEnter(PointerEventData eventData)
 	{
 		base.OnPointerEnter(eventData);
 		if (_currentCard == null || !UiManager.IsInitialized)
@@ -262,7 +276,10 @@ public class TradeSlotWidget : CommonButtonWidget
 		UiManager.HoveringRightClickInteractionElements = true;
 	}
 
-	public override void OnPointerExit(PointerEventData eventData)
+    /// <summary>
+    /// 鼠标离开事件：隐藏卡牌提示
+    /// </summary>
+    public override void OnPointerExit(PointerEventData eventData)
 	{
 		base.OnPointerExit(eventData);
 		TooltipsLayer.Hide(_tooltipId);
@@ -276,7 +293,10 @@ public class TradeSlotWidget : CommonButtonWidget
 		_tooltipId = 0;
 	}
 
-	public override void OnPointerClick(PointerEventData eventData)
+    /// <summary>
+    /// 鼠标点击事件：触发移除卡牌回调
+    /// </summary>
+    public override void OnPointerClick(PointerEventData eventData)
 	{
 		base.OnPointerClick(eventData);
 		if (eventData == null || eventData.button != PointerEventData.InputButton.Right)
@@ -301,14 +321,20 @@ public class TradeSlotWidget : CommonButtonWidget
 		GamepadNavigationManager.SetOverrideOrigin(currentSelected, topPanel);
 	}
 
-	public void SetLocked(bool locked)
+    /// <summary>
+    /// 设置槽位的锁定状态
+    /// </summary>
+    public void SetLocked(bool locked)
 	{
 		lockedOverlay?.SetActive(locked);
 
 		if (button != null) button.interactable = !locked;
 	}
 
-	public void SetSelected(bool selected)
+    /// <summary>
+    /// 设置槽位的选中状态
+    /// </summary>
+    public void SetSelected(bool selected)
 	{
 		var bg = ResolveBackgroundImage();
 		if (bg != null)

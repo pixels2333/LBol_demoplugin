@@ -28,8 +28,12 @@ public static class SpawnedEnemyManager
 
     internal static int SuppressBroadcastDepth { get; private set; }
 
+    /// <summary>
+    /// 抑制广播作用域：在 using 块内暂时禁止生成事件广播，避免各端重复生成
+    /// </summary>
     internal readonly struct SuppressBroadcastScope : IDisposable
     {
+        /// <summary>释放抑制广播作用域</summary>
         public void Dispose()
         {
             if (SuppressBroadcastDepth > 0)
@@ -39,6 +43,10 @@ public static class SpawnedEnemyManager
         }
     }
 
+    /// <summary>
+    /// 在作用域内抑制敌人生成广播，避免回环
+    /// </summary>
+    /// <returns>释放时恢复广播的 IDisposable 作用域</returns>
     internal static IDisposable SuppressBroadcast()
     {
         SuppressBroadcastDepth++;

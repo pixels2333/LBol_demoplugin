@@ -78,6 +78,9 @@ public static class MapCheckpointSyncPatch
         }
     }
 
+    /// <summary>
+    /// 进入下一阶段时标记检查点
+    /// </summary>
     [HarmonyPatch(typeof(GameRunController), nameof(GameRunController.EnterNextStage))]
     private static class GameRunController_EnterNextStage_Checkpoint
     {
@@ -95,6 +98,9 @@ public static class MapCheckpointSyncPatch
         }
     }
 
+    /// <summary>
+    /// 节点结束时标记检查点（非战斗节点）
+    /// </summary>
     [HarmonyPatch(typeof(Station), nameof(Station.Finish))]
     private static class Station_Finish_Checkpoint
     {
@@ -118,6 +124,9 @@ public static class MapCheckpointSyncPatch
         }
     }
 
+    /// <summary>
+    /// 奖励面板关闭时标记检查点
+    /// </summary>
     [HarmonyPatch(typeof(RewardPanel), "OnHided")]
     private static class RewardPanel_OnHided_Checkpoint
     {
@@ -135,6 +144,9 @@ public static class MapCheckpointSyncPatch
         }
     }
 
+    /// <summary>
+    /// 商店购买后标记检查点
+    /// </summary>
     [HarmonyPatch(typeof(ShopPanel), nameof(ShopPanel.SetShopAfterBuying))]
     private static class ShopPanel_SetShopAfterBuying_Checkpoint
     {
@@ -152,6 +164,9 @@ public static class MapCheckpointSyncPatch
         }
     }
 
+    /// <summary>
+    /// GapOptions 选择后标记检查点
+    /// </summary>
     [HarmonyPatch(typeof(GapOptionsPanel), nameof(GapOptionsPanel.SelectedAndHide))]
     private static class GapOptionsPanel_SelectedAndHide_Checkpoint
     {
