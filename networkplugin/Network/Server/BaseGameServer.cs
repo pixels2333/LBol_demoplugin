@@ -6,15 +6,15 @@ using NetworkPlugin.Network.Server.Core;
 namespace NetworkPlugin.Network.Server;
 
 /// <summary>
-/// Business-level server skeleton built on top of <see cref="IServerCore"/>.
-/// Centralizes session lifecycle (connect/disconnect/latency), heartbeat/message timestamps,
-/// reconnect token management, and game/system message dispatch.
-/// </summary>
-/// <summary>
 /// 基于 <see cref="IServerCore"/> 构建的业务层服务器骨架。
 /// 集中管理会话生命周期（连接/断线/延迟）、心跳/消息时间戳、
 /// 重连令牌管理和游戏/系统消息分发。
 /// </summary>
+/// <remarks>
+/// English: Business-level server skeleton built on top of IServerCore.
+/// Centralizes session lifecycle (connect/disconnect/latency), heartbeat/message timestamps,
+/// reconnect token management, and game/system message dispatch.
+/// </remarks>
 public abstract class BaseGameServer
 {
     /// <summary>底层服务器内核</summary>

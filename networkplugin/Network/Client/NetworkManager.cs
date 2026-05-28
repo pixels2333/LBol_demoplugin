@@ -253,6 +253,14 @@ public class NetworkManager : INetworkManager
         }
     }
 
+    /// <summary>
+    /// 根据 LiteNetLib PeerId 获取对应玩家。当前协议未下发 PeerId→PlayerId 映射，故始终返回 null。
+    /// </summary>
+    /// <param name="peerId">LiteNetLib 对等端 ID。</param>
+    /// <returns>目前固定返回 null；待协议扩展后实现。</returns>
+    /// <remarks>
+    /// TODO: 协议层需要增加 PeerId 到 PlayerId 的映射下发，才能支持此查询。
+    /// </remarks>
     public INetworkPlayer GetPlayerByPeerId(int peerId)
     {
         // LiteNetLib 的 PeerId 并不会在当前协议中与 PlayerId 做映射下发，暂无法可靠实现。
@@ -263,16 +271,23 @@ public class NetworkManager : INetworkManager
 
     #region 事件订阅与同步
 
+    /// <summary>
+    /// 订阅客户端核心事件：身份追踪、复活同步、GapOptions 同步，以及连接状态变化。
+    /// </summary>
+    /// <remarks>
+    /// 在构造函数中调用一次即可；多次调用会被内部去重（EnsureSubscribed 模式）。
+    /// 失败时静默处理，避免构造异常导致插件初始化中断。
+    /// </remarks>
     private void TrySubscribeToClientEvents()
     {
         try
         {
             NetworkIdentityTracker.EnsureSubscribed(_networkClient);
 
-            // Ensure resurrect sync patch is listening on all peers (especially Host).
+            // 复活同步补丁：监听所有对等端（尤其是房主）的复活事件
             ResurrectSyncPatch.EnsureSubscribed(_networkClient);
 
-            // Ensure GapOptions sync patch is listening on all peers.
+            // GapOptions 同步补丁：监听 GapOptions 相关事件
             GapOptionsSyncPatch.EnsureSubscribed(_networkClient);
 
             _networkClient.OnGameEventReceived += OnGameEventReceived;
@@ -280,10 +295,14 @@ public class NetworkManager : INetworkManager
         }
         catch
         {
-            // ignored
+            // 订阅失败不应阻止 NetworkManager 初始化；后续事件会在下次 EnsureSubscribed 时重试
         }
     }
 
+    /// <summary>
+    /// 连接状态变化回调。断连时清空本地玩家集合，防止残留过期数据。
+    /// </summary>
+    /// <param name="connected">true=已连接，false=已断开。</param>
     private void OnConnectionStateChanged(bool connected)
     {
         if (connected)
@@ -294,9 +313,15 @@ public class NetworkManager : INetworkManager
         ClearAllPlayers();
     }
 
+    /// <summary>
+    /// 游戏事件回调。仅在与“身份/玩家列表”相关的事件到来时刷新本地缓存，
+    /// 避免对高频同步事件（如 StateSync）造成额外锁开销。
+    /// </summary>
+    /// <param name="eventType">事件类型标识。</param>
+    /// <param name="payload">事件负载，可为 JsonElement 或 JSON 字符串。</param>
     private void OnGameEventReceived(string eventType, object payload)
     {
-        // 仅在与“身份/玩家列表”相关的事件到来时刷新，避免对其他大量同步事件造成额外开销。
+        // 白名单过滤：仅处理玩家身份相关事件，避免 StateSync 等高频事件触发锁竞争
         if (eventType != NetworkMessageTypes.Welcome &&
             eventType != NetworkMessageTypes.PlayerListUpdate &&
             eventType != NetworkMessageTypes.PlayerJoined &&
@@ -310,6 +335,16 @@ public class NetworkManager : INetworkManager
         TryUpdatePlayersFromPayload(eventType, payload);
     }
 
+    /// <summary>
+    /// 与 <see cref="NetworkIdentityTracker"/> 同步玩家列表，确保本地缓存与服务器视角一致。
+    /// </summary>
+    /// <remarks>
+    /// 核心逻辑：
+    /// 1. 将 selfKey 从 "self" 切换为服务器分配的 PlayerId；
+    /// 2. 为所有服务器已知 ID 创建 <see cref="RemoteNetworkPlayer"/> 占位；
+    /// 3. 移除服务器列表中已不存在的本地条目；
+    /// 4. 任何结构变化都会使快照缓存失效（<c>_playersRevision++</c>）。
+    /// </remarks>
     private void SyncPlayersFromIdentityTracker()
     {
         if (_networkClient?.IsConnected != true)
@@ -411,6 +446,11 @@ public class NetworkManager : INetworkManager
         }
     }
 
+    /// <summary>
+    /// 根据事件类型解析 payload 中的玩家信息，并更新本地玩家集合。
+    /// </summary>
+    /// <param name="eventType">事件类型。</param>
+    /// <param name="payload">事件负载，应为可解析的 JSON。</param>
     private void TryUpdatePlayersFromPayload(string eventType, object payload)
     {
         if (!TryGetJsonElement(payload, out JsonElement root))
@@ -451,10 +491,14 @@ public class NetworkManager : INetworkManager
         }
         catch
         {
-            // ignored
+            // Payload 解析失败不应中断事件处理流水线
         }
     }
 
+    /// <summary>
+    /// 批量更新玩家列表。遍历 JSON 数组，为每个元素调用 <see cref="UpdateSinglePlayer"/>。
+    /// </summary>
+    /// <param name="playersArray">包含玩家对象的 JSON 数组。</param>
     private void UpdatePlayersFromArray(JsonElement playersArray)
     {
         if (playersArray.ValueKind != JsonValueKind.Array)
@@ -468,6 +512,14 @@ public class NetworkManager : INetworkManager
         }
     }
 
+    /// <summary>
+    /// 从 JSON 对象中提取玩家属性并更新（或创建）对应的 <see cref="INetworkPlayer"/> 实例。
+    /// </summary>
+    /// <param name="playerObj">包含 PlayerId/PlayerName/CharacterId/LocationX/LocationY/Stage/LocationName 的 JSON 对象。</param>
+    /// <remarks>
+    /// 对 self 玩家仅更新可变属性（userName、stage），避免覆盖对象引用；
+    /// 对远端玩家创建 <see cref="RemoteNetworkPlayer"/> 并填充所有字段。
+    /// </remarks>
     private void UpdateSinglePlayer(JsonElement playerObj)
     {
         string playerId = GetString(playerObj, "PlayerId");
@@ -494,7 +546,7 @@ public class NetworkManager : INetworkManager
                 }
                 catch
                 {
-                    // ignored
+                    // 某些 LocalNetworkPlayer 实现可能不支持 setter，忽略
                 }
 
                 if (string.IsNullOrWhiteSpace(_selfPlayer?.userName) && !string.IsNullOrWhiteSpace(playerName))
@@ -563,6 +615,13 @@ public class NetworkManager : INetworkManager
         }
     }
 
+    /// <summary>
+    /// 从 Welcome 消息的 JSON 中提取玩家列表数组。
+    /// 兼容 "Players" 和 "PlayerList" 两种属性名（历史协议残留）。
+    /// </summary>
+    /// <param name="root">Welcome 消息的 JSON 根元素。</param>
+    /// <param name="list">输出玩家数组。</param>
+    /// <returns>成功提取到数组返回 true，否则 false。</returns>
     private static bool TryGetPlayersArrayFromWelcome(JsonElement root, out JsonElement list)
     {
         if (root.TryGetProperty("Players", out list) && list.ValueKind == JsonValueKind.Array)
@@ -579,6 +638,12 @@ public class NetworkManager : INetworkManager
         return false;
     }
 
+    /// <summary>
+    /// 将事件负载安全转换为 <see cref="JsonElement"/>，支持已经是 JsonElement 的情况或 JSON 字符串。
+    /// </summary>
+    /// <param name="payload">原始负载对象。</param>
+    /// <param name="root">输出的 JSON 根元素。</param>
+    /// <returns>转换成功返回 true，否则 false。</returns>
     private static bool TryGetJsonElement(object payload, out JsonElement root)
     {
         try
@@ -597,13 +662,19 @@ public class NetworkManager : INetworkManager
         }
         catch
         {
-            // ignored
+            // 解析失败静默返回 false，由调用方决定是否继续处理
         }
 
         root = default;
         return false;
     }
 
+    /// <summary>
+    /// 安全地从 JSON 对象中提取字符串属性，失败时返回 null。
+    /// </summary>
+    /// <param name="elem">JSON 对象元素。</param>
+    /// <param name="property">属性名。</param>
+    /// <returns>字符串值；非字符串类型返回 <c>GetRawText()</c>；失败返回 null。</returns>
     private static string GetString(JsonElement elem, string property)
     {
         try
@@ -621,6 +692,13 @@ public class NetworkManager : INetworkManager
         }
     }
 
+    /// <summary>
+    /// 安全地从 JSON 对象中提取整数属性，失败时返回默认值。
+    /// </summary>
+    /// <param name="elem">JSON 对象元素。</param>
+    /// <param name="property">属性名。</param>
+    /// <param name="defaultValue">提取失败时的回退值（如 -1 表示未设置）。</param>
+    /// <returns>整数属性值或默认值。</returns>
     private static int GetInt(JsonElement elem, string property, int defaultValue)
     {
         try
@@ -643,6 +721,13 @@ public class NetworkManager : INetworkManager
         }
     }
 
+    /// <summary>
+    /// 获取玩家列表的快照缓存。仅在玩家结构变化时重建数组，避免高频读取场景下的重复分配。
+    /// </summary>
+    /// <returns>当前所有玩家的只读数组快照。</returns>
+    /// <remarks>
+    /// 使用版本号 <c>_playersSnapshotRevision</c> 与 <c>_playersRevision</c> 比对实现无锁外层的惰性重建。
+    /// </remarks>
     private IEnumerable<INetworkPlayer> GetPlayersSnapshot()
     {
         lock (_playersLock)
@@ -674,6 +759,13 @@ public class NetworkManager : INetworkManager
         }
     }
 
+    /// <summary>
+    /// 标记玩家列表缓存为脏，使下次 <see cref="GetPlayersSnapshot"/> 重建数组。
+    /// </summary>
+    /// <remarks>
+    /// 必须在已持有 <c>_playersLock</c> 时调用，因此命名包含 "_NoLock"。
+    /// 使用 unchecked 自增避免 int 溢出异常（虽然正常游戏不可能达到 2^31 次变更）。
+    /// </remarks>
     private void MarkPlayersDirty_NoLock()
     {
         unchecked

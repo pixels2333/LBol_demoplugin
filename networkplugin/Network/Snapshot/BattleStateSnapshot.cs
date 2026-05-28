@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace NetworkPlugin.Network.Snapshot;
 
 /// <summary>
-/// 战��状态快照
+/// 战斗状态快照
 /// </summary>
 public class BattleStateSnapshot
 {

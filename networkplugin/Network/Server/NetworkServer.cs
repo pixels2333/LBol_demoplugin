@@ -130,6 +130,16 @@ public partial class NetworkServer : BaseGameServer
     /// </summary>
     public int PlayerCount => SessionsByPeer.Count;
 
+    /// <summary>
+    /// 系统消息总入口。根据 messageType 路由到对应的处理器，或转发给受控消息路由。
+    /// </summary>
+    /// <param name="senderSession">发送者会话。</param>
+    /// <param name="messageType">消息类型标识。</param>
+    /// <param name="jsonPayload">JSON 格式负载。</param>
+    /// <remarks>
+    /// 优先尝试 <see cref="TryRouteControlledMessage"/>（RoomState/FullStateSync 等定向路由），
+    /// 未命中时再进入 switch 分发给 PlayerJoined、Heartbeat、GetSelf 等标准处理器。
+    /// </remarks>
     private void HandleSystemMessageCore(PlayerSession senderSession, string messageType, string jsonPayload)
     {
         try
@@ -214,6 +224,16 @@ public partial class NetworkServer : BaseGameServer
         }
     }
 
+    /// <summary>
+    /// 游戏事件总入口。反序列化事件数据、更新会话消息时间、触发上层事件并广播给其他玩家。
+    /// </summary>
+    /// <param name="session">发送者会话。</param>
+    /// <param name="eventType">事件类型标识。</param>
+    /// <param name="jsonPayload">JSON 格式事件负载。</param>
+    /// <remarks>
+    /// 流程：更新 LastMessageAt → 触发 <see cref="OnGameEventReceived"/> → 尝试受控路由 → 广播。
+    /// 若被 <see cref="TryRouteControlledMessage"/> 消费，则不再广播，避免重复转发。
+    /// </remarks>
     private void HandleGameEventCore(PlayerSession session, string eventType, string jsonPayload)
     {
         try
@@ -240,6 +260,11 @@ public partial class NetworkServer : BaseGameServer
         }
     }
 
+    /// <summary>
+    /// 处理玩家加入事件，提取 PlayerName/CharacterId 更新会话，并广播 Joined 通知与玩家列表。
+    /// </summary>
+    /// <param name="fromPeer">发送加入事件的 peer。</param>
+    /// <param name="jsonPayload">包含 PlayerName、CharacterId、ConnectionTime 的 JSON。</param>
     private void HandlePlayerJoined(NetPeer fromPeer, string jsonPayload)
     {
         try
@@ -265,6 +290,7 @@ public partial class NetworkServer : BaseGameServer
 
             Plugin.Logger?.LogInfo($"[服务器] 玩家加入: {session.PlayerName} ({session.PlayerId})");
 
+            // 向其他已连接玩家广播该玩家的加入信息（excludePeerId 排除发送者自身）
             BroadcastMessage(NetworkMessageTypes.PlayerJoined, new
             {
                 PlayerId = session.PlayerId,
@@ -273,6 +299,7 @@ public partial class NetworkServer : BaseGameServer
                 CharacterId = session.Metadata.TryGetValue("CharacterId", out var cid) ? cid?.ToString() : null
             }, excludePeerId: fromPeer.Id);
 
+            // 全量广播最新玩家列表，使所有客户端同步当前房间人员
             BroadcastPlayerList();
         }
         catch (Exception ex)
@@ -282,6 +309,10 @@ public partial class NetworkServer : BaseGameServer
         }
     }
 
+    /// <summary>
+    /// 处理 GetSelf 请求，返回发送者自身的会话信息（PlayerId、PlayerName、IsHost、ConnectedAt、ReconnectToken）。
+    /// </summary>
+    /// <param name="fromPeer">请求来源 peer。</param>
     private void HandleGetSelfRequest(NetPeer fromPeer)
     {
         if (SessionsByPeer.TryGetValue(fromPeer, out var session))
@@ -299,12 +330,32 @@ public partial class NetworkServer : BaseGameServer
         }
     }
 
+    /// <summary>
+    /// 断线重连请求 DTO，用于反序列化客户端发送的 Reconnect_REQUEST payload。
+    /// </summary>
     private sealed class ReconnectRequest
     {
+        /// <summary>待恢复的玩家唯一标识。</summary>
         public string PlayerId { get; set; } = string.Empty;
+        /// <summary>断线时服务器下发的重连令牌。</summary>
         public string ReconnectToken { get; set; } = string.Empty;
     }
 
+    /// <summary>
+    /// 处理断线重连请求，验证 PlayerId + ReconnectToken，并在通过后将新 peer 绑定到原会话。
+    /// </summary>
+    /// <param name="fromPeer">发起重连的 peer（可能是新的 NetPeer 实例）。</param>
+    /// <param name="jsonPayload">包含 PlayerId 和 ReconnectToken 的 JSON。</param>
+    /// <remarks>
+    /// 重连流程：
+    /// 1. 校验请求格式；
+    /// 2. 查找原会话并确认已断连（IsConnected == false）；
+    /// 3. 比对 ReconnectToken；
+    /// 4. 检查是否在 <see cref="_reconnectGracePeriod"/> 内；
+    /// 5. 清理该 peer 可能已绑定的临时会话，避免 peer→PlayerId 映射冲突；
+    /// 6. 将原会话的 Peer 替换为新 peer，恢复 IsConnected 并刷新心跳；
+    /// 7. 更新 BaseGameServer 的 peer→session 映射，确保后续收包可正确路由。
+    /// </remarks>
     private void HandleReconnectRequest(NetPeer fromPeer, string jsonPayload)
     {
         try
@@ -344,7 +395,7 @@ public partial class NetworkServer : BaseGameServer
                 }
             }
 
-            // 移除当前 peer 可能已经被分配的临时会话（避免同一个 peerId 对应多个 PlayerId）
+            // 移除当前 peer 可能已经被分配的临时会话，避免同一个物理连接对应多个 PlayerId
             if (_playerIdByPeerId.TryGetValue(fromPeer.Id, out var currentPlayerId) &&
                 !string.Equals(currentPlayerId, request.PlayerId, StringComparison.Ordinal))
             {
@@ -365,7 +416,7 @@ public partial class NetworkServer : BaseGameServer
             _playerSessions[fromPeer.Id] = targetSession;
             _disconnectedAtByPlayerId.Remove(targetSession.PlayerId);
 
-            // 关键：更新 BaseGameServer 的 peer->session 映射，否则后续收包无法找到 session
+            // 关键：更新 BaseGameServer 的 peer→session 映射，否则后续收包无法找到 session
             SessionsByPeer[fromPeer] = targetSession;
 
             SendMessage(fromPeer, NetworkMessageTypes.Reconnect_RESPONSE, new
@@ -385,6 +436,11 @@ public partial class NetworkServer : BaseGameServer
         }
     }
 
+    /// <summary>
+    /// 更新玩家位置信息（LocationX/LocationY/Stage/LocationName），将新位置写入会话 Metadata 并广播玩家列表。
+    /// </summary>
+    /// <param name="fromPeer">发送位置更新的 peer。</param>
+    /// <param name="jsonPayload">包含 LocationX、LocationY、Stage、LocationName 的 JSON。</param>
     private void HandleUpdatePlayerLocation(NetPeer fromPeer, string jsonPayload)
     {
         try

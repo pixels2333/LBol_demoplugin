@@ -63,9 +63,9 @@ public class TradeSlotWidget : CommonButtonWidget
 	};
 
     /// <summary>
-    /// 当前绑定的卡牌
+    /// 当前绑定的卡牌（实现 ICardTooltipSource 接口）
     /// </summary>
-    public Card => _currentCard;
+    public Card Card => _currentCard;
     /// <summary>控件的 RectTransform</summary>
     public RectTransform RectTransform => transform as RectTransform;
     /// <summary>卡牌提示框位置配置</summary>

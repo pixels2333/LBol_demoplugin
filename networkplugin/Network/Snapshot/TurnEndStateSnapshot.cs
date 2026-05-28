@@ -12,6 +12,14 @@ namespace NetworkPlugin.Network.Snapshot;
 /// </remarks>
 public class TurnEndStateSnapshot
 {
+    /// <summary>
+    /// 初始化回合结束状态快照
+    /// </summary>
+    /// <param name="statusEffectStateSnapshot">状态效果快照列表</param>
+    /// <param name="playerStateSnapshot">玩家状态快照</param>
+    /// <param name="intentionSnapshot">敌人意图快照</param>
+    /// <param name="battleId">战斗ID</param>
+    /// <param name="round">回合数</param>
     public TurnEndStateSnapshot(
         List<StatusEffectStateSnapshot> statusEffectStateSnapshot,
         PlayerStateSnapshot playerStateSnapshot,

@@ -64,7 +64,7 @@ public sealed class RoomStateSnapshot
 }
 
 /// <summary>
-    /// GapOptions/GAP 关键事件快照（用于中途加入最小追赶）。
+/// GapOptions/GAP 关键事件快照（用于中途加入最小追赶）。
 /// </summary>
 public sealed class GapOptionsEventSnapshot
 {

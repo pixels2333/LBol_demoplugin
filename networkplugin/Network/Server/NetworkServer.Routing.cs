@@ -11,25 +11,27 @@ using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.Server.Core;
 using NetworkPlugin.Utils;
 namespace NetworkPlugin.Network.Server;
+
 // 消息路由处理
 public partial class NetworkServer
 {
-#region 消息处理
+    #region 消息处理
 
     /// <summary>
-    /// 检查消息类型是否为游戏事件消息
+    /// 判断消息类型是否为游戏事件。
     /// </summary>
-    /// <param name="messageType">消息类型字符串</param>
-    /// <returns>如果是游戏事件消息返回true，否则返回false</returns>
+    /// <param name="messageType">消息类型标识。</param>
+    /// <returns>若是游戏事件（按 HostServer 路由表判断）返回 true，否则 false。</returns>
     private bool IsGameEvent(string messageType)
     {
         return NetworkMessageTypes.IsGameEvent(messageType, NetworkMessageTypes.GameEventRoute.HostServer);
     }
 
     /// <summary>
-    /// 处理游戏同步事件
-    /// 接收客户端发送的游戏事件，更新会话状态，并广播给其他玩家
+    /// 对每种受控路由仅打印一次探测日志，用于确认 RoomState/FullStateSync 等消息流转正常。
     /// </summary>
+    /// <param name="routeKey">路由标识，如 "RoomStateRequest"、"DirectMessage/Type"。</param>
+    /// <param name="details">日志详情，通常包含 sender 与 target 的 PlayerId。</param>
     private void LogRouteProbeOnce(string routeKey, string details)
     {
         if (string.IsNullOrWhiteSpace(routeKey))
@@ -55,11 +57,21 @@ public partial class NetworkServer
         catch (Exception ex) { _logger?.LogWarning($"[RouteProbe] LogRouteProbeOnce error: {ex.Message}"); }
     }
 
+    /// <summary>
+    /// 获取当前已连接且标记为房主的会话。
+    /// </summary>
+    /// <returns>房主会话；无房主或房主未连接时返回 null。</returns>
     private PlayerSession GetConnectedHostSession()
     {
         return SessionsByPeer.Values.FirstOrDefault(session => session.IsHost && session.IsConnected);
     }
 
+    /// <summary>
+    /// 尝试按目标 PlayerId 获取已连接的会话。
+    /// </summary>
+    /// <param name="targetPlayerId">目标玩家 ID。</param>
+    /// <param name="targetSession">输出会话实例。</param>
+    /// <returns>目标存在且已连接返回 true，否则 false。</returns>
     private bool TryGetConnectedTargetSession(string targetPlayerId, out PlayerSession targetSession)
     {
         targetSession = null;
@@ -68,6 +80,12 @@ public partial class NetworkServer
                targetSession.IsConnected;
     }
 
+    /// <summary>
+    /// 安全地从 JSON 对象中提取字符串属性，支持多属性名候选（按顺序匹配第一个非空值）。
+    /// </summary>
+    /// <param name="root">JSON 对象根元素。</param>
+    /// <param name="propertyNames">一个或多个属性名候选，用于兼容历史字段命名（如 TargetPlayerId/RequesterId）。</param>
+    /// <returns>首个非空字符串值；全部未命中返回 null。</returns>
     private static string TryGetJsonStringProperty(JsonElement root, params string[] propertyNames)
     {
         for (int index = 0; index < propertyNames.Length; index++)
@@ -88,6 +106,11 @@ public partial class NetworkServer
         return null;
     }
 
+    /// <summary>
+    /// 从 DirectMessage 等嵌套结构中提取内层 Payload JSON。
+    /// </summary>
+    /// <param name="root">外层 JSON 对象。</param>
+    /// <returns>"Payload" 属性的原始 JSON 文本；不存在时返回 "{}"。</returns>
     private static string GetNestedPayloadJson(JsonElement root)
     {
         return root.TryGetProperty("Payload", out JsonElement payloadElement)
@@ -95,6 +118,13 @@ public partial class NetworkServer
             : "{}";
     }
 
+    /// <summary>
+    /// 判断消息类型是否为受控路由消息（RoomState/FullStateSync 系列），并立即执行定向转发。
+    /// </summary>
+    /// <param name="senderSession">发送者会话。</param>
+    /// <param name="messageType">消息类型标识。</param>
+    /// <param name="jsonPayload">JSON 负载。</param>
+    /// <returns>若是受控消息且已被路由消费返回 true，否则 false（由调用方继续广播）。</returns>
     private bool TryRouteControlledMessage(PlayerSession senderSession, string messageType, string jsonPayload)
     {
         switch (messageType)

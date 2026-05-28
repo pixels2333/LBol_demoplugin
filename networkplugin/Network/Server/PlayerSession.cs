@@ -5,93 +5,105 @@ using LiteNetLib;
 namespace NetworkPlugin.Network.Server;
 
 /// <summary>
-/// 玩家会话 - 管理单个玩家的会话信息
+/// 表示一个已连接玩家的会话状态，封装 LiteNetLib 对等端、身份、心跳及元数据。
 /// </summary>
+/// <remarks>
+/// 由 <see cref="BaseGameServer"/> 在连接建立时创建，断线后保留于 <c>DisconnectedAtByPlayerId</c> 优雅期内，
+/// 以支持断线重连时恢复原有 PlayerId 与 Metadata。
+/// </remarks>
 public class PlayerSession
 {
-    /// <summary>
-    /// LiteNetLib对等节点
-    /// </summary>
-    public NetPeer Peer { get; set; } = null!; // LiteNetLib网络对等节点：表示与客户端的网络连接
+    #region 会话核心属性
 
     /// <summary>
-    /// 玩家唯一ID
+    /// LiteNetLib 对等端实例，表示与客户端的底层 UDP 连接。
     /// </summary>
-    public string PlayerId { get; set; } = string.Empty; // 玩家唯一标识符：用于识别网络中的特定玩家
+    /// <remarks>
+    /// 断连后此属性可能被清空，但会话对象本身会继续保留在优雅期内。
+    /// </remarks>
+    public NetPeer Peer { get; set; } = null!;
 
     /// <summary>
-    /// 玩家显示名称
+    /// 服务器分配的玩家唯一标识符。
     /// </summary>
-    public string PlayerName { get; set; } = string.Empty; // 玩家显示名称：在游戏界面中显示的玩家名称
+    /// <remarks>
+    /// 在首次连接时由 <see cref="BaseGameServer.CreatePlayerId"/> 生成；断线重连时保持不变。
+    /// </remarks>
+    public string PlayerId { get; set; } = string.Empty;
+
+    /// <summary>玩家显示名称，供 UI 展示使用。</summary>
+    public string PlayerName { get; set; } = string.Empty;
+
+    /// <summary>当前所属房间 ID，空字符串表示未加入任何房间。</summary>
+    public string CurrentRoomId { get; set; } = string.Empty;
+
+    /// <summary>会话建立时间（UTC）。</summary>
+    public DateTime ConnectedAt { get; set; }
 
     /// <summary>
-    /// 当前所在的房间ID
+    /// 最后一次收到心跳的时间（UTC），用于超时检测。
     /// </summary>
-    public string CurrentRoomId { get; set; } = string.Empty; // 当前房间ID：玩家所属的游戏房间标识符
+    public DateTime LastHeartbeat { get; set; }
 
     /// <summary>
-    /// 连接时间
+    /// 最后一次收到任意消息的时间（UTC），用于活跃度评估。
     /// </summary>
-    public DateTime ConnectedAt { get; set; } // 连接时间：玩家加入网络的时间戳
+    public DateTime LastMessageAt { get; set; }
+
+    #endregion
+
+    #region 网络质量与状态
 
     /// <summary>
-    /// 最后心跳时间
+    /// 往返延迟（RTT，毫秒），由 LiteNetLib 根据 ACK 时间自动计算。
     /// </summary>
-    public DateTime LastHeartbeat { get; set; } // 最后心跳时间：用于检测玩家连接状态的最后活跃时间
+    public int Ping { get; set; }
+
+    /// <summary>会话是否仍保持活跃连接。</summary>
+    /// <remarks>断连后被设为 false，但会话对象可能仍在优雅期内保留。</remarks>
+    public bool IsConnected { get; set; }
+
+    /// <summary>是否为当前房间的房主（Host）。</summary>
+    /// <remarks>
+    /// 房主是房间状态的中枢：负责处理 RoomStateRequest、FullStateSyncRequest 等定向路由。
+    /// </remarks>
+    public bool IsHost { get; set; }
+
+    #endregion
+
+    #region 扩展数据
 
     /// <summary>
-    /// 最后接收消息时间
+    /// 玩家扩展元数据字典，用于存储 CharacterId、Location、Stage 等动态属性。
     /// </summary>
-    public DateTime LastMessageAt { get; set; } // 最后消息时间：最后接收网络消息的时间戳
+    public Dictionary<string, object> Metadata { get; set; } = [];
 
-    /// <summary>
-    /// 延迟（毫秒）
-    /// </summary>
-    public int Ping { get; set; } // 网络延迟：玩家与服务器之间的ping时间，用于网络质量评估
+    #endregion
 
-    /// <summary>
-    /// 是否已连接
-    /// </summary>
-    public bool IsConnected { get; set; } // 连接状态：表示玩家当前是否保持网络连接
+    #region 便捷属性与方法
 
-    /// <summary>
-    /// 是否为房主
-    /// </summary>
-    public bool IsHost { get; set; } // 房主标识：表示玩家是否为当前房间的房主
+    /// <summary>远程端点地址字符串，未连接时返回 "unknown"。</summary>
+    public string RemoteEndPoint => Peer.EndPoint?.ToString() ?? "unknown";
 
-    /// <summary>
-    /// 玩家元数据（可用于存储额外信息）
-    /// </summary>
-    public Dictionary<string, object> Metadata { get; set; } = []; // 玩家元数据：存储玩家的自定义扩展信息
-
-    /// <summary>
-    /// 获取远程终结点
-    /// </summary>
-    public string RemoteEndPoint => Peer.EndPoint?.ToString() ?? "unknown"; // 远程网络地址：获取客户端的IP地址和端口号
-
-    /// <summary>
-    /// 检查连接是否超时
-    /// </summary>
-    /// <param name="timeoutSeconds">超时时间（秒）</param>
-    /// <returns></returns>
+    /// <summary>检查心跳是否超过指定超时阈值。</summary>
+    /// <param name="timeoutSeconds">超时阈值（秒），默认 30 秒。</param>
+    /// <returns>超过阈值返回 true，表示连接可能已失效。</returns>
     public bool IsTimeout(int timeoutSeconds = 30)
     {
         return (DateTime.UtcNow - LastHeartbeat).TotalSeconds > timeoutSeconds;
-    } // 检查连接超时：判断玩家心跳是否超过指定时间，用于自动断开超时连接
+    }
 
-    /// <summary>
-    /// 更新心跳
-    /// </summary>
+    /// <summary>刷新心跳时间戳到当前 UTC 时间。</summary>
     public void UpdateHeartbeat()
     {
         LastHeartbeat = DateTime.UtcNow;
-    } // 更新心跳：刷新玩家的最后心跳时间，用于保持连接活跃状态
+    }
 
-    /// <summary>
-    /// 更新消息时间
-    /// </summary>
+    /// <summary>刷新最后消息时间戳到当前 UTC 时间。</summary>
     public void UpdateMessageTime()
     {
         LastMessageAt = DateTime.UtcNow;
-    } // 更新消息时间：刷新最后接收消息的时间戳，用于消息同步状态追踪
-} // 玩家会话类：管理单个玩家的网络连接信息、心跳状态和会话数据
+    }
+
+    #endregion
+}
