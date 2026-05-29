@@ -146,13 +146,13 @@ public class NetworkClient : INetworkClient
     /// <param name="synchronizationManager">同步管理器实例，可选。</param>
     public NetworkClient(string connectionKey, INetworkManager networkManager, INetworkPlayer networkPlayer, ISynchronizationManager synchronizationManager = null)
     {
-        _networkManager = networkManager;
-        _connectionKey = connectionKey;
-        _listener = new EventBasedNetListener();
-        _netManager = new NetManager(_listener);
-        _networkPlayer = networkPlayer;
-        _synchronizationManager = synchronizationManager;
-        RegisterEvents();
+        _networkManager = networkManager; // 注入 NetworkManager 以便 GetSelf() 优先从中获取玩家信息（如 PlayerId）
+        _connectionKey = connectionKey; // 连接密钥用于服务器验证，必须在 ConnectToServer 时通过 NetDataWriter 发送
+        _listener = new EventBasedNetListener(); // LiteNetLib 的事件监听器，负责触发连接、断连和数据接收事件
+        _netManager = new NetManager(_listener); // LiteNetLib 的核心网络管理器，负责 UDP 连接和数据传输
+        _networkPlayer = networkPlayer; // 注入当前玩家实例，优先级次于 NetworkManager.GetSelf()，兜底 LocalNetworkPlayer
+        _synchronizationManager = synchronizationManager; // 注入同步管理器以桥接网络事件到游戏状态同步引擎，允许在事件处理器中调用其方法
+        RegisterEvents(); // 注册 LiteNetLib 事件处理器，覆盖连接、断连和数据接收三大核心事件
     }
 
     #endregion
@@ -228,7 +228,7 @@ public class NetworkClient : INetworkClient
             Plugin.Logger?.LogInfo($"[客户端] 已连接到服务器: {peer.EndPoint}");
             // 保存对端引用，后续发送数据依赖此字段
             _serverPeer = peer;
-            _lastHeartbeatSentUtc = DateTime.UtcNow;
+            _lastHeartbeatSentUtc = DateTime.UtcNow;// 重置心跳时间戳，避免连接恢复后误判心跳间隔过长导致立即发送心跳
             // 连接成功后立即停止可能正在运行的重连定时器
             StopAutoReconnectTimer_NoThrow();
 
@@ -319,6 +319,7 @@ public class NetworkClient : INetworkClient
             }
         };
 
+        // 数据接收事件：根据消息类型分发到不同的处理器
         _listener.NetworkReceiveEvent += (fromPeer, dataReader, deliveryMethod) =>
         {
             try
@@ -329,12 +330,12 @@ public class NetworkClient : INetworkClient
                 // 根据消息类型分发给不同的处理器
                 if (IsGameEvent(messageType))
                 {
-                    // 处理游戏同步事件
+                    // 处理同步事件
                     HandleGameEvent(messageType, dataReader);
                 }
                 else if (string.Equals(messageType, NetworkMessageTypes.HeartbeatResponse, StringComparison.Ordinal))
                 {
-                    // Consume payload to avoid leaving unread bytes in the reader.
+                    // 心跳响应无需处理，仅消费掉数据包以避免被 LiteNetLib 误判为未响应而断连
                     _ = dataReader.GetString();
                 }
                 else if (string.Equals(messageType, NetworkMessageTypes.GetSelf_RESPONSE, StringComparison.Ordinal))
@@ -657,9 +658,9 @@ public class NetworkClient : INetworkClient
 
     /// <summary>
     /// 当前往返延迟（RTT，毫秒）。
-    /// 由 LiteNetLib 内部根据 ACK 时间自动计算；断连时返回 0。
+    /// 由 LiteNetLib 内部根据 ACK 时间自动计算；断连时返回 9999，便于 UI 区分"极差/离线"与正常延迟。
     /// </summary>
-    public int Ping => _serverPeer?.Ping ?? 0;
+    public int Ping => _serverPeer?.Ping ?? 9999;
 
     /// <summary>
     /// 本地 UDP 端点。若客户端尚未启动则返回 null。
