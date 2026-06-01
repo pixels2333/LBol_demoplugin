@@ -26,24 +26,39 @@ public class NetworkClient : INetworkClient
 {
     #region 字段与常量
 
-    /// <summary>LiteNetLib 底层网络事件监听器。</summary>
+    /// <summary>
+    /// LiteNetLib 底层网络事件监听器，负责将底层 UDP 事件（连接、断连、数据接收）
+    /// 转换为 C# 事件供本类订阅和处理。
+    /// </summary>
     private EventBasedNetListener _listener;
     /// <summary>LiteNetLib 网络管理器，负责 UDP 连接管理。</summary>
 
+    /// <summary>LiteNetLib 网络管理器，负责 UDP 连接的底层生命周期管理（启动、停止、连接、断开）。</summary>
     private NetManager _netManager;
 
     /// <summary>与服务器的连接对等体，用于发送和接收数据。</summary>
     private NetPeer _serverPeer;
 
-    /// <summary>连接密钥，用于验证客户端身份。</summary>
+    /// <summary>
+    /// 连接密钥，用于在连接建立阶段验证客户端身份。
+    /// 服务器在 <code>OnConnectionRequest</code> 中比对密钥，不匹配则拒绝连接。
+    /// </summary>
     private string _connectionKey;
 
-    /// <summary>上次心跳发送的 UTC 时间，用于计算下次心跳时机。</summary>
+    /// <summary>
+    /// 上次心跳发送的 UTC 时间，用于计算下次心跳时机。
+    /// 使用 <code>DateTime.MinValue</code> 作为哨兵值，表示"尚未发送过心跳"。
+    /// </summary>
     private DateTime _lastHeartbeatSentUtc = DateTime.MinValue;
-    /// <summary>心跳发送间隔（毫秒），按连接超时的 1/3 自动调整，范围 1s~10s。</summary>
+    /// <summary>
+    /// 心跳发送间隔（毫秒），按连接超时的 1/3 自动调整，范围 1s~10s。
+    /// 服务器通过心跳判断客户端是否存活，未收到心跳将在超时时断开连接。
+    /// </summary>
     private int _heartbeatIntervalMs = 5_000;
 
+    /// <summary>注入的网络管理器实例，用于获取玩家信息和联机状态。</summary>
     private INetworkManager _networkManager;
+    /// <summary>注入的网络玩家实例，表示当前客户端玩家；优先级次于 <see cref="INetworkManager.GetSelf"/>。</summary>
     private INetworkPlayer _networkPlayer;
     /// <summary>当 _networkManager 或 _networkPlayer 不可用时的兜底本地玩家实例。</summary>
     private INetworkPlayer _fallbackSelf;
@@ -146,7 +161,7 @@ public class NetworkClient : INetworkClient
     /// <param name="synchronizationManager">同步管理器实例，可选。</param>
     public NetworkClient(string connectionKey, INetworkManager networkManager, INetworkPlayer networkPlayer, ISynchronizationManager synchronizationManager = null)
     {
-        _networkManager = networkManager; // 注入 NetworkManager 以便 GetSelf() 优先从中获取玩家信息（如 PlayerId）
+        _networkManager = networkManager; // 注入 NetworkManager 以便 GetSelf() 优先从中获取玩家信息（如服务器分配的 PlayerId）
         _connectionKey = connectionKey; // 连接密钥用于服务器验证，必须在 ConnectToServer 时通过 NetDataWriter 发送
         _listener = new EventBasedNetListener(); // LiteNetLib 的事件监听器，负责触发连接、断连和数据接收事件
         _netManager = new NetManager(_listener); // LiteNetLib 的核心网络管理器，负责 UDP 连接和数据传输
@@ -166,6 +181,7 @@ public class NetworkClient : INetworkClient
     /// <remarks>必须在 <see cref="ConnectToServer"/> 之前调用；在游戏主循环中通过 <see cref="PollEvents"/> 驱动事件处理。</remarks>
     public void Start()
     {
+        // 同步连接超时配置到 NetManager，确保 LiteNetLib 断连判定与客户端逻辑一致
         _netManager.DisconnectTimeout = _connectionTimeout;
 
         if (_netManager.Start())
@@ -197,18 +213,19 @@ public class NetworkClient : INetworkClient
                 return p;
             }
 
-            // 构造函数注入的玩家实例（如 LocalNetworkPlayer）
+            // 构造函数注入的玩家实例（如 LocalNetworkPlayer），用于离线模式或尚未联机时
             if (_networkPlayer != null)
             {
                 return _networkPlayer;
             }
 
             // 兜底：懒创建一个只持有限连接信息的本地玩家
+            // 使用 ??= 确保多线程环境下仅创建一次实例
             return _fallbackSelf ??= new LocalNetworkPlayer(this);
         }
         catch
         {
-            // NetworkManager 或其依赖可能尚未完成初始化，返回兜底实例
+            // NetworkManager 或其依赖可能尚未完成初始化，返回兜底实例避免空引用
             return _fallbackSelf ??= new LocalNetworkPlayer(this);
         }
     }
@@ -278,23 +295,26 @@ public class NetworkClient : INetworkClient
                 // 游戏流程可能尚未进入（如在主菜单），忽略
             }
 
+            // 构造玩家信息匿名对象：使用匿名类型可自动序列化为 JSON，无需显式 DTO
+            // ConnectionTime 使用 Ticks 而非 DateTime，避免跨时区序列化问题
             var playerInfo = new
             {
-                PlayerName = playerName,
-                CharacterId = characterId,
-                ConnectionTime = DateTime.Now.Ticks
+                PlayerName = playerName, // 玩家显示名，服务器用于广播和 UI 展示
+                CharacterId = characterId, // 角色模型标识，用于加载头像和外观资源；可能为 null（主菜单时）
+                ConnectionTime = DateTime.Now.Ticks // 本地连接时间戳，服务器用于计算在线时长
             };
 
             // 向服务器广播本客户端的加入信息
+            // PlayerJoined 是服务器识别新客户端并为其分配 Slot 的关键事件
             SendGameEventData(NetworkMessageTypes.PlayerJoined, playerInfo);
         };
 
         _listener.PeerDisconnectedEvent += (peer, disconnectInfo) =>
         {
             Plugin.Logger?.LogWarning($"[客户端] 已从服务器断开: {peer.EndPoint}, 原因: {disconnectInfo.Reason}");
-            // 清空对端引用，标记为离线状态
+            // 清空对端引用，标记为离线状态；后续 IsConnected 将返回 false
             _serverPeer = null;
-            // 重置心跳时间戳，避免重连后误判心跳间隔
+            // 重置心跳时间戳到哨兵值，避免重连后误判心跳间隔过长导致立即重发
             _lastHeartbeatSentUtc = DateTime.MinValue;
 
             // 触发断连事件通知
@@ -324,23 +344,25 @@ public class NetworkClient : INetworkClient
         {
             try
             {
-                // 读取消息类型标识
+                // 读取消息类型标识：这是每个数据包的第一个字段，决定后续路由逻辑
                 string messageType = dataReader.GetString();
 
                 // 根据消息类型分发给不同的处理器
+                // 优先级：游戏事件 > 心跳响应 > 系统响应 > 未知类型
                 if (IsGameEvent(messageType))
                 {
-                    // 处理同步事件
+                    // 处理同步事件：解析 JSON 并投递到同步管理器
                     HandleGameEvent(messageType, dataReader);
                 }
                 else if (string.Equals(messageType, NetworkMessageTypes.HeartbeatResponse, StringComparison.Ordinal))
                 {
-                    // 心跳响应无需处理，仅消费掉数据包以避免被 LiteNetLib 误判为未响应而断连
+                    // 心跳响应无需业务处理，仅消费掉数据包以避免被 LiteNetLib 误判为未响应而断连
+                    // 服务器通过收到任意数据包来刷新超时计时器，因此空消费即完成保活
                     _ = dataReader.GetString();
                 }
                 else if (string.Equals(messageType, NetworkMessageTypes.GetSelf_RESPONSE, StringComparison.Ordinal))
                 {
-                    // 处理系统响应消息
+                    // 处理系统响应消息：如 GetSelf 返回的玩家 ID 和初始状态
                     HandleRequestResponse(fromPeer, dataReader);
                 }
                 else
@@ -354,19 +376,14 @@ public class NetworkClient : INetworkClient
             }
             finally
             {
-                // 回收数据读取器，避免内存泄漏
+                // 回收数据读取器，避免内存泄漏；LiteNetLib 使用对象池复用 NetDataReader
                 dataReader.Recycle();
             }
         };
     }
 
     /// <summary>
-    /// 检查消息类型是否为游戏同步事件
-    /// 游戏事件包括：On*、Mana*、Battle*、StateSyncResponse 等事件类型
-    /// </summary>
-    /// <param name="messageType">要检查的消息类型</param>
-    /// <returns>如果是游戏事件返回 true，否则返回 false</returns>
-    /// <summary>
+
     /// 判断消息类型是否为游戏同步事件。
     /// </summary>
     /// <param name="messageType">从数据包中读取的消息类型标识。</param>
@@ -387,6 +404,12 @@ public class NetworkClient : INetworkClient
     /// 向本地注入一条“伪接收”的 GameEvent（用于回放/追赶/调试）。
     /// 注意：不会向服务器发送任何数据，仅触发本地订阅者（Patch/Manager 等）。
     /// </summary>
+    /// <param name="eventType">要注入的事件类型标识，如 <code>StateSync</code>。</param>
+    /// <param name="payload">事件负载数据；可为任意对象，由下游订阅者自行解析。</param>
+    /// <remarks>
+    /// 典型使用场景：断线重连后的历史事件回放、本地调试模拟服务器推送、
+    /// MidGameJoinManager 通过 DirectMessage 应用 FullSnapshot 后重放缓存事件。
+    /// </remarks>
     public void InjectLocalGameEvent(string eventType, object payload)
     {
         if (string.IsNullOrWhiteSpace(eventType))
@@ -481,16 +504,22 @@ public class NetworkClient : INetworkClient
         }
         catch
         {
-            // 日志失败不应中断网络数据接收流程
+            // 日志失败不应中断网络数据接收流程，吞掉异常继续执行
         }
     }
 
     /// <summary>
-    /// 连接到指定的游戏服务器
-    /// 使用连接密钥进行身份验证，建立可靠的 TCP 连接
+    /// 连接到指定的游戏服务器。
+    /// 使用连接密钥进行身份验证，建立可靠的 UDP 连接。
     /// </summary>
-    /// <param name="host">服务器主机地址或域名</param>
-    /// <param name="port">服务器端口号</param>
+    /// <param name="host">服务器主机地址或域名。</param>
+    /// <param name="port">服务器监听端口号。</param>
+    /// <remarks>
+    /// 将连接密钥通过 <see cref="NetDataWriter"/＞ 附加到连接请求数据包中，
+    /// 服务器在 <code>OnConnectionRequest</code＞ 中验证该密钥。
+    /// 调用后会更新 <see cref="_lastConnectHost"/＞ 和 <see cref="_lastConnectPort"/＞，
+    /// 供后续自动重连使用。
+    /// </remarks>
     public void ConnectToServer(string host, int port)
     {
         _lastConnectHost = host;
@@ -513,10 +542,12 @@ public class NetworkClient : INetworkClient
     /// </remarks>
     public void PollEvents()
     {
-        // 轮询 LiteNetLib 内部队列，触发 PeerConnected/NetworkReceive 等回调
+        // 轮询 LiteNetLib 内部队列，触发 PeerConnected/PeerDisconnected/NetworkReceive 等回调
+        // 必须在游戏主线程（如 Unity Update）中定期调用，否则网络事件不会处理
         _netManager.PollEvents();
 
         // 心跳在服务器侧作为会话保活信号，必须随主线程定期发送
+        // 若长时间未发心跳，服务器会判定客户端离线并主动断开连接
         SendHeartbeatIfNeeded_NoThrow();
     }
 
@@ -531,7 +562,7 @@ public class NetworkClient : INetworkClient
     {
         try
         {
-            // 未建立完整连接时不发心跳，避免向 null Peer 发送
+            // 未建立完整连接时不发心跳，避免向 null Peer 发送导致 NullReferenceException
             if (!IsConnected || _serverPeer == null)
             {
                 return;
@@ -539,6 +570,7 @@ public class NetworkClient : INetworkClient
 
             DateTime now = DateTime.UtcNow;
             // 若距离上次心跳不足间隔，跳过本次（典型间隔 5s~10s）
+            // 使用 MinValue 作为哨兵值，表示"尚未发送过心跳"，首次连接后立即发送
             if (_lastHeartbeatSentUtc != DateTime.MinValue &&
                 (now - _lastHeartbeatSentUtc).TotalMilliseconds < _heartbeatIntervalMs)
             {
@@ -548,12 +580,13 @@ public class NetworkClient : INetworkClient
             NetDataWriter writer = new();
             writer.Put(NetworkMessageTypes.Heartbeat);
             // Unreliable：心跳允许丢包，服务器超时窗口内只要收到一次即可保活
+            // 使用 Unreliable 可降低带宽开销，避免 ReliableOrdered 的 ACK 流量
             _serverPeer.Send(writer, DeliveryMethod.Unreliable);
             _lastHeartbeatSentUtc = now;
         }
         catch
         {
-            // 心跳失败不应中断游戏主循环；LiteNetLib 会在底层自动重传/重连
+            // 心跳失败不应中断游戏主循环；LiteNetLib 会在底层自动处理重传/重连
         }
     }
 
@@ -562,7 +595,7 @@ public class NetworkClient : INetworkClient
     /// </summary>
     public void Stop()
     {
-        // 先停止重连定时器，避免 Stop 后仍在后台尝试重连
+        // 先停止重连定时器，避免 Stop 后仍在后台尝试重连导致资源泄漏
         StopAutoReconnectTimer_NoThrow();
         _netManager.Stop();
         _serverPeer = null;
@@ -580,6 +613,7 @@ public class NetworkClient : INetworkClient
     {
         try
         {
+            // 若未启用自动重连，则不创建 Timer，直接返回
             if (!_autoReconnectEnabled)
             {
                 return;
@@ -595,6 +629,7 @@ public class NetworkClient : INetworkClient
             lock (_reconnectLock)
             {
                 // 释放旧 Timer（可能来自之前的断连），再创建新的周期定时器
+                // 避免重复创建导致多个定时器同时触发重连
                 _reconnectTimer?.Dispose();
                 _reconnectTimer = new Timer(_ =>
                 {
@@ -648,23 +683,36 @@ public class NetworkClient : INetworkClient
     /// 获取客户端是否已连接到服务器。
     /// 检查 <c>_serverPeer</c> 存在且 LiteNetLib 状态为 <see cref="ConnectionState.Connected"/>。
     /// </summary>
+    /// <remarks>
+    /// 该属性在断连事件触发后立即返回 false，可用于 UI 状态指示器和发送前的连接检查。
+    /// </remarks>
     public bool IsConnected => _serverPeer != null && _serverPeer.ConnectionState == ConnectionState.Connected;
 
     /// <summary>
     /// 客户端是否处于“正在连接”状态。
     /// 当尚未建立完整连接但 <c>_netManager</c> 已存在活跃 Peer 时返回 true。
     /// </summary>
+    /// <remarks>
+    /// 用于 UI 展示"连接中..."状态，避免在连接建立过程中重复发起新连接。
+    /// </remarks>
     public bool IsConnecting => !IsConnected && _netManager?.FirstPeer != null;
 
     /// <summary>
     /// 当前往返延迟（RTT，毫秒）。
     /// 由 LiteNetLib 内部根据 ACK 时间自动计算；断连时返回 9999，便于 UI 区分"极差/离线"与正常延迟。
     /// </summary>
+    /// <remarks>
+    /// 9999 是人为设定的哨兵值，便于 UI 统一处理"未连接"和"延迟极高"的展示逻辑。
+    /// </remarks>
     public int Ping => _serverPeer?.Ping ?? 9999;
 
     /// <summary>
     /// 本地 UDP 端点。若客户端尚未启动则返回 null。
     /// </summary>
+    /// <remarks>
+    /// 返回 <code>IPAddress.Any</code> 加本地端口号，表示监听所有网络接口。
+    /// 在 NAT 穿透场景下，此端点可用于告知对端回连地址。
+    /// </remarks>
     public IPEndPoint LocalEndPoint
     {
         get
@@ -676,7 +724,7 @@ public class NetworkClient : INetworkClient
                     return null;
                 }
 
-                return new IPEndPoint(IPAddress.Any, _netManager.LocalPort);
+                return new IPEndPoint(IPAddress.Any, _netManager.LocalPort); // LiteNetLib 监听所有接口，端口由 LocalPort 提供
             }
             catch
             {
@@ -688,6 +736,9 @@ public class NetworkClient : INetworkClient
     /// <summary>
     /// 远程服务器端点。未连接时返回 null。
     /// </summary>
+    /// <remarks>
+    /// 即 <see cref="_serverPeer.EndPoint"/＞ 的快捷访问，用于日志和调试展示。
+    /// </remarks>
     public IPEndPoint RemoteEndPoint => _serverPeer?.EndPoint;
 
     #endregion
@@ -705,7 +756,7 @@ public class NetworkClient : INetworkClient
     /// </remarks>
     public void SendGameEventData(string eventType, object eventData)
     {
-        // 未连接时直接返回，避免向 null _serverPeer 发送导致异常
+        // 未连接时直接返回，避免向 null _serverPeer 发送导致 NullReferenceException
         if (!IsConnected)
         {
             Plugin.Logger?.LogWarning($"[客户端] 未连接到服务器，无法发送事件: {eventType}");
@@ -715,12 +766,13 @@ public class NetworkClient : INetworkClient
         try
         {
             // 统一使用 JsonCompat 序列化，确保与服务器端反序列化兼容
+            // JsonCompat 内部处理循环引用和自定义转换器，避免 Newtonsoft.Json 默认行为不一致
             string json = JsonCompat.Serialize(eventData);
             NetDataWriter writer = new();
             writer.Put(eventType);
             writer.Put(json);
 
-            // ReliableOrdered：游戏事件必须按序到达，否则会导致状态错乱
+            // ReliableOrdered：游戏事件必须按序到达，否则会导致状态错乱（如先收到伤害再收到回血）
             _serverPeer.Send(writer, DeliveryMethod.ReliableOrdered);
             string summary = NetLogHelper.BuildSummary(eventType, json);
             Plugin.Logger?.LogDebug($"[客户端] 已发送游戏事件: {eventType} ({summary})");
@@ -756,17 +808,17 @@ public class NetworkClient : INetworkClient
 
         string payloadForLog = null;
 
-        // 原始类型分支：直接写入 NetDataWriter，避免 JSON 包装带来的额外字节
+        // 原始类型分支：直接写入 NetDataWriter，避免 JSON 包装带来的额外字节开销和序列化耗时
         if (typeof(T).IsPrimitive || typeof(T) == typeof(string))
         {
             switch (requestData)
             {
-                case float f: writer.Put(f); break;
-                case double d: writer.Put(d); break;
-                case long l: writer.Put(l); break;
-                case int i: writer.Put(i); break;
-                case string s: writer.Put(s); break;
-                case bool b: writer.Put(b); break;
+                case float f: writer.Put(f); break;   // 单精度浮点数：4 字节，用于网络同步中的坐标/角度等
+                case double d: writer.Put(d); break;  // 双精度浮点数：8 字节，用于需要高精度的数值
+                case long l: writer.Put(l); break;    // 64 位整数：8 字节，用于时间戳或大 ID
+                case int i: writer.Put(i); break;     // 32 位整数：4 字节，最常用，用于枚举/计数/状态码
+                case string s: writer.Put(s); break;   // 字符串：先写长度（VarInt）再写 UTF-8 字节
+                case bool b: writer.Put(b); break;    // 布尔值：1 字节，用于标志位
                 default: throw new NotSupportedException($"Type {typeof(T)} is not supported by NetDataWriter.Put");
             }
 
@@ -795,9 +847,14 @@ public class NetworkClient : INetworkClient
     }
 
     /// <summary>
-    /// 处理服务器响应数据，解析 <c>GetSelf_RESPONSE</c> 等系统响应消息。
+    /// 处理服务器响应数据，解析系统响应消息（如 GetSelf_RESPONSE）。
     /// </summary>
     /// <param name="fromPeer">发送响应的对等端。</param>
+    /// <param name="dataReader">响应数据读取器，包含 responseHeader + responseData。</param>
+    /// <remarks>
+    /// 从 <code>dataReader</code＞ 中按顺序读取字符串：第一个是响应头，第二个是负载 JSON。
+    /// 解析后通过 <see cref="OnResponseReceived"/＞ 事件分发给下游订阅者。
+    /// </remarks>
     /// <param name="dataReader">响应数据读取器，包含 responseHeader + responseData。</param>
     /// <remarks>
     /// 从 <c>dataReader</c> 中按顺序读取字符串：第一个是响应头，第二个是负载 JSON。
@@ -839,20 +896,20 @@ public class NetworkClient : INetworkClient
     /// </remarks>
     public object GetConnectionStats()
     {
-        // 无活跃 Peer 时返回离线状态，避免访问 null 属性
+        // 无活跃 Peer 时返回离线状态，避免访问 null 属性导致 NullReferenceException
         if (_serverPeer == null)
         {
             return new { Status = "Not Connected" };
         }
 
-        // 提取 LiteNetLib 内置的网络质量指标
+        // 提取 LiteNetLib 内置的网络质量指标，供 UI 面板展示
         return new
         {
             Status = "Connected",
-            Ping = _serverPeer.Ping,
-            Mtu = _serverPeer.Mtu,
-            ConnectionTime = DateTime.Now.Ticks,
-            Address = _serverPeer.EndPoint.ToString()
+            Ping = _serverPeer.Ping, // 往返延迟（毫秒），由 LiteNetLib 根据 ACK 时间自动计算
+            Mtu = _serverPeer.Mtu, // 当前路径最大传输单元（字节），动态协商得出
+            ConnectionTime = DateTime.Now.Ticks, // 连接建立时间戳（Ticks），用于计算在线时长
+            Address = _serverPeer.EndPoint.ToString() // 远程服务器地址字符串，便于日志和 UI 展示
         };
     }
 
@@ -867,7 +924,7 @@ public class NetworkClient : INetworkClient
     public void SetConnectionTimeout(int timeoutMs)
     {
         _connectionTimeout = timeoutMs;
-        // 同步更新已启动的 NetManager，否则旧实例仍使用上一次配置
+        // 同步更新已启动的 NetManager，否则旧实例仍使用上一次配置导致超时不一致
         if (_netManager != null) _netManager.DisconnectTimeout = timeoutMs;
         Plugin.Logger?.LogInfo($"[客户端] 连接超时已设置为 {timeoutMs}ms");
     }
@@ -886,6 +943,12 @@ public class NetworkClient : INetworkClient
         _autoReconnectEnabled = enabled;
         _retryInterval = retryInterval;
         Plugin.Logger?.LogInfo($"[客户端] 自动重连{(enabled ? "已启用" : "已禁用")}, 重试间隔: {retryInterval}ms");
+
+        // 若禁用自动重连，立即清理现有定时器，避免后台资源泄漏和意外重连行为
+        if (!enabled)
+        {
+            StopAutoReconnectTimer_NoThrow();
+        }
     }
 
 

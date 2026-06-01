@@ -28,6 +28,9 @@ public class NetworkManager : INetworkManager
     /// </summary>
     private readonly INetworkClient _networkClient;
 
+    /// <summary>
+    /// 玩家列表锁对象，保护对_players字典的访问，确保线程安全
+    /// </summary>
     private readonly object _playersLock = new();
 
     /// <summary>
@@ -41,13 +44,37 @@ public class NetworkManager : INetworkManager
     /// </summary>
     private INetworkPlayer _selfPlayer;
 
+    /// <summary>
+    /// 当前本地玩家的键值，初始为"self"，连接服务器后切换为服务器分配的PlayerId
+    /// </summary>
     private string _selfKey = "self";
 
-    // 高频读取优化：玩家列表快照缓存（仅当玩家列表结构变化时重建，避免每次 GetAllPlayers 分配 List）。
+    /// <summary>
+    /// 玩家列表快照缓存，用于高频读取场景（如每帧UI更新）避免重复分配数组
+    /// </summary>
+    /// <remarks>
+    /// 仅当玩家列表结构变化时重建，配合版本号实现惰性更新。
+    /// </remarks>
     private INetworkPlayer[] _playersSnapshot = Array.Empty<INetworkPlayer>();
+
+    /// <summary>
+    /// 快照缓存的版本号，与 _playersRevision 比对判断是否需重建
+    /// </summary>
     private int _playersSnapshotRevision = -1;
+
+    /// <summary>
+    /// 玩家列表变更版本号，每次结构变化时递增
+    /// </summary>
     private int _playersRevision;
 
+    /// <summary>
+    /// 初始化网络管理器并注入网络客户端和本地玩家
+    /// </summary>
+    /// <param name="networkClient">网络客户端实例，用于处理网络通信</param>
+    /// <param name="selfPlayer">本地玩家实例，为null时自动创建默认实例</param>
+    /// <remarks>
+    /// 构造时即订阅客户端事件，确保玩家状态同步不遗漏早期消息。
+    /// </remarks>
     public NetworkManager(INetworkClient networkClient, LocalNetworkPlayer selfPlayer)
     {
         _networkClient = networkClient;
@@ -77,6 +104,7 @@ public class NetworkManager : INetworkManager
     /// <returns>所有网络玩家的枚举集合</returns>
     public IEnumerable<INetworkPlayer> GetAllPlayers()
     {
+        // 先与服务器侧身份追踪器同步，确保本地缓存反映最新玩家列表
         SyncPlayersFromIdentityTracker();
         return GetPlayersSnapshot();
     }
@@ -96,6 +124,7 @@ public class NetworkManager : INetworkManager
             return null;
         }
 
+        // 同步后再查询，避免读取到已被服务器移除的过期玩家
         SyncPlayersFromIdentityTracker();
         lock (_playersLock)
         {
@@ -135,6 +164,7 @@ public class NetworkManager : INetworkManager
         }
         catch
         {
+            // TODO: 应记录 NetworkIdentityTracker 调用异常，避免静默失败
             // ignored
         }
 
@@ -176,6 +206,7 @@ public class NetworkManager : INetworkManager
         string id = player.userName;
         if (string.IsNullOrWhiteSpace(id))
         {
+            // userName 为空时回退到 Guid，保证字典键的非空约束
             id = Guid.NewGuid().ToString("N");
         }
 
@@ -212,6 +243,7 @@ public class NetworkManager : INetworkManager
 
         lock (_playersLock)
         {
+            // 禁止移除 self，避免本地玩家引用丢失导致后续逻辑异常
             if (string.Equals(id, _selfKey, StringComparison.Ordinal))
             {
                 return;
@@ -247,6 +279,7 @@ public class NetworkManager : INetworkManager
         lock (_playersLock)
         {
             _players.Clear();
+            // 重置 selfKey 为默认值，等待下次连接时由服务器重新分配
             _selfKey = "self";
             _players[_selfKey] = _selfPlayer;
             MarkPlayersDirty_NoLock();
@@ -295,6 +328,7 @@ public class NetworkManager : INetworkManager
         }
         catch
         {
+            // TODO: 应记录事件订阅失败的异常信息，便于排查初始化问题
             // 订阅失败不应阻止 NetworkManager 初始化；后续事件会在下次 EnsureSubscribed 时重试
         }
     }
@@ -305,6 +339,7 @@ public class NetworkManager : INetworkManager
     /// <param name="connected">true=已连接，false=已断开。</param>
     private void OnConnectionStateChanged(bool connected)
     {
+        // 断连时立即清空玩家集合，防止 UI 或逻辑层读取到已离线的过期玩家数据
         if (connected)
         {
             return;
@@ -347,6 +382,7 @@ public class NetworkManager : INetworkManager
     /// </remarks>
     private void SyncPlayersFromIdentityTracker()
     {
+        // 检查网络客户端是否已连接；未连接则跳过同步，避免操作无效状态
         if (_networkClient?.IsConnected != true)
         {
             return;
@@ -354,28 +390,39 @@ public class NetworkManager : INetworkManager
 
         try
         {
+            // 确保已订阅身份追踪器，以接收服务器身份变更通知
             NetworkIdentityTracker.EnsureSubscribed(_networkClient);
+            // 获取身份追踪器中当前所有已知玩家 ID 的快照（不可变集合）
             HashSet<string> ids = NetworkIdentityTracker.GetPlayerIdsSnapshot();
+            // 快照为空时无需更新，直接返回
             if (ids.Count == 0)
             {
                 return;
             }
 
+            // 从身份追踪器获取服务器分配的本地玩家 ID
             string selfId = NetworkIdentityTracker.GetSelfPlayerId();
 
+            // 加锁保护 _players 字典的并发访问
             lock (_playersLock)
             {
+                // 标记本次同步是否产生了任何变化，用于后续决定是否需要刷新快照缓存
                 bool changed = false;
 
-                // Self key switch: "self" -> server-assigned PlayerId
+                // ---- 阶段 1：Self Key 迁移 ----
+                // 将字典键从初始化时的 "self" 切换为服务器在 Welcome 消息中分配的真实 PlayerId，
+                // 确保本地玩家在字典中的键与其他玩家一样使用服务器 ID，保持引用一致性
                 if (!string.IsNullOrWhiteSpace(selfId) && !string.Equals(_selfKey, selfId, StringComparison.Ordinal))
                 {
+                    // 移除旧键 "self" 对应的条目
                     if (_players.Remove(_selfKey))
                     {
                         changed = true;
                     }
 
+                    // 更新本地自我键为服务器分配的真实 PlayerId
                     _selfKey = selfId;
+                    // 确保新键下存储的是 _selfPlayer 实例；若不存在或引用不一致则重新赋值
                     if (!_players.TryGetValue(_selfKey, out INetworkPlayer existing) || !ReferenceEquals(existing, _selfPlayer))
                     {
                         _players[_selfKey] = _selfPlayer;
@@ -383,16 +430,21 @@ public class NetworkManager : INetworkManager
                     }
                 }
 
-                // Ensure all known ids exist.
+                // ---- 阶段 2：补齐服务器已知玩家 ----
+                // 遍历身份追踪器中的所有玩家 ID，为每个 ID 在 _players 字典中创建对应条目。
+                // 这样 UI 或逻辑层在收到完整属性数据前即可查询到玩家的存在性
                 foreach (string id in ids)
                 {
+                    // 跳过空或空白 ID，避免无效数据污染玩家列表
                     if (string.IsNullOrWhiteSpace(id))
                     {
                         continue;
                     }
 
+                    // ID 等于当前自我键时的处理：确保字典中该键指向 _selfPlayer 实例
                     if (string.Equals(id, _selfKey, StringComparison.Ordinal))
                     {
+                        // 检查是否已存在且引用一致，否则强制更新
                         if (!_players.TryGetValue(id, out INetworkPlayer existing) || !ReferenceEquals(existing, _selfPlayer))
                         {
                             _players[id] = _selfPlayer;
@@ -401,6 +453,7 @@ public class NetworkManager : INetworkManager
                         continue;
                     }
 
+                    // 对于其他玩家 ID，若字典中尚不存在则创建 RemoteNetworkPlayer 占位对象
                     if (!_players.ContainsKey(id))
                     {
                         _players[id] = new RemoteNetworkPlayer(id);
@@ -408,25 +461,32 @@ public class NetworkManager : INetworkManager
                     }
                 }
 
-                // Remove players no longer present (keep self).
+                // ---- 阶段 3：清理已离线的玩家 ----
+                // 移除字典中那些不在身份追踪器最新快照中的玩家条目（保留自我玩家）。
+                // 使用延迟初始化列表：仅在需要移除时才创建 List，避免常规同步路径产生不必要的 GC 压力
                 List<string> toRemove = null;
+                // 遍历当前字典中的所有键
                 foreach (string key in _players.Keys)
                 {
+                    // 跳过自我玩家键，不参与移除逻辑
                     if (string.Equals(key, _selfKey, StringComparison.Ordinal))
                     {
                         continue;
                     }
 
+                    // 若当前键不在服务器最新 ID 集中，则标记为待移除
                     if (!ids.Contains(key))
                     {
                         (toRemove ??= new List<string>()).Add(key);
                     }
                 }
 
+                // 批量执行移除操作
                 if (toRemove != null)
                 {
                     foreach (string key in toRemove)
                     {
+                        // 从字典移除并检查是否实际删除了条目
                         if (_players.Remove(key))
                         {
                             changed = true;
@@ -434,6 +494,7 @@ public class NetworkManager : INetworkManager
                     }
                 }
 
+                // 若本次同步产生了任何结构变化（添加/移除/替换），则使快照缓存失效
                 if (changed)
                 {
                     MarkPlayersDirty_NoLock();
@@ -442,6 +503,8 @@ public class NetworkManager : INetworkManager
         }
         catch
         {
+            // TODO: 应记录身份同步失败的异常，防止静默吞掉配置或协议错误
+            // 当前仅占位，后续应接入日志系统以捕获异常详情
             // ignored
         }
     }
@@ -491,6 +554,7 @@ public class NetworkManager : INetworkManager
         }
         catch
         {
+            // TODO: Payload 解析失败应至少记录 eventType，便于定位协议兼容性问题
             // Payload 解析失败不应中断事件处理流水线
         }
     }
@@ -530,6 +594,7 @@ public class NetworkManager : INetworkManager
 
         string playerName = GetString(playerObj, "PlayerName");
         string characterId = GetString(playerObj, "CharacterId");
+        // 使用 -1 作为默认值表示服务器未下发该字段，避免覆盖本地有效值（如坐标 0,0）
         int locX = GetInt(playerObj, "LocationX", -1);
         int locY = GetInt(playerObj, "LocationY", -1);
         int stage = GetInt(playerObj, "Stage", -1);
@@ -546,6 +611,7 @@ public class NetworkManager : INetworkManager
                 }
                 catch
                 {
+                    // TODO: LocalNetworkPlayer setter 失败应记录一次，避免反复静默失败
                     // 某些 LocalNetworkPlayer 实现可能不支持 setter，忽略
                 }
 
@@ -575,6 +641,7 @@ public class NetworkManager : INetworkManager
             }
             catch
             {
+                // TODO: RemoteNetworkPlayer setter 失败应记录异常信息
                 // ignored
             }
 
@@ -624,11 +691,13 @@ public class NetworkManager : INetworkManager
     /// <returns>成功提取到数组返回 true，否则 false。</returns>
     private static bool TryGetPlayersArrayFromWelcome(JsonElement root, out JsonElement list)
     {
+        // 优先尝试新协议属性名 "Players"
         if (root.TryGetProperty("Players", out list) && list.ValueKind == JsonValueKind.Array)
         {
             return true;
         }
 
+        // 回退兼容历史协议中的 "PlayerList"（早期版本或第三方实现可能仍使用此键）
         if (root.TryGetProperty("PlayerList", out list) && list.ValueKind == JsonValueKind.Array)
         {
             return true;
@@ -648,12 +717,14 @@ public class NetworkManager : INetworkManager
     {
         try
         {
+            // 若事件系统已反序列化为 JsonElement，直接复用避免二次解析
             if (payload is JsonElement je)
             {
                 root = je;
                 return true;
             }
 
+            // 某些旧版本消息仍通过字符串形式传递 JSON，需要手动解析
             if (payload is string s)
             {
                 root = JsonDocument.Parse(s).RootElement;
@@ -684,6 +755,7 @@ public class NetworkManager : INetworkManager
                 return null;
             }
 
+            // 对非字符串类型回退到原始文本，保证协议兼容（如数字被序列化为字符串的情况）
             return p.ValueKind == JsonValueKind.String ? p.GetString() : p.GetRawText();
         }
         catch
@@ -708,6 +780,7 @@ public class NetworkManager : INetworkManager
                 return defaultValue;
             }
 
+            // 兼容数字直接量与字符串两种序列化形式，应对不同版本服务器或中间件
             return p.ValueKind switch
             {
                 JsonValueKind.Number => p.TryGetInt32(out int i) ? i : defaultValue,
@@ -732,6 +805,7 @@ public class NetworkManager : INetworkManager
     {
         lock (_playersLock)
         {
+            // 版本号一致说明玩家列表结构未变，直接返回缓存快照，避免数组重新分配与复制
             if (_playersSnapshotRevision == _playersRevision)
             {
                 return _playersSnapshot;
@@ -740,6 +814,7 @@ public class NetworkManager : INetworkManager
             int count = _players.Count;
             if (count <= 0)
             {
+                // 空集合时使用共享单例，减少 GC 碎片
                 _playersSnapshot = Array.Empty<INetworkPlayer>();
             }
             else
