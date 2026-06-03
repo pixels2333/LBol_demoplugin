@@ -12,6 +12,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 using NetworkPlugin.UI.Rules;
+using System.Reflection;
 
 namespace NetworkPlugin.UI.Dialogs;
 
@@ -193,13 +194,37 @@ public sealed partial class TradeDetailDialog
 
             if (_cardCellTemplate != null)
             {
-                var cell = Instantiate(_cardCellTemplate, candidateContainer, false);
-                cell.gameObject.SetActive(true);
-                cell.Card = card;
-                cell.SetNum(1);
+                // 直接创建对象，避免克隆模板上的意外组件
+                var cellGo = new GameObject($"Card_{card.InstanceId}");
+                cellGo.transform.SetParent(candidateContainer, false);
+                cellGo.transform.localScale = Vector3.one;
+                cellGo.SetActive(true);
 
-                var btn = cell.gameObject.GetComponent<Button>();
-                if (btn == null) btn = cell.gameObject.AddComponent<Button>();
+                var cellImg = cellGo.AddComponent<Image>();
+                cellImg.preserveAspect = true;
+                cellImg.raycastTarget = true;
+                var cellRt = cellGo.AddComponent<RectTransform>();
+                cellRt.anchorMin = new Vector2(0f, 0.5f);
+                cellRt.anchorMax = new Vector2(0f, 0.5f);
+                cellRt.pivot = new Vector2(0f, 0.5f);
+                cellRt.sizeDelta = new Vector2(72f, 96f);
+
+                // 尝试加载卡牌图像
+                try
+                {
+                    var cardSprite = ResourcesHelper.TryGetSprite<Card>(card.Id);
+                    if (cardSprite != null)
+                    {
+                        cellImg.sprite = cardSprite;
+                    }
+                }
+                catch (Exception exc)
+                {
+                    Plugin.Logger?.LogWarning($"[TradeDetailDialog] 加载卡牌图像失败: CardId={card.Id}, {exc.Message}");
+                }
+
+                var btn = cellGo.AddComponent<Button>();
+                btn.targetGraphic = cellImg;
                 btn.onClick.RemoveAllListeners();
                 btn.onClick.AddListener(new UnityAction(() =>
                 {
@@ -207,10 +232,9 @@ public sealed partial class TradeDetailDialog
                     {
                         return;
                     }
-
-                    AudioManager.Card(3); // 卡牌点击音效。
+                    AudioManager.Card(3);
                     _localCards.Add(card);
-                    RebuildCardPicker(); // 立即刷新，把刚选中的卡牌移出列表。
+                    RebuildCardPicker();
                 }));
             }
             else
@@ -290,17 +314,37 @@ public sealed partial class TradeDetailDialog
 
             if (_exhibitTemplate != null)
             {
-                var widget = Instantiate(_exhibitTemplate, container, false);
-                widget.gameObject.SetActive(true);
+                // 直接创建对象，避免克隆模板上的意外组件
+                var exGo = new GameObject($"Ex_{ex.Id}");
+                exGo.transform.SetParent(container, false);
+                exGo.transform.localScale = Vector3.one;
+
+                var img = exGo.AddComponent<Image>();
+                img.preserveAspect = true;
+                img.raycastTarget = true;
+                if (_exhibitTemplate.MainImage != null)
+                {
+                    img.sprite = _exhibitTemplate.MainImage.sprite;
+                    img.type = _exhibitTemplate.MainImage.type;
+                }
+                Sprite sprite = null;
+                try { sprite = ResourcesHelper.TryGetSprite<Exhibit>(ex.Id); }
+                catch (Exception exc) { Plugin.Logger?.LogWarning($"[TradeDetailDialog] 加载展品图标失败: ExhibitId={ex.Id}, {exc.Message}"); }
+                if (sprite != null) img.sprite = sprite;
+
+                var btn = exGo.AddComponent<Button>();
+                btn.targetGraphic = img;
+
+                var widget = exGo.AddComponent<ExhibitWidget>();
+                var widgetImageField = typeof(ExhibitWidget).GetField("image", BindingFlags.Instance | BindingFlags.NonPublic);
+                if (widgetImageField != null)
+                    widgetImageField.SetValue(widget, img);
                 widget.Exhibit = ex;
                 widget.ShowCounter = false;
 
                 var isOn = _localExhibitIds.Contains(ex.Id);
-                var img = widget.MainImage;
-                if (img != null) img.color = isOn ? new Color(0.4f, 1f, 0.4f, 1f) : Color.white;
+                img.color = isOn ? new Color(0.4f, 1f, 0.4f, 1f) : Color.white;
 
-                var btn = widget.gameObject.GetComponent<Button>();
-                if (btn == null) btn = widget.gameObject.AddComponent<Button>();
                 btn.onClick.RemoveAllListeners();
                 btn.onClick.AddListener(new UnityAction(() =>
                 {

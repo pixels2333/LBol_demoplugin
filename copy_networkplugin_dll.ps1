@@ -46,6 +46,14 @@ if ($PSScriptRoot) {
   $scriptRoot = (Get-Location).Path
 }
 
+# Workaround: .NET 10 preview SDK's Debug compiler produces metadata that Unity 6 Mono cannot load,
+# causing a silent crash on game startup. Force Release build when Debug is requested.
+$effectiveBuildConfiguration = $BuildConfiguration
+if ($BuildConfiguration -eq 'Debug') {
+  Write-Host "[Unity Mono Workaround] Debug build is incompatible with Unity 6 Mono under .NET 10 preview SDK. Building Release instead..." -ForegroundColor Yellow
+  $effectiveBuildConfiguration = 'Release'
+}
+
 if ($Build) {
   $dotnet = Get-Command dotnet -ErrorAction SilentlyContinue
   if (-not $dotnet) {
@@ -60,18 +68,18 @@ if ($Build) {
   }
 
   if ($Clean) {
-    Write-Host "Cleaning NetworkPlugin ($BuildConfiguration)..." -ForegroundColor Cyan
-    & $dotnet.Source clean $projectPath -c $BuildConfiguration -v $BuildVerbosity
+    Write-Host "Cleaning NetworkPlugin ($effectiveBuildConfiguration)..." -ForegroundColor Cyan
+    & $dotnet.Source clean $projectPath -c $effectiveBuildConfiguration -v $BuildVerbosity
     if ($LASTEXITCODE -ne 0) {
       throw "dotnet clean failed (exit code $LASTEXITCODE)."
     }
   }
 
-  Write-Host "Building NetworkPlugin ($BuildConfiguration)..." -ForegroundColor Cyan
+  Write-Host "Building NetworkPlugin ($effectiveBuildConfiguration)..." -ForegroundColor Cyan
   $buildArgs = @(
     'build',
     $projectPath,
-    '-c', $BuildConfiguration,
+    '-c', $effectiveBuildConfiguration,
     '-v', $BuildVerbosity
   )
   if ($NoRestore) {
@@ -87,7 +95,7 @@ if ($Build) {
 }
 
 if ([string]::IsNullOrWhiteSpace($SourceDll)) {
-  $SourceDll = Join-Path -Path $scriptRoot -ChildPath "networkplugin\bin\$BuildConfiguration\netstandard2.1\NetworkPlugin.dll"
+  $SourceDll = Join-Path -Path $scriptRoot -ChildPath "networkplugin\bin\$effectiveBuildConfiguration\netstandard2.1\NetworkPlugin.dll"
 } elseif (-not [System.IO.Path]::IsPathRooted($SourceDll)) {
   $SourceDll = Join-Path -Path $scriptRoot -ChildPath $SourceDll
 }
@@ -117,7 +125,7 @@ if ($sourceFull -ieq $destFull) {
 
 Copy-Item -LiteralPath $sourceFull -Destination $destFile -Force
 
-if ($CopyPdb) {
+if ($CopyPdb -and ($effectiveBuildConfiguration -ne 'Release')) {
   $sourcePdb = [System.IO.Path]::ChangeExtension($sourceFull, '.pdb')
   if (Test-Path -LiteralPath $sourcePdb -PathType Leaf) {
     $destPdb = [System.IO.Path]::ChangeExtension($destFile, '.pdb')

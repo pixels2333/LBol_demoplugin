@@ -148,7 +148,7 @@ public class GapOptionsPanel_Patch
                 _options != null)
             {
                 // 基于模板创建交易选项widget实例，并将其添加到布局中
-                GapOptionWidget tradeWidget = UnityEngine.Object.Instantiate(template, optionsLayout);
+                GapOptionWidget tradeWidget = CreateGapOptionWidget(optionsLayout, "TradeOption", template);
                 tradeWidget.Parent = panel; // 设置父面板引用
 
                 // 使用喝茶按钮同款样式（同款图标 + 同款模板）。
@@ -200,7 +200,7 @@ public class GapOptionsPanel_Patch
                 spriteTable != null &&
                 _options != null)
             {
-                GapOptionWidget treatWidget = UnityEngine.Object.Instantiate(template, optionsLayout);
+                GapOptionWidget treatWidget = CreateGapOptionWidget(optionsLayout, "TreatOption", template);
                 treatWidget.Parent = panel;
 
                 // 使用喝茶按钮同款样式（同款图标 + 同款模板）。
@@ -983,6 +983,14 @@ public class GapOptionsPanel_Patch
             Plugin.Logger?.LogError($"[GapOptionsPanel_Patch] GetOrCreateResurrectPanel错误: {ex.Message}");
             return null;
         }
+    }
+
+    private static GapOptionWidget CreateGapOptionWidget(Transform parent, string name, GapOptionWidget template)
+    {
+        GapOptionWidget widget = UnityEngine.Object.Instantiate(template, parent, false);
+        widget.name = name;
+        widget.transform.localScale = Vector3.one;
+        return widget;
     }
 
     #endregion

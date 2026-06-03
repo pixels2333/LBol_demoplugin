@@ -507,8 +507,15 @@ internal static class RuntimeSelectionPanelFactory
         TextMeshProUGUI text;
         if (template != null)
         {
-            text = UnityEngine.Object.Instantiate(template, parent, false);
-            text.name = name;
+            // 直接创建对象，避免克隆模板上的意外组件
+            GameObject go = new(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localScale = Vector3.one;
+            text = go.AddComponent<TextMeshProUGUI>();
+            text.font = template.font;
+            text.fontSharedMaterial = template.fontSharedMaterial;
+            text.fontMaterial = template.fontMaterial;
+            text.color = template.color;
         }
         else
         {

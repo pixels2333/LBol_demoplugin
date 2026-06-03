@@ -39,7 +39,7 @@ public static partial class OtherPlayersOverlayPatch
     private const float AvatarVisualSize = 230f;
     private const float AvatarMaskDiameterScale = 1f;
     private const float AvatarImageScale = 1.6f;
-    private const float AvatarEntrySpacing = 12f;
+    private const float AvatarEntrySpacing = 2f;
     private const float OverlayRootWidth = 280f;
     private const float OverlayRootTopPadding = 8f;
     private const float OverlayRootBottomPadding = 12f;

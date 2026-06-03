@@ -166,9 +166,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private CardWidget _offerPreviewCardTemplate;
     private RectTransform _runtimeContentRoot;
 
-    /// <summary>
-    /// 运行时绑定 UI 组件和参数
-    /// </summary>
     internal void BindRuntimeUi(
         RectTransform runtimeContentRoot,
         RectTransform runtimePlayer1TradeArea,
@@ -229,9 +226,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     #region Unity 生命周期
 
-    /// <summary>
-    /// Awake 生命周期：初始化组件引用
-    /// </summary>
     public void Awake()
     {
         // 获取或添加 CanvasGroup，用于控制面板交互
@@ -460,6 +454,9 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
         _cardPickerRoot?.SetActive(false);
         _exhibitPickerRoot?.SetActive(false);
+        _offerEditorRoot?.SetActive(false);
+        _offerActionsRoot?.SetActive(false);
+        _offerPreviewRoot?.SetActive(false);
 
         // 清空玩家1所有交易槽的显示
         player1Slots?.ToList().ForEach(s => s?.ClearSlot());
