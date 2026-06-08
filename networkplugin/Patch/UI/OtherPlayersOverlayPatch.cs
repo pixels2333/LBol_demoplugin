@@ -35,7 +35,7 @@ public static partial class OtherPlayersOverlayPatch
     private const float AvatarEntryBaseWidth = 260f;
     // `RemotePlayerHealthBar` 当前被放在条目根节点的更低位置，
     // 因此条目本身的高度也必须覆盖这部分可视范围，否则后续条目会压到它们上面。
-    private const float AvatarEntryBaseHeight = 520f;
+    private const float AvatarEntryBaseHeight = 350f;
     private const float AvatarVisualSize = 230f;
     private const float AvatarMaskDiameterScale = 1f;
     private const float AvatarImageScale = 1.6f;
@@ -44,13 +44,13 @@ public static partial class OtherPlayersOverlayPatch
     private const float OverlayRootTopPadding = 8f;
     private const float OverlayRootBottomPadding = 12f;
     private const float AvatarPanelScale = 0.7f;
-    private const float AvatarPanelOffsetY = 0f;
-    private static readonly Vector3 HealthBarLocalPosition = new(330f, -460f, 0f);
+    private const float AvatarPanelOffsetY = -30f;
+    private static readonly Vector3 HealthBarLocalPosition = new(350f, -500f, 0f);
     private static readonly Vector3 HealthBarLocalScale = new(0.7f, 0.7f, 1f);
-    private static readonly Vector3 PlayerNameLocalPosition = new(280f, -380f, 0f);
-    private static readonly Vector3 PlayerNameLocalScale = new(4.3f, 4.3f, 1f);
-    private static readonly Vector2 PlayerNameSize = new(AvatarEntryBaseWidth - 8f, 18f);
-    private const float PlayerNameFontSize = 13f;
+    private static readonly Vector3 PlayerNameLocalPosition = new(350f, -450f, 0f);
+    private static readonly Vector3 PlayerNameLocalScale = new(1f, 1f, 1f);
+    private static readonly Vector2 PlayerNameSize = new(100f, 28f);
+    private const float PlayerNameFontSize = 24f;
     private const float RuntimeLayoutEpsilon = 0.01f;
     private const float OverlayDebugLogInterval = 0.5f;
     private static readonly Vector3 OverlayRootLocalPosition = new(1360f, 900f, 0f);
@@ -738,7 +738,7 @@ public static partial class OtherPlayersOverlayPatch
         RectTransform statusRect = null;
         Transform playerNameParent = root.transform;
         TextMeshProUGUI playerNameLabel = CreateTmpText(playerNameParent, "PlayerNameLabel", ResolveDisplayName(playerId), PlayerNameFontSize);
-        playerNameLabel.alignment = TextAlignmentOptions.Center;
+        playerNameLabel.alignment = TextAlignmentOptions.Left;
         playerNameLabel.enableWordWrapping = false;
         playerNameLabel.overflowMode = TextOverflowModes.Ellipsis;
         RectTransform playerNameRect = playerNameLabel.rectTransform;
@@ -1033,6 +1033,12 @@ public static partial class OtherPlayersOverlayPatch
 
             entry.PlayerNameLabel.text = ResolveDisplayName(player.PlayerId, player.PlayerName);
             entry.PlayerNameLabel.color = isConnected ? Color.white : new Color(0.72f, 0.72f, 0.72f, 0.96f);
+
+            // 贴合文字宽度：根据 preferredWidth 动态调整 Rect，避免固定宽度过大
+            entry.PlayerNameLabel.ForceMeshUpdate();
+            float preferredWidth = entry.PlayerNameLabel.preferredWidth;
+            float targetWidth = Mathf.Max(preferredWidth + 4f, 40f);
+            entry.PlayerNameRect.sizeDelta = new Vector2(targetWidth, PlayerNameSize.y);
         }
 
         LogAvatarEntryDebug(entry, player, "ApplyAvatarEntry");

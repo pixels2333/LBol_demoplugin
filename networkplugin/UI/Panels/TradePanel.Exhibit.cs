@@ -134,38 +134,7 @@ public sealed partial class TradePanel
 
             if (_exhibitIconTemplate != null)
             {
-                // 直接创建对象，避免克隆模板上的意外组件
-                var iconGo = new GameObject($"ExIcon_{exhibit.Id}");
-                iconGo.transform.SetParent(container.transform, false);
-                iconGo.transform.localScale = Vector3.one;
-                var img = iconGo.AddComponent<Image>();
-                img.preserveAspect = true;
-                img.raycastTarget = true;
-                var templateImageField = typeof(ExhibitWidget).GetField("image", BindingFlags.Instance | BindingFlags.NonPublic);
-                Image templateImg = templateImageField?.GetValue(_exhibitIconTemplate) as Image;
-                if (templateImg != null)
-                {
-                    img.sprite = templateImg.sprite;
-                    img.type = templateImg.type;
-                }
-                Sprite sprite = null;
-                try { sprite = ResourcesHelper.TryGetSprite<Exhibit>(exhibit.Id); }
-                catch (Exception ex) { Plugin.Logger?.LogWarning($"[TradePanel] 加载展品图标失败: ExhibitId={exhibit.Id}, {ex.Message}"); }
-                if (sprite != null) img.sprite = sprite;
-
-                var commonBtn = iconGo.AddComponent<CommonButtonWidget>();
-                var btnField = typeof(CommonButtonWidget).GetField("button", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-                if (btnField != null)
-                {
-                    var btn = iconGo.AddComponent<Button>();
-                    btn.targetGraphic = img;
-                    btnField.SetValue(commonBtn, btn);
-                }
-
-                widget = iconGo.AddComponent<ExhibitWidget>();
-                var widgetExhibitField = typeof(ExhibitWidget).GetField("image", BindingFlags.Instance | BindingFlags.NonPublic);
-                if (widgetExhibitField != null)
-                    widgetExhibitField.SetValue(widget, img);
+                widget = Instantiate(_exhibitIconTemplate, container.transform, false);
                 widget.Exhibit = exhibit;
                 widget.ShowBattleStatus = false;
                 widget.ShowCounter = false;

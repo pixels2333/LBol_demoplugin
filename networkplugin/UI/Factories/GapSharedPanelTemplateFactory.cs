@@ -167,26 +167,22 @@ internal static class GapSharedPanelTemplateFactory
         RectTransform contentRoot = contentGo.AddComponent<RectTransform>();
         ConfigureAnchors(contentRoot, new Vector2(0.08f, 0.24f), new Vector2(0.92f, 0.76f));
 
-        CommonButtonWidget confirmButton = UnityEngine.Object.Instantiate(confirmTemplate, layoutParent, false);
+        CommonButtonWidget confirmButton = CreateCommonButtonWidget(confirmTemplate, layoutParent, "Confirm", confirmLabel);
         if (confirmButton == null)
         {
             UnityEngine.Object.Destroy(root);
             return null;
         }
-        confirmButton.name = "Confirm";
-        SetButtonLabel(confirmButton, confirmLabel);
         DisableExtraButtons(confirmButton);
         DisableTooltipBehaviours(confirmButton.gameObject);
         ConfigureAnchors(confirmButton.GetComponent<RectTransform>(), new Vector2(0.30f, 0.06f), new Vector2(0.48f, 0.18f));
 
-        CommonButtonWidget cancelButton = UnityEngine.Object.Instantiate(cancelTemplate, layoutParent, false);
+        CommonButtonWidget cancelButton = CreateCommonButtonWidget(cancelTemplate, layoutParent, "Cancel", cancelLabel);
         if (cancelButton == null)
         {
             UnityEngine.Object.Destroy(root);
             return null;
         }
-        cancelButton.name = "Cancel";
-        SetButtonLabel(cancelButton, cancelLabel);
         DisableExtraButtons(cancelButton);
         DisableTooltipBehaviours(cancelButton.gameObject);
         ConfigureAnchors(cancelButton.GetComponent<RectTransform>(), new Vector2(0.52f, 0.06f), new Vector2(0.70f, 0.18f));
@@ -212,8 +208,15 @@ internal static class GapSharedPanelTemplateFactory
         TextMeshProUGUI text;
         if (template != null)
         {
-            text = UnityEngine.Object.Instantiate(template, parent, false);
-            text.name = name;
+            // 直接创建对象，避免克隆模板上的意外组件
+            GameObject go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localScale = Vector3.one;
+            text = go.AddComponent<TextMeshProUGUI>();
+            text.font = template.font;
+            text.fontSharedMaterial = template.fontSharedMaterial;
+            text.fontMaterial = template.fontMaterial;
+            text.color = template.color;
         }
         else
         {
@@ -457,5 +460,28 @@ internal static class GapSharedPanelTemplateFactory
 
         button.onClick.RemoveAllListeners();
         button.gameObject.SetActive(false);
+    }
+
+    private static CommonButtonWidget CreateCommonButtonWidget(CommonButtonWidget template, Transform parent, string name, string label)
+    {
+        try
+        {
+            GameObject go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localScale = Vector3.one;
+            var img = go.AddComponent<Image>();
+            img.color = new Color(0.15f, 0.15f, 0.15f, 0.8f);
+            var btn = go.AddComponent<Button>();
+            btn.targetGraphic = img;
+            var w = go.AddComponent<CommonButtonWidget>();
+            w.button = btn;
+            SetButtonLabel(w, label);
+            return w;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogWarning($"[GapSharedPanelTemplateFactory] 创建按钮失败: name={name}, {ex.Message}");
+            return null;
+        }
     }
 }

@@ -202,10 +202,11 @@ public static partial class OtherPlayersOverlayPatch
             }
 
             bool hasConnectedField = p.ValueKind == JsonValueKind.Object && p.TryGetProperty("IsConnected", out _);
+            string playerName = GetString(p, "PlayerName");
             incoming[playerId] = new PlayerSummary
             {
                 PlayerId = playerId,
-                PlayerName = GetString(p, "PlayerName") ?? playerId,
+                PlayerName = string.IsNullOrWhiteSpace(playerName) ? playerId : playerName,
                 IsHost = GetBool(p, "IsHost"),
                 IsConnected = hasConnectedField ? GetBool(p, "IsConnected") : true,
                 CharacterId = ResolveCharacterId(p),

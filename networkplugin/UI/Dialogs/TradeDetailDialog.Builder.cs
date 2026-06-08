@@ -106,18 +106,10 @@ public sealed partial class TradeDetailDialog
         CommonButtonWidget w = null;
         try
         {
-            if (_buttonTemplate != null)
-            {
-                w = UnityEngine.Object.Instantiate(_buttonTemplate, parent, false);
-                w.name = name;
-            }
-        }
-        catch (Exception ex) { Plugin.Logger?.LogWarning($"[TradeDetailDialog] 实例化按钮模板失败: name={name}, {ex.Message}"); w = null; }
-
-        if (w == null)
-        {
+            // 直接创建对象，避免克隆模板上的意外组件
             GameObject go = new GameObject(name);
             go.transform.SetParent(parent, false);
+            go.transform.localScale = Vector3.one;
             var img = go.AddComponent<Image>();
             img.color = new Color(0.15f, 0.15f, 0.15f, 0.8f);
             var btn = go.AddComponent<Button>();
@@ -125,6 +117,7 @@ public sealed partial class TradeDetailDialog
             w = go.AddComponent<CommonButtonWidget>();
             w.button = btn;
         }
+        catch (Exception ex) { Plugin.Logger?.LogWarning($"[TradeDetailDialog] 创建按钮失败: name={name}, {ex.Message}"); w = null; }
 
         try
         {
@@ -164,10 +157,16 @@ public sealed partial class TradeDetailDialog
 
         try
         {
+            // 直接创建对象，避免克隆模板上的意外组件
+            GameObject go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localScale = Vector3.one;
+            t = go.AddComponent<TextMeshProUGUI>();
             if (_textTemplate != null)
             {
-                t = UnityEngine.Object.Instantiate(_textTemplate, parent, false);
-                t.name = name;
+                t.font = _textTemplate.font;
+                t.fontSharedMaterial = _textTemplate.fontSharedMaterial;
+                t.fontMaterial = _textTemplate.fontMaterial;
             }
         }
         catch

@@ -266,7 +266,7 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 			if (btn != null)
 			{
 				_playerButtons.Add(btn);
-				Plugin.Logger?.LogDebug("[ResurrectPanel] 创建可点击文字行: index={i}, playerId={player?.PlayerId}, name={player?.PlayerName}");
+				Plugin.Logger?.LogDebug($"[ResurrectPanel] 创建可点击文字行: index={i}, playerId={player?.PlayerId}, name={player?.PlayerName}");
 			}
 		}
 
@@ -387,9 +387,11 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		string actionText = actionValue > 0 ? $"治疗+{actionValue}" : "不可治疗";
 		string label = $"{displayName}  HP {player.CurrentHp}/{player.MaxHp}  |  {actionText}";
 
-		// 克隆游戏内 TMP 模板，保留字体/材质
+		// 克隆游戏内 TMP 模板，保留字体/材质（与 TradePanel CreateTextButton 一致）
 		var tmp = UnityEngine.Object.Instantiate(_textTemplate, deadPlayersContainer, false);
 		tmp.name = $"PlayerRow_{index}";
+		tmp.transform.localScale = Vector3.one;
+
 		tmp.text = label;
 		tmp.alignment = TextAlignmentOptions.Center;
 		tmp.raycastTarget = true;

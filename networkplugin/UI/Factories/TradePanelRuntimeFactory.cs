@@ -526,7 +526,7 @@ internal static class TradePanelRuntimeFactory
                 UnityEngine.Object.Destroy(img);
             }
 
-            // 某些按钮模板自带"取消"或"确认"等默认文案。
+            // 某些按钮模板自带“取消”或“确认”等默认文案。
             // 槽位不应继承这些文案；名称文本由我们自己的Name标签提供。
             var tmps = slotWidget.GetComponentsInChildren<TextMeshProUGUI>(true);
             foreach (var t in tmps)

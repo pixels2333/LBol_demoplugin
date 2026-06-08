@@ -104,7 +104,7 @@ internal static class ResurrectPanelRuntimeFactory
                 Color c = frameMainText.color;
                 c.a = 1f;
                 frameMainText.color = c;
-                frameMainText.gameObject.SetActive(true);
+                frameMainText.gameObject.SetActive(false);
                 textTemplate = frameMainText;
             }
 
@@ -161,28 +161,77 @@ internal static class ResurrectPanelRuntimeFactory
                 ?? frameRect
                 ?? (RectTransform)scaffold.ContentRoot;
 
-            RuntimeSelectionPanelFactory.ScrollAreaScaffold scrollArea = RuntimeSelectionPanelFactory.CreateScrollArea(panelRect, subTextRect, "PlayersScroll");
-            if (scrollArea == null)
-            {
-                Plugin.Logger?.LogWarning("[ResurrectPanelRuntimeFactory] 无法创建共享治疗列表滚动区域。");
-                return null;
-            }
+            listContent = null;
 
-            listContent = scrollArea.Content;
+            // 按 TradePanel.PartnerPicker 模式手动创建 ScrollRect，完全控制锚点和布局
+            {
+                GameObject scrollGo = new GameObject("PlayersScroll");
+                scrollGo.transform.SetParent(panelRect, false);
+                scrollGo.transform.SetAsLastSibling();
+
+                var scrollRt = scrollGo.AddComponent<RectTransform>();
+                scrollRt.anchorMin = new Vector2(0.20f, 0.35f);
+                scrollRt.anchorMax = new Vector2(0.80f, 0.65f);
+                scrollRt.offsetMin = Vector2.zero;
+                scrollRt.offsetMax = Vector2.zero;
+
+                var scrollImg = scrollGo.AddComponent<Image>();
+                scrollImg.color = new Color(0f, 0f, 0f, 0f);
+                scrollImg.raycastTarget = true;
+
+                var scrollRect = scrollGo.AddComponent<ScrollRect>();
+                scrollRect.horizontal = false;
+                scrollRect.vertical = true;
+                scrollRect.movementType = ScrollRect.MovementType.Clamped;
+                scrollRect.scrollSensitivity = 24f;
+
+                GameObject viewport = new GameObject("Viewport");
+                viewport.transform.SetParent(scrollGo.transform, false);
+                var viewportRt = viewport.AddComponent<RectTransform>();
+                viewportRt.anchorMin = Vector2.zero;
+                viewportRt.anchorMax = Vector2.one;
+                viewportRt.offsetMin = Vector2.zero;
+                viewportRt.offsetMax = Vector2.zero;
+                viewport.AddComponent<RectMask2D>();
+
+                GameObject contentGo = new GameObject("Content");
+                contentGo.transform.SetParent(viewport.transform, false);
+                var contentRt = contentGo.AddComponent<RectTransform>();
+                contentRt.anchorMin = new Vector2(0f, 1f);
+                contentRt.anchorMax = new Vector2(1f, 1f);
+                contentRt.pivot = new Vector2(0.5f, 1f);
+                contentRt.sizeDelta = new Vector2(0f, 0f);
+
+                var vlg = contentGo.AddComponent<VerticalLayoutGroup>();
+                vlg.childAlignment = TextAnchor.UpperCenter;
+                vlg.spacing = 10f;
+                vlg.padding = new RectOffset(10, 10, 4, 4);
+                vlg.childControlWidth = true;
+                vlg.childControlHeight = true;
+                vlg.childForceExpandWidth = true;
+                vlg.childForceExpandHeight = false;
+
+                var csf = contentGo.AddComponent<ContentSizeFitter>();
+                csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+                scrollRect.viewport = viewportRt;
+                scrollRect.content = contentRt;
+
+                listContent = contentRt;
+            }
 
             if (frameCancel != null)
             {
                 frameCancel.transform.SetAsLastSibling();
             }
 
+            // 标题放在滚动区域上方，明确使用白色确保可见
             TextMeshProUGUI runtimeStatusText = GapSharedPanelTemplateFactory.CloneTextOrCreate(textTemplate, panelRect, "StatusText");
             runtimeStatusText.text = "请选择要治疗的玩家";
             runtimeStatusText.alignment = TextAlignmentOptions.Center;
-            runtimeStatusText.fontSize = Mathf.Max(20f, runtimeStatusText.fontSize * 0.55f);
-            Color statusColor = runtimeStatusText.color;
-            statusColor.a = 1f;
-            runtimeStatusText.color = statusColor;
-            GapSharedPanelTemplateFactory.ConfigureAnchors(runtimeStatusText.rectTransform, new Vector2(0.12f, 0.80f), new Vector2(0.88f, 0.86f));
+            runtimeStatusText.fontSize = Mathf.Max(28f, runtimeStatusText.fontSize * 0.80f);
+            runtimeStatusText.color = new Color(1f, 1f, 1f, 1f);
+            GapSharedPanelTemplateFactory.ConfigureAnchors(runtimeStatusText.rectTransform, new Vector2(0.20f, 0.67f), new Vector2(0.80f, 0.73f));
             runtimeStatusText.transform.SetAsLastSibling();
 
             if (frameCancel != null)
@@ -261,28 +310,25 @@ internal static class ResurrectPanelRuntimeFactory
             Button button;
             if (buttonTemplate != null)
             {
-                CommonButtonWidget runtimeTemplate = UnityEngine.Object.Instantiate(buttonTemplate, parent, false);
-                runtimeTemplate.name = "DeadPlayerEntryTemplate";
-                GapSharedPanelTemplateFactory.DisableExtraButtons(runtimeTemplate);
-                GapSharedPanelTemplateFactory.DisableTooltipBehaviours(runtimeTemplate.gameObject);
-                runtimeTemplate.enabled = false;
+                // 直接创建对象，避免克隆模板上的意外组件
+                entryGo = new GameObject("DeadPlayerEntryTemplate");
+                entryGo.transform.SetParent(parent, false);
+                entryGo.transform.localScale = Vector3.one;
 
-                entryGo = runtimeTemplate.gameObject;
-                button = runtimeTemplate.button ?? runtimeTemplate.GetComponentInChildren<Button>(true);
-
-                foreach (TextMeshProUGUI text in entryGo.GetComponentsInChildren<TextMeshProUGUI>(true))
+                Image bg = entryGo.AddComponent<Image>();
+                if (buttonTemplate.button != null && buttonTemplate.button.targetGraphic is Image templateImg)
                 {
-                    if (text == null)
-                    {
-                        continue;
-                    }
-
-                    text.text = string.Empty;
-                    text.raycastTarget = false;
-                    Color textColor = text.color;
-                    textColor.a = 0f;
-                    text.color = textColor;
+                    bg.sprite = templateImg.sprite;
+                    bg.type = templateImg.type;
+                    bg.color = templateImg.color;
                 }
+                else
+                {
+                    bg.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
+                }
+
+                button = entryGo.AddComponent<Button>();
+                button.targetGraphic = bg;
             }
             else
             {
@@ -352,48 +398,137 @@ internal static class ResurrectPanelRuntimeFactory
                 return null;
             }
 
-            RecordRow templateRow = UnityEngine.Object.Instantiate(rowTemplate, parent, false);
-            templateRow.name = "DeadPlayerEntryTemplate";
+            // 直接创建对象，避免克隆模板上的意外组件
+            GameObject rowGo = new GameObject("DeadPlayerEntryTemplate");
+            rowGo.transform.SetParent(parent, false);
+            rowGo.transform.localScale = Vector3.one;
 
-            TextMeshProUGUI nameText = GetPrivateFieldValue<TextMeshProUGUI>(templateRow, "gameResultText");
-            TextMeshProUGUI infoText = GetPrivateFieldValue<TextMeshProUGUI>(templateRow, "difficultyText");
-            TextMeshProUGUI timestampText = GetPrivateFieldValue<TextMeshProUGUI>(templateRow, "timestampText");
-            Image avatarImage = GetPrivateFieldValue<Image>(templateRow, "avatarImage");
-            Image exhibitIcon = GetPrivateFieldValue<Image>(templateRow, "exhibitIcon");
-            GameObject selectedGo = GetPrivateFieldValue<GameObject>(templateRow, "selectedIndicator");
-            Image selectedIndicator = selectedGo?.GetComponent<Image>();
+            var templateRow = rowGo.AddComponent<RecordRow>();
+            var rowRt = rowGo.AddComponent<RectTransform>();
+            rowRt.anchorMin = new Vector2(0f, 0.5f);
+            rowRt.anchorMax = new Vector2(1f, 0.5f);
+            rowRt.pivot = new Vector2(0.5f, 0.5f);
+            rowRt.sizeDelta = new Vector2(0f, 72f);
 
-            avatarImage?.gameObject.SetActive(false);
-            exhibitIcon?.gameObject.SetActive(false);
-            timestampText?.gameObject.SetActive(false);
+            // cover（全屏遮罩，用于 hover 效果）
+            GameObject coverGo = new GameObject("Cover");
+            coverGo.transform.SetParent(rowGo.transform, false);
+            coverGo.transform.localScale = Vector3.one;
+            var cover = coverGo.AddComponent<Image>();
+            cover.color = new Color(0f, 0f, 0f, 0.5f);
+            var coverRt = coverGo.AddComponent<RectTransform>();
+            coverRt.anchorMin = Vector2.zero;
+            coverRt.anchorMax = Vector2.one;
+            coverRt.offsetMin = Vector2.zero;
+            coverRt.offsetMax = Vector2.zero;
 
-            Button button = templateRow.GetComponent<Button>();
-            if (button == null)
-            {
-                button = templateRow.gameObject.AddComponent<Button>();
-            }
+            // nameText (gameResultText)
+            GameObject nameGo = new GameObject("Name");
+            nameGo.transform.SetParent(rowGo.transform, false);
+            nameGo.transform.localScale = Vector3.one;
+            var nameText = nameGo.AddComponent<TextMeshProUGUI>();
+            nameText.alignment = TextAlignmentOptions.Left;
+            nameText.raycastTarget = false;
+            var nameRt = nameGo.AddComponent<RectTransform>();
+            nameRt.anchorMin = new Vector2(0.02f, 0.3f);
+            nameRt.anchorMax = new Vector2(0.55f, 0.7f);
+            nameRt.offsetMin = Vector2.zero;
+            nameRt.offsetMax = Vector2.zero;
 
-            Image cover = GetPrivateFieldValue<Image>(templateRow, "cover");
-            if (cover != null)
-            {
-                button.targetGraphic = cover;
-            }
+            // infoText (difficultyText)
+            GameObject infoGo = new GameObject("Info");
+            infoGo.transform.SetParent(rowGo.transform, false);
+            infoGo.transform.localScale = Vector3.one;
+            var infoText = infoGo.AddComponent<TextMeshProUGUI>();
+            infoText.alignment = TextAlignmentOptions.Right;
+            infoText.raycastTarget = false;
+            var infoRt = infoGo.AddComponent<RectTransform>();
+            infoRt.anchorMin = new Vector2(0.6f, 0.3f);
+            infoRt.anchorMax = new Vector2(0.98f, 0.7f);
+            infoRt.offsetMin = Vector2.zero;
+            infoRt.offsetMax = Vector2.zero;
 
-            DeadPlayerEntryWidget widget = templateRow.gameObject.GetComponent<DeadPlayerEntryWidget>();
+            // selectedIndicator
+            GameObject selectedGo = new GameObject("SelectedIndicator");
+            selectedGo.transform.SetParent(rowGo.transform, false);
+            selectedGo.transform.localScale = Vector3.one;
+            var selectedImg = selectedGo.AddComponent<Image>();
+            selectedImg.color = new Color(1f, 1f, 1f, 0.3f);
+            var selectedRt = selectedGo.AddComponent<RectTransform>();
+            selectedRt.anchorMin = Vector2.zero;
+            selectedRt.anchorMax = Vector2.one;
+            selectedRt.offsetMin = Vector2.zero;
+            selectedRt.offsetMax = Vector2.zero;
+            selectedGo.SetActive(false);
+
+            // avatarImage（隐藏）
+            GameObject avatarGo = new GameObject("Avatar");
+            avatarGo.transform.SetParent(rowGo.transform, false);
+            avatarGo.transform.localScale = Vector3.one;
+            var avatarImage = avatarGo.AddComponent<Image>();
+            avatarImage.preserveAspect = true;
+            var avatarRt = avatarGo.AddComponent<RectTransform>();
+            avatarRt.anchorMin = new Vector2(0f, 0.5f);
+            avatarRt.anchorMax = new Vector2(0f, 0.5f);
+            avatarRt.pivot = new Vector2(0f, 0.5f);
+            avatarRt.sizeDelta = new Vector2(48f, 48f);
+            avatarGo.SetActive(false);
+
+            // exhibitIcon（隐藏）
+            GameObject exIconGo = new GameObject("ExhibitIcon");
+            exIconGo.transform.SetParent(rowGo.transform, false);
+            exIconGo.transform.localScale = Vector3.one;
+            var exhibitIcon = exIconGo.AddComponent<Image>();
+            exhibitIcon.preserveAspect = true;
+            var exIconRt = exIconGo.AddComponent<RectTransform>();
+            exIconRt.anchorMin = new Vector2(1f, 0.5f);
+            exIconRt.anchorMax = new Vector2(1f, 0.5f);
+            exIconRt.pivot = new Vector2(1f, 0.5f);
+            exIconRt.sizeDelta = new Vector2(32f, 32f);
+            exIconGo.SetActive(false);
+
+            // timestampText（隐藏）
+            GameObject tsGo = new GameObject("Timestamp");
+            tsGo.transform.SetParent(rowGo.transform, false);
+            tsGo.transform.localScale = Vector3.one;
+            var timestampText = tsGo.AddComponent<TextMeshProUGUI>();
+            timestampText.alignment = TextAlignmentOptions.Right;
+            timestampText.raycastTarget = false;
+            var tsRt = tsGo.AddComponent<RectTransform>();
+            tsRt.anchorMin = new Vector2(0.7f, 0f);
+            tsRt.anchorMax = new Vector2(1f, 0.3f);
+            tsRt.offsetMin = Vector2.zero;
+            tsRt.offsetMax = Vector2.zero;
+            tsGo.SetActive(false);
+
+            // Button
+            Button button = rowGo.AddComponent<Button>();
+            button.targetGraphic = cover;
+
+            // 使用 Traverse 设置私有字段
+            var rowTraverse = Traverse.Create(templateRow);
+            rowTraverse.Field("cover").SetValue(cover);
+            rowTraverse.Field("root").SetValue(rowRt);
+            rowTraverse.Field("gameResultText").SetValue(nameText);
+            rowTraverse.Field("difficultyText").SetValue(infoText);
+            rowTraverse.Field("timestampText").SetValue(timestampText);
+            rowTraverse.Field("avatarImage").SetValue(avatarImage);
+            rowTraverse.Field("exhibitIcon").SetValue(exhibitIcon);
+            rowTraverse.Field("selectedIndicator").SetValue(selectedGo);
+
+            DeadPlayerEntryWidget widget = rowGo.GetComponent<DeadPlayerEntryWidget>();
             if (widget == null)
             {
-                widget = templateRow.gameObject.AddComponent<DeadPlayerEntryWidget>();
+                widget = rowGo.AddComponent<DeadPlayerEntryWidget>();
             }
 
             widget.button = button;
-
-            RectTransform rowRoot = GetPrivateFieldValue<RectTransform>(templateRow, "root") ?? templateRow.GetComponent<RectTransform>();
-            Traverse.Create(widget).Field("root").SetValue(rowRoot);
+            Traverse.Create(widget).Field("root").SetValue(rowRt);
             Traverse.Create(widget).Field("playerName").SetValue(nameText);
             Traverse.Create(widget).Field("playerInfo").SetValue(infoText);
-            Traverse.Create(widget).Field("selectedIndicator").SetValue(selectedIndicator);
+            Traverse.Create(widget).Field("selectedIndicator").SetValue(selectedImg);
 
-            templateRow.gameObject.SetActive(false);
+            rowGo.SetActive(false);
             return widget;
         }
         catch
@@ -401,6 +536,7 @@ internal static class ResurrectPanelRuntimeFactory
             return null;
         }
     }
+
 
     private static bool TryAttachHistoryListWithRecordRow(
         RectTransform dialogPanelRect,
@@ -609,8 +745,15 @@ internal static class ResurrectPanelRuntimeFactory
         TextMeshProUGUI text;
         if (template != null)
         {
-            text = UnityEngine.Object.Instantiate(template, parent, false);
-            text.name = name;
+            // 直接创建对象，避免克隆模板上的意外组件
+            GameObject go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localScale = Vector3.one;
+            text = go.AddComponent<TextMeshProUGUI>();
+            text.font = template.font;
+            text.fontSharedMaterial = template.fontSharedMaterial;
+            text.fontMaterial = template.fontMaterial;
+            text.color = template.color;
         }
         else
         {

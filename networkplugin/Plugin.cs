@@ -447,6 +447,7 @@ public class Plugin : BaseUnityPlugin
         Logger.LogInfo($"  战斗同步: {ConfigManager.EnableBattleSync.Value}");
         Logger.LogInfo($"  地图同步: {ConfigManager.EnableMapSync.Value}");
         Logger.LogInfo($"  Overlay调试日志: {ConfigManager.DebugOtherPlayersOverlay.Value}");
+        Logger.LogInfo($"  UI控件边界调试: {ConfigManager.DebugShowControlBounds.Value}");
         if (ConfigManager.EnableSaveLoadSync.Value)
         {
             // Enforce the inrun-map-progress-sync decision: never transmit save bytes.

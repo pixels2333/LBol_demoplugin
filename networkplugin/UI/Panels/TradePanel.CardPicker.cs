@@ -686,28 +686,25 @@ private void EnsureCardPickerOverlay()
 
     private static GameObject CreateCardPickerSelectionMarker(Transform parent, GameObject template)
     {
-        GameObject marker = new GameObject("TradeSelectParticle", typeof(RectTransform), typeof(Image));
-        marker.transform.SetParent(parent, false);
-        marker.transform.localScale = Vector3.one;
-        RectTransform rect = marker.GetComponent<RectTransform>();
+        if (template is not null)
+        {
+            GameObject marker = Instantiate(template, parent, false);
+            marker.name = "TradeSelectParticle";
+            return marker;
+        }
+
+        GameObject fallback = new GameObject("TradeSelectParticle", typeof(RectTransform), typeof(Image));
+        fallback.transform.SetParent(parent, false);
+        RectTransform rect = fallback.GetComponent<RectTransform>();
         rect.anchorMin = Vector2.zero;
         rect.anchorMax = Vector2.one;
         rect.offsetMin = Vector2.zero;
         rect.offsetMax = Vector2.zero;
 
-        Image image = marker.GetComponent<Image>();
-        if (template != null && template.GetComponent<Image>() is Image templateImg)
-        {
-            image.sprite = templateImg.sprite;
-            image.type = templateImg.type;
-            image.color = templateImg.color;
-        }
-        else
-        {
-            image.color = new Color(0.35f, 0.85f, 1f, 0.22f);
-        }
+        Image image = fallback.GetComponent<Image>();
+        image.color = new Color(0.35f, 0.85f, 1f, 0.22f);
         image.raycastTarget = false;
-        return marker;
+        return fallback;
     }
 
     private void OnCardPickerSelectionChanged(CardPickerTag tag, SelectCardWidget widget)
