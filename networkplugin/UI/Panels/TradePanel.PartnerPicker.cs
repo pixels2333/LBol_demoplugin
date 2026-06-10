@@ -240,8 +240,6 @@ public sealed partial class TradePanel
     {
         statusText?.gameObject.SetActive(visible);
 
-        player1TradeArea?.gameObject.SetActive(visible);
-        player2TradeArea?.gameObject.SetActive(visible);
         player1NameText?.gameObject.SetActive(visible);
         player2NameText?.gameObject.SetActive(visible);
 

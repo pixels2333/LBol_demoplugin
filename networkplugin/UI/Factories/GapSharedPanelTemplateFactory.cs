@@ -133,9 +133,9 @@ internal static class GapSharedPanelTemplateFactory
 
                         HideDialogText(mainText);
                         HideDialogText(subText);
-                        HideDialogButton(singleConfirm);
-                        HideDialogButton(dialogConfirm);
-                        HideDialogButton(dialogCancel);
+                        DestroyDialogButton(singleConfirm);
+                        DestroyDialogButton(dialogConfirm);
+                        DestroyDialogButton(dialogCancel);
                         dialog.enabled = false;
                     }
 
@@ -462,10 +462,48 @@ internal static class GapSharedPanelTemplateFactory
         button.gameObject.SetActive(false);
     }
 
+    private static void DestroyDialogButton(Button button)
+    {
+        if (button == null)
+        {
+            return;
+        }
+
+        button.onClick.RemoveAllListeners();
+        UnityEngine.Object.Destroy(button.gameObject);
+    }
+
     private static CommonButtonWidget CreateCommonButtonWidget(CommonButtonWidget template, Transform parent, string name, string label)
     {
         try
         {
+            // 从 MessageDialog prefab 直接创建按钮，与原生对话框按钮样式一致
+            GameObject prefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
+            if (prefab != null)
+            {
+                MessageDialog dialog = prefab.GetComponent<MessageDialog>();
+                if (dialog != null)
+                {
+                    Button prefabBtn = name.IndexOf("Confirm", StringComparison.OrdinalIgnoreCase) >= 0
+                        ? GetDialogField<Button>(dialog, "confirmButton") ?? GetDialogField<Button>(dialog, "singleConfirmButton")
+                        : GetDialogField<Button>(dialog, "cancelButton") ?? GetDialogField<Button>(dialog, "confirmButton");
+
+                    if (prefabBtn != null)
+                    {
+                        GameObject btnGo = UnityEngine.Object.Instantiate(prefabBtn.gameObject, parent, false);
+                        btnGo.name = name;
+                        btnGo.SetActive(true);
+                        Button clonedBtn = btnGo.GetComponent<Button>();
+                        clonedBtn.onClick.RemoveAllListeners();
+                        var w = btnGo.AddComponent<CommonButtonWidget>();
+                        w.button = clonedBtn;
+                        SetButtonLabel(w, label);
+                        return w;
+                    }
+                }
+            }
+
+            // fallback：创建简单按钮
             GameObject go = new GameObject(name);
             go.transform.SetParent(parent, false);
             go.transform.localScale = Vector3.one;
@@ -473,10 +511,10 @@ internal static class GapSharedPanelTemplateFactory
             img.color = new Color(0.15f, 0.15f, 0.15f, 0.8f);
             var btn = go.AddComponent<Button>();
             btn.targetGraphic = img;
-            var w = go.AddComponent<CommonButtonWidget>();
-            w.button = btn;
-            SetButtonLabel(w, label);
-            return w;
+            var fallbackWidget = go.AddComponent<CommonButtonWidget>();
+            fallbackWidget.button = btn;
+            SetButtonLabel(fallbackWidget, label);
+            return fallbackWidget;
         }
         catch (Exception ex)
         {

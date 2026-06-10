@@ -168,10 +168,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     internal void BindRuntimeUi(
         RectTransform runtimeContentRoot,
-        RectTransform runtimePlayer1TradeArea,
-        RectTransform runtimePlayer2TradeArea,
-        TradeSlotWidget[] runtimePlayer1Slots,
-        TradeSlotWidget[] runtimePlayer2Slots,
         CommonButtonWidget runtimeConfirmButton,
         CommonButtonWidget runtimeCancelButton,
         TextMeshProUGUI runtimeStatusText,
@@ -180,10 +176,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     {
         // 这些字段通常由 prefab 连接，运行时创建时需手动绑定。
         _runtimeContentRoot = runtimeContentRoot;
-        player1TradeArea = runtimePlayer1TradeArea;
-        player2TradeArea = runtimePlayer2TradeArea;
-        player1Slots = runtimePlayer1Slots;
-        player2Slots = runtimePlayer2Slots;
         confirmButton = runtimeConfirmButton;
         cancelButton = runtimeCancelButton;
         statusText = runtimeStatusText;

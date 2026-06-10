@@ -36,6 +36,7 @@ public sealed partial class TradePanel
     private void EnsureExhibitPreviewContainers()
     {
         if (_localExhibitContainer != null) return;
+        if (player1TradeArea == null || player2TradeArea == null) return;
 
         if (_exhibitIconTemplate == null)
         {
@@ -244,6 +245,32 @@ public sealed partial class TradePanel
             }
 
             _exhibitPickerRoot = scaffold.Root;
+
+            // 调整展品列表区域宽度，使其居中且更窄（与 HTML 预览一致的留白比例）
+            if (scaffold.ScrollRect != null)
+            {
+                RectTransform scrollRt = scaffold.ScrollRect.GetComponent<RectTransform>();
+                if (scrollRt != null)
+                {
+                    // 将 ScrollRect 水平范围压缩到父容器的 40%（左右各留 30% 边距）
+                    float originalMinY = scrollRt.anchorMin.y;
+                    float originalMaxY = scrollRt.anchorMax.y;
+                    scrollRt.anchorMin = new Vector2(0.30f, originalMinY);
+                    scrollRt.anchorMax = new Vector2(0.70f, originalMaxY);
+                    scrollRt.offsetMin = new Vector2(0f, scrollRt.offsetMin.y);
+                    scrollRt.offsetMax = new Vector2(0f, scrollRt.offsetMax.y);
+                }
+
+                // 增加 Content 左右内边距，使展品行两侧留白更充分
+                if (scaffold.Content != null)
+                {
+                    VerticalLayoutGroup vlg = scaffold.Content.GetComponent<VerticalLayoutGroup>();
+                    if (vlg != null)
+                    {
+                        vlg.padding = new RectOffset(16, 16, 10, 10);
+                    }
+                }
+            }
 
             if (scaffold.ConfirmButton is not null)
             {

@@ -122,14 +122,12 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		TextMeshProUGUI runtimeTextTemplate,
 		CommonButtonWidget runtimeResurrectButton,
 		CommonButtonWidget runtimeCancelButton,
-		TextMeshProUGUI runtimeStatusText,
 		CanvasGroup runtimeCanvasGroup)
 	{
 		deadPlayersContainer = runtimeDeadPlayersContainer;
 		_textTemplate = runtimeTextTemplate;
 		resurrectButton = runtimeResurrectButton;
 		cancelButton = runtimeCancelButton;
-		statusText = runtimeStatusText;
 
 		_canvasGroup = runtimeCanvasGroup;
 		if (_canvasGroup == null)
@@ -387,10 +385,17 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		string actionText = actionValue > 0 ? $"治疗+{actionValue}" : "不可治疗";
 		string label = $"{displayName}  HP {player.CurrentHp}/{player.MaxHp}  |  {actionText}";
 
-		// 克隆游戏内 TMP 模板，保留字体/材质（与 TradePanel CreateTextButton 一致）
+		// 克隆游戏内 TMP 模板，保留字体/材质
 		var tmp = UnityEngine.Object.Instantiate(_textTemplate, deadPlayersContainer, false);
 		tmp.name = $"PlayerRow_{index}";
-		tmp.transform.localScale = Vector3.one;
+
+		// 修复：重置 RectTransform，避免继承模板巨大尺寸覆盖整个屏幕
+		RectTransform tmpRect = tmp.rectTransform;
+		tmpRect.anchorMin = new Vector2(0.5f, 1f);
+		tmpRect.anchorMax = new Vector2(0.5f, 1f);
+		tmpRect.pivot = new Vector2(0.5f, 1f);
+		tmpRect.sizeDelta = new Vector2(800f, 150f);
+		tmpRect.anchoredPosition = new Vector2(0f, tmpRect.anchoredPosition.y);
 
 		tmp.text = label;
 		tmp.alignment = TextAlignmentOptions.Center;
@@ -408,7 +413,7 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		tmp.color = baseColor;
 
 		var le = tmp.gameObject.AddComponent<LayoutElement>();
-		le.preferredHeight = 40f;
+		le.preferredHeight = 64f;
 		le.flexibleWidth = 1f;
 
 		var btn = tmp.gameObject.AddComponent<Button>();

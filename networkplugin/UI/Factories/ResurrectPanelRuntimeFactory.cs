@@ -93,7 +93,6 @@ internal static class ResurrectPanelRuntimeFactory
 
             TextMeshProUGUI frameMainText = GetDialogField<TextMeshProUGUI>(dialog, "mainText");
             TextMeshProUGUI frameSubText = GetDialogField<TextMeshProUGUI>(dialog, "subText");
-            Button frameCancel = GetDialogField<Button>(dialog, "cancelButton");
 
             RectTransform subTextRect = frameSubText?.rectTransform;
             if (frameMainText != null)
@@ -104,7 +103,7 @@ internal static class ResurrectPanelRuntimeFactory
                 Color c = frameMainText.color;
                 c.a = 1f;
                 frameMainText.color = c;
-                frameMainText.gameObject.SetActive(false);
+                frameMainText.gameObject.SetActive(true);
                 textTemplate = frameMainText;
             }
 
@@ -129,115 +128,25 @@ internal static class ResurrectPanelRuntimeFactory
                 scaffold.StatusText.gameObject.SetActive(false);
             }
 
-            RectTransform panelRect;
-            {
-                RectTransform __a = frameMainText?.rectTransform;
-                RectTransform __b = frameCancel?.GetComponent<RectTransform>();
-                RectTransform __result = null;
-                if (__a != null && __b != null)
-                {
-                    System.Collections.Generic.HashSet<Transform> ancestors = new System.Collections.Generic.HashSet<Transform>();
-                    Transform current = __a;
-                    while (current != null)
-                    {
-                        ancestors.Add(current);
-                        current = current.parent;
-                    }
-                    current = __b;
-                    while (current != null)
-                    {
-                        if (ancestors.Contains(current))
-                        {
-                            __result = current as RectTransform;
-                            break;
-                        }
-                        current = current.parent;
-                    }
-                }
-                panelRect = __result;
-            }
-            panelRect = panelRect
-                ?? frameMainText?.rectTransform.parent as RectTransform
+            RectTransform panelRect = frameMainText?.rectTransform.parent as RectTransform
                 ?? frameRect
                 ?? (RectTransform)scaffold.ContentRoot;
 
-            listContent = null;
-
-            // 按 TradePanel.PartnerPicker 模式手动创建 ScrollRect，完全控制锚点和布局
+            RuntimeSelectionPanelFactory.ScrollAreaScaffold scrollArea = RuntimeSelectionPanelFactory.CreateScrollArea(panelRect, null, "PlayersScroll");
+            if (scrollArea == null)
             {
-                GameObject scrollGo = new GameObject("PlayersScroll");
-                scrollGo.transform.SetParent(panelRect, false);
-                scrollGo.transform.SetAsLastSibling();
-
-                var scrollRt = scrollGo.AddComponent<RectTransform>();
-                scrollRt.anchorMin = new Vector2(0.20f, 0.35f);
-                scrollRt.anchorMax = new Vector2(0.80f, 0.65f);
-                scrollRt.offsetMin = Vector2.zero;
-                scrollRt.offsetMax = Vector2.zero;
-
-                var scrollImg = scrollGo.AddComponent<Image>();
-                scrollImg.color = new Color(0f, 0f, 0f, 0f);
-                scrollImg.raycastTarget = true;
-
-                var scrollRect = scrollGo.AddComponent<ScrollRect>();
-                scrollRect.horizontal = false;
-                scrollRect.vertical = true;
-                scrollRect.movementType = ScrollRect.MovementType.Clamped;
-                scrollRect.scrollSensitivity = 24f;
-
-                GameObject viewport = new GameObject("Viewport");
-                viewport.transform.SetParent(scrollGo.transform, false);
-                var viewportRt = viewport.AddComponent<RectTransform>();
-                viewportRt.anchorMin = Vector2.zero;
-                viewportRt.anchorMax = Vector2.one;
-                viewportRt.offsetMin = Vector2.zero;
-                viewportRt.offsetMax = Vector2.zero;
-                viewport.AddComponent<RectMask2D>();
-
-                GameObject contentGo = new GameObject("Content");
-                contentGo.transform.SetParent(viewport.transform, false);
-                var contentRt = contentGo.AddComponent<RectTransform>();
-                contentRt.anchorMin = new Vector2(0f, 1f);
-                contentRt.anchorMax = new Vector2(1f, 1f);
-                contentRt.pivot = new Vector2(0.5f, 1f);
-                contentRt.sizeDelta = new Vector2(0f, 0f);
-
-                var vlg = contentGo.AddComponent<VerticalLayoutGroup>();
-                vlg.childAlignment = TextAnchor.UpperCenter;
-                vlg.spacing = 10f;
-                vlg.padding = new RectOffset(10, 10, 4, 4);
-                vlg.childControlWidth = true;
-                vlg.childControlHeight = true;
-                vlg.childForceExpandWidth = true;
-                vlg.childForceExpandHeight = false;
-
-                var csf = contentGo.AddComponent<ContentSizeFitter>();
-                csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-                scrollRect.viewport = viewportRt;
-                scrollRect.content = contentRt;
-
-                listContent = contentRt;
+                Plugin.Logger?.LogWarning("[ResurrectPanelRuntimeFactory] 无法创建共享治疗列表滚动区域。");
+                return null;
             }
 
-            if (frameCancel != null)
+            // 对齐到 TradePartnerPicker 的 PartnerScroll 锚点：(0.15, 0.42)~(0.85, 0.58)
+            RectTransform playersScrollRect = scrollArea.ScrollRect?.GetComponent<RectTransform>();
+            if (playersScrollRect != null)
             {
-                frameCancel.transform.SetAsLastSibling();
+                GapSharedPanelTemplateFactory.ConfigureAnchors(playersScrollRect, new Vector2(0.15f, 0.42f), new Vector2(0.85f, 0.58f));
             }
 
-            // 标题放在滚动区域上方，明确使用白色确保可见
-            TextMeshProUGUI runtimeStatusText = GapSharedPanelTemplateFactory.CloneTextOrCreate(textTemplate, panelRect, "StatusText");
-            runtimeStatusText.text = "请选择要治疗的玩家";
-            runtimeStatusText.alignment = TextAlignmentOptions.Center;
-            runtimeStatusText.fontSize = Mathf.Max(28f, runtimeStatusText.fontSize * 0.80f);
-            runtimeStatusText.color = new Color(1f, 1f, 1f, 1f);
-            GapSharedPanelTemplateFactory.ConfigureAnchors(runtimeStatusText.rectTransform, new Vector2(0.20f, 0.67f), new Vector2(0.80f, 0.73f));
-            runtimeStatusText.transform.SetAsLastSibling();
-
-            if (frameCancel != null)
-            {
-                frameCancel.transform.SetAsLastSibling();
-            }
+            listContent = scrollArea.Content;
 
             ResurrectPanel panelRuntime = scaffold.Root.AddComponent<ResurrectPanel>();
             panelRuntime.BindRuntimeUi(
@@ -245,7 +154,6 @@ internal static class ResurrectPanelRuntimeFactory
                 textTemplate,
                 scaffold.ConfirmButton,
                 scaffold.CancelButton,
-                runtimeStatusText,
                 scaffold.CanvasGroup);
 
             ResurrectPanelRuntimeMarker marker = scaffold.Root.AddComponent<ResurrectPanelRuntimeMarker>();
