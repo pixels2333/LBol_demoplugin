@@ -472,12 +472,38 @@ public static partial class OtherPlayersOverlayPatch
         try
         {
             PlayerUnit local = Singleton<GameDirector>.Instance.PlayerUnitView?.Unit as PlayerUnit;
-            return local?.Id ?? local?.ModelName ?? "Koishi";
+            if (local != null)
+            {
+                string id = local.ModelName;
+                if (!string.IsNullOrWhiteSpace(id))
+                    return id;
+                id = local.Id;
+                if (!string.IsNullOrWhiteSpace(id))
+                    return id;
+            }
         }
         catch
         {
-            return "Koishi";
         }
+
+        try
+        {
+            PlayerUnit player = GameStateUtils.GetCurrentPlayer();
+            if (player != null)
+            {
+                string id = player.ModelName;
+                if (!string.IsNullOrWhiteSpace(id))
+                    return id;
+                id = player.Id;
+                if (!string.IsNullOrWhiteSpace(id))
+                    return id;
+            }
+        }
+        catch
+        {
+        }
+
+        return "Koishi";
     }
 
     private static PlayerUnit TryCreatePlayerUnit(string characterId)
@@ -507,8 +533,119 @@ public static partial class OtherPlayersOverlayPatch
         }
     }
 
+    private static string GetEffectiveSelfPlayerId()
+    {
+        if (!string.IsNullOrWhiteSpace(_selfPlayerId))
+        {
+            return _selfPlayerId;
+        }
+
+        string tracked = NetworkIdentityTracker.GetSelfPlayerId();
+        if (!string.IsNullOrWhiteSpace(tracked))
+        {
+            return tracked;
+        }
+
+        // 单机模式下 NetworkIdentityTracker 也没有 ID，使用固定兜底
+        return "__local__";
+    }
+
+    private static void EnsureSelfPlayer_NoThrow()
+    {
+        try
+        {
+            string effectiveSelfId = GetEffectiveSelfPlayerId();
+            if (string.IsNullOrWhiteSpace(effectiveSelfId))
+            {
+                return;
+            }
+
+            int stage = -1;
+            int x = -1;
+            int y = -1;
+            string locName = null;
+            try
+            {
+                var run = GameStateUtils.GetCurrentGameRun();
+                var node = run?.CurrentMap?.VisitingNode;
+                if (node != null)
+                {
+                    stage = node.Act;
+                    x = node.X;
+                    y = node.Y;
+                    locName = node.StationType.ToString();
+                }
+            }
+            catch
+            {
+            }
+
+            if (x < 0 || y < 0)
+            {
+                if (TryGetSelfLocation(out int selfStage, out int selfX, out int selfY, out string selfLocName))
+                {
+                    stage = selfStage;
+                    x = selfX;
+                    y = selfY;
+                    locName = selfLocName;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(locName))
+            {
+                locName = "Map";
+            }
+
+            lock (_syncLock)
+            {
+                // 清理旧的本地玩家条目，避免 _selfPlayerId 变化后旧条目仍出现在地图上
+                List<string> toRemove = null;
+                foreach (var kvp in _players)
+                {
+                    if (kvp.Key != effectiveSelfId && (kvp.Key.StartsWith("__") || kvp.Key.StartsWith("local", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        toRemove ??= new List<string>();
+                        toRemove.Add(kvp.Key);
+                    }
+                }
+                if (toRemove != null)
+                {
+                    foreach (string oldId in toRemove)
+                    {
+                        _players.Remove(oldId);
+                        if (_mapIcons.TryGetValue(oldId, out MapIconUi oldIcon) && oldIcon?.Root != null)
+                        {
+                            UnityEngine.Object.Destroy(oldIcon.Root);
+                            _mapIcons.Remove(oldId);
+                        }
+                    }
+                }
+
+                if (!_players.TryGetValue(effectiveSelfId, out PlayerSummary p) || p == null)
+                {
+                    p = new PlayerSummary { PlayerId = effectiveSelfId };
+                    _players[effectiveSelfId] = p;
+                }
+
+                p.PlayerName = ResolveDisplayName(effectiveSelfId, null, isLocal: true);
+                p.IsConnected = true;
+                p.IsHost = NetworkIdentityTracker.GetSelfIsHost();
+                p.CharacterId = GetFallbackCharacterId();
+                p.Stage = stage;
+                p.LocationX = x;
+                p.LocationY = y;
+                p.LocationName = locName;
+                p.LastUpdateTime = Time.unscaledTime;
+            }
+        }
+        catch
+        {
+        }
+    }
+
     private static void UpdateMapIcons(MapPanel mapPanel)
     {
+        Plugin.Logger?.LogInfo("[NetworkPlugin] UpdateMapIcons START");
         if (mapPanel == null)
         {
             return;
@@ -516,6 +653,7 @@ public static partial class OtherPlayersOverlayPatch
 
         INetworkClient client = TryGetNetworkClient();
         EnsureVirtualAiDefaultPlayer_NoThrow();
+        EnsureSelfPlayer_NoThrow();
         if (client == null || !client.IsConnected)
         {
             if (!IsVirtualAiDefaultEnabled())
@@ -568,21 +706,55 @@ public static partial class OtherPlayersOverlayPatch
             _mapNodeIconsRoots.Clear();
         }
 
+        // 单机模式下可能没有收到 Welcome 消息，需要兜底设置 _selfPlayerId
+        // 优先使用 NetworkIdentityTracker 的实时状态，已断开时回退到 __local__
+        string tracked = NetworkIdentityTracker.GetSelfPlayerId();
+        _selfPlayerId = !string.IsNullOrWhiteSpace(tracked) ? tracked : "__local__";
+
         List<PlayerSummary> players;
         lock (_syncLock)
         {
             players = _players.Values
                 .Where(p => p != null && !string.IsNullOrWhiteSpace(p.PlayerId))
                 .Where(p => p.IsConnected)
-                .Where(p => string.IsNullOrWhiteSpace(_selfPlayerId) || p.PlayerId != _selfPlayerId)
                 .Where(p => p.LocationX >= 0 && p.LocationY >= 0)
                 .ToList();
+        }
+
+        if (!string.IsNullOrWhiteSpace(_selfPlayerId) && players.All(p => p.PlayerId != _selfPlayerId))
+        {
+            int selfStage = -1;
+            int selfX = -1;
+            int selfY = -1;
+            string selfLocationName = null;
+            if (TryGetSelfLocation(out selfStage, out selfX, out selfY, out selfLocationName) && selfX >= 0 && selfY >= 0)
+            {
+                players.Add(new PlayerSummary
+                {
+                    PlayerId = _selfPlayerId,
+                    PlayerName = ResolveDisplayName(_selfPlayerId, null, isLocal: true),
+                    IsHost = NetworkIdentityTracker.GetSelfIsHost(),
+                    IsConnected = true,
+                    CharacterId = GetFallbackCharacterId(),
+                    LocationX = selfX,
+                    LocationY = selfY,
+                    Stage = selfStage,
+                    LocationName = selfLocationName,
+                });
+            }
         }
 
         if (players.Count == 0)
         {
             HideAllMapIcons();
             return;
+        }
+
+        // 强制重建本地玩家图标，排除旧缓存干扰
+        if (!string.IsNullOrWhiteSpace(_selfPlayerId) && _mapIcons.TryGetValue(_selfPlayerId, out MapIconUi selfIcon) && selfIcon?.Root != null)
+        {
+            UnityEngine.Object.Destroy(selfIcon.Root);
+            _mapIcons.Remove(_selfPlayerId);
         }
 
         _lastMapIconLayoutFingerprint = 0;
@@ -610,8 +782,9 @@ public static partial class OtherPlayersOverlayPatch
                 .OrderByDescending(p => p.IsHost)
                 .ThenBy(p => p.PlayerName, StringComparer.OrdinalIgnoreCase)];
 
+            Plugin.Logger?.LogInfo($"[NetworkPlugin] Group ({x},{y}): {orderedPlayers.Count} players, nodePos=({nodeAnchoredPosition.x:F1},{nodeAnchoredPosition.y:F1})");
             const float baseY = 0f;
-            const float horizontalSpacing = 100f;
+            const float horizontalSpacing = 110f;
             float startX = -((orderedPlayers.Count - 1) * horizontalSpacing * 0.5f);
 
             for (int i = 0; i < orderedPlayers.Count; i++)
@@ -633,7 +806,13 @@ public static partial class OtherPlayersOverlayPatch
 
                 icon.RootRect.anchoredPosition = nodeAnchoredPosition + new Vector2(startX + i * horizontalSpacing, baseY);
                 icon.Label.text = ResolveDisplayName(p.PlayerId, p.PlayerName);
-                icon.Image.color = p.IsHost ? new Color(1f, 0.95f, 0.4f, 1f) : Color.white;
+                bool isSelf = !string.IsNullOrWhiteSpace(_selfPlayerId) && string.Equals(p.PlayerId, _selfPlayerId, StringComparison.Ordinal);
+                Plugin.Logger?.LogInfo($"[NetworkPlugin] MapIcon playerId={p.PlayerId}, _selfPlayerId={_selfPlayerId ?? "<null>"}, isSelf={isSelf}, CharacterId={p.CharacterId ?? "<null>"}, sprite={(icon.Image.sprite?.name ?? "<null>")}, rootSize=({icon.RootRect.sizeDelta.x},{icon.RootRect.sizeDelta.y}), finalPos=({icon.RootRect.anchoredPosition.x:F1},{icon.RootRect.anchoredPosition.y:F1}), nodePos=({nodeAnchoredPosition.x:F1},{nodeAnchoredPosition.y:F1}), spacing=({startX + i * horizontalSpacing:F1},{baseY}), group=({x},{y})");
+                icon.Image.color = isSelf ? Color.white : (p.IsHost ? new Color(1f, 0.95f, 0.4f, 1f) : Color.white);
+                if (isSelf)
+                {
+                    icon.Label.text = "[我] " + icon.Label.text;
+                }
             }
         }
 
@@ -801,10 +980,35 @@ public static partial class OtherPlayersOverlayPatch
     {
         if (_mapIcons.TryGetValue(player.PlayerId, out MapIconUi ui) && ui?.Root != null)
         {
-            if (!string.Equals(ui.CharacterId, player.CharacterId, StringComparison.OrdinalIgnoreCase))
+            Sprite sprite = TryGetAvatarSpriteForPlayer(player);
+            // 本地玩家强制兜底：如果 sprite 可疑（1x1 或 null），直接复制其他玩家已加载的有效 sprite
+            if (!string.IsNullOrWhiteSpace(_selfPlayerId) && string.Equals(player.PlayerId, _selfPlayerId, StringComparison.Ordinal))
             {
-                SetMapIconSprite(ui, player.CharacterId);
+                if (sprite == null || (sprite.texture != null && sprite.texture.width <= 1 && sprite.texture.height <= 1))
+                {
+                    Plugin.Logger?.LogWarning($"[NetworkPlugin] Self player cached icon sprite suspicious (null or 1x1), forcing copy from others.");
+                    sprite = null;
+                }
+                if (sprite == null)
+                {
+                    foreach (var kvp in _mapIcons)
+                    {
+                        if (kvp.Key != _selfPlayerId && kvp.Value?.Image?.sprite != null && kvp.Value.Image.sprite != GetWhiteSprite())
+                        {
+                            Sprite otherSprite = kvp.Value.Image.sprite;
+                            Plugin.Logger?.LogWarning($"[NetworkPlugin] Self player cached icon copying sprite from {kvp.Key}, sprite={otherSprite.name}, tex={otherSprite.texture?.width}x{otherSprite.texture?.height}");
+                            sprite = otherSprite;
+                            break;
+                        }
+                    }
+                }
+                if (sprite == null) sprite = TryGetAvatarSprite("Koishi");
+                if (sprite == null)
+                {
+                    Debug.LogWarning($"[NetworkPlugin] Self player avatar failed: CharacterId={player.CharacterId}, fallback={GetFallbackCharacterId()}, Koishi also failed.");
+                }
             }
+            ui.Image.sprite = sprite ?? GetWhiteSprite();
             return ui;
         }
 
@@ -829,6 +1033,36 @@ public static partial class OtherPlayersOverlayPatch
         avatar.raycastTarget = false;
         avatar.preserveAspect = true;
 
+        Sprite avatarSprite = TryGetAvatarSpriteForPlayer(player);
+        // 本地玩家强制兜底：如果 sprite 可疑（1x1 或 null），直接复制其他玩家已加载的有效 sprite
+        if (!string.IsNullOrWhiteSpace(_selfPlayerId) && string.Equals(player.PlayerId, _selfPlayerId, StringComparison.Ordinal))
+        {
+            if (avatarSprite == null || (avatarSprite.texture != null && avatarSprite.texture.width <= 1 && avatarSprite.texture.height <= 1))
+            {
+                Plugin.Logger?.LogWarning($"[NetworkPlugin] Self player new icon sprite suspicious (null or 1x1), forcing copy from others.");
+                avatarSprite = null;
+            }
+            if (avatarSprite == null)
+            {
+                foreach (var kvp in _mapIcons)
+                {
+                    if (kvp.Key != _selfPlayerId && kvp.Value?.Image?.sprite != null && kvp.Value.Image.sprite != GetWhiteSprite())
+                    {
+                        Sprite otherSprite = kvp.Value.Image.sprite;
+                        Plugin.Logger?.LogWarning($"[NetworkPlugin] Self player new icon copying sprite from {kvp.Key}, sprite={otherSprite.name}, tex={otherSprite.texture?.width}x{otherSprite.texture?.height}");
+                        avatarSprite = otherSprite;
+                        break;
+                    }
+                }
+            }
+            if (avatarSprite == null) avatarSprite = TryGetAvatarSprite("Koishi");
+            if (avatarSprite == null)
+            {
+                Debug.LogWarning($"[NetworkPlugin] Self player avatar failed: CharacterId={player.CharacterId}, fallback={GetFallbackCharacterId()}, Koishi also failed.");
+            }
+        }
+        avatar.sprite = avatarSprite ?? GetWhiteSprite();
+
         TextMeshProUGUI label = CreateTmpText(root.transform, "Name", player.PlayerName ?? player.PlayerId, 14f);
         label.text = ResolveDisplayName(player.PlayerId, player.PlayerName);
         label.alignment = TextAlignmentOptions.Center;
@@ -845,18 +1079,33 @@ public static partial class OtherPlayersOverlayPatch
             RootRect = rootRect,
             Image = avatar,
             Label = label,
-            CharacterId = null,
+            CharacterId = player.CharacterId,
         };
 
         _mapIcons[player.PlayerId] = icon;
-        SetMapIconSprite(icon, player.CharacterId);
         return icon;
     }
 
     private static void SetMapIconSprite(MapIconUi icon, string characterId)
     {
-        icon.CharacterId = characterId;
-        icon.Image.sprite = TryGetAvatarSprite(characterId) ?? GetWhiteSprite();
+        string effectiveId = characterId;
+        if (string.IsNullOrWhiteSpace(effectiveId))
+        {
+            effectiveId = GetFallbackCharacterId();
+        }
+
+        Sprite sprite = TryGetAvatarSprite(effectiveId);
+        if (sprite == null)
+        {
+            string fallback = GetFallbackCharacterId();
+            if (!string.Equals(effectiveId, fallback, StringComparison.OrdinalIgnoreCase))
+            {
+                sprite = TryGetAvatarSprite(fallback);
+            }
+        }
+
+        icon.CharacterId = effectiveId;
+        icon.Image.sprite = sprite ?? GetWhiteSprite();
     }
 
     private static Sprite TryGetAvatarSprite(string characterId)
@@ -954,7 +1203,18 @@ public static partial class OtherPlayersOverlayPatch
 
         try
         {
-            return ResourcesHelper.LoadCharacterAvatarSprite(characterId);
+            Sprite sprite = ResourcesHelper.LoadCharacterAvatarSprite(characterId);
+            if (sprite == null)
+            {
+                return null;
+            }
+            // 过滤掉 Addressables 可能返回的 1x1 占位符（视为加载失败）
+            if (sprite.texture != null && sprite.texture.width <= 1 && sprite.texture.height <= 1)
+            {
+                Plugin.Logger?.LogWarning($"[NetworkPlugin] Avatar loaded but is 1x1 placeholder: {characterId}");
+                return null;
+            }
+            return sprite;
         }
         catch
         {

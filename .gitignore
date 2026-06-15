@@ -167,3 +167,5 @@ simplesolution.sln           # Visual Studio解决方案文件（可能包含用
 .github/hooks/play-completion-audio.json
 .github/hooks/play-completion-audio.ps1
 layout-preview.html
+handoffs
+*.html

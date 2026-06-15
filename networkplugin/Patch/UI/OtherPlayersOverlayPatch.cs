@@ -247,9 +247,9 @@ public static partial class OtherPlayersOverlayPatch
         {
             UpdateMapIcons(__instance);
         }
-        catch
+        catch (Exception ex)
         {
-            // 忽略：避免影响 UI
+            Plugin.Logger?.LogError($"[NetworkPlugin] UpdateMapIcons exception: {ex}");
         }
     }
 
@@ -1957,6 +1957,12 @@ public static partial class OtherPlayersOverlayPatch
     /// <summary>缓存的白色纹理</summary>
     private static Texture2D _whiteTexture;
 
+    /// <summary>缓存的红色Sprite（用于本地玩家诊断）</summary>
+    private static Sprite _redSprite;
+
+    /// <summary>缓存的红色纹理</summary>
+    private static Texture2D _redTexture;
+
     /// <summary>
     /// 获取白色Sprite（用作背景和按钮图像）
     /// 首次调用时创建，之后从缓存返回
@@ -1979,6 +1985,21 @@ public static partial class OtherPlayersOverlayPatch
         // 从纹理创建Sprite
         _whiteSprite = Sprite.Create(_whiteTexture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
         return _whiteSprite;
+    }
+
+    private static Sprite GetRedSprite()
+    {
+        if (_redSprite != null)
+        {
+            return _redSprite;
+        }
+
+        _redTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+        _redTexture.SetPixel(0, 0, Color.red);
+        _redTexture.Apply(false, true);
+
+        _redSprite = Sprite.Create(_redTexture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
+        return _redSprite;
     }
 
     private static Sprite GetCircleMaskSprite()
