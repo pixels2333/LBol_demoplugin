@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "type": "command",
+        "windows": "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"& '.github\\hooks\\auto-deploy.ps1' -WorkspacePath 'd:\\programme\\LBol_demoplugin'\"",
+        "timeout": 60,
+        "cwd": "d:\\programme\\LBol_demoplugin"
+      }
+    ]
+  }
+}
