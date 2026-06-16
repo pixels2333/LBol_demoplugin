@@ -407,6 +407,17 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		tmp.fontSizeMin = 1f;
 		tmp.fontSizeMax = tmp.fontSize;
 
+		// 修正克隆来的 LocalizedText 缓存以支持多语言样式与自适应缩放，同时防止其覆写错误的字号与文本
+		var localized = tmp.GetComponent<LBoL.Presentation.I10N.LocalizedText>();
+		if (localized != null)
+		{
+			var type = typeof(LBoL.Presentation.I10N.LocalizedText);
+			type.GetField("key", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?
+				.SetValue(localized, null);
+			type.GetField("_originSize", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?
+				.SetValue(localized, tmp.fontSize);
+		}
+
 		Color baseColor = player.CanResurrect
 			? new Color(0.92f, 0.92f, 0.92f, 1f)
 			: new Color(0.5f, 0.5f, 0.5f, 0.6f);

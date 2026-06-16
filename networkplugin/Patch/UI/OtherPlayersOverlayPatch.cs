@@ -1957,11 +1957,11 @@ public static partial class OtherPlayersOverlayPatch
     /// <summary>缓存的白色纹理</summary>
     private static Texture2D _whiteTexture;
 
-    /// <summary>缓存的红色Sprite（用于本地玩家诊断）</summary>
-    private static Sprite _redSprite;
+    /// <summary>缓存的圆形边框Sprite</summary>
+    private static Sprite _circleBorderSprite;
 
-    /// <summary>缓存的红色纹理</summary>
-    private static Texture2D _redTexture;
+    /// <summary>缓存的圆形边框纹理</summary>
+    private static Texture2D _circleBorderTexture;
 
     /// <summary>
     /// 获取白色Sprite（用作背景和按钮图像）
@@ -1987,19 +1987,34 @@ public static partial class OtherPlayersOverlayPatch
         return _whiteSprite;
     }
 
-    private static Sprite GetRedSprite()
+    private static Sprite GetCircleBorderSprite()
     {
-        if (_redSprite != null)
+        if (_circleBorderSprite != null)
         {
-            return _redSprite;
+            return _circleBorderSprite;
         }
 
-        _redTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
-        _redTexture.SetPixel(0, 0, Color.red);
-        _redTexture.Apply(false, true);
+        const int size = 128;
+        const float radius = (size - 1) * 0.5f;
+        const float center = radius;
+        const float innerRadius = radius - 4f; // 边框宽度为 4 像素
 
-        _redSprite = Sprite.Create(_redTexture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
-        return _redSprite;
+        _circleBorderTexture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float dx = x - center;
+                float dy = y - center;
+                float distSq = dx * dx + dy * dy;
+                bool inside = distSq <= radius * radius && distSq >= innerRadius * innerRadius;
+                _circleBorderTexture.SetPixel(x, y, inside ? Color.white : Color.clear);
+            }
+        }
+
+        _circleBorderTexture.Apply(false, true);
+        _circleBorderSprite = Sprite.Create(_circleBorderTexture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
+        return _circleBorderSprite;
     }
 
     private static Sprite GetCircleMaskSprite()

@@ -652,6 +652,11 @@ public static partial class OtherPlayersOverlayPatch
         }
 
         INetworkClient client = TryGetNetworkClient();
+
+        // 先同步 _selfPlayerId，确保 EnsureSelfPlayer_NoThrow 使用正确的 ID
+        string tracked = NetworkIdentityTracker.GetSelfPlayerId();
+        _selfPlayerId = !string.IsNullOrWhiteSpace(tracked) ? tracked : "__local__";
+
         EnsureVirtualAiDefaultPlayer_NoThrow();
         EnsureSelfPlayer_NoThrow();
         if (client == null || !client.IsConnected)
@@ -706,11 +711,6 @@ public static partial class OtherPlayersOverlayPatch
             _mapNodeIconsRoots.Clear();
         }
 
-        // 单机模式下可能没有收到 Welcome 消息，需要兜底设置 _selfPlayerId
-        // 优先使用 NetworkIdentityTracker 的实时状态，已断开时回退到 __local__
-        string tracked = NetworkIdentityTracker.GetSelfPlayerId();
-        _selfPlayerId = !string.IsNullOrWhiteSpace(tracked) ? tracked : "__local__";
-
         List<PlayerSummary> players;
         lock (_syncLock)
         {
@@ -727,7 +727,24 @@ public static partial class OtherPlayersOverlayPatch
             int selfX = -1;
             int selfY = -1;
             string selfLocationName = null;
-            if (TryGetSelfLocation(out selfStage, out selfX, out selfY, out selfLocationName) && selfX >= 0 && selfY >= 0)
+            // 兜底：直接用当前访问节点
+            try
+            {
+                var run = GameStateUtils.GetCurrentGameRun();
+                var node = run?.CurrentMap?.VisitingNode;
+                if (node != null)
+                {
+                    selfStage = node.Act;
+                    selfX = node.X;
+                    selfY = node.Y;
+                    selfLocationName = node.StationType.ToString();
+                }
+            }
+            catch
+            {
+            }
+
+            if (selfX >= 0 && selfY >= 0)
             {
                 players.Add(new PlayerSummary
                 {
@@ -782,9 +799,9 @@ public static partial class OtherPlayersOverlayPatch
                 .OrderByDescending(p => p.IsHost)
                 .ThenBy(p => p.PlayerName, StringComparer.OrdinalIgnoreCase)];
 
-            Plugin.Logger?.LogInfo($"[NetworkPlugin] Group ({x},{y}): {orderedPlayers.Count} players, nodePos=({nodeAnchoredPosition.x:F1},{nodeAnchoredPosition.y:F1})");
+
             const float baseY = 0f;
-            const float horizontalSpacing = 110f;
+            const float horizontalSpacing = 130f;
             float startX = -((orderedPlayers.Count - 1) * horizontalSpacing * 0.5f);
 
             for (int i = 0; i < orderedPlayers.Count; i++)
@@ -807,7 +824,7 @@ public static partial class OtherPlayersOverlayPatch
                 icon.RootRect.anchoredPosition = nodeAnchoredPosition + new Vector2(startX + i * horizontalSpacing, baseY);
                 icon.Label.text = ResolveDisplayName(p.PlayerId, p.PlayerName);
                 bool isSelf = !string.IsNullOrWhiteSpace(_selfPlayerId) && string.Equals(p.PlayerId, _selfPlayerId, StringComparison.Ordinal);
-                Plugin.Logger?.LogInfo($"[NetworkPlugin] MapIcon playerId={p.PlayerId}, _selfPlayerId={_selfPlayerId ?? "<null>"}, isSelf={isSelf}, CharacterId={p.CharacterId ?? "<null>"}, sprite={(icon.Image.sprite?.name ?? "<null>")}, rootSize=({icon.RootRect.sizeDelta.x},{icon.RootRect.sizeDelta.y}), finalPos=({icon.RootRect.anchoredPosition.x:F1},{icon.RootRect.anchoredPosition.y:F1}), nodePos=({nodeAnchoredPosition.x:F1},{nodeAnchoredPosition.y:F1}), spacing=({startX + i * horizontalSpacing:F1},{baseY}), group=({x},{y})");
+
                 icon.Image.color = isSelf ? Color.white : (p.IsHost ? new Color(1f, 0.95f, 0.4f, 1f) : Color.white);
                 if (isSelf)
                 {
@@ -978,11 +995,12 @@ public static partial class OtherPlayersOverlayPatch
 
     private static MapIconUi EnsureMapIcon(PlayerSummary player)
     {
+        bool isSelf = !string.IsNullOrWhiteSpace(_selfPlayerId) && string.Equals(player.PlayerId, _selfPlayerId, StringComparison.Ordinal);
         if (_mapIcons.TryGetValue(player.PlayerId, out MapIconUi ui) && ui?.Root != null)
         {
             Sprite sprite = TryGetAvatarSpriteForPlayer(player);
             // 本地玩家强制兜底：如果 sprite 可疑（1x1 或 null），直接复制其他玩家已加载的有效 sprite
-            if (!string.IsNullOrWhiteSpace(_selfPlayerId) && string.Equals(player.PlayerId, _selfPlayerId, StringComparison.Ordinal))
+            if (isSelf)
             {
                 if (sprite == null || (sprite.texture != null && sprite.texture.width <= 1 && sprite.texture.height <= 1))
                 {
@@ -1009,25 +1027,56 @@ public static partial class OtherPlayersOverlayPatch
                 }
             }
             ui.Image.sprite = sprite ?? GetWhiteSprite();
+            // 重置缓存 icon 的尺寸/锚点，避免历史脏数据导致对齐不一致
+            ui.RootRect.sizeDelta = new Vector2(100f, 140f);
+            ui.RootRect.anchorMin = new Vector2(0.5f, 0.5f);
+            ui.RootRect.anchorMax = new Vector2(0.5f, 0.5f);
+            ui.RootRect.pivot = new Vector2(0.5f, 0.5f);
+            if (ui.BorderImage != null)
+            {
+                ui.BorderImage.color = isSelf ? new Color(1f, 0.84f, 0f, 1f) : Color.white;
+            }
             return ui;
         }
 
-        GameObject root = new($"RemoteIcon_{player.PlayerId}");
+        string safeId = string.IsNullOrWhiteSpace(player.PlayerId) ? "unknown" : player.PlayerId.Replace("/", "_").Replace("\\", "_");
+        GameObject root = new($"RemoteIcon_{safeId}");
         root.hideFlags = HideFlags.None;
         root.transform.SetParent(null, false);
 
         RectTransform rootRect = root.AddComponent<RectTransform>();
-        rootRect.sizeDelta = new Vector2(120f, 160f);
+        rootRect.sizeDelta = new Vector2(100f, 140f);
 
-        GameObject avatarGo = new("Avatar");
-        avatarGo.transform.SetParent(root.transform, false);
+        // 创建 AvatarMask 节点
+        GameObject maskGo = new("AvatarMask");
+        maskGo.transform.SetParent(root.transform, false);
+
+        RectTransform maskRect = maskGo.AddComponent<RectTransform>();
+        maskRect.anchorMin = new Vector2(0.5f, 0.5f);
+        maskRect.anchorMax = new Vector2(0.5f, 0.5f);
+        maskRect.pivot = new Vector2(0.5f, 0.5f);
+        maskRect.anchoredPosition = new Vector2(0f, 10f);
+        maskRect.sizeDelta = new Vector2(100f, 100f);
+
+        Image maskImage = maskGo.AddComponent<Image>();
+        maskImage.sprite = GetCircleMaskSprite();
+        maskImage.color = Color.white;
+        maskImage.raycastTarget = false;
+        maskImage.preserveAspect = true;
+
+        Mask mask = maskGo.AddComponent<Mask>();
+        mask.showMaskGraphic = false;
+
+        // 创建 AvatarImage 节点（放入 Mask 下面）
+        GameObject avatarGo = new("AvatarImage");
+        avatarGo.transform.SetParent(maskGo.transform, false);
 
         RectTransform avatarRect = avatarGo.AddComponent<RectTransform>();
-        avatarRect.anchorMin = new Vector2(0f, 1f);
-        avatarRect.anchorMax = new Vector2(1f, 1f);
-        avatarRect.pivot = new Vector2(0.5f, 1f);
+        avatarRect.anchorMin = new Vector2(0.5f, 0.5f);
+        avatarRect.anchorMax = new Vector2(0.5f, 0.5f);
+        avatarRect.pivot = new Vector2(0.5f, 0.5f);
         avatarRect.anchoredPosition = Vector2.zero;
-        avatarRect.sizeDelta = new Vector2(0f, 120f);
+        avatarRect.sizeDelta = new Vector2(100f, 100f);
 
         Image avatar = avatarGo.AddComponent<Image>();
         avatar.raycastTarget = false;
@@ -1035,7 +1084,7 @@ public static partial class OtherPlayersOverlayPatch
 
         Sprite avatarSprite = TryGetAvatarSpriteForPlayer(player);
         // 本地玩家强制兜底：如果 sprite 可疑（1x1 或 null），直接复制其他玩家已加载的有效 sprite
-        if (!string.IsNullOrWhiteSpace(_selfPlayerId) && string.Equals(player.PlayerId, _selfPlayerId, StringComparison.Ordinal))
+        if (isSelf)
         {
             if (avatarSprite == null || (avatarSprite.texture != null && avatarSprite.texture.width <= 1 && avatarSprite.texture.height <= 1))
             {
@@ -1063,6 +1112,23 @@ public static partial class OtherPlayersOverlayPatch
         }
         avatar.sprite = avatarSprite ?? GetWhiteSprite();
 
+        // 创建 Border 节点（放在 root 下，与 mask 节点平级，使其覆盖在头像之上）
+        GameObject borderGo = new("Border");
+        borderGo.transform.SetParent(root.transform, false);
+
+        RectTransform borderRect = borderGo.AddComponent<RectTransform>();
+        borderRect.anchorMin = new Vector2(0.5f, 0.5f);
+        borderRect.anchorMax = new Vector2(0.5f, 0.5f);
+        borderRect.pivot = new Vector2(0.5f, 0.5f);
+        borderRect.anchoredPosition = new Vector2(0f, 10f);
+        borderRect.sizeDelta = new Vector2(100f, 100f);
+
+        Image borderImage = borderGo.AddComponent<Image>();
+        borderImage.sprite = GetCircleBorderSprite();
+        borderImage.color = isSelf ? new Color(1f, 0.84f, 0f, 1f) : Color.white;
+        borderImage.raycastTarget = false;
+        borderImage.preserveAspect = true;
+
         TextMeshProUGUI label = CreateTmpText(root.transform, "Name", player.PlayerName ?? player.PlayerId, 14f);
         label.text = ResolveDisplayName(player.PlayerId, player.PlayerName);
         label.alignment = TextAlignmentOptions.Center;
@@ -1071,13 +1137,14 @@ public static partial class OtherPlayersOverlayPatch
         labelRect.anchorMax = new Vector2(1f, 0f);
         labelRect.pivot = new Vector2(0.5f, 0f);
         labelRect.anchoredPosition = Vector2.zero;
-        labelRect.sizeDelta = new Vector2(0f, 18f);
+        labelRect.sizeDelta = new Vector2(0f, 16f);
 
         MapIconUi icon = new MapIconUi
         {
             Root = root,
             RootRect = rootRect,
             Image = avatar,
+            BorderImage = borderImage,
             Label = label,
             CharacterId = player.CharacterId,
         };
@@ -1216,8 +1283,9 @@ public static partial class OtherPlayersOverlayPatch
             }
             return sprite;
         }
-        catch
+        catch (Exception ex)
         {
+            Plugin.Logger?.LogError($"[NetworkPlugin] TryLoadAvatarSpriteNoThrow exception for characterId='{characterId}': {ex}");
             return null;
         }
     }
@@ -1395,6 +1463,7 @@ public static partial class OtherPlayersOverlayPatch
         public GameObject Root { get; set; }
         public RectTransform RootRect { get; set; }
         public Image Image { get; set; }
+        public Image BorderImage { get; set; }
         public TextMeshProUGUI Label { get; set; }
         public string CharacterId { get; set; }
     }

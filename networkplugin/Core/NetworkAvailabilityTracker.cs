@@ -30,7 +30,7 @@ public sealed class NetworkAvailabilityTracker
     /// </summary>
     /// <param name="networkClient">网络客户端实例</param>
     /// <param name="logger">日志记录器</param>
-    public NetworkAvailabilityTracker(INetworkClient networkClient, ManualLogSource logger)
+    public NetworkAvailabilityTracker(INetworkClient networkClient, ManualLogSource logger = null)
     {
         _networkClient = networkClient;
         _logger = logger;
