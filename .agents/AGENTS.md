@@ -92,7 +92,8 @@ powershell -ExecutionPolicy Bypass -File copy_networkplugin_dll.ps1
 | 10 | `_selfPlayerId` 重置时机太晚 | `EnsureSelfPlayer` 使用旧 ID，导致找不到本地玩家 | 将 ID 同步移到注入函数之前 | 状态字段必须先同步再使用 |
 | 11 | 本地玩家位置兜底链路太长 | 兜底函数依赖可能失败的中间查找 | fallback 直接使用 `CurrentMap.VisitingNode` | 兜底逻辑应该最直接、最少依赖 |
 | 13 | 居中锚定后 `sizeDelta.x = 0` | 头像 Image 宽度为 0，完全不可见 | 改为 `sizeDelta = (100, 100)` | 居中锚定下两轴 sizeDelta 都必须非零 |
-| 14 | 诊断代码未清理 | `GetRedSprite()`、详细日志等残留 | 待清理 | 功能验证后立即清理诊断代码 |
+| 14 | 诊断代码未清理 | `GetRedSprite()`、详细位置日志等残留较多 | 已全部清理，高频 Log 移出，保留关键的 LogError 异常捕获 | 功能验证稳定后应及时清理调试日志，避免日志噪音 |
+| 15 | 地图头像无圆形遮罩与边框 | 头像显示为普通矩形框，没有与战斗界面保持圆角和精美边框的一致性 | 引入 `AvatarMask` (使用圆形遮罩) + `Border` 边框，本地玩家金色边框，远程玩家白色边框 | 差异化 UI 需要统一考虑层级与风格对齐 |
 
 > 完整过程记录见 [handoffs/handoff-local-player-avatar.md](../handoffs/handoff-local-player-avatar.md)
 
@@ -110,14 +111,17 @@ UpdateMapIcons()
         ├── EnsureMapIcon(player)
         │     ├── TryGetAvatarSpriteForPlayer()
         │     ├── 本地玩家 fallback: 复制其他 icon → Koishi → WhiteSprite
-        │     └── Root (100x140) + Avatar Image (100x100，居中) + Label
+        │     └── Root (100x140) 
+        │           ├── AvatarMask (100x100，圆形遮罩) -> AvatarImage (100x100)
+        │           ├── Border (100x100，圆形边框，金色/白色)
+        │           └── Label (名字, isSelf 时带 "[我]" 前缀)
         └── anchoredPosition = nodePos + (startX + i * spacing, 0)
 ```
 
 ### 待办事项
 
-- [ ] 复制 DLL 并重启游戏，验证头像显示和对齐
-- [ ] 若本地玩家仍显示白色方块，诊断 `LoadCharacterAvatarSprite` 路径（`ModelName` 值、Addressables 路径）
-- [ ] 获取 BepInEx 日志中 `MapIcon`/`Group` 行，确认头像位置计算正确
-- [ ] 清理诊断代码：`GetRedSprite()`、`_redSprite`/`_redTexture`、详细位置日志、`catch (Exception ex)`
-- [ ] 参考远程玩家头像模板（圆角 mask、边框）优化本地玩家图标样式
+- [x] 复制 DLL 并重启游戏，验证头像显示和对齐
+- [x] 若本地玩家仍显示白色方块，诊断 `LoadCharacterAvatarSprite` 路径（`ModelName` 值、Addressables 路径）
+- [x] 获取 BepInEx 日志中 `MapIcon`/`Group` 行，确认头像位置计算正确
+- [x] 清理诊断代码：`GetRedSprite()`、`_redSprite`/`_redTexture`、详细位置日志、`catch (Exception ex)`
+- [x] 参考远程玩家头像模板（圆角 mask、边框）优化本地玩家/所有玩家图标样式

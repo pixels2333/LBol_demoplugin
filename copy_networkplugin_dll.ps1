@@ -145,3 +145,4 @@ Write-Host "Copied:" -ForegroundColor Green
 Write-Host "  From: $sourceFull"
 Write-Host "  To:   $destFile"gcmp
 
+pause

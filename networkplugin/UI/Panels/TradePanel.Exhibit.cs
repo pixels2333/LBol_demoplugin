@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -245,6 +245,19 @@ public sealed partial class TradePanel
             }
 
             _exhibitPickerRoot = scaffold.Root;
+
+            // 调整滚动区域宽度为 1100 像素，使其与标题视觉宽度更契合 (方案 B)
+            if (scaffold.ScrollRect is not null)
+            {
+                RectTransform scrollRt = scaffold.ScrollRect.GetComponent<RectTransform>();
+                if (scrollRt is not null)
+                {
+                    scrollRt.anchorMin = new Vector2(0.5f, scrollRt.anchorMin.y);
+                    scrollRt.anchorMax = new Vector2(0.5f, scrollRt.anchorMax.y);
+                    scrollRt.anchoredPosition = new Vector2(0f, scrollRt.anchoredPosition.y);
+                    scrollRt.sizeDelta = new Vector2(1100f, scrollRt.sizeDelta.y);
+                }
+            }
 
             if (scaffold.ConfirmButton is not null)
             {
