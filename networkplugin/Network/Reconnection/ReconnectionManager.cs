@@ -303,6 +303,7 @@ public sealed class ReconnectionManager : IDisposable
                     }
                     catch
                     {
+                        // TODO: 应记录异常详情，避免静默失败。
                         // ignored
                     }
 
@@ -314,11 +315,13 @@ public sealed class ReconnectionManager : IDisposable
                     }
                     catch
                     {
+                        // TODO: 应记录异常详情，避免静默失败。
                         // ignored
                     }
                 }
                 catch
                 {
+                    // TODO: 应记录异常详情，避免静默失败。
                     // ignored
                 }
 
@@ -439,6 +442,7 @@ public sealed class ReconnectionManager : IDisposable
             }
             catch
             {
+                // TODO: 应记录异常详情，避免静默失败。
                 // ignored
             }
 
@@ -466,6 +470,7 @@ public sealed class ReconnectionManager : IDisposable
             }
             catch
             {
+                // TODO: 应记录异常详情，避免静默失败。
                 // ignored
             }
 
@@ -480,6 +485,7 @@ public sealed class ReconnectionManager : IDisposable
             }
             catch
             {
+                // TODO: 应记录异常详情，避免静默失败。
                 // ignored
             }
 
@@ -512,11 +518,13 @@ public sealed class ReconnectionManager : IDisposable
             }
             catch
             {
+                // TODO: 应记录异常详情，避免静默失败。
                 // ignored
             }
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
     }
@@ -718,6 +726,7 @@ public sealed class ReconnectionManager : IDisposable
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
 
@@ -876,6 +885,7 @@ public sealed class ReconnectionManager : IDisposable
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
 
@@ -1021,6 +1031,7 @@ public sealed class ReconnectionManager : IDisposable
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
 
@@ -1090,6 +1101,7 @@ public sealed class ReconnectionManager : IDisposable
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
     }

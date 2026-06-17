@@ -231,6 +231,7 @@ public static partial class OtherPlayersOverlayPatch
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // 忽略：避免影响主循环
         }
     }
@@ -249,6 +250,7 @@ public static partial class OtherPlayersOverlayPatch
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // 忽略：避免影响 UI
         }
     }
@@ -450,6 +452,7 @@ public static partial class OtherPlayersOverlayPatch
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
 
@@ -461,6 +464,7 @@ public static partial class OtherPlayersOverlayPatch
             }
             catch
             {
+                // TODO: 应记录异常详情，避免静默失败。
                 // ignored
             }
         }
@@ -538,6 +542,7 @@ public static partial class OtherPlayersOverlayPatch
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
     }
@@ -567,6 +572,7 @@ public static partial class OtherPlayersOverlayPatch
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
 
@@ -846,6 +852,7 @@ public static partial class OtherPlayersOverlayPatch
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
 
@@ -1057,6 +1064,7 @@ public static partial class OtherPlayersOverlayPatch
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
 
@@ -1566,6 +1574,7 @@ public static partial class OtherPlayersOverlayPatch
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
     }
@@ -1713,6 +1722,7 @@ public static partial class OtherPlayersOverlayPatch
             }
             catch
             {
+                // TODO: 应记录异常详情，避免静默失败。
                 // ignored
             }
         }
@@ -1725,6 +1735,7 @@ public static partial class OtherPlayersOverlayPatch
             }
             catch
             {
+                // TODO: 应记录异常详情，避免静默失败。
                 // ignored
             }
         }

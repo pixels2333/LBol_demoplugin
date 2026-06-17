@@ -185,6 +185,7 @@ public class Plugin : BaseUnityPlugin
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
     }
@@ -363,6 +364,7 @@ public class Plugin : BaseUnityPlugin
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
 
@@ -385,6 +387,7 @@ public class Plugin : BaseUnityPlugin
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
     }
@@ -455,6 +458,7 @@ public class Plugin : BaseUnityPlugin
             }
             catch
             {
+                // TODO: 应记录异常详情，避免静默失败。
                 // ignored
             }
         }

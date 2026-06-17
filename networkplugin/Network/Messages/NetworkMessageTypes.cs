@@ -163,9 +163,9 @@ namespace NetworkPlugin.Network.Messages
         /// </summary>
         public const string OnCardRemove = "OnCardRemove";
 
-/// <summary>远程玩家使用卡牌事件</summary>
-    public const string OnRemoteCardUse = "OnRemoteCardUse";
-    /// <summary>远程玩家卡牌结算完成事件</summary>
+        /// <summary>远程玩家使用卡牌事件</summary>
+        public const string OnRemoteCardUse = "OnRemoteCardUse";
+        /// <summary>远程玩家卡牌结算完成事件</summary>
         public const string OnRemoteCardResolved = "OnRemoteCardResolved";
 
         // === 法力/能量同步消息 ===
@@ -232,11 +232,11 @@ namespace NetworkPlugin.Network.Messages
         /// </summary>
         public const string OnStatusEffectRemoved = "OnStatusEffectRemoved";
 
-/// <summary>心境效果循环开始事件</summary>
-    public const string OnMoodEffectLoopStarted = "OnMoodEffectLoopStarted";
-    /// <summary>心境效果循环结束事件</summary>
-    public const string OnMoodEffectLoopEnded = "OnMoodEffectLoopEnded";
-    /// <summary>心境效果状态同步事件</summary>
+        /// <summary>心境效果循环开始事件</summary>
+        public const string OnMoodEffectLoopStarted = "OnMoodEffectLoopStarted";
+        /// <summary>心境效果循环结束事件</summary>
+        public const string OnMoodEffectLoopEnded = "OnMoodEffectLoopEnded";
+        /// <summary>心境效果状态同步事件</summary>
         public const string OnMoodEffectStateSync = "OnMoodEffectStateSync";
 
         // === 玩家状态同步消息 ===
@@ -300,11 +300,11 @@ namespace NetworkPlugin.Network.Messages
         /// </summary>
         public const string OnTurnEnd = "OnTurnEnd";
 
-/// <summary>结束回合请求</summary>
-    public const string EndTurnRequest = "EndTurnRequest";
-    /// <summary>结束回合状态</summary>
-    public const string EndTurnStatus = "EndTurnStatus";
-    /// <summary>结束回合确认</summary>
+        /// <summary>结束回合请求</summary>
+        public const string EndTurnRequest = "EndTurnRequest";
+        /// <summary>结束回合状态</summary>
+        public const string EndTurnStatus = "EndTurnStatus";
+        /// <summary>结束回合确认</summary>
         public const string EndTurnConfirm = "EndTurnConfirm";
 
         /// <summary>
@@ -794,71 +794,95 @@ namespace NetworkPlugin.Network.Messages
         /// </summary>
         public enum GameEventRoute
         {
+            /// <summary>客户端视角：仅接收与客户端自身相关的游戏事件。</summary>
             Client,
+            /// <summary>主机/服务器视角：处理所有游戏事件的路由和广播。</summary>
             HostServer,
+            /// <summary>中继服务器视角：转发游戏事件，不生成权威数据。</summary>
             Relay,
         }
 
+        /// <summary>
+        /// 显式声明的游戏事件集合。<br/>
+        /// 这些消息类型无论路由场景如何，均被视为 GameEvent 并进入游戏事件通道处理。<br/>
+        /// 包括：回合控制事件、战斗事件、卡牌状态变化、Gap 休息点事件、聊天消息等。
+        /// </summary>
         private static readonly HashSet<string> ExplicitGameEvents = new(StringComparer.Ordinal)
         {
-            EndTurnRequest,
-            EndTurnStatus,
-            EndTurnConfirm,
-            BattleEnemyIntentChanged,
-            BattleEnemyStateChanged,
-            BattleEnemySpawned,
-            EnemyStateUpdate,
-            EnemySpawned,
-            CardStateChanged,
-            GapOptionsUpgradeSelected,
-            GapOptionsRemoveCard,
-            GapStationEntered,
-            DrinkTeaStarted,
-            DrinkTeaCompleted,
-            ChatMessage,
-        };
-
-        private static readonly HashSet<string> ClientOnlyGameEvents = new(StringComparer.Ordinal)
-        {
-            StateSyncResponse,
-            FullStateSyncRequest,
-            FullStateSyncResponse,
-            RoomStateRequest,
-            RoomStateResponse,
-            RoomStateUpload,
-            RoomStateBroadcast,
-            MidGameJoinRequest,
-            MidGameJoinResponse,
-            Welcome,
-            PlayerJoined,
-            PlayerLeft,
-            PlayerListUpdate,
-            HostChanged,
-        };
-
-        private static readonly HashSet<string> HostServerOnlyGameEvents = new(StringComparer.Ordinal)
-        {
-            StateSyncRequest,
-            FullStateSyncRequest,
-            FullStateSyncResponse,
-            RoomStateRequest,
-            RoomStateResponse,
-            RoomStateUpload,
-            RoomStateBroadcast,
-        };
-
-        private static readonly HashSet<string> RelayOnlyGameEvents = new(StringComparer.Ordinal)
-        {
-            StateSyncRequest,
-            RoomStateBroadcast,
+            EndTurnRequest,           // 结束回合请求
+            EndTurnStatus,            // 结束回合状态
+            EndTurnConfirm,           // 结束回合确认
+            BattleEnemyIntentChanged, // 敌人意图变更
+            BattleEnemyStateChanged,  // 敌人状态变更
+            BattleEnemySpawned,       // 敌人生成
+            EnemyStateUpdate,         // 敌人状态更新（兼容桥事件）
+            EnemySpawned,             // 敌人生成（兼容桥事件）
+            CardStateChanged,         // 卡牌状态变更
+            GapOptionsUpgradeSelected,// Gap 卡牌升级选择
+            GapOptionsRemoveCard,     // Gap 卡牌移除选择
+            GapStationEntered,        // 进入 Gap 休息点
+            DrinkTeaStarted,          // 开始喝茶
+            DrinkTeaCompleted,        // 喝茶完成
+            ChatMessage,              // 聊天消息
         };
 
         /// <summary>
-        /// 统一判定消息是否应进入 GameEvent 通道。
+        /// 仅在客户端路由场景下被视为 GameEvent 的消息集合。<br/>
+        /// 这些消息通常是客户端接收到的状态同步响应、房间信息更新等被动消息。
         /// </summary>
-        /// <param name="messageType">消息类型。</param>
+        private static readonly HashSet<string> ClientOnlyGameEvents = new(StringComparer.Ordinal)
+        {
+            StateSyncResponse,        // 状态同步响应
+            FullStateSyncRequest,     // 完整状态同步请求
+            FullStateSyncResponse,    // 完整状态同步响应
+            RoomStateRequest,         // 房间状态请求
+            RoomStateResponse,        // 房间状态响应
+            RoomStateUpload,          // 房间状态上传
+            RoomStateBroadcast,       // 房间状态广播
+            MidGameJoinRequest,       // 中途加入请求
+            MidGameJoinResponse,      // 中途加入响应
+            Welcome,                  // 欢迎消息
+            PlayerJoined,             // 玩家加入
+            PlayerLeft,               // 玩家离开
+            PlayerListUpdate,         // 玩家列表更新
+            HostChanged,              // 房主变更
+        };
+
+        /// <summary>
+        /// 仅在主机关联（HostServer）路由场景下被视为 GameEvent 的消息集合。<br/>
+        /// 这些消息通常是主机向中继或客户端发起的同步请求与响应。
+        /// </summary>
+        private static readonly HashSet<string> HostServerOnlyGameEvents = new(StringComparer.Ordinal)
+        {
+            StateSyncRequest,         // 状态同步请求
+            FullStateSyncRequest,     // 完整状态同步请求
+            FullStateSyncResponse,    // 完整状态同步响应
+            RoomStateRequest,         // 房间状态请求
+            RoomStateResponse,        // 房间状态响应
+            RoomStateUpload,          // 房间状态上传
+            RoomStateBroadcast,       // 房间状态广播
+        };
+
+        /// <summary>
+        /// 仅在中继（Relay）路由场景下被视为 GameEvent 的消息集合。<br/>
+        /// 中继主要负责转发，此类消息用于中继自身的状态同步和广播。
+        /// </summary>
+        private static readonly HashSet<string> RelayOnlyGameEvents = new(StringComparer.Ordinal)
+        {
+            StateSyncRequest,         // 状态同步请求（中继转发用）
+            RoomStateBroadcast,       // 房间状态广播（中继转发用）
+        };
+
+        /// <summary>
+        /// 统一判定消息是否应进入 GameEvent 通道。<br/>
+        /// 判定优先级：<br/>
+        /// 1) 显式声明的游戏事件集合（ExplicitGameEvents）→ 是；<br/>
+        /// 2) 以 On / Mana / Gap / Battle 开头的消息类型 → 是；<br/>
+        /// 3) 按路由场景（Client / HostServer / Relay）分别查各自的白名单集合。
+        /// </summary>
+        /// <param name="messageType">消息类型字符串。</param>
         /// <param name="route">调用方场景（Client / HostServer / Relay）。</param>
-        /// <returns>是否属于 GameEvent。</returns>
+        /// <returns>若消息类型属于 GameEvent 则返回 true；否则返回 false。</returns>
         public static bool IsGameEvent(string messageType, GameEventRoute route)
         {
             if (string.IsNullOrWhiteSpace(messageType))
@@ -866,7 +890,9 @@ namespace NetworkPlugin.Network.Messages
                 return false;
             }
 
+            // 1) 显式声明的游戏事件（无论路由场景均视为 GameEvent）
             if (ExplicitGameEvents.Contains(messageType) ||
+                // 2) 按命名约定前缀匹配："On"（事件）、"Mana"（法力）、"Gap"（休息点）、"Battle"（战斗）
                 messageType.StartsWith("On", StringComparison.Ordinal) ||
                 messageType.StartsWith("Mana", StringComparison.Ordinal) ||
                 messageType.StartsWith("Gap", StringComparison.Ordinal) ||
@@ -875,6 +901,7 @@ namespace NetworkPlugin.Network.Messages
                 return true;
             }
 
+            // 3) 按路由场景查找各自的白名单
             return route switch
             {
                 GameEventRoute.Client => ClientOnlyGameEvents.Contains(messageType),
@@ -886,13 +913,18 @@ namespace NetworkPlugin.Network.Messages
     }
 
     /// <summary>
-    /// 消息优先级
+    /// 消息优先级枚举。<br/>
+    /// 用于网络传输队列的排序依据，优先级越高越早被发送。
     /// </summary>
     public enum MessagePriority
     {
+        /// <summary>低优先级：用于非关键的状态同步、日志等。</summary>
         Low = 0,
+        /// <summary>普通优先级：默认级别，用于大多数常规消息。</summary>
         Normal = 1,
+        /// <summary>高优先级：用于需要及时送达的消息，如战斗事件。</summary>
         High = 2,
+        /// <summary>关键优先级：用于必须确保及时送达的极重要消息，如连接控制。</summary>
         Critical = 3
     }
 }
