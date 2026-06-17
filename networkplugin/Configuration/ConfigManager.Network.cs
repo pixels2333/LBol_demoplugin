@@ -17,6 +17,11 @@ public partial class ConfigManager
     public ConfigEntry<string> PlayerIdOverride { get; private set; }
 
     /// <summary>
+    /// 玩家自定义联机昵称（可选）。
+    /// </summary>
+    public ConfigEntry<string> PlayerNameOverride { get; private set; }
+
+    /// <summary>
     /// 服务器端口号
     /// 联机服务器监听的端口号
     /// 默认值为 7777
@@ -80,6 +85,14 @@ public partial class ConfigManager
             "PlayerIdOverride",
             "",
             "玩家自定义 PlayerId（可选；为空则使用服务器下发的 PlayerId）。"
+        );
+
+        // 玩家自定义联机昵称。
+        PlayerNameOverride = configFile.Bind(
+            "Network",
+            "PlayerNameOverride",
+            "",
+            "玩家自定义联机昵称（覆盖存档中的名字，为空则使用游戏存档名）。"
         );
 
         // 在Network区域下绑定网络相关配置
