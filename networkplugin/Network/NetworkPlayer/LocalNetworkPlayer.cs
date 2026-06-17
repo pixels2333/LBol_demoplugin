@@ -65,6 +65,24 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
         {
             try
             {
+                var provider = NetworkPlugin.Network.Services.ModService.ServiceProvider;
+                if (provider != null)
+                {
+                    var config = provider.GetService(typeof(NetworkPlugin.Configuration.ConfigManager)) as NetworkPlugin.Configuration.ConfigManager;
+                    string overrideName = config?.PlayerNameOverride?.Value;
+                    if (!string.IsNullOrWhiteSpace(overrideName))
+                    {
+                        return overrideName;
+                    }
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            try
+            {
                 string name = CurrentPlayer?.Name;
                 if (!string.IsNullOrWhiteSpace(name))
                 {
