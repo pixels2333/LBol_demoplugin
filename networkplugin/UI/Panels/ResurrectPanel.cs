@@ -122,14 +122,12 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		TextMeshProUGUI runtimeTextTemplate,
 		CommonButtonWidget runtimeResurrectButton,
 		CommonButtonWidget runtimeCancelButton,
-		TextMeshProUGUI runtimeStatusText,
 		CanvasGroup runtimeCanvasGroup)
 	{
 		deadPlayersContainer = runtimeDeadPlayersContainer;
 		_textTemplate = runtimeTextTemplate;
 		resurrectButton = runtimeResurrectButton;
 		cancelButton = runtimeCancelButton;
-		statusText = runtimeStatusText;
 
 		_canvasGroup = runtimeCanvasGroup;
 		if (_canvasGroup == null)
@@ -266,7 +264,7 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 			if (btn != null)
 			{
 				_playerButtons.Add(btn);
-				Plugin.Logger?.LogDebug("[ResurrectPanel] 创建可点击文字行: index={i}, playerId={player?.PlayerId}, name={player?.PlayerName}");
+				Plugin.Logger?.LogDebug($"[ResurrectPanel] 创建可点击文字行: index={i}, playerId={player?.PlayerId}, name={player?.PlayerName}");
 			}
 		}
 
@@ -275,6 +273,24 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		ResurrectSyncPatch.OnResurrectResult += OnResurrectResult;
 		// 注册输入处理器
 		UiManager.PushActionHandler(this);
+
+		try
+		{
+			if (transform.parent != null)
+			{
+				Plugin.Logger?.LogInfo("[ResurrectPanelDump] Start dumping from parent:");
+				DumpHierarchy(transform.parent);
+			}
+			else
+			{
+				Plugin.Logger?.LogInfo("[ResurrectPanelDump] Start dumping from self:");
+				DumpHierarchy(transform);
+			}
+		}
+		catch (Exception ex)
+		{
+			Plugin.Logger?.LogError($"[ResurrectPanelDump] Error during hierarchy dump: {ex.Message}");
+		}
 	}
 
 	/// <summary>
@@ -390,23 +406,60 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		// 克隆游戏内 TMP 模板，保留字体/材质
 		var tmp = UnityEngine.Object.Instantiate(_textTemplate, deadPlayersContainer, false);
 		tmp.name = $"PlayerRow_{index}";
+
+		// 修复：重置 RectTransform 并支持水平拉伸，契合 VerticalLayoutGroup 布局
+		RectTransform tmpRect = tmp.rectTransform;
+		tmpRect.anchorMin = new Vector2(0f, 1f);
+		tmpRect.anchorMax = new Vector2(1f, 1f);
+		tmpRect.pivot = new Vector2(0.5f, 1f);
+		tmpRect.sizeDelta = new Vector2(0f, 64f);
+		tmpRect.anchoredPosition = new Vector2(0f, tmpRect.anchoredPosition.y);
+
+		// 修复：移除可能从模板克隆来的 ContentSizeFitter，防止其与 VerticalLayoutGroup 产生布局冲突导致宽度被置为 0
+		var fitter = tmp.GetComponent<ContentSizeFitter>();
+		if (fitter != null)
+		{
+			UnityEngine.Object.DestroyImmediate(fitter);
+		}
+
 		tmp.text = label;
 		tmp.alignment = TextAlignmentOptions.Center;
 		tmp.raycastTarget = true;
 		tmp.enableAutoSizing = false;
+		tmp.enableWordWrapping = false;
+		tmp.overflowMode = TextOverflowModes.Overflow;
 		// 与 TradePanel partner picker 一致：使用模板字号的 50%
 		float fontSize = _textTemplate.fontSize > 0 ? _textTemplate.fontSize * 0.5f : 18f;
 		tmp.fontSize = Mathf.Max(fontSize, 14f);
 		tmp.fontSizeMin = 1f;
 		tmp.fontSizeMax = tmp.fontSize;
 
+		// 修正克隆来的 LocalizedText 缓存以支持多语言样式与自适应缩放，同时防止其覆写错误的字号与文本
+		var localized = tmp.GetComponent<LBoL.Presentation.I10N.LocalizedText>();
+		if (localized != null)
+		{
+			var type = typeof(LBoL.Presentation.I10N.LocalizedText);
+			type.GetField("key", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?
+				.SetValue(localized, null);
+			type.GetField("_originSize", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?
+				.SetValue(localized, tmp.fontSize);
+		}
+
 		Color baseColor = player.CanResurrect
 			? new Color(0.92f, 0.92f, 0.92f, 1f)
 			: new Color(0.5f, 0.5f, 0.5f, 0.6f);
 		tmp.color = baseColor;
 
-		var le = tmp.gameObject.AddComponent<LayoutElement>();
-		le.preferredHeight = 40f;
+		// 修复：复用或添加 LayoutElement，避免重复添加导致布局混乱
+		var le = tmp.GetComponent<LayoutElement>();
+		if (le == null)
+		{
+			le = tmp.gameObject.AddComponent<LayoutElement>();
+		}
+		le.ignoreLayout = false;
+		le.preferredHeight = 64f;
+		le.preferredWidth = -1f;
+		le.minWidth = -1f;
 		le.flexibleWidth = 1f;
 
 		var btn = tmp.gameObject.AddComponent<Button>();
@@ -613,6 +666,31 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 		catch
 		{
 			// ignored
+		}
+	}
+
+	private void DumpHierarchy(Transform t, int indent = 0)
+	{
+		if (t == null) return;
+		string indentStr = new string(' ', indent * 2);
+		var rt = t as RectTransform;
+		string rectInfo = "";
+		if (rt != null)
+		{
+			rectInfo = $"[Rect: sizeDelta={rt.sizeDelta}, anchoredPos={rt.anchoredPosition}, anchors=({rt.anchorMin}, {rt.anchorMax}), width={rt.rect.width}, height={rt.rect.height}]";
+		}
+		
+		List<string> compNames = new List<string>();
+		foreach (var c in t.GetComponents<Component>())
+		{
+			if (c != null) compNames.Add(c.GetType().Name);
+		}
+		string comps = string.Join(", ", compNames);
+		Plugin.Logger?.LogInfo($"[ResurrectPanelDump] {indentStr}- {t.name} (activeSelf={t.gameObject.activeSelf}, activeInHierarchy={t.gameObject.activeInHierarchy}) {rectInfo} | Components: {comps}");
+		
+		for (int i = 0; i < t.childCount; i++)
+		{
+			DumpHierarchy(t.GetChild(i), indent + 1);
 		}
 	}
 

@@ -17,6 +17,7 @@ using NetworkPlugin.Network.MidGameJoin;
 using NetworkPlugin.Network.NetworkPlayer;
 using NetworkPlugin.Network.Reconnection;
 using UnityEngine;
+using System.Diagnostics;
 
 namespace NetworkPlugin;
 
@@ -321,8 +322,9 @@ public class Plugin : BaseUnityPlugin
         services.AddSingleton<INetworkManager, NetworkManager>(); // 注册网络管理器服务
         services.AddSingleton<NetworkAvailabilityTracker>();
         services.AddSingleton<SynchronizationManager>();
-        services.AddSingleton<ISynchronizationManager>(sp => sp.GetRequiredService<SynchronizationManager>()); // 注册同步管理器服务
-        services.AddSingleton<INetworkClient, NetworkClient>(); // 注册网络客户端服务
+        services.AddSingleton<ISynchronizationManager>(sp => sp.GetRequiredService<SynchronizationManager>());
+        // Break circular dependency: NetworkClient -> ISynchronizationManager -> SynchronizationManager -> NetworkAvailabilityTracker -> INetworkClient
+        services.AddSingleton<INetworkClient>(sp => new NetworkClient(sp.GetRequiredService<ConfigManager>(), null));
         services.AddSingleton<RoomSyncManager>();
 
         // 断线重连：作为单例服务提供；内部通过 INetworkClient 事件监听连接状态并维护快照/事件历史。
@@ -448,6 +450,7 @@ public class Plugin : BaseUnityPlugin
         Logger.LogInfo($"  战斗同步: {ConfigManager.EnableBattleSync.Value}");
         Logger.LogInfo($"  地图同步: {ConfigManager.EnableMapSync.Value}");
         Logger.LogInfo($"  Overlay调试日志: {ConfigManager.DebugOtherPlayersOverlay.Value}");
+        Logger.LogInfo($"  UI控件边界调试: {ConfigManager.DebugShowControlBounds.Value}");
         if (ConfigManager.EnableSaveLoadSync.Value)
         {
             // Enforce the inrun-map-progress-sync decision: never transmit save bytes.

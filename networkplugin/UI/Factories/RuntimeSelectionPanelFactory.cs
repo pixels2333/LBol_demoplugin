@@ -403,10 +403,10 @@ internal static class RuntimeSelectionPanelFactory
         rowRect.anchorMin = new Vector2(0f, 1f);
         rowRect.anchorMax = new Vector2(1f, 1f);
         rowRect.pivot = new Vector2(0.5f, 1f);
-        rowRect.sizeDelta = new Vector2(0f, 82f);
+        rowRect.sizeDelta = new Vector2(0f, 120f);
 
         LayoutElement layout = rowGo.AddComponent<LayoutElement>();
-        layout.preferredHeight = 82f;
+        layout.preferredHeight = 120f;
         layout.flexibleWidth = 1f;
 
         Image background = rowGo.AddComponent<Image>();
@@ -455,7 +455,7 @@ internal static class RuntimeSelectionPanelFactory
         iconRect.anchorMin = new Vector2(0f, 0.5f);
         iconRect.anchorMax = new Vector2(0f, 0.5f);
         iconRect.pivot = new Vector2(0f, 0.5f);
-        iconRect.sizeDelta = new Vector2(48f, 48f);
+        iconRect.sizeDelta = new Vector2(80f, 80f);
         iconRect.anchoredPosition = new Vector2(0f, 0f);
         Image leadingIcon = iconGo.AddComponent<Image>();
         leadingIcon.raycastTarget = false;
@@ -465,10 +465,10 @@ internal static class RuntimeSelectionPanelFactory
         RectTransform primaryRect = primary.rectTransform;
         primaryRect.anchorMin = new Vector2(0f, 0.48f);
         primaryRect.anchorMax = new Vector2(1f, 1f);
-        primaryRect.offsetMin = new Vector2(64f, 0f);
+        primaryRect.offsetMin = new Vector2(104f, 0f);
         primaryRect.offsetMax = Vector2.zero;
         primary.alignment = TextAlignmentOptions.Left;
-        primary.fontSize = Mathf.Max(primary.fontSize * 0.80f, 18f);
+        primary.fontSize = 36f;
         primary.enableWordWrapping = false;
         primary.overflowMode = TextOverflowModes.Ellipsis;
         primary.raycastTarget = false;
@@ -477,10 +477,10 @@ internal static class RuntimeSelectionPanelFactory
         RectTransform secondaryRect = secondary.rectTransform;
         secondaryRect.anchorMin = new Vector2(0f, 0f);
         secondaryRect.anchorMax = new Vector2(1f, 0.50f);
-        secondaryRect.offsetMin = new Vector2(64f, 0f);
+        secondaryRect.offsetMin = new Vector2(104f, 0f);
         secondaryRect.offsetMax = Vector2.zero;
         secondary.alignment = TextAlignmentOptions.Left;
-        secondary.fontSize = Mathf.Max(secondary.fontSize * 0.58f, 14f);
+        secondary.fontSize = 24f;
         secondary.enableWordWrapping = false;
         secondary.overflowMode = TextOverflowModes.Ellipsis;
         secondary.raycastTarget = false;
@@ -507,8 +507,15 @@ internal static class RuntimeSelectionPanelFactory
         TextMeshProUGUI text;
         if (template != null)
         {
-            text = UnityEngine.Object.Instantiate(template, parent, false);
-            text.name = name;
+            // 直接创建对象，避免克隆模板上的意外组件
+            GameObject go = new(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localScale = Vector3.one;
+            text = go.AddComponent<TextMeshProUGUI>();
+            text.font = template.font;
+            text.fontSharedMaterial = template.fontSharedMaterial;
+            text.fontMaterial = template.fontMaterial;
+            text.color = template.color;
         }
         else
         {

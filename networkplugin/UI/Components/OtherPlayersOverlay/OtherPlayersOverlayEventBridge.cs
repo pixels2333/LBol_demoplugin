@@ -121,13 +121,20 @@ public static partial class OtherPlayersOverlayPatch
 
         lock (_syncLock)
         {
+            string charId = ResolveCharacterId(root);
+            // 保护本地玩家 CharacterId 不被网络空值覆盖
+            if (!string.IsNullOrWhiteSpace(_selfPlayerId) && string.Equals(playerId, _selfPlayerId, StringComparison.Ordinal) && string.IsNullOrWhiteSpace(charId))
+            {
+                charId = GetFallbackCharacterId();
+            }
+
             _players[playerId] = new PlayerSummary
             {
                 PlayerId = playerId,
                 PlayerName = GetString(root, "PlayerName") ?? playerId,
                 IsHost = GetBool(root, "IsHost"),
                 IsConnected = hasConnectedField ? GetBool(root, "IsConnected") : true,
-                CharacterId = ResolveCharacterId(root),
+                CharacterId = charId,
                 LocationX = GetInt(root, "LocationX", -1),
                 LocationY = GetInt(root, "LocationY", -1),
                 Stage = GetInt(root, "Stage", -1),
@@ -202,13 +209,21 @@ public static partial class OtherPlayersOverlayPatch
             }
 
             bool hasConnectedField = p.ValueKind == JsonValueKind.Object && p.TryGetProperty("IsConnected", out _);
+            string playerName = GetString(p, "PlayerName");
+            string charId = ResolveCharacterId(p);
+            // 保护本地玩家 CharacterId 不被网络空值覆盖
+            if (!string.IsNullOrWhiteSpace(_selfPlayerId) && string.Equals(playerId, _selfPlayerId, StringComparison.Ordinal) && string.IsNullOrWhiteSpace(charId))
+            {
+                charId = GetFallbackCharacterId();
+            }
+
             incoming[playerId] = new PlayerSummary
             {
                 PlayerId = playerId,
-                PlayerName = GetString(p, "PlayerName") ?? playerId,
+                PlayerName = string.IsNullOrWhiteSpace(playerName) ? playerId : playerName,
                 IsHost = GetBool(p, "IsHost"),
                 IsConnected = hasConnectedField ? GetBool(p, "IsConnected") : true,
-                CharacterId = ResolveCharacterId(p),
+                CharacterId = charId,
                 LocationX = GetInt(p, "LocationX", -1),
                 LocationY = GetInt(p, "LocationY", -1),
                 Stage = GetInt(p, "Stage", -1),

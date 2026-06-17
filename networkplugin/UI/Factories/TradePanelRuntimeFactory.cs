@@ -14,17 +14,11 @@ using UnityEngine.UI;
 
 namespace NetworkPlugin.UI.Factories;
 
-/// <summary>
-/// 交易面板运行时工厂：在运行时创建或复用 TradePanel 实例
-/// </summary>
 internal static class TradePanelRuntimeFactory
 {
     private const string RuntimeRootName = "NetworkPlugin_TradePanel";
     private const string RuntimeUiVersion = "2026-04-26-ui-v22";
 
-    /// <summary>
-    /// 获取或创建 TradePanel 实例
-    /// </summary>
     internal static TradePanel GetOrCreate(Transform preferredParent)
     {
         try
@@ -146,29 +140,12 @@ internal static class TradePanelRuntimeFactory
             p2Name.fontSize = Mathf.Max(p2Name.fontSize, 20);
             GapSharedPanelTemplateFactory.ConfigureAnchors(p2Name.rectTransform, new Vector2(0.54f, 0.84f), new Vector2(1.00f, 0.98f));
 
-            GameObject p1AreaGo = new GameObject("Player1Area");
-            p1AreaGo.transform.SetParent(uiParent, false);
-            var p1Area = p1AreaGo.AddComponent<RectTransform>();
-            GapSharedPanelTemplateFactory.ConfigureAnchors(p1Area, new Vector2(0.00f, -0.35f), new Vector2(0.26f, -0.06f));
-
-            GameObject p2AreaGo = new GameObject("Player2Area");
-            p2AreaGo.transform.SetParent(uiParent, false);
-            var p2Area = p2AreaGo.AddComponent<RectTransform>();
-            GapSharedPanelTemplateFactory.ConfigureAnchors(p2Area, new Vector2(0.74f, -0.35f), new Vector2(1.00f, -0.06f));
-
-            var p1Slots = CreateSlotColumn(p1Area, textTemplate, scaffold.ConfirmButton, 3, "P1");
-            var p2Slots = CreateSlotColumn(p2Area, textTemplate, scaffold.ConfirmButton, 3, "P2");
-
             var panel = scaffold.Root.AddComponent<TradePanel>();
 
             var marker = scaffold.Root.AddComponent<TradePanelRuntimeMarker>();
             marker.Version = RuntimeUiVersion;
             panel.BindRuntimeUi(
                 scaffold.ContentRoot,
-                p1Area,
-                p2Area,
-                p1Slots,
-                p2Slots,
                 scaffold.ConfirmButton,
                 scaffold.CancelButton,
                 scaffold.StatusText,

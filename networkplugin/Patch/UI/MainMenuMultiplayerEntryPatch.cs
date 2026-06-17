@@ -237,7 +237,7 @@ public static class MainMenuMultiplayerEntryPatch
         _defaultFont ??= FindDefaultFont(parent);
 
         // 克隆模板按钮并替换点击回调。
-        _multiplayerButton = UnityEngine.Object.Instantiate(template, parent);
+        _multiplayerButton = CreateButtonFromTemplate(template, parent, MultiplayerButtonName, "多人游戏");
         _multiplayerButton.name = MultiplayerButtonName;
 
         // 仅套用样式，不套用行为：重置 UnityEvent，避免把模板按钮(如“设定”)的持久化回调一并带过来。
@@ -574,7 +574,7 @@ public static class MainMenuMultiplayerEntryPatch
 
         _defaultFont ??= FindDefaultFont(parent);
 
-        _startGameMultiplayerButton = UnityEngine.Object.Instantiate(template, parent);
+        _startGameMultiplayerButton = CreateButtonFromTemplate(template, parent, StartGameMultiplayerButtonName, "多人游戏");
         _startGameMultiplayerButton.name = StartGameMultiplayerButtonName;
         _startGameMultiplayerButton.onClick.RemoveAllListeners();
         _startGameMultiplayerButton.onClick.AddListener(OpenMultiplayerEntryFromStartGame);
@@ -886,6 +886,54 @@ public static class MainMenuMultiplayerEntryPatch
         }
     }
 
+    private static Button CreateButtonFromTemplate(Button template, Transform parent, string name, string labelText)
+    {
+        GameObject go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        go.transform.localScale = Vector3.one;
+
+        Image img = go.AddComponent<Image>();
+        if (template != null && template.targetGraphic is Image templateImg)
+        {
+            img.sprite = templateImg.sprite;
+            img.type = templateImg.type;
+            img.color = templateImg.color;
+        }
+        else
+        {
+            img.color = new Color(0.15f, 0.15f, 0.15f, 0.8f);
+        }
+
+        Button btn = go.AddComponent<Button>();
+        btn.targetGraphic = img;
+        if (template != null)
+        {
+            btn.transition = template.transition;
+            btn.colors = template.colors;
+        }
+
+        // 创建文本子对象
+        GameObject textGo = new GameObject("Label");
+        textGo.transform.SetParent(go.transform, false);
+        textGo.transform.localScale = Vector3.one;
+        var rt = textGo.AddComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+
+        var tmp = textGo.AddComponent<TextMeshProUGUI>();
+        tmp.text = labelText;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.raycastTarget = false;
+        if (_defaultFont != null)
+        {
+            tmp.font = _defaultFont;
+        }
+
+        return btn;
+    }
+
     #endregion
 
     #region 入口面板（非弹窗）
@@ -1018,7 +1066,7 @@ public static class MainMenuMultiplayerEntryPatch
             bg.raycastTarget = true;
 
             // 参考 MessageDialog 的出现动效：简单的淡入 + 轻微缩放。
-            // 注意：这里不直接复用 MessageDialog 实例，因为 UiManager 只允许同时显示一个 Dialog。
+            // 注意：这里不直接复用 MessageDialog 实例，因为 UiManager 只允许同时显示一个 Dialog.
             var rootGroup = root.AddComponent<CanvasGroup>();
             rootGroup.alpha = 0f;
             rootGroup.interactable = false;
@@ -1182,7 +1230,7 @@ public static class MainMenuMultiplayerEntryPatch
             layout.padding = new RectOffset(0, 0, 0, 0);
 
             // 房主
-            var hostBtn = UnityEngine.Object.Instantiate(template, buttonsGo.transform);
+            var hostBtn = CreateButtonFromTemplate(template, buttonsGo.transform, "NetworkPlugin_HostButton", "做房主");
             hostBtn.name = "NetworkPlugin_HostButton";
             hostBtn.onClick.RemoveAllListeners();
             hostBtn.onClick.AddListener(() =>
@@ -1219,7 +1267,7 @@ public static class MainMenuMultiplayerEntryPatch
             TryScaleButtonText(hostBtn, panelScale);
 
             // 加入
-            var joinBtn = UnityEngine.Object.Instantiate(template, buttonsGo.transform);
+            var joinBtn = CreateButtonFromTemplate(template, buttonsGo.transform, "NetworkPlugin_JoinButton", "加入房主");
             joinBtn.name = "NetworkPlugin_JoinButton";
             joinBtn.onClick.RemoveAllListeners();
             joinBtn.onClick.AddListener(() =>
@@ -1231,7 +1279,7 @@ public static class MainMenuMultiplayerEntryPatch
             TryScaleButtonText(joinBtn, panelScale);
 
             // 返回
-            var backBtn = UnityEngine.Object.Instantiate(template, buttonsGo.transform);
+            var backBtn = CreateButtonFromTemplate(template, buttonsGo.transform, "NetworkPlugin_BackButton", "返回");
             backBtn.name = "NetworkPlugin_BackButton";
             backBtn.onClick.RemoveAllListeners();
             backBtn.onClick.AddListener(HideOverlay);

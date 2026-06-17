@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -62,14 +62,14 @@ private void EnsureOfferEditorOverlay()
             }
 
             // 卡牌行
-            var cardsLabel = Instantiate(textTemplate, _offerEditorRoot.transform, false);
+            var cardsLabel = InstantiateText(textTemplate, _offerEditorRoot.transform);
             cardsLabel.name = "CardsLabel";
             cardsLabel.text = "卡牌:";
             cardsLabel.alignment = TextAlignmentOptions.Right;
             ConfigureSingleLineText(cardsLabel);
             SetRect(cardsLabel.rectTransform, 0.02f, 0.70f, 0.25f, 0.95f);
 
-            _cardCountText = Instantiate(textTemplate, _offerEditorRoot.transform, false);
+            _cardCountText = InstantiateText(textTemplate, _offerEditorRoot.transform);
             _cardCountText.name = "CardsValue";
             _cardCountText.text = "0";
             _cardCountText.alignment = TextAlignmentOptions.Left;
@@ -77,7 +77,7 @@ private void EnsureOfferEditorOverlay()
             SetRect(_cardCountText.rectTransform, 0.28f, 0.70f, 0.52f, 0.95f);
 
             // 金币行
-            var moneyLabel = Instantiate(textTemplate, _offerEditorRoot.transform, false);
+            var moneyLabel = InstantiateText(textTemplate, _offerEditorRoot.transform);
             moneyLabel.name = "MoneyLabel";
             moneyLabel.text = "金币:";
             moneyLabel.alignment = TextAlignmentOptions.Right;
@@ -85,7 +85,7 @@ private void EnsureOfferEditorOverlay()
             SetRect(moneyLabel.rectTransform, 0.02f, 0.38f, 0.25f, 0.63f);
 
             // 已持金币显示值：用户不需要看到，隐藏之。
-            _ownedMoneyText = Instantiate(textTemplate, _offerEditorRoot.transform, false);
+            _ownedMoneyText = InstantiateText(textTemplate, _offerEditorRoot.transform);
             _ownedMoneyText.name = "OwnedMoneyValue";
             _ownedMoneyText.text = "0";
             _ownedMoneyText.alignment = TextAlignmentOptions.Left;
@@ -114,7 +114,7 @@ private void EnsureOfferEditorOverlay()
                 TrySendOfferUpdate();
             });
 
-            _moneyValueText = Instantiate(textTemplate, _moneyTripletRoot.transform, false);
+            _moneyValueText = InstantiateText(textTemplate, _moneyTripletRoot.transform);
             _moneyValueText.name = "MoneyValue";
             _moneyValueText.text = "0";
             _moneyValueText.alignment = TextAlignmentOptions.Center;
@@ -146,14 +146,14 @@ private void EnsureOfferEditorOverlay()
             });
 
             // 展品行
-            var exLabel = Instantiate(textTemplate, _offerEditorRoot.transform, false);
+            var exLabel = InstantiateText(textTemplate, _offerEditorRoot.transform);
             exLabel.name = "ExLabel";
             exLabel.text = "展品:";
             exLabel.alignment = TextAlignmentOptions.Right;
             ConfigureSingleLineText(exLabel);
             SetRect(exLabel.rectTransform, 0.02f, 0.05f, 0.25f, 0.30f);
 
-            _exhibitValueText = Instantiate(textTemplate, _offerEditorRoot.transform, false);
+            _exhibitValueText = InstantiateText(textTemplate, _offerEditorRoot.transform);
             _exhibitValueText.name = "ExValue";
             _exhibitValueText.text = "0";
             _exhibitValueText.alignment = TextAlignmentOptions.Left;
@@ -456,10 +456,32 @@ private void EnsureOfferEditorOverlay()
         }
     }
 
+    private static TextMeshProUGUI InstantiateText(TextMeshProUGUI template, Transform parent, float fontSize = -1f)
+    {
+        var tmp = Instantiate(template, parent, false);
+        var localizedText = tmp.GetComponent<LBoL.Presentation.I10N.LocalizedText>();
+        if (localizedText is not null)
+        {
+            var type = typeof(LBoL.Presentation.I10N.LocalizedText);
+            
+            // 1. 清空 key，防止文本在语言变更时被覆写
+            type.GetField("key", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?
+                .SetValue(localizedText, null);
+
+            // 2. 如果重写了字号，将 _originSize 修正为我们所设的目标基础字号
+            if (fontSize > 0f)
+            {
+                type.GetField("_originSize", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?
+                    .SetValue(localizedText, fontSize);
+            }
+        }
+        return tmp;
+    }
+
     private static Button CreateTextButton(TextMeshProUGUI template, Transform parent, string name, string text, float fontSize = -1f)
     {
         // 从游戏内模板克隆 TMP，保证字体/材质与原生 UI 一致。
-        var tmp = Instantiate(template, parent, false);
+        var tmp = InstantiateText(template, parent, fontSize);
         tmp.name = name;
         tmp.text = text;
         tmp.alignment = TextAlignmentOptions.Center;

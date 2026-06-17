@@ -166,15 +166,8 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private CardWidget _offerPreviewCardTemplate;
     private RectTransform _runtimeContentRoot;
 
-    /// <summary>
-    /// 运行时绑定 UI 组件和参数
-    /// </summary>
     internal void BindRuntimeUi(
         RectTransform runtimeContentRoot,
-        RectTransform runtimePlayer1TradeArea,
-        RectTransform runtimePlayer2TradeArea,
-        TradeSlotWidget[] runtimePlayer1Slots,
-        TradeSlotWidget[] runtimePlayer2Slots,
         CommonButtonWidget runtimeConfirmButton,
         CommonButtonWidget runtimeCancelButton,
         TextMeshProUGUI runtimeStatusText,
@@ -183,10 +176,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     {
         // 这些字段通常由 prefab 连接，运行时创建时需手动绑定。
         _runtimeContentRoot = runtimeContentRoot;
-        player1TradeArea = runtimePlayer1TradeArea;
-        player2TradeArea = runtimePlayer2TradeArea;
-        player1Slots = runtimePlayer1Slots;
-        player2Slots = runtimePlayer2Slots;
         confirmButton = runtimeConfirmButton;
         cancelButton = runtimeCancelButton;
         statusText = runtimeStatusText;
@@ -229,9 +218,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     #region Unity 生命周期
 
-    /// <summary>
-    /// Awake 生命周期：初始化组件引用
-    /// </summary>
     public void Awake()
     {
         // 获取或添加 CanvasGroup，用于控制面板交互
@@ -460,6 +446,9 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
         _cardPickerRoot?.SetActive(false);
         _exhibitPickerRoot?.SetActive(false);
+        _offerEditorRoot?.SetActive(false);
+        _offerActionsRoot?.SetActive(false);
+        _offerPreviewRoot?.SetActive(false);
 
         // 清空玩家1所有交易槽的显示
         player1Slots?.ToList().ForEach(s => s?.ClearSlot());
