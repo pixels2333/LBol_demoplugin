@@ -128,8 +128,7 @@ internal static class ResurrectPanelRuntimeFactory
                 scaffold.StatusText.gameObject.SetActive(false);
             }
 
-            RectTransform panelRect = frameMainText?.rectTransform.parent as RectTransform
-                ?? frameRect
+            RectTransform panelRect = frameRect
                 ?? (RectTransform)scaffold.ContentRoot;
 
             RuntimeSelectionPanelFactory.ScrollAreaScaffold scrollArea = RuntimeSelectionPanelFactory.CreateScrollArea(panelRect, null, "PlayersScroll");

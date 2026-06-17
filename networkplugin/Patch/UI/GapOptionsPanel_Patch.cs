@@ -574,6 +574,11 @@ public class GapOptionsPanel_Patch
 
         foreach ((string playerId, (string playerName, bool isConnected, bool isHost) candidate) in candidatePlayers)
         {
+            if (string.Equals(playerId, selfPlayerId, StringComparison.Ordinal) || string.Equals(playerId, "__local__", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
             INetworkPlayer networkPlayer = ResolveNetworkPlayer(networkManager, playerId);
             if (!TryGetPlayerVitals(playerId, networkPlayer, out int currentHp, out int maxHp))
             {
