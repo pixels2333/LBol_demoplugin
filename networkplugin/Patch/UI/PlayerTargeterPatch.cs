@@ -83,6 +83,7 @@ public static class PlayerTargeterPatch
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // 忽略反射失败，继续尝试其他目标来源。
         }
 
@@ -97,6 +98,7 @@ public static class PlayerTargeterPatch
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // 忽略反射失败，继续尝试其他目标来源。
         }
 
@@ -107,6 +109,7 @@ public static class PlayerTargeterPatch
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // 忽略反射失败，继续尝试其他目标来源。
         }
     }

@@ -17,6 +17,7 @@ public class FastSyncService(ManualLogSource logger)
     /// <param name="state">玩家引导状态</param>
     public void SyncPlayerState(string playerId, PlayerBootstrappedState state)
     {
+        // TODO: 当前仅为日志占位，缺少实际的同步逻辑（如发送同步请求到服务器或更新本地状态）。
         _logger.LogDebug($"[FastSyncService] Syncing state for {playerId}: progress {state.GameProgress}%");
     }
 }

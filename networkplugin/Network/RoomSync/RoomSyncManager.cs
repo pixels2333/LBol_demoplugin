@@ -92,6 +92,7 @@ public class RoomSyncManager
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
     }
@@ -162,6 +163,7 @@ public class RoomSyncManager
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
     }
@@ -226,6 +228,7 @@ public class RoomSyncManager
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
     }
@@ -474,6 +477,7 @@ public class RoomSyncManager
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
     }
