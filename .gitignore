@@ -169,3 +169,4 @@ simplesolution.sln           # Visual Studio解决方案文件（可能包含用
 layout-preview.html
 handoffs
 *.html
+*.py
