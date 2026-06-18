@@ -22,6 +22,26 @@ public partial class ConfigManager
     public ConfigEntry<string> PlayerNameOverride { get; private set; }
 
     /// <summary>
+    /// 做房主专用监听端口号
+    /// </summary>
+    public ConfigEntry<int> HostServerPort { get; private set; }
+
+    /// <summary>
+    /// 做房主专用玩家昵称（可选）。
+    /// </summary>
+    public ConfigEntry<string> HostPlayerNameOverride { get; private set; }
+
+    /// <summary>
+    /// 做房主专用最大连接数
+    /// </summary>
+    public ConfigEntry<int> HostMaxConnections { get; private set; }
+
+    /// <summary>
+    /// 做房主专用连接密钥
+    /// </summary>
+    public ConfigEntry<string> HostConnectionKey { get; private set; }
+
+    /// <summary>
     /// 服务器端口号
     /// 联机服务器监听的端口号
     /// 默认值为 7777
@@ -93,6 +113,34 @@ public partial class ConfigManager
             "PlayerNameOverride",
             "",
             "玩家自定义联机昵称（覆盖存档中的名字，为空则使用游戏存档名）。"
+        );
+
+        HostServerPort = configFile.Bind(
+            "Network",
+            "HostServerPort",
+            NetworkConstants.DefaultPort,
+            "做房主专用监听的端口号"
+        );
+
+        HostPlayerNameOverride = configFile.Bind(
+            "Network",
+            "HostPlayerNameOverride",
+            "",
+            "做房主专用联机昵称（为空则使用游戏存档名）。"
+        );
+
+        HostMaxConnections = configFile.Bind(
+            "Network",
+            "HostMaxConnections",
+            4,
+            "做房主本地服务器最大允许的连接数"
+        );
+
+        HostConnectionKey = configFile.Bind(
+            "Network",
+            "HostConnectionKey",
+            "LBoL_Network_Plugin",
+            "做房主本地服务器连接密钥"
         );
 
         // 在Network区域下绑定网络相关配置

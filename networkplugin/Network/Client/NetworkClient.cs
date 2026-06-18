@@ -524,10 +524,36 @@ public class NetworkClient : INetworkClient
     {
         _lastConnectHost = host;
         _lastConnectPort = port;
+
+        string keyToUse = _connectionKey;
+        try
+        {
+            var provider = NetworkPlugin.Network.Services.ModService.ServiceProvider;
+            if (provider != null)
+            {
+                var config = provider.GetService(typeof(NetworkPlugin.Configuration.ConfigManager)) as NetworkPlugin.Configuration.ConfigManager;
+                if (config != null)
+                {
+                    if (NetworkPlugin.Patch.UI.MainMenuMultiplayerEntryPatch.IsLocalServerRunning)
+                    {
+                        keyToUse = config.HostConnectionKey?.Value ?? "LBoL_Network_Plugin";
+                    }
+                    else
+                    {
+                        keyToUse = config.RelayServerConnectionKey?.Value ?? "LBoL_Network_Plugin";
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
         Plugin.Logger?.LogInfo($"[客户端] 正在连接服务器 {host}:{port}（密钥: <已隐藏>）...");
         NetDataWriter connectData = new();
         // 将连接密钥写入数据包，用于服务器身份验证
-        connectData.Put(_connectionKey);
+        connectData.Put(keyToUse);
         // 发起连接请求，包含认证信息
         _netManager.Connect(host, port, connectData);
     }

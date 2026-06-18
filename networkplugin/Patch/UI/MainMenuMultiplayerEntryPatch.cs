@@ -53,6 +53,7 @@ public static class MainMenuMultiplayerEntryPatch
 
     private static NetworkServer _localServer;
     private static bool _localServerRunning;
+    public static bool IsLocalServerRunning => _localServerRunning;
     private static Thread _localServerThread;
     private static CancellationTokenSource _localServerCts;
 
@@ -1285,34 +1286,14 @@ public static class MainMenuMultiplayerEntryPatch
             layout.spacing = 12f * panelScale;
             layout.padding = new RectOffset(0, 0, 0, 0);
 
-            // 房主
+            // 房主（切换到子面板）
+            GameObject hostArea = new GameObject("HostArea");
             var hostBtn = CreateDialogButton(buttonTemplate, buttonsGo.transform, "NetworkPlugin_HostButton", "做房主", panelScale);
             hostBtn.onClick.AddListener(() =>
             {
-                HideOverlay();
-                try
-                {
-                    GameRunSaveData save = Singleton<GameMaster>.Instance?.GameRunSaveData;
-                    if (save != null && Singleton<GameMaster>.Instance.CurrentGameRun == null)
-                    {
-                        UiManager.GetDialog<MessageDialog>().Show(
-                            new MessageContent
-                            {
-                                Text = "检测到可继续的存档。\n\n确认：作为房主继续存档并开启联机\n取消：作为房主开新游戏（仍保持联机）",
-                                Icon = MessageIcon.Warning,
-                                Buttons = DialogButtons.ConfirmCancel,
-                                OnConfirm = () => TryHostLocalServerAndConnectAndRestore(save),
-                                OnCancel = TryHostLocalServerAndConnect,
-                            }
-                        );
-                        return;
-                    }
-                }
-                catch
-                {
-                    // ignored
-                }
-                TryHostLocalServerAndConnect();
+                mainArea.SetActive(false);
+                hostArea.SetActive(true);
+                if (mainText != null) mainText.text = "做房主";
             });
 
             // 加入（切换到子面板）
@@ -1479,6 +1460,172 @@ public static class MainMenuMultiplayerEntryPatch
             });
 
             foreach (var b in new[] { connectBtn, cancelBtn })
+            {
+                if (b == null) continue;
+                var r = b.GetComponent<RectTransform>();
+                if (r != null) r.sizeDelta = new Vector2(r.sizeDelta.x, 58f * panelScale);
+            }
+
+            // ================== 做房主服务端子面板 Area ==================
+            hostArea.transform.SetParent(panelRect, false);
+            var hostAreaRt = hostArea.AddComponent<RectTransform>();
+            hostAreaRt.anchorMin = Vector2.zero;
+            hostAreaRt.anchorMax = Vector2.one;
+            hostAreaRt.offsetMin = Vector2.zero;
+            hostAreaRt.offsetMax = Vector2.zero;
+            hostArea.SetActive(false);
+
+            // 表单输入区容器
+            GameObject hostFormGo = new GameObject("HostForm");
+            hostFormGo.transform.SetParent(hostArea.transform, false);
+            var hostFormRt = hostFormGo.AddComponent<RectTransform>();
+            hostFormRt.anchorMin = new Vector2(0.5f, 1f);
+            hostFormRt.anchorMax = new Vector2(0.5f, 1f);
+            hostFormRt.pivot = new Vector2(0.5f, 1f);
+            hostFormRt.sizeDelta = new Vector2(400f * panelScale, 200f * panelScale);
+            hostFormRt.anchoredPosition = new Vector2(0f, -54f * panelScale);
+
+            var hostFormLayout = hostFormGo.AddComponent<VerticalLayoutGroup>();
+            hostFormLayout.childAlignment = TextAnchor.UpperCenter;
+            hostFormLayout.childControlWidth = true;
+            hostFormLayout.childControlHeight = true;
+            hostFormLayout.childForceExpandWidth = true;
+            hostFormLayout.childForceExpandHeight = false;
+            hostFormLayout.spacing = 6f * panelScale;
+
+            // 获取默认配置
+            string hostPort = config?.HostServerPort?.Value.ToString() ?? "7777";
+            string hostMaxConn = config?.HostMaxConnections?.Value.ToString() ?? "4";
+            string hostKey = config?.HostConnectionKey?.Value ?? "LBoL_Network_Plugin";
+            string hostName = config?.HostPlayerNameOverride?.Value;
+            if (string.IsNullOrWhiteSpace(hostName))
+            {
+                try
+                {
+                    hostName = Singleton<GameMaster>.Instance?.CurrentProfile?.Name ?? "host";
+                }
+                catch
+                {
+                    hostName = "host";
+                }
+            }
+
+            TMP_InputField hostPortInput;
+            TMP_InputField hostMaxConnInput;
+            TMP_InputField hostKeyInput;
+            TMP_InputField hostNameInput;
+
+            CreateInputRow(hostFormGo.transform, buttonTemplate, "监听端口:", "请输入端口号...", hostPort, panelScale, out hostPortInput);
+            CreateInputRow(hostFormGo.transform, buttonTemplate, "最大玩家数:", "请输入最大玩家数...", hostMaxConn, panelScale, out hostMaxConnInput);
+            CreateInputRow(hostFormGo.transform, buttonTemplate, "连接密钥:", "请输入连接密钥...", hostKey, panelScale, out hostKeyInput);
+            CreateInputRow(hostFormGo.transform, buttonTemplate, "玩家昵称:", "请输入昵称...", hostName, panelScale, out hostNameInput);
+
+            // 子面板底部按钮
+            GameObject hostButtonsGo = new GameObject("HostButtons");
+            hostButtonsGo.transform.SetParent(hostArea.transform, false);
+            var hostButtonsRt = hostButtonsGo.AddComponent<RectTransform>();
+            hostButtonsRt.anchorMin = new Vector2(0.5f, 0f);
+            hostButtonsRt.anchorMax = new Vector2(0.5f, 0f);
+            hostButtonsRt.pivot = new Vector2(0.5f, 0f);
+            hostButtonsRt.sizeDelta = new Vector2(380f * panelScale, 60f * panelScale);
+            hostButtonsRt.anchoredPosition = new Vector2(0f, 15f * panelScale);
+
+            var hostButtonsLayout = hostButtonsGo.AddComponent<HorizontalLayoutGroup>();
+            hostButtonsLayout.childAlignment = TextAnchor.MiddleCenter;
+            hostButtonsLayout.childControlWidth = true;
+            hostButtonsLayout.childControlHeight = true;
+            hostButtonsLayout.childForceExpandWidth = true;
+            hostButtonsLayout.childForceExpandHeight = false;
+            hostButtonsLayout.spacing = 20f * panelScale;
+
+            // 开始连接（房主）
+            var startHostBtn = CreateDialogButton(buttonTemplate, hostButtonsGo.transform, "NetworkPlugin_StartHostBtn", "开始做房主", panelScale);
+            startHostBtn.onClick.AddListener(() =>
+            {
+                string portStr = hostPortInput.text.Trim();
+                string maxConnStr = hostMaxConnInput.text.Trim();
+                string key = hostKeyInput.text.Trim();
+                string name = hostNameInput.text.Trim();
+
+                if (!int.TryParse(portStr, out int port) || port <= 0 || port > 65535)
+                {
+                    ShowWarningDialog("请输入有效的端口号（1-65535）。");
+                    return;
+                }
+                if (!int.TryParse(maxConnStr, out int maxConn) || maxConn <= 0 || maxConn > 1000)
+                {
+                    ShowWarningDialog("请输入有效的最大玩家数（1-1000）。");
+                    return;
+                }
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    ShowWarningDialog("连接密钥不能为空。");
+                    return;
+                }
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    ShowWarningDialog("昵称不能为空。");
+                    return;
+                }
+
+                ConfigManager cfg = TryGetConfig();
+                if (cfg != null)
+                {
+                    cfg.HostServerPort.Value = port;
+                    cfg.HostMaxConnections.Value = maxConn;
+                    cfg.HostConnectionKey.Value = key;
+                    cfg.HostPlayerNameOverride.Value = name;
+                    try
+                    {
+                        cfg.HostServerPort.ConfigFile.Save();
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.Logger?.LogWarning($"[MainMenuMultiplayerEntry] 保存房主配置失败: {ex.Message}");
+                    }
+                }
+
+                HideOverlay();
+
+                // 检查是否有存档
+                GameRunSaveData save = null;
+                try
+                {
+                    save = Singleton<GameMaster>.Instance?.GameRunSaveData;
+                }
+                catch
+                {
+                    save = null;
+                }
+
+                if (save != null && Singleton<GameMaster>.Instance?.CurrentGameRun == null)
+                {
+                    UiManager.GetDialog<MessageDialog>().Show(
+                        new MessageContent
+                        {
+                            Text = "检测到可继续的存档。\n\n确认：作为房主继续存档并开启联机\n取消：作为房主开新游戏（仍保持联机）",
+                            Icon = MessageIcon.Warning,
+                            Buttons = DialogButtons.ConfirmCancel,
+                            OnConfirm = () => TryHostLocalServerAndConnectAndRestore(save),
+                            OnCancel = TryHostLocalServerAndConnect,
+                        }
+                    );
+                    return;
+                }
+
+                TryHostLocalServerAndConnect();
+            });
+
+            // 返回大厅按钮
+            var hostCancelBtn = CreateDialogButton(buttonTemplate, hostButtonsGo.transform, "NetworkPlugin_HostCancelBtn", "返回", panelScale);
+            hostCancelBtn.onClick.AddListener(() =>
+            {
+                hostArea.SetActive(false);
+                mainArea.SetActive(true);
+                if (mainText != null) mainText.text = "多人游戏";
+            });
+
+            foreach (var b in new[] { startHostBtn, hostCancelBtn })
             {
                 if (b == null) continue;
                 var r = b.GetComponent<RectTransform>();
@@ -1972,13 +2119,13 @@ public static class MainMenuMultiplayerEntryPatch
     internal static void TryHostLocalServerAndConnect()
     {
         ConfigManager config = TryGetConfig();
-        int port = config?.ServerPort?.Value ?? 7777;
+        int port = config?.HostServerPort?.Value ?? 7777;
         if (port <= 0)
         {
             port = 7777;
         }
-        int maxConn = config?.RelayServerMaxConnections?.Value ?? 8;
-        string key = config?.RelayServerConnectionKey?.Value ?? "LBoL_Network_Plugin";
+        int maxConn = config?.HostMaxConnections?.Value ?? 4;
+        string key = config?.HostConnectionKey?.Value ?? "LBoL_Network_Plugin";
 
         try
         {

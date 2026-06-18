@@ -69,7 +69,15 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
                 if (provider != null)
                 {
                     var config = provider.GetService(typeof(NetworkPlugin.Configuration.ConfigManager)) as NetworkPlugin.Configuration.ConfigManager;
-                    string overrideName = config?.PlayerNameOverride?.Value;
+                    string overrideName = null;
+                    if (NetworkPlugin.Patch.UI.MainMenuMultiplayerEntryPatch.IsLocalServerRunning)
+                    {
+                        overrideName = config?.HostPlayerNameOverride?.Value;
+                    }
+                    if (string.IsNullOrWhiteSpace(overrideName))
+                    {
+                        overrideName = config?.PlayerNameOverride?.Value;
+                    }
                     if (!string.IsNullOrWhiteSpace(overrideName))
                     {
                         return overrideName;
