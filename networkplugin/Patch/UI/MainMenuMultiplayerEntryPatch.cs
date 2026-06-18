@@ -1041,12 +1041,19 @@ public static class MainMenuMultiplayerEntryPatch
 
             if (_overlayRoot != null)
             {
-                // UI 反馈迭代中直接重建，避免历史样式残留导致“看起来没变化”。
                 UnityEngine.Object.Destroy(_overlayRoot);
                 _overlayRoot = null;
             }
 
             _defaultFont ??= FindDefaultFont(panelTransform);
+
+            // 加载游戏内置的 MessageDialog 预制体
+            GameObject dialogPrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
+            if (dialogPrefab == null)
+            {
+                Plugin.Logger?.LogError("[MainMenuMultiplayerEntry] 无法加载原生 MessageDialog 预制体！");
+                return;
+            }
 
             GameObject root = new GameObject(OverlayRootName);
             root.transform.SetParent(panelTransform, false);
@@ -1059,29 +1066,21 @@ public static class MainMenuMultiplayerEntryPatch
             rootRect.offsetMin = Vector2.zero;
             rootRect.offsetMax = Vector2.zero;
 
-            // 半透明遮罩背景，拦截点击。
+            // 半透明背景，拦截点击
             var bg = root.AddComponent<Image>();
-            // 参考 MessageDialog 的视觉：全屏暗化背景（提升对比度），并保留拦截点击。
             bg.color = new Color(0f, 0f, 0f, 0.62f);
             bg.raycastTarget = true;
 
-            // 参考 MessageDialog 的出现动效：简单的淡入 + 轻微缩放。
-            // 注意：这里不直接复用 MessageDialog 实例，因为 UiManager 只允许同时显示一个 Dialog.
             var rootGroup = root.AddComponent<CanvasGroup>();
             rootGroup.alpha = 0f;
             rootGroup.interactable = false;
             rootGroup.blocksRaycasts = true;
 
-            // 中间面板整体缩放：期望 3 倍，但必须保证不超出屏幕。
-            // 这里用 rootRect 的尺寸做自适应，尽量接近 3 倍。
             float panelScale = 3f;
             try
             {
                 const float baseW = 520f;
                 const float baseH = 380f;
-
-                // 用户诉求：高度变小，宽度铺满屏幕。
-                // 用接近原始宽度的基准计算缩放，避免容器过窄；高度略收紧。
                 const float widthFactor = 1.00f;
                 const float heightFactor = 0.95f;
 
@@ -1089,7 +1088,6 @@ public static class MainMenuMultiplayerEntryPatch
                 float maxH = Mathf.Max(1f, rootRect.rect.height * 0.92f);
                 float fitScale = Mathf.Min(maxW / (baseW * widthFactor), maxH / (baseH * heightFactor));
                 panelScale = Mathf.Min(3f, fitScale);
-                // 兜底：避免极端情况下缩放为 0。
                 panelScale = Mathf.Max(1f, panelScale);
             }
             catch
@@ -1097,93 +1095,112 @@ public static class MainMenuMultiplayerEntryPatch
                 panelScale = 3f;
             }
 
-            // 中央容器。
-            GameObject container = new GameObject("Container");
-            container.transform.SetParent(root.transform, false);
-            var containerRect = container.AddComponent<RectTransform>();
-            containerRect.anchorMin = new Vector2(0.5f, 0.5f);
-            containerRect.anchorMax = new Vector2(0.5f, 0.5f);
-            containerRect.pivot = new Vector2(0.5f, 0.5f);
+            // 实例化原生弹窗框体作为中央容器
+            GameObject frame = UnityEngine.Object.Instantiate(dialogPrefab, root.transform, false);
+            frame.name = OverlayRootName + "_Frame";
+            frame.SetActive(true);
 
-            // 与上面缩放逻辑保持一致：更宽 + 更矮。
-            const float containerWidthFactor = 1.00f;
-            const float containerHeightFactor = 0.95f;
-            containerRect.sizeDelta = new Vector2(520f * panelScale * containerWidthFactor, 380f * panelScale * containerHeightFactor);
-            containerRect.anchoredPosition = Vector2.zero;
+            RectTransform frameRect = frame.GetComponent<RectTransform>();
+            if (frameRect != null)
+            {
+                frameRect.anchorMin = new Vector2(0.5f, 0.5f);
+                frameRect.anchorMax = new Vector2(0.5f, 0.5f);
+                frameRect.pivot = new Vector2(0.5f, 0.5f);
+                frameRect.sizeDelta = new Vector2(520f * panelScale, 380f * panelScale);
+                frameRect.anchoredPosition = Vector2.zero;
+            }
 
-            // 绑定入场动画。
+            // 获取原生 MessageDialog 组件并禁用它以防干扰
+            MessageDialog dialog = frame.GetComponentInChildren<MessageDialog>(true);
+            if (dialog != null)
+            {
+                dialog.enabled = false;
+            }
+
+            // 获取原生各个字段组件
+            TextMeshProUGUI mainText = GetDialogField<TextMeshProUGUI>(dialog, "mainText");
+            TextMeshProUGUI subText = GetDialogField<TextMeshProUGUI>(dialog, "subText");
+            Button singleConfirm = GetDialogField<Button>(dialog, "singleConfirmButton");
+            Button confirm = GetDialogField<Button>(dialog, "confirmButton");
+            Button cancel = GetDialogField<Button>(dialog, "cancelButton");
+            // 确定内容父容器：跟原版 SelectionPanelScaffold 查找逻辑对齐，使用 mainText 的 parent 作为面板根容器
+            RectTransform panelRect = mainText?.rectTransform.parent as RectTransform ?? frameRect;
+
+            // 只清除 frame 根节点上的布局与自适应组件，避免干扰子节点（如按钮内部）的对齐
+            if (frame != null)
+            {
+                var rootFitters = frame.GetComponents<ContentSizeFitter>();
+                foreach (var fitter in rootFitters) UnityEngine.Object.Destroy(fitter);
+
+                var rootLayouts = frame.GetComponents<LayoutGroup>();
+                foreach (var l in rootLayouts) UnityEngine.Object.Destroy(l);
+            }
+
+            if (panelRect != null)
+            {
+                // 递归将 panelRect 及其所有父级（直到 frame）强制设置为拉伸填满，并只清除其自身的布局组件，保留按钮等子物体的内部排版
+                Transform current = panelRect;
+                while (current != null && current != frame.transform)
+                {
+                    var rt = current.GetComponent<RectTransform>();
+                    if (rt != null)
+                    {
+                        rt.anchorMin = Vector2.zero;
+                        rt.anchorMax = Vector2.one;
+                        rt.offsetMin = Vector2.zero;
+                        rt.offsetMax = Vector2.zero;
+                        rt.pivot = new Vector2(0.5f, 0.5f);
+                    }
+
+                    var fitters = current.GetComponents<ContentSizeFitter>();
+                    foreach (var f in fitters) UnityEngine.Object.Destroy(f);
+
+                    var layouts = current.GetComponents<LayoutGroup>();
+                    foreach (var l in layouts) UnityEngine.Object.Destroy(l);
+
+                    current = current.parent;
+                }
+
+                // 强制 panelRect 锚定并拉伸填满父框体，保证子容器坐标系统对齐
+                panelRect.anchorMin = Vector2.zero;
+                panelRect.anchorMax = Vector2.one;
+                panelRect.offsetMin = Vector2.zero;
+                panelRect.offsetMax = Vector2.zero;
+                panelRect.pivot = new Vector2(0.5f, 0.5f);
+            }
+
+            // 隐藏原生 MessageDialog 预制体自带的所有背景 Image 和黄线，只保留其作为纯净容器（保护三个按钮及它们内部的 Image 不被隐藏）
+            if (frame != null)
+            {
+                var nativeImages = frame.GetComponentsInChildren<Image>(true);
+                foreach (var img in nativeImages)
+                {
+                    if (img == null) continue;
+                    if (singleConfirm != null && (img.transform == singleConfirm.transform || IsDescendantOf(img.transform, singleConfirm.transform))) continue;
+                    if (confirm != null && (img.transform == confirm.transform || IsDescendantOf(img.transform, confirm.transform))) continue;
+                    if (cancel != null && (img.transform == cancel.transform || IsDescendantOf(img.transform, cancel.transform))) continue;
+                    
+                    // 禁用 Image 组件本身使其不渲染，而不直接隐藏其所在的 GameObject（防止误杀 root 节点导致整个弹窗消失）
+                    img.enabled = false;
+                }
+            }
+
+            // 隐藏原生多余的字段和底部按钮
+            if (subText != null) subText.gameObject.SetActive(false);
+            if (singleConfirm != null) singleConfirm.gameObject.SetActive(false);
+            if (confirm != null) confirm.gameObject.SetActive(false);
+            if (cancel != null) cancel.gameObject.SetActive(false);
+
+            // 确定按钮模板
+            Button buttonTemplate = confirm ?? singleConfirm ?? cancel ?? template;
+
+            // 绑定入场缩放与渐显动画
             try
             {
                 var animator = root.AddComponent<OverlayIntroAnimator>();
-                // AddComponent 在激活对象上会立即触发 OnEnable；先禁用确保 Init 先完成。
                 animator.enabled = false;
-                animator.Init(rootGroup, containerRect);
+                animator.Init(rootGroup, frameRect);
                 animator.enabled = true;
-            }
-            catch
-            {
-                // ignored
-            }
-
-            // 克隆 MessageDialog 的背景
-            Sprite dialogBgSprite = null;
-            try
-            {
-                var msgDialog = UiManager.GetDialog<MessageDialog>();
-                if (msgDialog != null)
-                {
-                    var images = msgDialog.GetComponentsInChildren<Image>(true);
-                    foreach (var img in images)
-                    {
-                        if (img != null && img.sprite != null && img.sprite.name != "Background" && img.sprite.name != "UIMask")
-                        {
-                            dialogBgSprite = img.sprite;
-                            break;
-                        }
-                    }
-                    if (dialogBgSprite == null && images.Length > 0)
-                    {
-                        dialogBgSprite = images[0].sprite;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Plugin.Logger?.LogWarning($"[MainMenuMultiplayerEntry] 获取 MessageDialog 背景失败: {ex.Message}");
-            }
-
-            var containerBg = container.AddComponent<Image>();
-            if (dialogBgSprite != null)
-            {
-                containerBg.sprite = dialogBgSprite;
-                containerBg.type = Image.Type.Sliced;
-                containerBg.color = Color.white;
-            }
-            else
-            {
-                containerBg.color = new Color(0.15f, 0.15f, 0.15f, 0.95f);
-            }
-            containerBg.raycastTarget = true; // 拦截点击
-
-            // 参考 MessageDialog 的上下分隔线：铺满屏幕宽度，但高度（上下间距）更小。
-            // 这里把分隔线放在 root 上，并用屏幕高度的比例来收紧“边界高度”。
-            try
-            {
-                float yAbs = 220f;
-                try
-                {
-                    float maxByContainer = (containerRect.sizeDelta.y * 0.5f) - 30f;
-                    float desired = rootRect.rect.height * 0.22f; // 1080p 下约 238px
-                    yAbs = Mathf.Clamp(desired, 160f, Mathf.Max(160f, maxByContainer));
-                }
-                catch
-                {
-                    // ignored
-                }
-
-                Color gold = new Color(0.86f, 0.73f, 0.34f, 0.9f);
-                CreateHorizontalRule(root.transform, "TopRule", anchorY: 0.5f, y: yAbs, height: 4f, color: gold);
-                CreateHorizontalRule(root.transform, "BottomRule", anchorY: 0.5f, y: -yAbs-60, height: 4f, color: gold);
             }
             catch
             {
@@ -1192,35 +1209,34 @@ public static class MainMenuMultiplayerEntryPatch
 
             // ================== 主大厅面板 Area ==================
             GameObject mainArea = new GameObject("MainArea");
-            mainArea.transform.SetParent(container.transform, false);
+            mainArea.transform.SetParent(panelRect, false);
             var mainAreaRt = mainArea.AddComponent<RectTransform>();
             mainAreaRt.anchorMin = Vector2.zero;
             mainAreaRt.anchorMax = Vector2.one;
             mainAreaRt.offsetMin = Vector2.zero;
             mainAreaRt.offsetMax = Vector2.zero;
 
-            // 标题。
-            GameObject titleGo = new GameObject("Title");
-            titleGo.transform.SetParent(mainArea.transform, false);
-            var titleRect = titleGo.AddComponent<RectTransform>();
-            titleRect.anchorMin = new Vector2(0f, 1f);
-            titleRect.anchorMax = new Vector2(1f, 1f);
-            titleRect.pivot = new Vector2(0.5f, 1f);
-            titleRect.anchoredPosition = new Vector2(0f, -18f * panelScale);
-            titleRect.sizeDelta = new Vector2(0f, 48f * panelScale);
-
-            var title = titleGo.AddComponent<TextMeshProUGUI>();
-            title.text = "多人游戏";
-            title.fontSize = Mathf.Clamp(30f * panelScale, 30f, 96f);
-            title.alignment = TextAlignmentOptions.Midline;
-            title.color = Color.white;
-            title.raycastTarget = false;
-            if (_defaultFont != null)
+            // 设置标题并在去除布局后重新手动排版，避免重叠
+            if (mainText != null)
             {
-                title.font = _defaultFont;
+                mainText.text = "多人游戏";
+                mainText.alignment = TextAlignmentOptions.Center;
+                mainText.fontSize = Mathf.Clamp(24f * panelScale, 24f, 80f);
+
+                var mainTextRt = mainText.rectTransform;
+                if (mainTextRt != null)
+                {
+                    mainTextRt.anchorMin = new Vector2(0f, 1f);
+                    mainTextRt.anchorMax = new Vector2(1f, 1f);
+                    mainTextRt.pivot = new Vector2(0.5f, 1f);
+                    mainTextRt.anchoredPosition = new Vector2(0f, -20f * panelScale);
+                    mainTextRt.sizeDelta = new Vector2(-40f * panelScale, 45f * panelScale);
+                }
+                mainText.transform.SetAsLastSibling();
+                mainText.gameObject.SetActive(true);
             }
 
-            // 说明。
+            // 说明文字
             GameObject descGo = new GameObject("Description");
             descGo.transform.SetParent(mainArea.transform, false);
             var descRect = descGo.AddComponent<RectTransform>();
@@ -1241,18 +1257,17 @@ public static class MainMenuMultiplayerEntryPatch
                 desc.font = _defaultFont;
             }
 
-            // 按钮区域。
+            // 按钮区域
             GameObject buttonsGo = new GameObject("Buttons");
             buttonsGo.transform.SetParent(mainArea.transform, false);
             var buttonsRect = buttonsGo.AddComponent<RectTransform>();
             buttonsRect.anchorMin = new Vector2(0.5f, 0f);
             buttonsRect.anchorMax = new Vector2(0.5f, 0f);
             buttonsRect.pivot = new Vector2(0.5f, 0f);
-            // 用户最新诉求：黄框按钮变窄。
             float buttonsWidth = 380f * panelScale;
             try
             {
-                buttonsWidth = Mathf.Min(buttonsWidth, containerRect.sizeDelta.x * 0.60f);
+                buttonsWidth = Mathf.Min(buttonsWidth, frameRect.sizeDelta.x * 0.60f);
             }
             catch
             {
@@ -1271,14 +1286,10 @@ public static class MainMenuMultiplayerEntryPatch
             layout.padding = new RectOffset(0, 0, 0, 0);
 
             // 房主
-            var hostBtn = CreateButtonFromTemplate(template, buttonsGo.transform, "NetworkPlugin_HostButton", "做房主");
-            hostBtn.name = "NetworkPlugin_HostButton";
-            hostBtn.onClick.RemoveAllListeners();
+            var hostBtn = CreateDialogButton(buttonTemplate, buttonsGo.transform, "NetworkPlugin_HostButton", "做房主", panelScale);
             hostBtn.onClick.AddListener(() =>
             {
                 HideOverlay();
-
-                // 若存在可继续的存档，提示用户选择“继续存档”还是“开新游戏”。
                 try
                 {
                     GameRunSaveData save = Singleton<GameMaster>.Instance?.GameRunSaveData;
@@ -1301,72 +1312,39 @@ public static class MainMenuMultiplayerEntryPatch
                 {
                     // ignored
                 }
-
                 TryHostLocalServerAndConnect();
             });
-            TrySetButtonText(hostBtn, "做房主");
-            TryScaleButtonText(hostBtn, panelScale);
 
             // 加入（切换到子面板）
             GameObject joinArea = new GameObject("JoinArea");
-            var joinBtn = CreateButtonFromTemplate(template, buttonsGo.transform, "NetworkPlugin_JoinButton", "加入房主");
-            joinBtn.name = "NetworkPlugin_JoinButton";
-            joinBtn.onClick.RemoveAllListeners();
+            var joinBtn = CreateDialogButton(buttonTemplate, buttonsGo.transform, "NetworkPlugin_JoinButton", "加入房主", panelScale);
             joinBtn.onClick.AddListener(() =>
             {
                 mainArea.SetActive(false);
                 joinArea.SetActive(true);
+                if (mainText != null) mainText.text = "加入房主";
             });
-            TrySetButtonText(joinBtn, "加入房主");
-            TryScaleButtonText(joinBtn, panelScale);
 
             // 返回
-            var backBtn = CreateButtonFromTemplate(template, buttonsGo.transform, "NetworkPlugin_BackButton", "返回");
-            backBtn.name = "NetworkPlugin_BackButton";
-            backBtn.onClick.RemoveAllListeners();
+            var backBtn = CreateDialogButton(buttonTemplate, buttonsGo.transform, "NetworkPlugin_BackButton", "返回", panelScale);
             backBtn.onClick.AddListener(HideOverlay);
-            TrySetButtonText(backBtn, "返回");
-            TryScaleButtonText(backBtn, panelScale);
 
-            // 统一尺寸。
+            // 统一尺寸大小
             foreach (var b in new[] { hostBtn, joinBtn, backBtn })
             {
                 if (b == null) continue;
-                b.interactable = true;
-                b.gameObject.SetActive(true);
                 var r = b.GetComponent<RectTransform>();
                 if (r != null) r.sizeDelta = new Vector2(r.sizeDelta.x, 58f * panelScale);
             }
 
             // ================== 加入客户端子面板 Area ==================
-            joinArea.transform.SetParent(container.transform, false);
+            joinArea.transform.SetParent(panelRect, false);
             var joinAreaRt = joinArea.AddComponent<RectTransform>();
             joinAreaRt.anchorMin = Vector2.zero;
             joinAreaRt.anchorMax = Vector2.one;
             joinAreaRt.offsetMin = Vector2.zero;
             joinAreaRt.offsetMax = Vector2.zero;
             joinArea.SetActive(false);
-
-            // 子面板标题
-            GameObject joinTitleGo = new GameObject("JoinTitle");
-            joinTitleGo.transform.SetParent(joinArea.transform, false);
-            var joinTitleRect = joinTitleGo.AddComponent<RectTransform>();
-            joinTitleRect.anchorMin = new Vector2(0f, 1f);
-            joinTitleRect.anchorMax = new Vector2(1f, 1f);
-            joinTitleRect.pivot = new Vector2(0.5f, 1f);
-            joinTitleRect.anchoredPosition = new Vector2(0f, -18f * panelScale);
-            joinTitleRect.sizeDelta = new Vector2(0f, 48f * panelScale);
-
-            var joinTitle = joinTitleGo.AddComponent<TextMeshProUGUI>();
-            joinTitle.text = "加入房主";
-            joinTitle.fontSize = Mathf.Clamp(30f * panelScale, 30f, 96f);
-            joinTitle.alignment = TextAlignmentOptions.Midline;
-            joinTitle.color = Color.white;
-            joinTitle.raycastTarget = false;
-            if (_defaultFont != null)
-            {
-                joinTitle.font = _defaultFont;
-            }
 
             // 表单输入区容器
             GameObject formGo = new GameObject("Form");
@@ -1386,7 +1364,7 @@ public static class MainMenuMultiplayerEntryPatch
             formLayout.childForceExpandHeight = false;
             formLayout.spacing = 8f * panelScale;
 
-            // 获取当前配置
+            // 获取配置默认数据
             ConfigManager config = TryGetConfig();
             string curIp = config?.ServerIP?.Value ?? "127.0.0.1";
             string curPort = config?.ServerPort?.Value.ToString() ?? "7777";
@@ -1407,11 +1385,11 @@ public static class MainMenuMultiplayerEntryPatch
             TMP_InputField portInput;
             TMP_InputField nameInput;
 
-            CreateInputRow(formGo.transform, template, "服务器 IP:", "请输入 IP 地址...", curIp, panelScale, out ipInput);
-            CreateInputRow(formGo.transform, template, "端口:", "请输入端口号...", curPort, panelScale, out portInput);
-            CreateInputRow(formGo.transform, template, "玩家昵称:", "请输入昵称...", curName, panelScale, out nameInput);
+            CreateInputRow(formGo.transform, buttonTemplate, "服务器 IP:", "请输入 IP 地址...", curIp, panelScale, out ipInput);
+            CreateInputRow(formGo.transform, buttonTemplate, "端口:", "请输入端口号...", curPort, panelScale, out portInput);
+            CreateInputRow(formGo.transform, buttonTemplate, "玩家昵称:", "请输入昵称...", curName, panelScale, out nameInput);
 
-            // 子面板按钮区域
+            // 子面板底部按钮
             GameObject joinButtonsGo = new GameObject("JoinButtons");
             joinButtonsGo.transform.SetParent(joinArea.transform, false);
             var joinButtonsRt = joinButtonsGo.AddComponent<RectTransform>();
@@ -1430,9 +1408,7 @@ public static class MainMenuMultiplayerEntryPatch
             joinButtonsLayout.spacing = 20f * panelScale;
 
             // 开始连接
-            var connectBtn = CreateButtonFromTemplate(template, joinButtonsGo.transform, "NetworkPlugin_ConnectBtn", "开始连接");
-            connectBtn.name = "NetworkPlugin_ConnectBtn";
-            connectBtn.onClick.RemoveAllListeners();
+            var connectBtn = CreateDialogButton(buttonTemplate, joinButtonsGo.transform, "NetworkPlugin_ConnectBtn", "开始连接", panelScale);
             connectBtn.onClick.AddListener(() =>
             {
                 string ip = ipInput.text.Trim();
@@ -1455,7 +1431,6 @@ public static class MainMenuMultiplayerEntryPatch
                     return;
                 }
 
-                // 保存配置
                 ConfigManager cfg = TryGetConfig();
                 if (cfg != null)
                 {
@@ -1493,37 +1468,30 @@ public static class MainMenuMultiplayerEntryPatch
                     TryConnectToServer(ip, port);
                 }
             });
-            TrySetButtonText(connectBtn, "开始连接");
-            TryScaleButtonText(connectBtn, panelScale);
 
             // 返回大厅按钮
-            var cancelBtn = CreateButtonFromTemplate(template, joinButtonsGo.transform, "NetworkPlugin_CancelBtn", "返回");
-            cancelBtn.name = "NetworkPlugin_CancelBtn";
-            cancelBtn.onClick.RemoveAllListeners();
+            var cancelBtn = CreateDialogButton(buttonTemplate, joinButtonsGo.transform, "NetworkPlugin_CancelBtn", "返回", panelScale);
             cancelBtn.onClick.AddListener(() =>
             {
                 joinArea.SetActive(false);
                 mainArea.SetActive(true);
+                if (mainText != null) mainText.text = "多人游戏";
             });
-            TrySetButtonText(cancelBtn, "返回");
-            TryScaleButtonText(cancelBtn, panelScale);
 
             foreach (var b in new[] { connectBtn, cancelBtn })
             {
                 if (b == null) continue;
-                b.interactable = true;
-                b.gameObject.SetActive(true);
                 var r = b.GetComponent<RectTransform>();
                 if (r != null) r.sizeDelta = new Vector2(r.sizeDelta.x, 58f * panelScale);
             }
 
-            // 最后兜底：确保容器不会超出画布。
+            // 确保容器不超过画布
             try
             {
                 var canvasRect = TryGetRootCanvasRectTransform(panelTransform);
                 if (canvasRect != null)
                 {
-                    ClampToContainer(containerRect, canvasRect, paddingWorld: 0f);
+                    ClampToContainer(frameRect, canvasRect, paddingWorld: 0f);
                 }
             }
             catch
@@ -1703,6 +1671,47 @@ public static class MainMenuMultiplayerEntryPatch
         _overlayRoot?.SetActive(false);
     }
 
+    private static T GetDialogField<T>(MessageDialog dialog, string fieldName) where T : class
+    {
+        if (dialog == null || string.IsNullOrWhiteSpace(fieldName))
+        {
+            return null;
+        }
+
+        FieldInfo field = typeof(MessageDialog).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+        return field?.GetValue(dialog) as T;
+    }
+
+    private static Button CreateDialogButton(Button template, Transform parent, string name, string labelText, float panelScale)
+    {
+        if (template == null)
+        {
+            return null;
+        }
+
+        GameObject go = UnityEngine.Object.Instantiate(template.gameObject, parent, false);
+        go.name = name;
+        Button btn = go.GetComponent<Button>();
+        btn.onClick.RemoveAllListeners();
+
+        // 仅套用样式，剥离可能会干扰的本地化组件
+        TryStripLocalizationComponents(go);
+
+        // 设置文本与大小
+        TrySetButtonText(btn, labelText);
+        TryScaleButtonText(btn, panelScale);
+
+        // 添加并配置 LayoutElement，这样 LayoutGroup 才能获取正确的缩放后尺寸，防止布局坍塌/重叠
+        var le = go.GetComponent<LayoutElement>() ?? go.AddComponent<LayoutElement>();
+        le.preferredHeight = 58f * panelScale;
+        le.preferredWidth = -1f;
+
+        btn.interactable = true;
+        go.SetActive(true);
+
+        return btn;
+    }
+
     private static void ShowWarningDialog(string message)
     {
         UiManager.GetDialog<MessageDialog>().Show(
@@ -1723,6 +1732,11 @@ public static class MainMenuMultiplayerEntryPatch
         row.transform.SetParent(parent, false);
         var rowRt = row.AddComponent<RectTransform>();
         rowRt.sizeDelta = new Vector2(400f * panelScale, 42f * panelScale);
+
+        // 添加 LayoutElement，防止被 parent 的 VerticalLayoutGroup 压扁为 0 像素高度
+        var le = row.AddComponent<LayoutElement>();
+        le.preferredHeight = 42f * panelScale;
+        le.preferredWidth = 400f * panelScale;
 
         var layout = row.AddComponent<HorizontalLayoutGroup>();
         layout.childAlignment = TextAnchor.MiddleLeft;
@@ -1856,6 +1870,24 @@ public static class MainMenuMultiplayerEntryPatch
         {
             return null;
         }
+    }
+
+    private static bool IsDescendantOf(Transform child, Transform parent)
+    {
+        if (child == null || parent == null)
+        {
+            return false;
+        }
+        Transform current = child.parent;
+        while (current != null)
+        {
+            if (current == parent)
+            {
+                return true;
+            }
+            current = current.parent;
+        }
+        return false;
     }
 
     /// <summary>

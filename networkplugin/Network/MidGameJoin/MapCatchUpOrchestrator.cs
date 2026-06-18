@@ -118,8 +118,6 @@ public sealed class MapCatchUpOrchestrator
     #endregion
 
     #region 公共方法 — 快照管理与主线程驱动
-
-    #region 公共方法（快照管理与主线程驱动）
     /// <summary>
     /// 主线程驱动入口：
     /// - 当本地 GameRun 就绪时，尝试应用待处理的快照。
