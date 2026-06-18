@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LBoL NetworkPlugin 网络通信机制 — 交互式架构文档</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<style>
+  :root {
+    --md-sys-color-primary: #4f46e5;
+    --md-sys-color-on-primary: #ffffff;
+    --md-sys-color-primary-container: #e0e0ff;
+    --md-sys-color-on-primary-container: #00006e;
+    --md-sys-color-secondary: #00897b;
+    --md-sys-color-on-secondary: #ffffff;
+    --md-sys-color-secondary-container: #b2dfdb;
+    --md-sys-color-on-secondary-container: #00251a;
+    --md-sys-color-surface: #faf9fd;
+    --md-sys-color-surface-variant: #e7e0ec;
+    --md-sys-color-on-surface: #1d1b20;
+    --md-sys-color-on-surface-variant: #49454f;
+    --md-sys-color-outline: #79747e;
+    --md-sys-color-error: #b3261e;
+    --md-sys-color-error-container: #f9dedc;
+    --md-sys-elevation-1: 0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.08);
+    --md-sys-elevation-2: 0 3px 6px rgba(0,0,0,.15), 0 2px 4px rgba(0,0,0,.12);
+    --md-sys-elevation-3: 0 10px 20px rgba(0,0,0,.15), 0 3px 6px rgba(0,0,0,.10);
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 28px;
+  }
+  body.dark {
+    --md-sys-color-primary: #a5a6ff;
+    --md-sys-color-on-primary: #1a1b4b;
+    --md-sys-color-primary-container: #2a2b7a;
+    --md-sys-color-on-primary-container: #e0e0ff;
+    --md-sys-color-secondary: #4db6ac;
+    --md-sys-color-on-secondary: #00251a;
+    --md-sys-color-secondary-container: #004d40;
+    --md-sys-color-on-secondary-container: #b2dfdb;
+    --md-sys-color-surface: #121118;
+    --md-sys-color-surface-variant: #2a2832;
+    --md-sys-color-on-surface: #e8e4ec;
+    --md-sys-color-on-surface-variant: #a8a3b0;
+    --md-sys-color-outline: #6b6675;
+    --md-sys-elevation-1: 0 1px 3px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.2);
+    --md-sys-elevation-2: 0 3px 6px rgba(0,0,0,.4), 0 2px 4px rgba(0,0,0,.3);
+    --md-sys-elevation-3: 0 10px 20px rgba(0,0,0,.5), 0 3px 6px rgba(0,0,0,.3);
+  }
+  body.dark .card,
+  body.dark .arch-node,
+  body.dark .detail-panel,
+  body.dark .flow-box { background: #1d1b20 !important; }
+  body.dark .arch-canvas,
+  body.dark .search-field,
+  body.dark .data-table th,
+  body.dark div[style*="background:var(--md-sys-color-surface-variant)"] { background: #2a2832 !important; }
+  body.dark .search-field:focus-within { background: #3a3840 !important; }
+  body.dark .const-row { border-bottom-color: #3a3840; }
+  body.dark .data-table td { border-bottom-color: #3a3840; }
+  body.dark .badge-udp { background: #1b5e20; color: #a5d6a7; }
+  body.dark .badge-rel { background: #6d4c00; color: #ffe0b2; }
+  body.dark .badge-json { background: #0d47a1; color: #90caf9; }
+  body.dark .theme-toggle { color: var(--md-sys-color-on-surface-variant); }
+  body.dark .theme-toggle:hover { background: rgba(165,166,255,.12); }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: 'Roboto', 'Microsoft YaHei', sans-serif;
+    background: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* App Bar */
+  .app-bar {
+    position: fixed; top: 0; left: 0; right: 0; height: 64px;
+    background: var(--md-sys-color-surface);
+    box-shadow: var(--md-sys-elevation-2);
+    display: flex; align-items: center; padding: 0 16px 0 24px; z-index: 50;
+    gap: 16px;
+  }
+  .app-bar-title { font-size: 22px; font-weight: 500; letter-spacing: .15px; }
+  .app-bar .spacer { flex: 1; }
+  .theme-toggle {
+    display: grid; place-items: center;
+    width: 40px; height: 40px; border-radius: 50%;
+    cursor: pointer; color: var(--md-sys-color-on-surface-variant);
+    transition: .2s; user-select: none;
+  }
+  .theme-toggle:hover { background: rgba(79,70,229,.12); color: var(--md-sys-color-primary); }
+  .chip-group { display: flex; gap: 8px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: var(--radius-xl);
+    background: var(--md-sys-color-surface-variant);
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 13px; font-weight: 500; cursor: pointer; user-select: none;
+    border: 1px solid transparent; transition: .2s;
+  }
+  .chip.active { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); border-color: var(--md-sys-color-primary); }
+  .chip:hover { background: rgba(79,70,229,.12); }
+
+  /* Drawer */
+  .drawer {
+    width: 280px; flex-shrink: 0; padding: 88px 12px 20px;
+    background: var(--md-sys-color-surface);
+    border-right: 1px solid var(--md-sys-color-outline);
+    display: flex; flex-direction: column; gap: 8px; overflow-y: auto;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 16px;
+    padding: 12px 16px; border-radius: var(--radius-xl);
+    cursor: pointer; transition: .2s; color: var(--md-sys-color-on-surface-variant);
+    font-size: 14px; font-weight: 500;
+  }
+  .nav-item:hover { background: rgba(79,70,229,.08); }
+  .nav-item.active { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); }
+  .nav-item .material-icons-round { font-size: 22px; }
+
+  /* Main Content */
+  .main { flex: 1; padding: 88px 24px 40px; overflow-y: auto; }
+  .page { display: none; animation: fadeIn .25s ease; }
+  .page.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Cards */
+  .card {
+    background: #fff; border-radius: var(--radius-md);
+    box-shadow: var(--md-sys-elevation-1); padding: 20px; margin-bottom: 20px;
+    transition: box-shadow .2s;
+  }
+  .card:hover { box-shadow: var(--md-sys-elevation-2); }
+  .card-title {
+    font-size: 18px; font-weight: 500; color: var(--md-sys-color-on-surface);
+    margin-bottom: 12px; display: flex; align-items: center; gap: 10px;
+  }
+  .card-subtitle { font-size: 13px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 16px; }
+
+  /* Architecture Graph */
+  .arch-canvas { width: 100%; height: 520px; background: #f5f5f9; border-radius: var(--radius-md); position: relative; overflow: hidden; }
+  .arch-node {
+    position: absolute; padding: 12px 16px; border-radius: var(--radius-md);
+    background: #fff; box-shadow: var(--md-sys-elevation-2); cursor: pointer;
+    font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px;
+    transition: transform .15s, box-shadow .2s; user-select: none;
+    border: 2px solid transparent;
+  }
+  .arch-node:hover { transform: translateY(-2px); box-shadow: var(--md-sys-elevation-3); border-color: var(--md-sys-color-primary); }
+  .arch-node .badge { width: 8px; height: 8px; border-radius: 50%; }
+  .arch-node.client { border-left: 4px solid var(--md-sys-color-primary); }
+  .arch-node.server { border-left: 4px solid var(--md-sys-color-secondary); }
+  .arch-node.sync { border-left: 4px solid #ff9800; }
+  .arch-node.room { border-left: 4px solid #9c27b0; }
+  .arch-node.utility { border-left: 4px solid #607d8b; }
+  svg.arch-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+  /* Detail Panel */
+  .detail-panel {
+    position: absolute; right: 12px; top: 12px; width: 340px; max-height: calc(100% - 24px);
+    background: #fff; border-radius: var(--radius-md); box-shadow: var(--md-sys-elevation-3);
+    padding: 16px; overflow-y: auto; display: none; z-index: 10;
+    border: 1px solid var(--md-sys-color-outline);
+  }
+  .detail-panel.open { display: block; animation: slideIn .2s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
+  .detail-title { font-weight: 700; font-size: 15px; margin-bottom: 6px; }
+  .detail-text { font-size: 13px; color: var(--md-sys-color-on-surface-variant); line-height: 1.6; }
+  .detail-tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); margin: 2px 4px 2px 0; }
+
+  /* Tables */
+  .data-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+  .data-table th { text-align: left; padding: 12px 14px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); background: #f5f5f9; position: sticky; top: 0; }
+  .data-table td { padding: 12px 14px; border-bottom: 1px solid #ece6f0; color: var(--md-sys-color-on-surface); }
+  .data-table tr:hover td { background: rgba(79,70,229,.04); }
+  .data-table-wrap { max-height: 560px; overflow-y: auto; border-radius: var(--radius-md); border: 1px solid var(--md-sys-color-outline); }
+
+  /* Search */
+  .search-field {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px; border-radius: var(--radius-xl);
+    background: #f5f5f9; border: 1px solid transparent; margin-bottom: 16px;
+  }
+  .search-field:focus-within { border-color: var(--md-sys-color-primary); background: #fff; }
+  .search-field input { border: none; background: transparent; outline: none; font: inherit; flex: 1; }
+
+  /* Stepper */
+  .stepper { display: flex; align-items: flex-start; gap: 8px; }
+  .step { flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .step-circle { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 500; background: var(--md-sys-color-surface-variant); color: var(--md-sys-color-on-surface-variant); margin-bottom: 8px; transition: .3s; }
+  .step.active .step-circle { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); box-shadow: 0 0 0 4px var(--md-sys-color-primary-container); }
+  .step-label { font-size: 12px; color: var(--md-sys-color-on-surface-variant); max-width: 110px; }
+  .step.active .step-label { color: var(--md-sys-color-on-surface); font-weight: 500; }
+  .step-line { flex: 1; height: 2px; background: var(--md-sys-color-surface-variant); margin-top: 15px; border-radius: 1px; }
+  .step-line.active { background: var(--md-sys-color-primary); }
+
+  /* Flow diagram */
+  .flow-box { display: inline-block; padding: 10px 16px; border-radius: var(--radius-md); background: #fff; box-shadow: var(--md-sys-elevation-1); font-size: 13px; font-weight: 500; margin: 4px; }
+  .flow-box.client { border-left: 4px solid var(--md-sys-color-primary); }
+  .flow-box.server { border-left: 4px solid var(--md-sys-color-secondary); }
+  .flow-arrow { display: inline-block; padding: 0 8px; color: var(--md-sys-color-outline); font-weight: 700; }
+
+  /* Grid */
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 960px) { .grid-3 { grid-template-columns: 1fr; } }
+
+  /* Constants list */
+  .const-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #ece6f0; font-size: 13px; }
+  .const-name { font-family: 'Roboto Mono', monospace; color: var(--md-sys-color-on-surface); font-weight: 500; }
+  .const-val { color: var(--md-sys-color-primary); font-weight: 700; font-family: 'Roboto Mono', monospace; }
+  .const-desc { color: var(--md-sys-color-on-surface-variant); font-size: 12px; margin-left: 8px; }
+
+  /* Badge */
+  .badge-inline { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+  .badge-udp { background: #e8f5e9; color: #2e7d32; }
+  .badge-rel { background: #fff3e0; color: #ef6c00; }
+  .badge-json { background: #e3f2fd; color: #1565c0; }
+
+  /* Ripple btn */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px;
+    border-radius: var(--radius-xl); background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary);
+    font-size: 14px; font-weight: 500; border: none; cursor: pointer; position: relative; overflow: hidden; transition: .2s;
+  }
+  .btn:hover { box-shadow: var(--md-sys-elevation-2); }
+  .btn.secondary { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
+
+  /* Footer / version */
+  .version-footer { margin-top: 24px; font-size: 11px; color: var(--md-sys-color-outline); text-align: center; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #c4c4c4; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- App Bar -->
+<div class="app-bar">
+  <span class="material-icons-round" style="color:var(--md-sys-color-primary)">lan</span>
+  <div class="app-bar-title">LBoL NetworkPlugin 网络通信机制</div>
+  <div class="spacer"></div>
+  <div class="theme-toggle" onclick="toggleTheme()" title="切换日间/夜间主题">
+    <span class="material-icons-round" id="themeIcon">dark_mode</span>
+  </div>
+  <div class="chip-group">
+    <div class="chip active" onclick="filterMessages('all')" id="chip-all">全部消息</div>
+    <div class="chip" onclick="filterMessages('system')" id="chip-system">系统</div>
+    <div class="chip" onclick="filterMessages('card')" id="chip-card">卡牌</div>
+    <div class="chip" onclick="filterMessages('battle')" id="chip-battle">战斗</div>
+    <div class="chip" onclick="filterMessages('sync')" id="chip-sync">同步</div>
+  </div>
+</div>
+
+<!-- Drawer -->
+<nav class="drawer">
+  <div class="nav-item active" onclick="switchPage('overview', this)">
+    <span class="material-icons-round">account_tree</span> 架构总览
+  </div>
+  <div class="nav-item" onclick="switchPage('messages', this)">
+    <span class="material-icons-round">chat</span> 消息字典
+  </div>
+  <div class="nav-item" onclick="switchPage('sync', this)">
+    <span class="material-icons-round">sync</span> 同步机制
+  </div>
+  <div class="nav-item" onclick="switchPage('room', this)">
+    <span class="material-icons-round">meeting_room</span> 房间生命周期
+  </div>
+  <div class="nav-item" onclick="switchPage('reconnect', this)">
+    <span class="material-icons-round">wifi_tethering</span> 重连与中途加入
+  </div>
+  <div class="nav-item" onclick="switchPage('constants', this)">
+    <span class="material-icons-round">settings_ethernet</span> 网络常数
+  </div>
+</nav>
+
+<!-- Main Content -->
+<main class="main">
+
+  <!-- ========== OVERVIEW ========== -->
+  <section class="page active" id="page-overview">
+    <div class="card">
+      <div class="card-title"><span class="material-icons-round" style="color:var(--md-sys-color-primary)">account_tree</span> 架构总览</div>
+      <div class="card-subtitle">点击节点查看模块职责、关键类和交互关系。颜色说明：蓝=客户端 / 绿=服务器 / 橙=同步 / 紫=房间 / 灰=工具</div>
+      <div class="arch-canvas" id="archCanvas">
+        <svg class="arch-lines" id="archSvg"></svg>
+
+        <!-- Client Layer -->
+        <div class="arch-node client" style="left:40px;top:200px;" data-id="networkClient" data-label="NetworkClient">
+          <span class="badge" style="background:var(--md-sys-color-primary)"></span>
+          <div>NetworkClient<br><small style="opacity:.7;font-weight:400">LiteNetLib 客户端</small></div>
+        </div>
+        <div class="arch-node client" style="left:40px;top:290px;" data-id="networkManager" data-label="NetworkManager">
+          <span class="badge" style="background:var(--md-sys-color-primary)"></span>
+          <div>NetworkManager<br><small style="opacity:.7;font-weight:400">玩家集合管理</small></div>
+        </div>
+        <div class="arch-node client" style="left:40px;top:350px;" data-id="localPlayer" data-label="LocalNetworkPlayer">
+          <span class="badge" style="background:var(--md-sys-color-primary)"></span>
+          <div>LocalNetworkPlayer<br><small style="opacity:.7;font-weight:400">本地玩家代理</small></div>
+        </div>
+        <div class="arch-node client" style="left:40px;top:410px;" data-id="remotePlayer" data-label="RemoteNetworkPlayer">
+          <span class="badge" style="background:var(--md-sys-color-primary)"></span>
+          <div>RemoteNetworkPlayer<br><small style="opacity:.7;font-weight:400">远端玩家代理</small></div>
+        </div>
+
+        <!-- Sync / Snapshot Layer -->
+        <div class="arch-node sync" style="left:280px;top:50px;" data-id="syncVar" data-label="SyncVar&lt;T&gt;">
+          <span class="badge" style="background:#ff9800"></span>
+          <div>SyncVar&lt;T&gt;<br><small style="opacity:.7;font-weight:400">泛型同步变量</small></div>
+        </div>
+        <div class="arch-node sync" style="left:280px;top:130px;" data-id="snapshot" data-label="GameStateSnapshot">
+          <span class="badge" style="background:#ff9800"></span>
+          <div>Snapshot 体系<br><small style="opacity:.7;font-weight:400">全量/增量快照</small></div>
+        </div>
+        <div class="arch-node sync" style="left:280px;top:210px;" data-id="patch" data-label="*SyncPatch">
+          <span class="badge" style="background:#ff9800"></span>
+          <div>*SyncPatch (28+)<br><small style="opacity:.7;font-weight:400">Harmony 同步补丁</small></div>
+        </div>
+        <div class="arch-node sync" style="left:280px;top:290px;" data-id="midJoin" data-label="MidGameJoin">
+          <span class="badge" style="background:#ff9800"></span>
+          <div>MidGameJoin<br><small style="opacity:.7;font-weight:400">中途加入/地图追赶</small></div>
+        </div>
+        <div class="arch-node sync" style="left:280px;top:360px;" data-id="reconnect" data-label="ReconnectionManager">
+          <span class="badge" style="background:#ff9800"></span>
+          <div>ReconnectionManager<br><small style="opacity:.7;font-weight:400">断线重连/令牌/优雅期</small></div>
+        </div>
+
+        <!-- Server Layer -->
+        <div class="arch-node server" style="left:520px;top:120px;" data-id="networkServer" data-label="NetworkServer">
+          <span class="badge" style="background:var(--md-sys-color-secondary)"></span>
+          <div>NetworkServer<br><small style="opacity:.7;font-weight:400">房主直连服务器</small></div>
+        </div>
+        <div class="arch-node server" style="left:520px;top:200px;" data-id="relayServer" data-label="RelayServer">
+          <span class="badge" style="background:var(--md-sys-color-secondary)"></span>
+          <div>RelayServer<br><small style="opacity:.7;font-weight:400">中继转发服务器</small></div>
+        </div>
+        <div class="arch-node server" style="left:520px;top:280px;" data-id="baseServer" data-label="BaseGameServer">
+          <span class="badge" style="background:var(--md-sys-color-secondary)"></span>
+          <div>BaseGameServer<br><small style="opacity:.7;font-weight:400">业务层服务器骨架</small></div>
+        </div>
+        <div class="arch-node server" style="left:520px;top:370px;" data-id="playerSession" data-label="PlayerSession">
+          <span class="badge" style="background:var(--md-sys-color-secondary)"></span>
+          <div>PlayerSession<br><small style="opacity:.7;font-weight:400">会话/心跳/延迟</small></div>
+        </div>
+
+        <!-- Room Layer -->
+        <div class="arch-node room" style="left:760px;top:200px;" data-id="networkRoom" data-label="NetworkRoom">
+          <span class="badge" style="background:#9c27b0"></span>
+          <div>NetworkRoom<br><small style="opacity:.7;font-weight:400">房间/容量/房主/游戏状态</small></div>
+        </div>
+        <div class="arch-node room" style="left:760px;top:280px;" data-id="roomSync" data-label="RoomSyncManager">
+          <span class="badge" style="background:#9c27b0"></span>
+          <div>RoomSyncManager<br><small style="opacity:.7;font-weight:400">房间状态广播</small></div>
+        </div>
+
+        <!-- Utility -->
+        <div class="arch-node utility" style="left:760px;top:120px;" data-id="nat" data-label="NatTraversal">
+          <span class="badge" style="background:#607d8b"></span>
+          <div>NatTraversal<br><small style="opacity:.7;font-weight:400">STUN + UPnP</small></div>
+        </div>
+        <div class="arch-node utility" style="left:760px;top:370px;" data-id="messageTypes" data-label="NetworkMessageTypes">
+          <span class="badge" style="background:#607d8b"></span>
+          <div>MessageTypes<br><small style="opacity:.7;font-weight:400">50+ 消息常量</small></div>
+        </div>
+
+        <!-- Detail Panel -->
+        <div class="detail-panel" id="detailPanel">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div class="detail-title" id="detailTitle">节点</div>
+            <span class="material-icons-round" style="cursor:pointer;color:var(--md-sys-color-outline);" onclick="closeDetail()">close</span>
+          </div>
+          <div class="detail-text" id="detailBody"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">双服务器模式</div>
+        <p style="font-size:13px;color:var(--md-sys-color-on-surface-variant);line-height:1.7;">
+          <strong style="color:var(--md-sys-color-secondary)">NetworkServer（房主直连）</strong>：由房主启动，管理玩家会话与游戏事件广播，适用于已知 IP 的局域网或小范围联机。<br><br>
+          <strong style="color:var(--md-sys-color-secondary)">RelayServer（中继）</strong>：独立部署，提供房间管理、NAT 穿透协调、消息中转，适用于公网跨 NAT 场景。底层核心均为 <code>BaseGameServer</code> + <code>IServerCore</code>。
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-title">核心设计原则</div>
+        <ul style="font-size:13px;color:var(--md-sys-color-on-surface-variant);line-height:1.8;padding-left:18px;margin:0;">
+          <li><strong>主机权威（Host Authority）</strong>：战斗状态、快照、追赶数据由主机生成并广播。</li>
+          <li><strong>ReliableOrdered UDP</strong>：基于 LiteNetLib，保证消息有序到达，兼顾低延迟与可靠性。</li>
+          <li><strong>JSON 序列化</strong>：跨平台兼容，便于调试与版本演进。</li>
+          <li><strong>Harmony 补丁注入</strong>：通过 28+ 个 SyncPatch 在不改动游戏源码的情况下拦截并同步游戏状态。</li>
+          <li><strong>快照裁剪</strong>：FullSnapshot 用于中途加入/追赶，Delta 用于常态同步。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== MESSAGES ========== -->
+  <section class="page" id="page-messages">
+    <div class="card">
+      <div class="card-title"><span class="material-icons-round" style="color:var(--md-sys-color-primary)">chat</span> 消息字典</div>
+      <div class="card-subtitle">所有 <code>NetworkMessageTypes</code> 常量，支持按类别过滤与关键词搜索。点击表头可排序。</div>
+
+      <div class="search-field">
+        <span class="material-icons-round" style="color:var(--md-sys-color-outline)">search</span>
+        <input type="text" id="msgSearch" placeholder="搜索消息名称或描述..." oninput="searchMessages(this.value)">
+      </div>
+
+      <div class="data-table-wrap">
+        <table class="data-table" id="msgTable">
+          <thead>
+            <tr><th>类别</th><th>消息名称</th><th>说明</th><th>方向</th></tr>
+          </thead>
+          <tbody id="msgTableBody">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SYNC ========== -->
+  <section class="page" id="page-sync">
+    <div class="card">
+      <div class="card-title"><span class="material-icons-round" style="color:#ff9800">sync</span> 同步机制</div>
+      <div class="card-subtitle">从游戏状态变化到网络广播的完整链路</div>
+
+      <div style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;margin:16px 0;">
+        <div class="flow-box client">游戏逻辑发生变更<br><small>（出牌/受伤/获得护盾）</small></div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-box sync">Harmony SyncPatch<br><small>拦截原始方法</small></div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-box sync">构造 GameEvent / Snapshot<br><small>增量 or 全量</small></div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-box client">NetworkClient.Send<br><small>ReliableOrdered</small></div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-box server">NetworkServer / RelayServer<br><small>接收/仲裁/广播</small></div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-box client">远端客户端接收<br><small>反序列化并应用</small></div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-box sync">*ReceivePatch<br><small>应用到本地游戏状态</small></div>
+      </div>
+
+      <div class="grid-2" style="margin-top:12px;">
+        <div>
+          <div class="card-title" style="font-size:16px;">SyncVar&lt;T&gt; 泛型同步</div>
+          <p class="detail-text">包装任意类型值，通过 <code>EqualityComparer&lt;T&gt;.Default.Equals</code> 检测变更。值改变后触发 <code>OnValueChanged</code> 事件，服务端用于触发网络发送，客户端用于 UI 更新。</p>
+          <div style="background:var(--md-sys-color-surface-variant);padding:12px;border-radius:var(--radius-sm);font-family:'Roboto Mono',monospace;font-size:12px;margin-top:8px;">
+            SyncVar&lt;int&gt; Mana = new("Mana", 3);<br>
+            Mana.Value = 2; <span style="color:var(--md-sys-color-secondary)">// 自动触发网络同步</span>
+          </div>
+        </div>
+        <div>
+          <div class="card-title" style="font-size:16px;">Snapshot 快照体系</div>
+          <p class="detail-text">按粒度分为多级快照：</p>
+          <ul style="font-size:13px;color:var(--md-sys-color-on-surface-variant);line-height:1.8;padding-left:18px;margin:0;">
+            <li><strong>FullStateSnapshot</strong>：完整游戏状态，用于中途加入/重连追赶。</li>
+            <li><strong>BattleStateSnapshot</strong>：战斗场景全量（玩家/敌人/意图/卡牌/能量）。</li>
+            <li><strong>MapStateSnapshot</strong>：地图节点、路径、检查点。</li>
+            <li><strong>PlayerStateSnapshot</strong>：玩家 HP、Mana、Block、StatusEffects。</li>
+            <li><strong>TurnBoundarySnapshot</strong>：回合开始/结束边界状态。</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;">
+        <div class="card-title" style="font-size:16px;">28+ 个 Harmony 同步补丁（代表性示例）</div>
+        <div class="data-table-wrap" style="max-height:300px;">
+          <table class="data-table">
+            <thead><tr><th>补丁类</th><th>同步内容</th></tr></thead>
+            <tbody>
+              <tr><td>PlayerStateSyncPatch</td><td>玩家状态（HP、Mana、Shield）</td></tr>
+              <tr><td>EnemySyncPatch / EnemyStateReceivePatch</td><td>敌人状态与意图同步</td></tr>
+              <tr><td>EnergySyncPatch</td><td>能量（Mana）变化同步</td></tr>
+              <tr><td>EndTurnSyncPatch / TurnBoundaryReceivePatch</td><td>回合结束/开始同步</td></tr>
+              <tr><td>RoomEntrySyncPatch / RoomStateSyncPatch</td><td>房间进入与状态同步</td></tr>
+              <tr><td>TradeSyncPatch</td><td>交易系统同步</td></tr>
+              <tr><td>ExhibitSyncPatch</td><td>宝物（Exhibit）同步（部分完成）</td></tr>
+              <tr><td>RemoteCardUsePatch</td><td>远端玩家出牌落地</td></tr>
+              <tr><td>ToolCardSyncPatch</td><td>工具牌同步</td></tr>
+              <tr><td>GapOptionsSyncPatch</td><td>间隙选项同步（部分完成）</td></tr>
+              <tr><td>ResurrectSyncPatch</td><td>复活状态同步</td></tr>
+              <tr><td>MoodEffectSyncPatch</td><td>心境效果循环与状态同步</td></tr>
+              <tr><td>BattleReportForwardPatch</td><td>战斗报告转发</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== ROOM ========== -->
+  <section class="page" id="page-room">
+    <div class="card">
+      <div class="card-title"><span class="material-icons-round" style="color:#9c27b0">meeting_room</span> 房间生命周期</div>
+      <div class="card-subtitle">从创建房间到游戏结束/离房的完整流程。点击下方步骤查看详细说明。</div>
+
+      <div class="stepper" id="roomStepper">
+        <div class="step active" onclick="setRoomStep(0)"><div class="step-circle">1</div><div class="step-label">创建/加入房间</div></div>
+        <div class="step-line active"></div>
+        <div class="step" onclick="setRoomStep(1)"><div class="step-circle">2</div><div class="step-label">房主与权限</div></div>
+        <div class="step-line"></div>
+        <div class="step" onclick="setRoomStep(2)"><div class="step-circle">3</div><div class="step-label">开局准备</div></div>
+        <div class="step-line"></div>
+        <div class="step" onclick="setRoomStep(3)"><div class="step-circle">4</div><div class="step-label">游戏内同步</div></div>
+        <div class="step-line"></div>
+        <div class="step" onclick="setRoomStep(4)"><div class="step-circle">5</div><div class="step-label">离房/迁移</div></div>
+      </div>
+
+      <div id="roomStepContent" style="margin-top:20px;">
+        <!-- Step 0 -->
+        <div class="room-step-panel" data-step="0">
+          <div class="grid-2">
+            <div>
+              <div class="card-title" style="font-size:16px;">创建房间</div>
+              <p class="detail-text">客户端发送 <code>CreateRoom</code> 请求至 RelayServer。服务器校验后创建 <code>NetworkRoom</code> 实例，分配 <code>RoomId</code>，首个加入者自动成为房主（<code>HostPlayerId</code>）。返回 <code>RoomCreated</code> 响应。</p>
+            </div>
+            <div>
+              <div class="card-title" style="font-size:16px;">加入房间</div>
+              <p class="detail-text">客户端发送 <code>JoinRoom</code>（携带 RoomId 与可选密码）。<code>NetworkRoom.AddPlayer</code> 进行容量与重复加入检测。成功后广播 <code>PlayerJoined</code> 与 <code>PlayerListUpdate</code>。</p>
+            </div>
+          </div>
+        </div>
+        <!-- Step 1 -->
+        <div class="room-step-panel" data-step="1" style="display:none;">
+          <div class="grid-2">
+            <div>
+              <div class="card-title" style="font-size:16px;">房主权限</div>
+              <p class="detail-text">房主拥有唯一权限：踢出玩家（<code>KickPlayer</code>）、修改房间配置（如提升容量）、发起开局。房主离开后，按加入顺序自动迁移至下一位玩家。</p>
+            </div>
+            <div>
+              <div class="card-title" style="font-size:16px;">房间配置</div>
+              <p class="detail-text"><code>RoomConfig</code> 包含：最大人数、密码、游戏模式、是否允许中途加入等。开局后 <code>IsInGame = true</code>，禁止新玩家加入（除非启用中途加入）。</p>
+            </div>
+          </div>
+        </div>
+        <!-- Step 2 -->
+        <div class="room-step-panel" data-step="2" style="display:none;">
+          <div class="grid-2">
+            <div>
+              <div class="card-title" style="font-size:16px;">开局同步</div>
+              <p class="detail-text">房主触发开局后，服务器广播 <code>HostChanged</code> 确认房主身份，随后进入游戏初始化。主机生成 <code>GameRun</code> 与种子（Seed），通过 <code>RoomSyncManager</code> 广播初始地图状态。</p>
+            </div>
+            <div>
+              <div class="card-title" style="font-size:16px;">检查点（Checkpoint）</div>
+              <p class="detail-text">地图推进时生成 <code>MapCheckpoint</code>，用于中途加入玩家的追赶锚点。检查点包含节点 ID、种子校验、路径历史，保证后加入者能重建相同地图拓扑。</p>
+            </div>
+          </div>
+        </div>
+        <!-- Step 3 -->
+        <div class="room-step-panel" data-step="3" style="display:none;">
+          <div class="grid-2">
+            <div>
+              <div class="card-title" style="font-size:16px;">房间内广播</div>
+              <p class="detail-text">游戏事件通过 <code>RoomMessage</code> 或 <code>DirectMessage</code> 在房间内流转。RelayServer 负责按房间 ID 过滤，仅转发给同房间成员，避免跨房间泄露。</p>
+            </div>
+            <div>
+              <div class="card-title" style="font-size:16px;">地图推进同步</div>
+              <p class="detail-text">玩家进入新节点时，<code>RoomEntrySyncPatch</code> 与 <code>MapCheckpointSyncPatch</code> 同步节点选择与检查点。所有客户端收到后更新本地地图视图，保持房间进度一致。</p>
+            </div>
+          </div>
+        </div>
+        <!-- Step 4 -->
+        <div class="room-step-panel" data-step="4" style="display:none;">
+          <div class="grid-2">
+            <div>
+              <div class="card-title" style="font-size:16px;">正常离房</div>
+              <p class="detail-text">客户端发送 <code>LeaveRoom</code>，服务器从 <code>NetworkRoom._players</code> 移除该玩家，广播 <code>PlayerLeft</code>。若离房者为房主，触发 <code>HostChanged</code> 迁移房主。</p>
+            </div>
+            <div>
+              <div class="card-title" style="font-size:16px;">异常断线</div>
+              <p class="detail-text">心跳超时（默认 5s 间隔，30s 超时）后服务器标记断线，保留会话 60 秒（<code>ReconnectGracePeriod</code>）。断线期间不触发 AI 接管，玩家可通过 <code>Reconnect_REQUEST</code> + Token 恢复。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== RECONNECT ========== -->
+  <section class="page" id="page-reconnect">
+    <div class="card">
+      <div class="card-title"><span class="material-icons-round" style="color:var(--md-sys-color-primary)">wifi_tethering</span> 断线重连与中途加入</div>
+      <div class="card-subtitle">可靠性设计：快照保存、重连令牌、地图追赶</div>
+
+      <div class="grid-2">
+        <div>
+          <div class="card-title" style="font-size:16px;">ReconnectionManager 机制</div>
+          <ul style="font-size:13px;color:var(--md-sys-color-on-surface-variant);line-height:1.8;padding-left:18px;margin:0;">
+            <li><strong>心跳监控</strong>：客户端每 5s 发送 <code>Heartbeat</code>，服务端记录时间戳。</li>
+            <li><strong>超时判定</strong>：超过 <code>DefaultNetworkTimeoutSeconds</code>（30s）未收到心跳即判定断线。</li>
+            <li><strong>快照保存</strong>：断线时主机生成 <code>PlayerStateSnapshot</code> 存入 <code>_playerSnapshots</code> 字典。</li>
+            <li><strong>事件历史</strong>：最近游戏事件按时间戳存入 <code>SortedList&lt;long, GameEvent&gt;</code>，用于追赶。</li>
+            <li><strong>重连令牌</strong>：断线时服务端生成 GUID Token，60s 内客户端携带 Token 可恢复原有 <code>PlayerId</code>。</li>
+            <li><strong>最大尝试</strong>：默认最多 5 次重连尝试，间隔 5s。</li>
+          </ul>
+        </div>
+        <div>
+          <div class="card-title" style="font-size:16px;">MapCatchUpOrchestrator 地图追赶</div>
+          <ul style="font-size:13px;color:var(--md-sys-color-on-surface-variant);line-height:1.8;padding-left:18px;margin:0;">
+            <li><strong>FullStateSnapshot 接收</strong>：加入者首先接收主机的完整状态快照（重点是 <code>MapStateSnapshot</code>）。</li>
+            <li><strong>暂存机制</strong>：若本地 <code>GameRun</code> 尚未就绪，快照暂存于 <code>_pendingSnapshot</code>，由 <code>PumpMainThread</code> 周期性轮询。</li>
+            <li><strong>种子校验</strong>：对比本地与主机 Seed，不匹配时记录警告（5s 节流去重）。</li>
+            <li><strong>路径重建</strong>：按 <code>CheckpointId</code> 与路径历史逐步恢复已访问节点。</li>
+            <li><strong>房间状态请求</strong>：地图应用完成后，通过 <code>RoomSyncManager</code> 请求当前房间状态，避免重复请求同一检查点。</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;">
+        <div class="card-title" style="font-size:16px;">时序示意：断线 → 重连 → 追赶</div>
+        <div style="background:var(--md-sys-color-surface-variant);padding:16px;border-radius:var(--radius-md);font-size:13px;line-height:1.8;">
+          <span class="flow-box server">服务端：心跳超时检测到 PlayerA 断线</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-box server">保存 PlayerStateSnapshot + 生成 ReconnectToken</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-box server">开始 60s 优雅期倒计时</span>
+          <br><br>
+          <span class="flow-box client">PlayerA：检测到断线，进入重连循环（最多 5 次，间隔 5s）</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-box client">发送 Reconnect_REQUEST（携带 Token）</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-box server">Token 校验通过 → 恢复原有 PlayerId 与会话</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-box server">发送 FullStateSnapshot + 事件历史</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-box sync">MapCatchUpOrchestrator 应用快照与追赶</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== CONSTANTS ========== -->
+  <section class="page" id="page-constants">
+    <div class="card">
+      <div class="card-title"><span class="material-icons-round" style="color:var(--md-sys-color-outline)">settings_ethernet</span> 网络常数</div>
+      <div class="card-subtitle"><code>NetworkConstants</code> 与 <code>ServerConstants</code> 中的关键参数</div>
+
+      <div style="max-width:720px;">
+        <div class="const-row"><span class="const-name">DefaultPort<span class="const-desc">服务器默认端口</span></span><span class="const-val">7777</span></div>
+        <div class="const-row"><span class="const-name">RelayPort<span class="const-desc">中继服务器默认端口</span></span><span class="const-val">8888</span></div>
+        <div class="const-row"><span class="const-name">MaxConnections<span class="const-desc">最大连接数</span></span><span class="const-val">1000</span></div>
+        <div class="const-row"><span class="const-name">MaxRoomCount<span class="const-desc">最大房间数</span></span><span class="const-val">100</span></div>
+        <div class="const-row"><span class="const-name">HeartbeatIntervalMs<span class="const-desc">心跳间隔</span></span><span class="const-val">5000 ms</span></div>
+        <div class="const-row"><span class="const-name">ConnectTimeoutMs<span class="const-desc">连接超时</span></span><span class="const-val">300 ms</span></div>
+        <div class="const-row"><span class="const-name">DefaultNetworkTimeoutSeconds<span class="const-desc">默认网络超时</span></span><span class="const-val">30 s</span></div>
+        <div class="const-row"><span class="const-name">ReconnectIntervalMs<span class="const-desc">重连尝试间隔</span></span><span class="const-val">5000 ms</span></div>
+        <div class="const-row"><span class="const-name">ReconnectGracePeriodSeconds<span class="const-desc">重连优雅期</span></span><span class="const-val">60 s</span></div>
+        <div class="const-row"><span class="const-name">DefaultMaxReconnectAttempts<span class="const-desc">默认最大重连次数</span></span><span class="const-val">5</span></div>
+        <div class="const-row"><span class="const-name">SessionCleanupIntervalMs<span class="const-desc">会话清理检查间隔</span></span><span class="const-val">2000 ms</span></div>
+        <div class="const-row"><span class="const-name">NatStunPort<span class="const-desc">NAT STUN 服务器端口</span></span><span class="const-val">3478</span></div>
+        <div class="const-row"><span class="const-name">NatTtl<span class="const-desc">NAT 探测 TTL</span></span><span class="const-val">300</span></div>
+        <div class="const-row"><span class="const-name">BgThreadSleepMs<span class="const-desc">中继后台线程休眠间隔</span></span><span class="const-val">15 ms</span></div>
+      </div>
+
+      <div style="margin-top:20px;">
+        <div class="badge-inline badge-udp"><span class="material-icons-round" style="font-size:16px;">wifi</span> 协议: LiteNetLib UDP</div>
+        <div class="badge-inline badge-rel"><span class="material-icons-round" style="font-size:16px;">format_list_numbered</span> 投递: ReliableOrdered</div>
+        <div class="badge-inline badge-json"><span class="material-icons-round" style="font-size:16px;">code</span> 序列化: JSON</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="version-footer">基于 NetworkPlugin 代码实扫生成 | Material Design 3 风格 | 2026-06-10</div>
+</main>
+
+<script>
+/* ========== Page Switching ========== */
+function switchPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+}
+
+/* ========== Architecture Graph ========== */
+const nodeDetails = {
+  networkClient: `<div class="detail-tag">客户端</div><div class="detail-tag">LiteNetLib</div><br><br>
+    <strong>职责：</strong>与服务器建立 UDP 连接、自动重连、心跳保活、消息收发。<br><br>
+    <strong>关键字段：</strong><br>
+    • <code>_listener</code> EventBasedNetListener 事件监听<br>
+    • <code>_netManager</code> NetManager UDP 管理<br>
+    • <code>_serverPeer</code> NetPeer 服务器对等端<br>
+    • <code>_heartbeatIntervalMs</code> 心跳间隔（自动按超时 1/3 调整，1s~10s）<br><br>
+    <strong>投递方式：</strong>DeliveryMethod.ReliableOrdered<br>
+    <strong>事件：</strong>OnConnected / OnDisconnected / OnGameEventReceived`,
+
+  networkManager: `<div class="detail-tag">客户端</div><div class="detail-tag">玩家管理</div><br><br>
+    <strong>职责：</strong>维护本地与远端玩家集合，提供玩家查询与快照缓存。<br><br>
+    <strong>关键设计：</strong><br>
+    • 玩家列表由服务器 GameEvent 驱动（NetworkIdentityTracker）<br>
+    • <code>_playersSnapshot</code> + <code>_playersRevision</code> 惰性缓存，避免 UI 每帧重复分配数组<br>
+    • <code>_selfKey</code> 初始为 "self"，连接后切换为服务器分配的 PlayerId`,
+
+  localPlayer: `<div class="detail-tag">客户端</div><div class="detail-tag">玩家代理</div><br><br>
+    <strong>职责：</strong>表示当前客户端玩家，实现 INetworkPlayer 接口。<br><br>
+    <strong>能力：</strong>身份标识、资源查询、战斗状态上报、网络同步标记。`,
+
+  remotePlayer: `<div class="detail-tag">客户端</div><div class="detail-tag">玩家代理</div><br><br>
+    <strong>职责：</strong>表示远端玩家，由服务器广播的状态数据驱动。<br><br>
+    <strong>同步来源：</strong>各个 *SyncPatch 收到网络事件后写入 RemoteNetworkPlayer 的状态字段，UI 层从中读取并渲染。`,
+
+  syncVar: `<div class="detail-tag">同步</div><div class="detail-tag">泛型</div><br><br>
+    <strong>职责：</strong>包装任意类型值，仅在值实际改变时触发同步事件。<br><br>
+    <strong>机制：</strong><br>
+    • <code>EqualityComparer&lt;T&gt;.Default.Equals</code> 精确比对<br>
+    • <code>OnValueChanged</code> 事件：服务端触发网络发送，客户端触发 UI 更新<br>
+    • 线程安全由外部调用方保证`,
+
+  snapshot: `<div class="detail-tag">同步</div><div class="detail-tag">快照</div><br><br>
+    <strong>职责：</strong>多级快照体系，支持全量恢复与增量同步。<br><br>
+    <strong>主要类型：</strong><br>
+    • FullStateSnapshot（完整游戏状态）<br>
+    • BattleStateSnapshot（战斗全量）<br>
+    • MapStateSnapshot（地图节点/路径/检查点）<br>
+    • PlayerStateSnapshot（HP/Mana/Block/StatusEffects）<br>
+    • TurnBoundarySnapshot（回合边界）<br>
+    • EnemyStateSnapshot / CardStateSnapshot / ExhibitStateSnapshot`,
+
+  patch: `<div class="detail-tag">同步</div><div class="detail-tag">Harmony</div><br><br>
+    <strong>职责：</strong>通过 Harmony 补丁在不修改游戏源码的情况下拦截并同步状态。<br><br>
+    <strong>数量：</strong>28+ 个，涵盖玩家、敌人、能量、卡牌、交易、复活、心境等。<br><br>
+    <strong>典型模式：</strong>Prefix 拦截 → 构造 GameEvent → NetworkClient.Send → 远端 ReceivePatch 应用`,
+
+  midJoin: `<div class="detail-tag">同步</div><div class="detail-tag">中途加入</div><br><br>
+    <strong>职责：</strong>MapCatchUpOrchestrator 负责接收并应用主机下发的地图快照，使中途加入者赶上当前进度。<br><br>
+    <strong>关键流程：</strong><br>
+    1. 接收 FullStateSnapshot（重点是 MapState）<br>
+    2. 若 GameRun 未就绪则暂存<br>
+    3. 种子校验 + 路径重建<br>
+    4. 应用完成后请求房间状态`,
+
+  reconnect: `<div class="detail-tag">同步</div><div class="detail-tag">重连</div><br><br>
+    <strong>职责：</strong>ReconnectionManager 负责心跳超时判定、断线快照保存、重连令牌管理、事件历史维护。<br><br>
+    <strong>关键参数：</strong><br>
+    • 心跳间隔 5s，超时 30s<br>
+    • 优雅期 60s，Token GUID 绑定原 PlayerId<br>
+    • 最大重连尝试 5 次，间隔 5s`,
+
+  networkServer: `<div class="detail-tag">服务器</div><div class="detail-tag">房主直连</div><br><br>
+    <strong>职责：</strong>房主启动的直连服务器，管理会话与广播游戏事件。<br><br>
+    <strong>继承：</strong>BaseGameServer → 集中会话生命周期、心跳、消息分发。<br><br>
+    <strong>文件拆分：</strong>NetworkServer.cs（核心）、NetworkServer.Routing.cs（路由）、NetworkServer.Broadcast.cs（广播）`,
+
+  relayServer: `<div class="detail-tag">服务器</div><div class="detail-tag">中继</div><br><br>
+    <strong>职责：</strong>独立部署的中继服务器，提供房间管理、NAT 穿透协调、消息中转。<br><br>
+    <strong>与 NetworkServer 区别：</strong><br>
+    • RelayServer 维护 <code>Dictionary&lt;string, NetworkRoom&gt;</code> 多房间<br>
+    • 支持 RoomMessage / DirectMessage / 游戏事件转发<br>
+    • 适合公网跨 NAT 场景`,
+
+  baseServer: `<div class="detail-tag">服务器</div><div class="detail-tag">骨架</div><br><br>
+    <strong>职责：</strong>业务层服务器骨架，集中管理会话生命周期、心跳/消息时间戳、重连令牌、消息分发。<br><br>
+    <strong>核心字典：</strong><br>
+    • <code>SessionsByPeer</code>（NetPeer → PlayerSession）<br>
+    • <code>SessionsByPlayerId</code>（PlayerId → PlayerSession）<br>
+    • <code>DisconnectedAtByPlayerId</code> 断线时间记录`,
+
+  playerSession: `<div class="detail-tag">服务器</div><div class="detail-tag">会话</div><br><br>
+    <strong>职责：</strong>单个玩家的会话上下文，包含 NetPeer、PlayerId、延迟、心跳时间戳、重连 Token。<br><br>
+    <strong>用途：</strong>用于超时判定、优雅期窗口计算、消息路由目标定位。`,
+
+  networkRoom: `<div class="detail-tag">房间</div><div class="detail-tag">实体</div><br><br>
+    <strong>职责：</strong>管理房间内的玩家连接、消息广播、房主权限及游戏状态。<br><br>
+    <strong>关键属性：</strong><br>
+    • <code>RoomId</code> / <code>Config</code>（容量/密码/模式）<br>
+    • <code>HostPlayerId</code> 房主（首个加入者，离开后按顺序迁移）<br>
+    • <code>IsInGame</code> 开局后禁止新加入<br>
+    • <code>_players</code> Dictionary&lt;PlayerId, NetworkConnection&gt;`,
+
+  roomSync: `<div class="detail-tag">房间</div><div class="detail-tag">同步</div><br><br>
+    <strong>职责：</strong>RoomSyncManager 负责在地图状态应用完成后请求主机房间状态，协调多客户端的房间进度一致性。`,
+
+  nat: `<div class="detail-tag">工具</div><div class="detail-tag">NAT</div><br><br>
+    <strong>职责：</strong>NatTraversal 提供 STUN + UPnP 探测能力，协助公网穿透。<br><br>
+    <strong>端口：</strong>STUN 默认 3478，TTL 300。`,
+
+  messageTypes: `<div class="detail-tag">工具</div><div class="detail-tag">常量</div><br><br>
+    <strong>职责：</strong>NetworkMessageTypes 定义 50+ 消息常量，涵盖系统消息、卡牌同步、法力同步、战斗同步、回合同步、房间消息等。`,
+};
+
+function drawArchLines() {
+  const svg = document.getElementById('archSvg');
+  const canvas = document.getElementById('archCanvas');
+  const nodes = Array.from(canvas.querySelectorAll('.arch-node'));
+  const rects = nodes.map(n => ({
+    id: n.dataset.id,
+    el: n,
+    r: { left: n.offsetLeft, top: n.offsetTop, width: n.offsetWidth, height: n.offsetHeight }
+  }));
+
+  const edges = [
+    ['networkClient','networkManager'],['networkManager','localPlayer'],['networkManager','remotePlayer'],
+    ['networkClient','syncVar'],['networkClient','snapshot'],['networkClient','patch'],
+    ['networkClient','networkServer'],['networkClient','relayServer'],
+    ['networkServer','playerSession'],['relayServer','playerSession'],['relayServer','networkRoom'],
+    ['networkRoom','roomSync'],['networkServer','baseServer'],['relayServer','baseServer'],
+    ['networkClient','midJoin'],['networkClient','reconnect'],['networkServer','nat'],
+  ];
+
+  let paths = '';
+  edges.forEach(([a,b]) => {
+    const A = rects.find(x=>x.id===a);
+    const B = rects.find(x=>x.id===b);
+    if (!A || !B) return;
+    const x1 = A.r.left + A.r.width/2;
+    const y1 = A.r.top + A.r.height/2;
+    const x2 = B.r.left + B.r.width/2;
+    const y2 = B.r.top + B.r.height/2;
+    paths += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#b0b0c0" stroke-width="2" />`;
+    const angle = Math.atan2(y2-y1, x2-x1);
+    const dist = Math.hypot(x2-x1, y2-y1);
+    if (dist > 30) {
+      const ax = x2 - 20*Math.cos(angle);
+      const ay = y2 - 20*Math.sin(angle);
+      paths += `<polygon points="${ax},${ay} ${ax-8*Math.cos(angle-0.5)},${ay-8*Math.sin(angle-0.5)} ${ax-8*Math.cos(angle+0.5)},${ay-8*Math.sin(angle+0.5)}" fill="#b0b0c0" />`;
+    }
+  });
+  svg.innerHTML = paths;
+}
+
+function showDetail(id) {
+  const panel = document.getElementById('detailPanel');
+  const title = document.getElementById('detailTitle');
+  const body = document.getElementById('detailBody');
+  title.textContent = document.querySelector('.arch-node[data-id="'+id+'"]').dataset.label;
+  body.innerHTML = nodeDetails[id] || '暂无详细说明';
+  panel.classList.add('open');
+}
+function closeDetail() { document.getElementById('detailPanel').classList.remove('open'); }
+
+document.querySelectorAll('.arch-node').forEach(n => {
+  n.addEventListener('click', () => showDetail(n.dataset.id));
+});
+
+/* ========== Messages Table ========== */
+const allMessages = [
+  {cat:'system', name:'PlayerJoined', desc:'玩家加入游戏', dir:'S→C'},
+  {cat:'system', name:'PlayerLeft', desc:'玩家离开游戏', dir:'S→C'},
+  {cat:'system', name:'PlayerListUpdate', desc:'玩家列表更新', dir:'S→C'},
+  {cat:'system', name:'Welcome', desc:'欢迎消息（发送给新连接玩家）', dir:'S→C'},
+  {cat:'system', name:'Heartbeat', desc:'心跳请求', dir:'C→S'},
+  {cat:'system', name:'HeartbeatResponse', desc:'心跳响应', dir:'S→C'},
+  {cat:'system', name:'HostChanged', desc:'房主变更', dir:'S→C'},
+  {cat:'system', name:'GetSelf_REQUEST', desc:'获取自身信息请求', dir:'C→S'},
+  {cat:'system', name:'GetSelf_RESPONSE', desc:'获取自身信息响应', dir:'S→C'},
+  {cat:'system', name:'DirectMessage', desc:'点对点转发消息', dir:'C↔C'},
+  {cat:'system', name:'UpdatePlayerLocation', desc:'玩家位置更新', dir:'C→S'},
+  {cat:'system', name:'Reconnect_REQUEST', desc:'重连请求', dir:'C→S'},
+  {cat:'system', name:'Reconnect_RESPONSE', desc:'重连响应', dir:'S→C'},
+  {cat:'system', name:'CreateRoom', desc:'创建房间', dir:'C→S'},
+  {cat:'system', name:'JoinRoom', desc:'加入房间', dir:'C→S'},
+  {cat:'system', name:'LeaveRoom', desc:'离开房间', dir:'C→S'},
+  {cat:'system', name:'RoomMessage', desc:'房间广播消息', dir:'S→C'},
+  {cat:'system', name:'GetRoomList', desc:'获取房间列表请求', dir:'C→S'},
+  {cat:'system', name:'RoomList', desc:'房间列表响应', dir:'S→C'},
+  {cat:'system', name:'RoomCreated', desc:'房间创建成功', dir:'S→C'},
+  {cat:'system', name:'RoomJoined', desc:'房间加入成功', dir:'S→C'},
+  {cat:'system', name:'KickPlayer', desc:'踢出房间玩家', dir:'S→C'},
+  {cat:'system', name:'Error', desc:'通用错误响应', dir:'S→C'},
+  {cat:'card', name:'OnCardPlayStart', desc:'卡牌开始使用', dir:'C→S'},
+  {cat:'card', name:'OnCardPlayComplete', desc:'卡牌使用完成', dir:'C→S'},
+  {cat:'card', name:'OnCardDraw', desc:'抽牌事件', dir:'C→S'},
+  {cat:'card', name:'OnCardDiscard', desc:'弃牌事件', dir:'C→S'},
+  {cat:'card', name:'OnCardExile', desc:'卡牌放逐事件', dir:'C→S'},
+  {cat:'card', name:'OnCardUpgrade', desc:'卡牌升级事件', dir:'C→S'},
+  {cat:'card', name:'OnCardRemove', desc:'卡牌移除事件', dir:'C→S'},
+  {cat:'card', name:'OnRemoteCardUse', desc:'远程玩家使用卡牌', dir:'S→C'},
+  {cat:'card', name:'OnRemoteCardResolved', desc:'远程玩家卡牌结算完成', dir:'S→C'},
+  {cat:'battle', name:'ManaConsumeStarted', desc:'法力消耗开始', dir:'C→S'},
+  {cat:'battle', name:'ManaConsumeCompleted', desc:'法力消耗完成', dir:'C→S'},
+  {cat:'battle', name:'ManaRegain', desc:'法力回复事件', dir:'C→S'},
+  {cat:'battle', name:'TurnManaCalculated', desc:'回合法力重置', dir:'C→S'},
+  {cat:'battle', name:'MaxManaChange', desc:'最大法力变更', dir:'C→S'},
+  {cat:'battle', name:'OnDamageDealt', desc:'造成伤害事件', dir:'C→S'},
+  {cat:'battle', name:'OnDamageReceived', desc:'受到伤害事件', dir:'C→S'},
+  {cat:'battle', name:'OnBlockGained', desc:'获得护盾事件', dir:'C→S'},
+  {cat:'battle', name:'OnShieldGained', desc:'获得屏障事件', dir:'C→S'},
+  {cat:'battle', name:'OnHealingReceived', desc:'治疗事件', dir:'C→S'},
+  {cat:'battle', name:'OnStatusEffectApplied', desc:'状态效果应用', dir:'C→S'},
+  {cat:'battle', name:'OnStatusEffectRemoved', desc:'状态效果移除', dir:'C→S'},
+  {cat:'battle', name:'OnMoodEffectLoopStarted', desc:'心境效果循环开始', dir:'C→S'},
+  {cat:'battle', name:'OnMoodEffectLoopEnded', desc:'心境效果循环结束', dir:'C→S'},
+  {cat:'battle', name:'OnMoodEffectStateSync', desc:'心境效果状态同步', dir:'S→C'},
+  {cat:'sync', name:'OnPlayerStateUpdate', desc:'玩家状态更新（游戏事件广播）', dir:'S→C'},
+  {cat:'battle', name:'BattlePlayerDamageReport', desc:'客户端上报：本地玩家受伤', dir:'C→S'},
+  {cat:'battle', name:'BattlePlayerDamageBroadcast', desc:'主机广播：玩家受伤（权威）', dir:'S→C'},
+  {cat:'battle', name:'BattlePlayerHealReport', desc:'客户端上报：本地玩家治疗', dir:'C→S'},
+  {cat:'battle', name:'BattlePlayerHealBroadcast', desc:'主机广播：玩家治疗', dir:'S→C'},
+  {cat:'battle', name:'BattlePlayerStatusEffectsDeltaReport', desc:'客户端上报：玩家状态效果增量', dir:'C→S'},
+  {cat:'battle', name:'BattlePlayerStatusEffectsDeltaBroadcast', desc:'主机广播：玩家状态效果增量', dir:'S→C'},
+  {cat:'battle', name:'BattlePlayerStatusEffectsFullReport', desc:'客户端上报：玩家状态效果全量快照', dir:'C→S'},
+  {cat:'battle', name:'BattlePlayerStatusEffectsFullBroadcast', desc:'主机广播：玩家状态效果全量快照', dir:'S→C'},
+  {cat:'sync', name:'OnTurnStart', desc:'回合开始', dir:'S→C'},
+  {cat:'sync', name:'OnTurnEnd', desc:'回合结束', dir:'S→C'},
+];
+
+const catColors = { system:'#e8eaf6', card:'#fff3e0', battle:'#fce4ec', sync:'#e0f2f1' };
+const catText = { system:'#283593', card:'#e65100', battle:'#c62828', sync:'#00695c' };
+
+function renderMessages(list) {
+  const tbody = document.getElementById('msgTableBody');
+  tbody.innerHTML = list.map(m => `<tr data-cat="${m.cat}">
+    <td><span class="badge-inline" style="background:${catColors[m.cat]};color:${catText[m.cat]}">${m.cat.toUpperCase()}</span></td>
+    <td><code style="font-family:'Roboto Mono',monospace;font-size:12px;">${m.name}</code></td>
+    <td>${m.desc}</td>
+    <td><span style="font-family:'Roboto Mono',monospace;font-size:12px;color:var(--md-sys-color-primary)">${m.dir}</span></td>
+  </tr>`).join('');
+}
+renderMessages(allMessages);
+
+let currentFilter = 'all';
+function filterMessages(cat) {
+  currentFilter = cat;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  document.getElementById('chip-'+cat).classList.add('active');
+  const term = document.getElementById('msgSearch').value.toLowerCase();
+  applyFilter(term);
+}
+function searchMessages(term) {
+  applyFilter(term.toLowerCase());
+}
+function applyFilter(term) {
+  const filtered = allMessages.filter(m => {
+    const matchCat = currentFilter === 'all' || m.cat === currentFilter;
+    const matchTerm = !term || m.name.toLowerCase().includes(term) || m.desc.includes(term);
+    return matchCat && matchTerm;
+  });
+  renderMessages(filtered);
+}
+
+/* ========== Room Stepper ========== */
+function setRoomStep(idx) {
+  document.querySelectorAll('#roomStepper .step').forEach((s,i) => {
+    s.classList.toggle('active', i===idx);
+  });
+  document.querySelectorAll('#roomStepper .step-line').forEach((l,i) => {
+    l.classList.toggle('active', i < idx);
+  });
+  document.querySelectorAll('.room-step-panel').forEach(p => {
+    p.style.display = (parseInt(p.dataset.step) === idx) ? 'block' : 'none';
+  });
+}
+
+/* ========== Theme Toggle ========== */
+function toggleTheme() {
+  const isDark = document.body.classList.toggle('dark');
+  localStorage.setItem('netarch-theme', isDark ? 'dark' : 'light');
+  document.getElementById('themeIcon').textContent = isDark ? 'light_mode' : 'dark_mode';
+}
+
+/* ========== Init ========== */
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('netarch-theme');
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if (saved === 'dark' || (!saved && prefersDark)) {
+    document.body.classList.add('dark');
+    document.getElementById('themeIcon').textContent = 'light_mode';
+  }
+  setTimeout(drawArchLines, 100);
+});
+window.addEventListener('resize', drawArchLines);
+</script>
+</body>
+</html>

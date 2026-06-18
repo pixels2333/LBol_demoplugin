@@ -572,7 +572,7 @@ public class NetworkManager : INetworkManager
 
         foreach (JsonElement p in playersArray.EnumerateArray())
         {
-            UpdateSinglePlayer(p);
+            UpdateSinglePlayer(p); // 逐个更新玩家
         }
     }
 
@@ -586,28 +586,28 @@ public class NetworkManager : INetworkManager
     /// </remarks>
     private void UpdateSinglePlayer(JsonElement playerObj)
     {
-        string playerId = GetString(playerObj, "PlayerId");
-        if (string.IsNullOrWhiteSpace(playerId))
+        string playerId = GetString(playerObj, "PlayerId"); // 提取玩家唯一标识
+        if (string.IsNullOrWhiteSpace(playerId)) // ID 为空或空白则无效
         {
-            return;
+            return; // 无效 ID，跳过处理
         }
 
-        string playerName = GetString(playerObj, "PlayerName");
-        string characterId = GetString(playerObj, "CharacterId");
+        string playerName = GetString(playerObj, "PlayerName"); // 提取玩家显示名称
+        string characterId = GetString(playerObj, "CharacterId"); // 提取角色标识
         // 使用 -1 作为默认值表示服务器未下发该字段，避免覆盖本地有效值（如坐标 0,0）
-        int locX = GetInt(playerObj, "LocationX", -1);
-        int locY = GetInt(playerObj, "LocationY", -1);
-        int stage = GetInt(playerObj, "Stage", -1);
-        string locName = GetString(playerObj, "LocationName");
+        int locX = GetInt(playerObj, "LocationX", -1); // 提取 X 坐标，默认 -1 表示未下发
+        int locY = GetInt(playerObj, "LocationY", -1); // 提取 Y 坐标，默认 -1 表示未下发
+        int stage = GetInt(playerObj, "Stage", -1); // 提取场景/关卡编号，默认 -1 表示未下发
+        string locName = GetString(playerObj, "LocationName"); // 提取位置名称
 
-        lock (_playersLock)
+        lock (_playersLock) // 加锁保护玩家字典线程安全
         {
-            bool changed = false;
-            if (string.Equals(playerId, _selfKey, StringComparison.Ordinal))
+            bool changed = false; // 标记本次是否新增玩家
+            if (string.Equals(playerId, _selfKey, StringComparison.Ordinal)) // 判断目标是否为本地玩家
             {
                 try
                 {
-                    _selfPlayer.playerId = playerId;
+                    _selfPlayer.playerId = playerId; // 同步玩家 ID（防御性写入）
                 }
                 catch
                 {
@@ -615,29 +615,29 @@ public class NetworkManager : INetworkManager
                     // 某些 LocalNetworkPlayer 实现可能不支持 setter，忽略
                 }
 
-                if (string.IsNullOrWhiteSpace(_selfPlayer?.userName) && !string.IsNullOrWhiteSpace(playerName))
+                if (string.IsNullOrWhiteSpace(_selfPlayer?.userName) && !string.IsNullOrWhiteSpace(playerName)) // 本地用户名为空且服务器提供了有效名称
                 {
-                    _selfPlayer.userName = playerName;
+                    _selfPlayer.userName = playerName; // 回填本地玩家名称
                 }
 
-                if (stage >= 0)
+                if (stage >= 0) // 服务器下发了有效场景值
                 {
-                    _selfPlayer.stage = stage;
+                    _selfPlayer.stage = stage; // 更新本地玩家场景
                 }
 
-                return;
+                return; // 本地玩家属性处理完毕，直接返回
             }
 
-            if (!_players.TryGetValue(playerId, out INetworkPlayer existing) || existing == null)
+            if (!_players.TryGetValue(playerId, out INetworkPlayer existing) || existing == null) // 字典中无此玩家或取出的值为空
             {
-                existing = new RemoteNetworkPlayer(playerId, playerName);
-                _players[playerId] = existing;
-                changed = true;
+                existing = new RemoteNetworkPlayer(playerId, playerName); // 新建远端玩家实例
+                _players[playerId] = existing; // 加入玩家字典
+                changed = true; // 标记列表已变化
             }
 
             try
             {
-                existing.playerId = playerId;
+                existing.playerId = playerId; // 同步玩家 ID（防御性写入）
             }
             catch
             {
@@ -645,39 +645,39 @@ public class NetworkManager : INetworkManager
                 // ignored
             }
 
-            if (!string.IsNullOrWhiteSpace(playerName))
+            if (!string.IsNullOrWhiteSpace(playerName)) // 服务器下发了非空名称
             {
-                existing.userName = playerName;
+                existing.userName = playerName; // 更新玩家显示名称
             }
 
-            if (!string.IsNullOrWhiteSpace(characterId))
+            if (!string.IsNullOrWhiteSpace(characterId)) // 服务器下发了非空角色 ID
             {
-                existing.chara = characterId;
+                existing.chara = characterId; // 更新角色标识
             }
 
-            if (!string.IsNullOrWhiteSpace(locName))
+            if (!string.IsNullOrWhiteSpace(locName)) // 服务器下发了非空位置名称
             {
-                existing.location = locName;
+                existing.location = locName; // 更新位置名称
             }
 
-            if (locX >= 0)
+            if (locX >= 0) // X 坐标有效（非默认值 -1）
             {
-                existing.location_X = locX;
+                existing.location_X = locX; // 更新 X 坐标
             }
 
-            if (locY >= 0)
+            if (locY >= 0) // Y 坐标有效（非默认值 -1）
             {
-                existing.location_Y = locY;
+                existing.location_Y = locY; // 更新 Y 坐标
             }
 
-            if (stage >= 0)
+            if (stage >= 0) // 场景/关卡值有效（非默认值 -1）
             {
-                existing.stage = stage;
+                existing.stage = stage; // 更新场景/关卡
             }
 
-            if (changed)
+            if (changed) // 本次循环新增了远端玩家
             {
-                MarkPlayersDirty_NoLock();
+                MarkPlayersDirty_NoLock(); // 标记玩家列表脏，通知上层刷新
             }
         }
     }
@@ -803,34 +803,34 @@ public class NetworkManager : INetworkManager
     /// </remarks>
     private IEnumerable<INetworkPlayer> GetPlayersSnapshot()
     {
-        lock (_playersLock)
+        lock (_playersLock) // 线程安全：对玩家列表的读写操作加锁，避免并发问题
         {
             // 版本号一致说明玩家列表结构未变，直接返回缓存快照，避免数组重新分配与复制
             if (_playersSnapshotRevision == _playersRevision)
             {
-                return _playersSnapshot;
+                return _playersSnapshot; // 缓存命中，直接返回已有的数组引用
             }
 
-            int count = _players.Count;
-            if (count <= 0)
+            int count = _players.Count; // 获取当前玩家数量
+            if (count <= 0) // 无玩家时特殊处理
             {
                 // 空集合时使用共享单例，减少 GC 碎片
-                _playersSnapshot = Array.Empty<INetworkPlayer>();
+                _playersSnapshot = Array.Empty<INetworkPlayer>(); // 使用空数组单例，避免重复分配
             }
-            else
+            else // 有玩家时创建新数组
             {
-                INetworkPlayer[] arr = new INetworkPlayer[count];
-                int i = 0;
-                foreach (INetworkPlayer p in _players.Values)
+                INetworkPlayer[] arr = new INetworkPlayer[count]; // 按当前玩家数量分配数组
+                int i = 0; // 数组索引计数器
+                foreach (INetworkPlayer p in _players.Values) // 遍历字典中的玩家值
                 {
-                    arr[i++] = p;
+                    arr[i++] = p; // 将玩家引用放入数组并递增索引
                 }
 
-                _playersSnapshot = arr;
+                _playersSnapshot = arr; // 将新数组赋给缓存快照
             }
 
-            _playersSnapshotRevision = _playersRevision;
-            return _playersSnapshot;
+            _playersSnapshotRevision = _playersRevision; // 同步版本号，标记缓存已更新
+            return _playersSnapshot; // 返回构建好的快照数组
         }
     }
 

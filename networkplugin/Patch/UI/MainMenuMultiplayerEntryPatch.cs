@@ -120,6 +120,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // 忽略：刷新过程中失败不影响主菜单可用性。
         }
     }
@@ -139,6 +140,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
     }
@@ -176,6 +178,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
     }
@@ -405,6 +408,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
+            // TODO: 应记录异常详情，避免静默失败。
             // ignored
         }
     }

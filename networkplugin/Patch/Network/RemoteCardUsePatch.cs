@@ -123,6 +123,7 @@ public static partial class RemoteCardUsePatch
         bool kicker,
         bool summoning,
         IList<DamageAction> damageActions)
+        // TODO: 当前为 Harmony reverse patch 占位桩，需实现原始方法逻辑。
         => throw new NotImplementedException("Harmony reverse patch stub");
 
     /// <summary>
