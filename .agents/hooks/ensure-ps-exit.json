@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "windows": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"c:\\Users\\oft-Enginner PC\\Desktop\\LBol_demoplugin\\.agents\\hooks\\ensure-ps-exit.ps1\"",
+        "timeout": 15
+      }
+    ]
+  }
+}
