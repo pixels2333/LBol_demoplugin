@@ -49,6 +49,7 @@ public static class MainMenuMultiplayerEntryPatch
     private static Button _startGameMultiplayerButton;
     private static StartGamePanel _lastStartGamePanel;
     private static GameObject _overlayRoot;
+    private static PanelAnimator _rootAnimator;
     private static TMP_FontAsset _defaultFont;
 
     private static NetworkServer _localServer;
@@ -1044,6 +1045,7 @@ public static class MainMenuMultiplayerEntryPatch
             {
                 UnityEngine.Object.Destroy(_overlayRoot);
                 _overlayRoot = null;
+                _rootAnimator = null;
             }
 
             _defaultFont ??= FindDefaultFont(panelTransform);
@@ -1198,10 +1200,9 @@ public static class MainMenuMultiplayerEntryPatch
             // 绑定入场缩放与渐显动画
             try
             {
-                var animator = root.AddComponent<OverlayIntroAnimator>();
-                animator.enabled = false;
-                animator.Init(rootGroup, frameRect);
-                animator.enabled = true;
+                _rootAnimator = root.AddComponent<PanelAnimator>();
+                _rootAnimator.Init(rootGroup, frameRect);
+                _rootAnimator.PlayOpen();
             }
             catch
             {
@@ -1216,6 +1217,10 @@ public static class MainMenuMultiplayerEntryPatch
             mainAreaRt.anchorMax = Vector2.one;
             mainAreaRt.offsetMin = Vector2.zero;
             mainAreaRt.offsetMax = Vector2.zero;
+            mainAreaRt.pivot = new Vector2(0.5f, 0.5f);
+            var mainGroup = mainArea.AddComponent<CanvasGroup>();
+            var mainAnim = mainArea.AddComponent<PanelAnimator>();
+            mainAnim.Init(mainGroup, mainAreaRt);
 
             // 设置标题并在去除布局后重新手动排版，避免重叠
             if (mainText != null)
@@ -1288,22 +1293,46 @@ public static class MainMenuMultiplayerEntryPatch
 
             // 房主（切换到子面板）
             GameObject hostArea = new GameObject("HostArea");
+            PanelAnimator hostAnim = null;
             var hostBtn = CreateDialogButton(buttonTemplate, buttonsGo.transform, "NetworkPlugin_HostButton", "做房主", panelScale);
             hostBtn.onClick.AddListener(() =>
             {
-                mainArea.SetActive(false);
-                hostArea.SetActive(true);
-                if (mainText != null) mainText.text = "做房主";
+                if (mainAnim != null && hostAnim != null)
+                {
+                    mainAnim.PlayClose(() =>
+                    {
+                        hostAnim.PlayOpen();
+                        if (mainText != null) mainText.text = "做房主";
+                    });
+                }
+                else
+                {
+                    mainArea.SetActive(false);
+                    hostArea.SetActive(true);
+                    if (mainText != null) mainText.text = "做房主";
+                }
             });
 
             // 加入（切换到子面板）
             GameObject joinArea = new GameObject("JoinArea");
+            PanelAnimator joinAnim = null;
             var joinBtn = CreateDialogButton(buttonTemplate, buttonsGo.transform, "NetworkPlugin_JoinButton", "加入房主", panelScale);
             joinBtn.onClick.AddListener(() =>
             {
-                mainArea.SetActive(false);
-                joinArea.SetActive(true);
-                if (mainText != null) mainText.text = "加入房主";
+                if (mainAnim != null && joinAnim != null)
+                {
+                    mainAnim.PlayClose(() =>
+                    {
+                        joinAnim.PlayOpen();
+                        if (mainText != null) mainText.text = "加入房主";
+                    });
+                }
+                else
+                {
+                    mainArea.SetActive(false);
+                    joinArea.SetActive(true);
+                    if (mainText != null) mainText.text = "加入房主";
+                }
             });
 
             // 返回
@@ -1325,6 +1354,10 @@ public static class MainMenuMultiplayerEntryPatch
             joinAreaRt.anchorMax = Vector2.one;
             joinAreaRt.offsetMin = Vector2.zero;
             joinAreaRt.offsetMax = Vector2.zero;
+            joinAreaRt.pivot = new Vector2(0.5f, 0.5f);
+            var joinGroup = joinArea.AddComponent<CanvasGroup>();
+            joinAnim = joinArea.AddComponent<PanelAnimator>();
+            joinAnim.Init(joinGroup, joinAreaRt);
             joinArea.SetActive(false);
 
             // 表单输入区容器
@@ -1454,9 +1487,20 @@ public static class MainMenuMultiplayerEntryPatch
             var cancelBtn = CreateDialogButton(buttonTemplate, joinButtonsGo.transform, "NetworkPlugin_CancelBtn", "返回", panelScale);
             cancelBtn.onClick.AddListener(() =>
             {
-                joinArea.SetActive(false);
-                mainArea.SetActive(true);
-                if (mainText != null) mainText.text = "多人游戏";
+                if (joinAnim != null && mainAnim != null)
+                {
+                    joinAnim.PlayClose(() =>
+                    {
+                        mainAnim.PlayOpen();
+                        if (mainText != null) mainText.text = "多人游戏";
+                    });
+                }
+                else
+                {
+                    joinArea.SetActive(false);
+                    mainArea.SetActive(true);
+                    if (mainText != null) mainText.text = "多人游戏";
+                }
             });
 
             foreach (var b in new[] { connectBtn, cancelBtn })
@@ -1473,6 +1517,10 @@ public static class MainMenuMultiplayerEntryPatch
             hostAreaRt.anchorMax = Vector2.one;
             hostAreaRt.offsetMin = Vector2.zero;
             hostAreaRt.offsetMax = Vector2.zero;
+            hostAreaRt.pivot = new Vector2(0.5f, 0.5f);
+            var hostGroup = hostArea.AddComponent<CanvasGroup>();
+            hostAnim = hostArea.AddComponent<PanelAnimator>();
+            hostAnim.Init(hostGroup, hostAreaRt);
             hostArea.SetActive(false);
 
             // 表单输入区容器
@@ -1620,9 +1668,20 @@ public static class MainMenuMultiplayerEntryPatch
             var hostCancelBtn = CreateDialogButton(buttonTemplate, hostButtonsGo.transform, "NetworkPlugin_HostCancelBtn", "返回", panelScale);
             hostCancelBtn.onClick.AddListener(() =>
             {
-                hostArea.SetActive(false);
-                mainArea.SetActive(true);
-                if (mainText != null) mainText.text = "多人游戏";
+                if (hostAnim != null && mainAnim != null)
+                {
+                    hostAnim.PlayClose(() =>
+                    {
+                        mainAnim.PlayOpen();
+                        if (mainText != null) mainText.text = "多人游戏";
+                    });
+                }
+                else
+                {
+                    hostArea.SetActive(false);
+                    mainArea.SetActive(true);
+                    if (mainText != null) mainText.text = "多人游戏";
+                }
             });
 
             foreach (var b in new[] { startHostBtn, hostCancelBtn })
@@ -1652,74 +1711,104 @@ public static class MainMenuMultiplayerEntryPatch
         }
     }
 
-    private sealed class OverlayIntroAnimator : MonoBehaviour
+    private sealed class PanelAnimator : MonoBehaviour
     {
-        private CanvasGroup _rootGroup;
+        private CanvasGroup _group;
         private RectTransform _container;
-        private bool _played;
+        private Coroutine _currentAnim;
+        private bool _isOpen;
 
-        public void Init(CanvasGroup rootGroup, RectTransform container)
+        public void Init(CanvasGroup group, RectTransform container)
         {
-            _rootGroup = rootGroup;
+            _group = group;
             _container = container;
-
-            // 如果组件已经处于可用状态（例如后续被启用），确保不会因为 OnEnable 早于 Init 而漏播动画。
-            if (isActiveAndEnabled && !_played && _rootGroup != null)
+            if (_group != null)
             {
-                _played = true;
-                StartCoroutine(Play());
+                _isOpen = gameObject.activeSelf;
+                _group.alpha = _isOpen ? 1f : 0f;
+                if (_container != null)
+                {
+                    _container.localScale = _isOpen ? Vector3.one : new Vector3(0.92f, 0.92f, 1f);
+                }
             }
         }
 
-        private void OnEnable()
+        public void PlayOpen(Action onComplete = null)
         {
-            if (_played)
+            if (!gameObject.activeSelf)
             {
-                return;
+                gameObject.SetActive(true);
             }
-
-            // Init 可能晚于 OnEnable（AddComponent 的时序）；等到 Init 填充引用后再播。
-            if (_rootGroup == null)
+            if (_group != null)
             {
-                return;
+                _group.interactable = false;
+                _group.blocksRaycasts = true;
             }
-
-            _played = true;
-            StartCoroutine(Play());
+            if (_currentAnim != null) StopCoroutine(_currentAnim);
+            _isOpen = true;
+            _currentAnim = StartCoroutine(Animate(true, onComplete));
         }
 
-        private IEnumerator Play()
+        public void PlayClose(Action onComplete = null)
         {
-            if (_rootGroup == null)
+            if (!gameObject.activeInHierarchy)
             {
+                onComplete?.Invoke();
+                return;
+            }
+            if (_group != null)
+            {
+                _group.interactable = false;
+                _group.blocksRaycasts = true;
+            }
+            if (_currentAnim != null) StopCoroutine(_currentAnim);
+            _isOpen = false;
+            _currentAnim = StartCoroutine(Animate(false, onComplete));
+        }
+
+        private IEnumerator Animate(bool isOpen, Action onComplete)
+        {
+            if (_group == null)
+            {
+                onComplete?.Invoke();
                 yield break;
             }
 
-            if (_container != null) _container.localScale = new Vector3(0.92f, 0.92f, 1f);
+            const float duration = 0.12f;
+            float startAlpha = _group.alpha;
+            float targetAlpha = isOpen ? 1f : 0f;
+            float startScale = _container != null ? _container.localScale.x : 1f;
+            float targetScale = isOpen ? 1f : 0.92f;
 
-            const float duration = 0.22f;
             float t = 0f;
             while (t < duration)
             {
                 t += Time.unscaledDeltaTime;
                 float p = Mathf.Clamp01(t / duration);
-                // easeOutCubic 缓动曲线
-                float e = 1f - Mathf.Pow(1f - p, 3f);
+                float e = isOpen ? (1f - Mathf.Pow(1f - p, 3f)) : Mathf.Pow(p, 3f);
 
-                _rootGroup.alpha = e;
+                _group.alpha = Mathf.Lerp(startAlpha, targetAlpha, p);
                 if (_container != null)
                 {
-                    float s = Mathf.Lerp(0.92f, 1f, e);
+                    float s = Mathf.Lerp(startScale, targetScale, e);
                     _container.localScale = new Vector3(s, s, 1f);
                 }
 
                 yield return null;
             }
 
-            _rootGroup.alpha = 1f;
-            _rootGroup.interactable = true;
-            _rootGroup.blocksRaycasts = true;
-            if (_container != null) _container.localScale = Vector3.one;
+            _group.alpha = targetAlpha;
+            if (_container != null) _container.localScale = new Vector3(targetScale, targetScale, 1f);
+            
+            _group.interactable = isOpen;
+            _group.blocksRaycasts = isOpen;
+
+            if (!isOpen)
+            {
+                gameObject.SetActive(false);
+            }
+
+            onComplete?.Invoke();
         }
     }
 
@@ -1815,7 +1904,17 @@ public static class MainMenuMultiplayerEntryPatch
 
     private static void HideOverlay()
     {
-        _overlayRoot?.SetActive(false);
+        if (_rootAnimator != null && _overlayRoot != null && _overlayRoot.activeInHierarchy)
+        {
+            _rootAnimator.PlayClose(() =>
+            {
+                _overlayRoot.SetActive(false);
+            });
+        }
+        else
+        {
+            _overlayRoot?.SetActive(false);
+        }
     }
 
     private static T GetDialogField<T>(MessageDialog dialog, string fieldName) where T : class
