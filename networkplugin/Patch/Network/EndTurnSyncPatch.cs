@@ -14,6 +14,7 @@ using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Utils;
+using TMPro;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -111,6 +112,9 @@ public static class EndTurnSyncPatch
 
             // Drive any deferred end-turn proceed attempts on the main thread.
             PumpPendingProceed_NoThrow();
+
+            // 更新结束回合按钮文字（显示 X/Y 或"取消结束回合"）
+            UpdateEndTurnButtonText();
         }
     }
 
@@ -195,11 +199,8 @@ public static class EndTurnSyncPatch
             case NetworkMessageTypes.EndTurnRequest:
                 HandleEndTurnRequest(root);
                 return;
-            case NetworkMessageTypes.EndTurnStatus:
-                HandleEndTurnStatus(root);
-                return;
-            case NetworkMessageTypes.EndTurnConfirm:
-                HandleEndTurnConfirm(root);
+            case "EndTurnCancel":
+                HandleEndTurnCancel(root);
                 return;
         }
     }
@@ -340,73 +341,72 @@ public static class EndTurnSyncPatch
 
     private static void HandleEndTurnRequest(JsonElement root)
     {
-        if (!IsSelfHost())
-        {
-            return;
-        }
-
         string playerId = GetString(root, "PlayerId");
-        string battleId = GetString(root, "BattleId");
-        int round = GetInt(root, "Round", -1);
-        if (string.IsNullOrWhiteSpace(playerId) || string.IsNullOrWhiteSpace(battleId) || round < 0)
+        if (string.IsNullOrWhiteSpace(playerId))
         {
             return;
         }
 
-        MarkPlayerEnded(playerId, battleId, round, true, broadcastStatusFromHost: true);
-    }
-
-    private static void HandleEndTurnStatus(JsonElement root)
-    {
-        string playerId = GetString(root, "PlayerId");
-        string battleId = GetString(root, "BattleId");
-        int round = GetInt(root, "Round", -1);
-        bool ended = GetBool(root, "Ended");
-        if (string.IsNullOrWhiteSpace(playerId) || string.IsNullOrWhiteSpace(battleId) || round < 0)
-        {
-            return;
-        }
-
-        MarkPlayerEnded(playerId, battleId, round, ended, broadcastStatusFromHost: false);
-    }
-
-    private static void HandleEndTurnConfirm(JsonElement root)
-    {
-        string battleId = GetString(root, "BattleId");
-        int round = GetInt(root, "Round", -1);
-        if (string.IsNullOrWhiteSpace(battleId) || round < 0)
-        {
-            return;
-        }
-
-        TryProceedAfterConfirm(battleId, round);
-    }
-
-    private static void TryProceedAfterConfirm(string battleId, int round)
-    {
-        bool shouldProceed;
         lock (_syncLock)
         {
-            shouldProceed = _localEndedTurn &&
-                            string.Equals(_pendingBattleId, battleId, StringComparison.Ordinal) &&
-                            _pendingRound == round;
-            if (shouldProceed)
-            {
-                _allowEndTurn = true;
-            }
+            _endedPlayers.Add(playerId);
         }
 
-        if (!shouldProceed)
+        CheckAllPlayersEnded();
+    }
+
+    private static void HandleEndTurnCancel(JsonElement root)
+    {
+        string playerId = GetString(root, "PlayerId");
+        if (string.IsNullOrWhiteSpace(playerId))
         {
             return;
         }
 
+        lock (_syncLock)
+        {
+            _endedPlayers.Remove(playerId);
+        }
+    }
+
+    /// <summary>
+    /// 检查所有在线玩家是否都已结束回合；若是则本地推进。
+    /// 参考 sts2 CombatManager.AllPlayersReadyToEndTurn：每个客户端独立判断，不依赖 Host 聚合。
+    /// </summary>
+    private static void CheckAllPlayersEnded()
+    {
+        bool allEnded;
+        int totalCount;
+        int endedCount;
+        string pendingBattleId;
+        int pendingRound;
+
+        lock (_syncLock)
+        {
+            totalCount = _activePlayerIds.Count;
+            endedCount = _endedPlayers.Count;
+            allEnded = totalCount > 0 && _endedPlayers.IsSupersetOf(_activePlayerIds);
+            pendingBattleId = _pendingBattleId;
+            pendingRound = _pendingRound;
+        }
+
+        if (!allEnded)
+        {
+            return;
+        }
+
+        // 所有在线玩家都结束了：设置允许推进标志，让 Prefix 放行 RequestEndPlayerTurn。
         BattleController battle = TryGetCurrentBattle();
         if (battle == null || !battle.IsWaitingPlayerInput)
         {
-            // Defer: battle/UI not ready to accept RequestEndPlayerTurn yet.
-            SchedulePendingProceed_NoThrow(battleId, round, battle == null ? "battle_null" : "not_waiting_input");
+            // 战斗未就绪，延迟推进（由 PumpPendingProceed 在 Update 中重试）。
+            SchedulePendingProceed_NoThrow(pendingBattleId ?? "battle", pendingRound, battle == null ? "battle_null" : "not_waiting_input");
             return;
+        }
+
+        lock (_syncLock)
+        {
+            _allowEndTurn = true;
         }
 
         try
@@ -473,7 +473,6 @@ public static class EndTurnSyncPatch
             int round;
             long startUtcTicks;
             int attempts;
-            bool canProceed;
 
             lock (_syncLock)
             {
@@ -481,21 +480,10 @@ public static class EndTurnSyncPatch
                 round = _pendingProceedRound;
                 startUtcTicks = _pendingProceedStartUtcTicks;
                 attempts = _pendingProceedAttempts;
-                canProceed = _localEndedTurn &&
-                             _allowEndTurn &&
-                             string.Equals(_pendingBattleId, battleId, StringComparison.Ordinal) &&
-                             _pendingRound == round;
             }
 
-            if (!canProceed || string.IsNullOrWhiteSpace(battleId) || round < 0)
+            if (string.IsNullOrWhiteSpace(battleId) || round < 0)
             {
-                if (string.IsNullOrWhiteSpace(battleId) && round < 0)
-                {
-                    return;
-                }
-
-                // Stale pending proceed (e.g., turn already advanced or gate released).
-                ClearPendingProceed_NoThrow();
                 return;
             }
 
@@ -509,18 +497,6 @@ public static class EndTurnSyncPatch
             {
                 Plugin.Logger?.LogWarning($"[EndTurnSync] Proceed timeout: battleId={battleId}, round={round}, elapsedMs={(int)elapsedMs}");
                 ClearPendingProceed_NoThrow();
-
-                // Release local gate to avoid permanent soft-lock; user can retry.
-                lock (_syncLock)
-                {
-                    _allowEndTurn = false;
-                    _localEndedTurn = false;
-                    _pendingBattleId = null;
-                    _pendingRound = -1;
-                }
-
-                SetEndTurnButtonInteractable(true);
-                RefreshAllCardsEdge();
                 return;
             }
 
@@ -529,114 +505,36 @@ public static class EndTurnSyncPatch
                 _pendingProceedAttempts++;
             }
 
+            // 重新检查是否所有玩家都结束了（可能在此期间有新玩家加入 ended）
+            bool allEnded;
+            lock (_syncLock)
+            {
+                allEnded = _activePlayerIds.Count > 0 && _endedPlayers.IsSupersetOf(_activePlayerIds);
+            }
+
+            if (!allEnded)
+            {
+                ClearPendingProceed_NoThrow();
+                return;
+            }
+
             BattleController battle = TryGetCurrentBattle();
             if (battle == null || !battle.IsWaitingPlayerInput)
             {
                 return;
             }
 
-            // If we're already on a different battle/round, don't force anything.
-            string currentBattleId = GetBattleId(battle);
-            int currentRound = battle.RoundCounter;
-            if (!string.Equals(currentBattleId, battleId, StringComparison.Ordinal) || currentRound != round)
+            lock (_syncLock)
             {
-                ClearPendingProceed_NoThrow();
-                return;
+                _allowEndTurn = true;
             }
 
             battle.RequestEndPlayerTurn();
-
-            // Gate will clear _allowEndTurn/_localEndedTurn; clear deferred marker too.
             ClearPendingProceed_NoThrow();
         }
         catch
         {
             // ignored
-        }
-    }
-
-    private static void MarkPlayerEnded(string playerId, string battleId, int round, bool ended, bool broadcastStatusFromHost)
-    {
-        INetworkClient client = TryGetNetworkClient();
-        if (client == null || !client.IsConnected)
-        {
-            return;
-        }
-
-        bool shouldBroadcastStatus = false;
-        bool shouldConfirm = false;
-        int playerCountSnapshot = 0;
-
-        lock (_syncLock)
-        {
-            if (ended)
-            {
-                _endedPlayers.Add(playerId);
-            }
-            else
-            {
-                _endedPlayers.Remove(playerId);
-            }
-
-            if (_selfIsHost)
-            {
-                shouldBroadcastStatus = broadcastStatusFromHost;
-
-                playerCountSnapshot = _activePlayerIds.Count;
-                if (playerCountSnapshot > 0 &&
-                    _endedPlayers.IsSupersetOf(_activePlayerIds) &&
-                    !(string.Equals(_lastConfirmedBattleId, battleId, StringComparison.Ordinal) && _lastConfirmedRound == round))
-                {
-                    shouldConfirm = true;
-                    _lastConfirmedBattleId = battleId;
-                    _lastConfirmedRound = round;
-                }
-            }
-        }
-
-        if (shouldBroadcastStatus)
-        {
-            try
-            {
-                client.SendGameEventData(NetworkMessageTypes.EndTurnStatus, new
-                {
-                    Timestamp = DateTime.Now.Ticks,
-                    PlayerId = playerId,
-                    BattleId = battleId,
-                    Round = round,
-                    Ended = ended,
-                });
-            }
-            catch
-            {
-                // ignored
-            }
-        }
-
-        if (!shouldConfirm)
-        {
-            return;
-        }
-
-        try
-        {
-            client.SendGameEventData(NetworkMessageTypes.EndTurnConfirm, new
-            {
-                Timestamp = DateTime.Now.Ticks,
-                BattleId = battleId,
-                Round = round,
-                PlayerCount = playerCountSnapshot
-            });
-        }
-        catch
-        {
-            // ignored
-        }
-
-        // 服务器广播 GameEvent 会排除发送方：房主不会收到自己广播的确认，因此需要本地推进。
-        if (IsSelfHost())
-        {
-            TryProceedAfterConfirm(battleId, round);
         }
     }
 
@@ -719,6 +617,81 @@ public static class EndTurnSyncPatch
             if (endTurnButton != null)
             {
                 endTurnButton.interactable = interactable;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    /// <summary>
+    /// 更新结束回合按钮文字：本地已结束 → "取消结束回合 (X/Y)"，未结束 → 恢复原始文字。
+    /// 参考 sts2 NMultiplayerPlayerState.RefreshPlayerReadyIndicator。
+    /// </summary>
+    private static void UpdateEndTurnButtonText()
+    {
+        try
+        {
+            // 未连接或不在联机模式时不修改
+            INetworkClient client = TryGetNetworkClient();
+            if (client == null || !client.IsConnected)
+            {
+                return;
+            }
+
+            var playBoard = UiManager.GetPanel<PlayBoard>();
+            if (playBoard == null)
+            {
+                return;
+            }
+
+            var endTurnButton = Traverse.Create(playBoard).Field("endTurnButton").GetValue<UnityEngine.UI.Button>();
+            if (endTurnButton == null)
+            {
+                return;
+            }
+
+            bool localEnded;
+            int totalCount;
+            int endedCount;
+            lock (_syncLock)
+            {
+                localEnded = _localEndedTurn;
+                totalCount = _activePlayerIds.Count;
+                endedCount = _endedPlayers.Count;
+            }
+
+            // 本地已结束回合时，强制按钮保持可见且可交互（游戏自身可能隐藏它）
+            if (localEnded)
+            {
+                if (!endTurnButton.gameObject.activeSelf)
+                {
+                    endTurnButton.gameObject.SetActive(true);
+                }
+                if (!endTurnButton.interactable)
+                {
+                    endTurnButton.interactable = true;
+                }
+            }
+
+            // 尝试获取按钮文字组件（TMPro 或 UnityEngine.UI.Text）
+            var textComponent = endTurnButton.GetComponentInChildren<TMPro.TMP_Text>(true);
+            string targetText = localEnded
+                ? $"取消结束回合 ({endedCount}/{totalCount})"
+                : (endedCount > 0 ? $"结束回合 ({endedCount}/{totalCount})" : "结束回合");
+
+            if (textComponent != null)
+            {
+                textComponent.text = targetText;
+            }
+            else
+            {
+                var uiText = endTurnButton.GetComponentInChildren<UnityEngine.UI.Text>(true);
+                if (uiText != null)
+                {
+                    uiText.text = targetText;
+                }
             }
         }
         catch
@@ -817,6 +790,7 @@ public static class EndTurnSyncPatch
                     return true;
                 }
 
+                // 所有玩家都结束 → 放行真正结束回合
                 bool allowNow;
                 lock (_syncLock)
                 {
@@ -832,20 +806,9 @@ public static class EndTurnSyncPatch
                         _pendingBattleId = null;
                         _pendingRound = -1;
                     }
-
+                    // 回合结束后由 StartPlayerTurn postfix 重置 _endedPlayers
                     return true;
                 }
-
-                lock (_syncLock)
-                {
-                    if (_localEndedTurn)
-                    {
-                        return false;
-                    }
-                }
-
-                string battleId = GetBattleId(__instance);
-                int round = __instance.RoundCounter;
 
                 string selfPlayerId;
                 lock (_syncLock)
@@ -854,9 +817,45 @@ public static class EndTurnSyncPatch
                 }
                 if (string.IsNullOrWhiteSpace(selfPlayerId))
                 {
-                    // 未拿到 Welcome.PlayerId 时不介入，避免把回合逻辑锁死
                     return true;
                 }
+
+                bool alreadyEnded;
+                lock (_syncLock)
+                {
+                    alreadyEnded = _localEndedTurn;
+                }
+
+                if (alreadyEnded)
+                {
+                    // 已结束回合 → 取消结束回合（参考 sts2 UndoReadyToEndTurn）
+                    lock (_syncLock)
+                    {
+                        _localEndedTurn = false;
+                        _endedPlayers.Remove(selfPlayerId);
+                    }
+
+                    try
+                    {
+                        client.SendGameEventData("EndTurnCancel", new
+                        {
+                            Timestamp = DateTime.Now.Ticks,
+                            PlayerId = selfPlayerId,
+                        });
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
+
+                    RefreshAllCardsEdge();
+                    Plugin.Logger?.LogInfo($"[EndTurnSync] Cancelled end turn: {selfPlayerId}");
+                    return false;
+                }
+
+                // 结束回合
+                string battleId = GetBattleId(__instance);
+                int round = __instance.RoundCounter;
 
                 lock (_syncLock)
                 {
@@ -866,22 +865,26 @@ public static class EndTurnSyncPatch
                     _endedPlayers.Add(selfPlayerId);
                 }
 
-                SetEndTurnButtonInteractable(false);
+                // 按钮保持可交互（用于取消），不设为不可点击
                 RefreshAllCardsEdge();
 
-                client.SendGameEventData(NetworkMessageTypes.EndTurnRequest, new
+                try
                 {
-                    Timestamp = DateTime.Now.Ticks,
-                    PlayerId = selfPlayerId,
-                    BattleId = battleId,
-                    Round = round,
-                });
-
-                // 服务器广播 GameEvent 会排除发送方：房主需要在本地把自己也计入聚合并可能触发确认。
-                if (IsSelfHost())
-                {
-                    MarkPlayerEnded(selfPlayerId, battleId, round, true, broadcastStatusFromHost: true);
+                    client.SendGameEventData(NetworkMessageTypes.EndTurnRequest, new
+                    {
+                        Timestamp = DateTime.Now.Ticks,
+                        PlayerId = selfPlayerId,
+                        BattleId = battleId,
+                        Round = round,
+                    });
                 }
+                catch
+                {
+                    // ignored
+                }
+
+                // 检查是否所有玩家都结束了（单玩家时直接推进）
+                CheckAllPlayersEnded();
 
                 return false;
             }

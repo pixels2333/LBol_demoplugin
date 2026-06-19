@@ -812,6 +812,7 @@ namespace NetworkPlugin.Network.Messages
             EndTurnRequest,           // 结束回合请求
             EndTurnStatus,            // 结束回合状态
             EndTurnConfirm,           // 结束回合确认
+            "EndTurnCancel",          // 取消结束回合
             BattleEnemyIntentChanged, // 敌人意图变更
             BattleEnemyStateChanged,  // 敌人状态变更
             BattleEnemySpawned,       // 敌人生成

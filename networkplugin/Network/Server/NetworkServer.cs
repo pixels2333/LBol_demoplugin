@@ -251,7 +251,7 @@ public partial class NetworkServer : BaseGameServer
                 return;
             }
 
-            BroadcastGameEvent(eventType, eventData, session.Peer.Id);
+            BroadcastGameEvent(eventType, jsonPayload, session.Peer.Id);
         }
         catch (Exception ex)
         {

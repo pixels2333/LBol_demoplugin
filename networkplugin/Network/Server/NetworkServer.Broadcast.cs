@@ -27,9 +27,9 @@ public partial class NetworkServer
     /// 使用 <see cref="DeliveryMethod.ReliableOrdered"/> 保证所有客户端按相同顺序接收事件。
     /// 单客户端发送异常被捕获并记录，不影响其他客户端的广播。
     /// </remarks>
-    private void BroadcastGameEvent(string eventType, object eventData, int excludePeerId)
+    private void BroadcastGameEvent(string eventType, string jsonPayload, int excludePeerId)
     {
-        string json = JsonCompat.Serialize(eventData);
+        string json = jsonPayload;
 
         foreach (var session in SessionsByPeer.Values)
         {
