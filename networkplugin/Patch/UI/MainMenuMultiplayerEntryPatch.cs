@@ -16,6 +16,9 @@ using NetworkPlugin.Configuration;
 using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Server;
+using NetworkPlugin.Network.Messages;
+using NetworkPlugin.Network.NetworkPlayer;
+using NetworkPlugin.Utils;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -51,6 +54,27 @@ public static class MainMenuMultiplayerEntryPatch
     private static GameObject _overlayRoot;
     private static PanelAnimator _rootAnimator;
     private static TMP_FontAsset _defaultFont;
+
+    // 房间玩家列表（独立界面，非 MessageDialog 弹窗）相关字段。
+    private const string RoomListRootName = "NetworkPlugin_RoomPlayerListPanel";
+    private static GameObject _roomListRoot;
+    private static PanelAnimator _roomListAnimator;
+    private static TMP_FontAsset _roomListFont;
+    private static RectTransform _roomListFrameRect;
+    private static ScrollRect _roomListScroll;
+    private static Transform _roomListContainer;
+    private static TextMeshProUGUI _roomListEmptyText;
+    private static bool _roomListEventSubscribed;
+    private static INetworkClient _roomListSubscribedClient;
+    private static readonly Action<string, object> _onRoomListGameEvent = OnRoomListGameEventReceived;
+    private static readonly Action<bool> _onRoomListConnStateChanged = OnRoomListConnectionStateChanged;
+
+    // 连接状态浮层相关字段。
+    private const string ConnStatusRootName = "NetworkPlugin_ConnectionStatusPanel";
+    private static GameObject _connStatusRoot;
+    private static TextMeshProUGUI _connStatusText;
+    private static PanelAnimator _connStatusAnimator;
+    private static TMP_FontAsset _connStatusFont;
 
     private static NetworkServer _localServer;
     private static bool _localServerRunning;
@@ -182,6 +206,37 @@ public static class MainMenuMultiplayerEntryPatch
         {
             // TODO: 应记录异常详情，避免静默失败。
             // ignored
+        }
+    }
+
+    /// <summary>
+    /// StartGamePanel 隐藏后置：若仍在主菜单且处于联机状态，自动断开连接。
+    /// 避免用户从选角页面返回主菜单后仍保持房主/加入状态。
+    /// </summary>
+    [HarmonyPatch(typeof(StartGamePanel), "OnHiding")]
+    [HarmonyPostfix]
+    public static void StartGamePanel_OnHiding_Postfix()
+    {
+        try
+        {
+            if (GameMaster.Status != GameMaster.GameMasterStatus.MainMenu)
+            {
+                return;
+            }
+
+            INetworkClient client = TryGetNetworkClient();
+            if (client?.IsConnected != true)
+            {
+                return;
+            }
+
+            Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 选角面板关闭且仍在主菜单，自动断开联机连接。");
+            HideRoomListOverlay();
+            Disconnect(client);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] StartGamePanel_OnHiding_Postfix 失败: {ex.Message}");
         }
     }
 
@@ -1479,7 +1534,7 @@ public static class MainMenuMultiplayerEntryPatch
                 }
                 else
                 {
-                    TryConnectToServer(ip, port);
+                    TryConnectToServerAndShowRoomList(ip, port);
                 }
             });
 
@@ -1655,13 +1710,13 @@ public static class MainMenuMultiplayerEntryPatch
                             Icon = MessageIcon.Warning,
                             Buttons = DialogButtons.ConfirmCancel,
                             OnConfirm = () => TryHostLocalServerAndConnectAndRestore(save),
-                            OnCancel = TryHostLocalServerAndConnect,
+                            OnCancel = TryHostLocalServerAndConnectAndShowRoomList,
                         }
                     );
                     return;
                 }
 
-                TryHostLocalServerAndConnect();
+                TryHostLocalServerAndConnectAndShowRoomList();
             });
 
             // 返回大厅按钮
@@ -2138,21 +2193,13 @@ public static class MainMenuMultiplayerEntryPatch
     }
 
     /// <summary>
-    /// 已处于联机状态时的提示弹窗。
+    /// 已处于联机状态时：直接弹出“房间玩家列表”独立界面（内含断开按钮），
+    /// 列出当前房间内所有玩家（包括房主），不再使用 MessageDialog 弹窗。
     /// </summary>
     /// <param name="client">网络客户端。</param>
     private static void ShowConnectedDialog(INetworkClient client)
     {
-        UiManager.GetDialog<MessageDialog>().Show(
-            new MessageContent
-            {
-                Text = "当前已处于联机状态。\n\n确认：断开联机\n取消：关闭",
-                Icon = MessageIcon.Warning,
-                Buttons = DialogButtons.ConfirmCancel,
-                OnConfirm = () => Disconnect(client),
-                OnCancel = null,
-            }
-        );
+        ShowRoomPlayerListOverlay();
     }
 
     /// <summary>
@@ -2191,7 +2238,7 @@ public static class MainMenuMultiplayerEntryPatch
                     Icon = MessageIcon.Warning,
                     Buttons = DialogButtons.ConfirmCancel,
                     OnConfirm = () => TryConnectToServerAndRestoreAndCatchUp(ip, port, save),
-                    OnCancel = () => TryConnectToServer(ip, port),
+                    OnCancel = () => TryConnectToServerAndShowRoomList(ip, port),
                 }
             );
             return;
@@ -2203,10 +2250,795 @@ public static class MainMenuMultiplayerEntryPatch
                 Text = $"将作为客户端加入服务器：{ip}:{port}\n\n确认：开始连接\n取消：关闭",
                 Icon = MessageIcon.Warning,
                 Buttons = DialogButtons.ConfirmCancel,
-                OnConfirm = () => TryConnectToServer(ip, port),
+                OnConfirm = () => TryConnectToServerAndShowRoomList(ip, port),
                 OnCancel = null,
             }
         );
+    }
+
+    #endregion
+
+    #region 房间玩家列表面板（独立界面，非 MessageDialog 弹窗）
+
+    /// <summary>
+    /// 显示“房间玩家列表”独立界面。点击“做房主/加入房主”并连接成功后调用，
+    /// 列出当前房间内所有玩家（包括房主），并在玩家加入/离开时自动刷新。
+    /// 风格与“多人游戏入口”遮罩面板一致：全屏半透明遮罩 + 中央自建面板框 + 标题 + 列表 + 按钮，
+    /// 不使用 MessageDialog 预制体。
+    /// </summary>
+    private static void ShowRoomPlayerListOverlay()
+    {
+        if (!UiManager.IsInitialized)
+        {
+            return;
+        }
+
+        try
+        {
+            Transform parent = TryGetRootCanvasRectTransform(UiManager.Instance?.transform) ?? UiManager.Instance?.transform;
+            if (parent == null)
+            {
+                Plugin.Logger?.LogWarning("[MainMenuMultiplayerEntry] 无法获取根画布，房间玩家列表未显示。");
+                return;
+            }
+
+            Button template = TryGetButtonTemplate();
+            EnsureRoomListOverlay(parent, template);
+            if (_roomListRoot == null)
+            {
+                Plugin.Logger?.LogWarning("[MainMenuMultiplayerEntry] 房间玩家列表面板构建失败。");
+                return;
+            }
+
+            SubscribeRoomListEvents();
+            RefreshRoomList();
+            _roomListRoot.SetActive(true);
+            _roomListRoot.transform.SetAsLastSibling();
+            try
+            {
+                _roomListAnimator?.PlayOpen();
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] 显示房间玩家列表面板失败: {ex}");
+        }
+    }
+
+    /// <summary>
+    /// 获取一个可用于克隆样式的按钮模板（优先复用已注入的“多人游戏”按钮，否则从主菜单面板子节点取）。
+    /// </summary>
+    private static Button TryGetButtonTemplate()
+    {
+        try
+        {
+            if (_multiplayerButton != null)
+            {
+                return _multiplayerButton;
+            }
+
+            MainMenuPanel panel = _lastMainMenuPanel ?? UiManager.GetPanel<MainMenuPanel>();
+            if (panel != null)
+            {
+                var buttons = panel.GetComponentsInChildren<Button>(true);
+                if (buttons != null)
+                {
+                    foreach (var b in buttons)
+                    {
+                        if (b == null) continue;
+                        if (b.name == MultiplayerButtonName || b.name == RoomListRootName) continue;
+                        return b;
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// 构建（或复用）房间玩家列表面板。完全自建 GameObject，不依赖 MessageDialog 预制体。
+    /// </summary>
+    private static void EnsureRoomListOverlay(Transform parent, Button template)
+    {
+        if (_roomListRoot != null)
+        {
+            if (_roomListRoot.transform.parent != parent)
+            {
+                _roomListRoot.transform.SetParent(parent, false);
+            }
+            return;
+        }
+
+        try
+        {
+            _roomListFont = _defaultFont ?? FindDefaultFont(parent);
+
+            // root：全屏半透明遮罩。
+            GameObject root = new GameObject(RoomListRootName);
+            root.transform.SetParent(parent, false);
+            root.transform.SetAsLastSibling();
+            _roomListRoot = root;
+
+            var rootRect = root.AddComponent<RectTransform>();
+            rootRect.anchorMin = Vector2.zero;
+            rootRect.anchorMax = Vector2.one;
+            rootRect.offsetMin = Vector2.zero;
+            rootRect.offsetMax = Vector2.zero;
+
+            var bg = root.AddComponent<Image>();
+            bg.color = new Color(0f, 0f, 0f, 0.62f);
+            bg.raycastTarget = true;
+
+            var rootGroup = root.AddComponent<CanvasGroup>();
+            rootGroup.alpha = 0f;
+            rootGroup.interactable = false;
+            rootGroup.blocksRaycasts = true;
+
+            // 自适应缩放，保证面板不超出画布。
+            float panelScale = 3f;
+            try
+            {
+                const float baseW = 520f;
+                const float baseH = 460f;
+                float maxW = Mathf.Max(1f, rootRect.rect.width * 0.92f);
+                float maxH = Mathf.Max(1f, rootRect.rect.height * 0.92f);
+                panelScale = Mathf.Clamp(Mathf.Min(maxW / baseW, maxH / baseH), 1f, 3f);
+            }
+            catch
+            {
+                panelScale = 3f;
+            }
+
+            // frame：中央面板，自建背景框。
+            GameObject frame = new GameObject(RoomListRootName + "_Frame");
+            frame.transform.SetParent(root.transform, false);
+            var frameRect = frame.AddComponent<RectTransform>();
+            frameRect.anchorMin = new Vector2(0.5f, 0.5f);
+            frameRect.anchorMax = new Vector2(0.5f, 0.5f);
+            frameRect.pivot = new Vector2(0.5f, 0.5f);
+            frameRect.sizeDelta = new Vector2(520f * panelScale, 460f * panelScale);
+            frameRect.anchoredPosition = Vector2.zero;
+            _roomListFrameRect = frameRect;
+
+            var frameBg = frame.AddComponent<Image>();
+            frameBg.color = new Color(0.10f, 0.09f, 0.14f, 0.96f);
+            frameBg.raycastTarget = true;
+
+            // 金色描边，呼应游戏 UI 风格。
+            try
+            {
+                var outline = frame.AddComponent<Outline>();
+                outline.effectColor = new Color(0.78f, 0.63f, 0.25f, 0.9f);
+                outline.effectDistance = new Vector2(3f * panelScale, 3f * panelScale);
+            }
+            catch
+            {
+                // ignored
+            }
+
+            // 顶部金色分隔线（标题下方）。
+            CreateHorizontalRule(frame.transform, RoomListRootName + "_TopRule", 1f, -50f * panelScale, 3f * panelScale, new Color(0.78f, 0.63f, 0.25f, 0.9f));
+            // 底部分隔线（按钮区上方）。
+            CreateHorizontalRule(frame.transform, RoomListRootName + "_BottomRule", 0f, 74f * panelScale, 2f * panelScale, new Color(0.78f, 0.63f, 0.25f, 0.6f));
+
+            // 标题。
+            GameObject titleGo = new GameObject("Title");
+            titleGo.transform.SetParent(frame.transform, false);
+            var titleRt = titleGo.AddComponent<RectTransform>();
+            titleRt.anchorMin = new Vector2(0f, 1f);
+            titleRt.anchorMax = new Vector2(1f, 1f);
+            titleRt.pivot = new Vector2(0.5f, 1f);
+            titleRt.anchoredPosition = new Vector2(0f, -16f * panelScale);
+            titleRt.sizeDelta = new Vector2(-40f * panelScale, 40f * panelScale);
+            var title = titleGo.AddComponent<TextMeshProUGUI>();
+            title.text = "房间玩家列表";
+            title.alignment = TextAlignmentOptions.Center;
+            title.fontSize = Mathf.Clamp(26f * panelScale, 24f, 80f);
+            title.color = new Color(1f, 0.92f, 0.6f, 1f);
+            title.raycastTarget = false;
+            if (_roomListFont != null) title.font = _roomListFont;
+
+            // 副标题：显示玩家数量 / 空状态提示。
+            GameObject subGo = new GameObject("Subtitle");
+            subGo.transform.SetParent(frame.transform, false);
+            var subRt = subGo.AddComponent<RectTransform>();
+            subRt.anchorMin = new Vector2(0f, 1f);
+            subRt.anchorMax = new Vector2(1f, 1f);
+            subRt.pivot = new Vector2(0.5f, 1f);
+            subRt.anchoredPosition = new Vector2(0f, -58f * panelScale);
+            subRt.sizeDelta = new Vector2(-40f * panelScale, 30f * panelScale);
+            _roomListEmptyText = subGo.AddComponent<TextMeshProUGUI>();
+            _roomListEmptyText.alignment = TextAlignmentOptions.Center;
+            _roomListEmptyText.fontSize = Mathf.Clamp(18f * panelScale, 16f, 48f);
+            _roomListEmptyText.color = new Color(0.85f, 0.85f, 0.85f, 1f);
+            _roomListEmptyText.raycastTarget = false;
+            if (_roomListFont != null) _roomListEmptyText.font = _roomListFont;
+
+            // ScrollRect 列表区。
+            GameObject scrollGo = new GameObject("PlayerScroll");
+            scrollGo.transform.SetParent(frame.transform, false);
+            var scrollRt = scrollGo.AddComponent<RectTransform>();
+            scrollRt.anchorMin = new Vector2(0.1f, 0.2f);
+            scrollRt.anchorMax = new Vector2(0.9f, 0.82f);
+            scrollRt.offsetMin = Vector2.zero;
+            scrollRt.offsetMax = Vector2.zero;
+
+            var scrollImg = scrollGo.AddComponent<Image>();
+            scrollImg.color = new Color(0f, 0f, 0f, 0.35f);
+            scrollImg.raycastTarget = true;
+
+            var scrollRect = scrollGo.AddComponent<ScrollRect>();
+            scrollRect.horizontal = false;
+            scrollRect.vertical = true;
+            scrollRect.movementType = ScrollRect.MovementType.Clamped;
+            _roomListScroll = scrollRect;
+
+            GameObject viewport = new GameObject("Viewport");
+            viewport.transform.SetParent(scrollGo.transform, false);
+            var viewportRt = viewport.AddComponent<RectTransform>();
+            viewportRt.anchorMin = Vector2.zero;
+            viewportRt.anchorMax = Vector2.one;
+            viewportRt.offsetMin = Vector2.zero;
+            viewportRt.offsetMax = Vector2.zero;
+            viewport.AddComponent<RectMask2D>();
+
+            GameObject contentGo = new GameObject("Content");
+            contentGo.transform.SetParent(viewport.transform, false);
+            var contentRt = contentGo.AddComponent<RectTransform>();
+            contentRt.anchorMin = new Vector2(0f, 1f);
+            contentRt.anchorMax = new Vector2(1f, 1f);
+            contentRt.pivot = new Vector2(0.5f, 1f);
+            contentRt.sizeDelta = new Vector2(0f, 0f);
+
+            var vlg = contentGo.AddComponent<VerticalLayoutGroup>();
+            vlg.childAlignment = TextAnchor.UpperCenter;
+            vlg.spacing = 8f * panelScale;
+            vlg.padding = new RectOffset(8, 8, 8, 8);
+            vlg.childControlWidth = true;
+            vlg.childControlHeight = true;
+            vlg.childForceExpandWidth = true;
+            vlg.childForceExpandHeight = false;
+
+            var csf = contentGo.AddComponent<ContentSizeFitter>();
+            csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            scrollRect.viewport = viewportRt;
+            scrollRect.content = contentRt;
+            _roomListContainer = contentRt;
+
+            // 底部按钮区。
+            GameObject buttonsGo = new GameObject("Buttons");
+            buttonsGo.transform.SetParent(frame.transform, false);
+            var buttonsRt = buttonsGo.AddComponent<RectTransform>();
+            buttonsRt.anchorMin = new Vector2(0.5f, 0f);
+            buttonsRt.anchorMax = new Vector2(0.5f, 0f);
+            buttonsRt.pivot = new Vector2(0.5f, 0f);
+            buttonsRt.sizeDelta = new Vector2(440f * panelScale, 58f * panelScale);
+            buttonsRt.anchoredPosition = new Vector2(0f, 18f * panelScale);
+
+            var hlg = buttonsGo.AddComponent<HorizontalLayoutGroup>();
+            hlg.childAlignment = TextAnchor.MiddleCenter;
+            hlg.childControlWidth = true;
+            hlg.childControlHeight = true;
+            hlg.childForceExpandWidth = true;
+            hlg.childForceExpandHeight = false;
+            hlg.spacing = 20f * panelScale;
+
+            if (template != null)
+            {
+                var refreshBtn = CreateDialogButton(template, buttonsGo.transform, RoomListRootName + "_RefreshBtn", "刷新", panelScale);
+                refreshBtn.onClick.AddListener(RefreshRoomList);
+
+                var closeBtn = CreateDialogButton(template, buttonsGo.transform, RoomListRootName + "_CloseBtn", "关闭", panelScale);
+                closeBtn.onClick.AddListener(HideRoomListOverlay);
+
+                var disconnectBtn = CreateDialogButton(template, buttonsGo.transform, RoomListRootName + "_DisconnectBtn", "断开联机", panelScale);
+                disconnectBtn.onClick.AddListener(() =>
+                {
+                    INetworkClient c = TryGetNetworkClient();
+                    Disconnect(c);
+                    HideRoomListOverlay();
+                });
+
+                foreach (var b in new[] { refreshBtn, closeBtn, disconnectBtn })
+                {
+                    if (b == null) continue;
+                    var r = b.GetComponent<RectTransform>();
+                    if (r != null) r.sizeDelta = new Vector2(r.sizeDelta.x, 58f * panelScale);
+                }
+            }
+            else
+            {
+                // 无模板按钮时，用纯文字 + Image 兜底构建按钮。
+                CreateSimpleTextButton(buttonsGo.transform, RoomListRootName + "_RefreshBtn", "刷新", panelScale, RefreshRoomList);
+                CreateSimpleTextButton(buttonsGo.transform, RoomListRootName + "_CloseBtn", "关闭", panelScale, HideRoomListOverlay);
+                CreateSimpleTextButton(buttonsGo.transform, RoomListRootName + "_DisconnectBtn", "断开联机", panelScale, () =>
+                {
+                    INetworkClient c = TryGetNetworkClient();
+                    Disconnect(c);
+                    HideRoomListOverlay();
+                });
+            }
+
+            // 入场动画。
+            try
+            {
+                _roomListAnimator = root.AddComponent<PanelAnimator>();
+                _roomListAnimator.Init(rootGroup, frameRect);
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] 构建房间玩家列表面板失败: {ex}");
+            if (_roomListRoot != null) UnityEngine.Object.Destroy(_roomListRoot);
+            _roomListRoot = null;
+        }
+    }
+
+    /// <summary>
+    /// 无模板按钮时构建的简易文字按钮兜底。
+    /// </summary>
+    private static void CreateSimpleTextButton(Transform parent, string name, string label, float panelScale, Action onClick)
+    {
+        GameObject go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        var img = go.AddComponent<Image>();
+        img.color = new Color(0.2f, 0.2f, 0.24f, 0.9f);
+        var btn = go.AddComponent<Button>();
+        btn.targetGraphic = img;
+        var le = go.AddComponent<LayoutElement>();
+        le.preferredHeight = 58f * panelScale;
+        le.flexibleWidth = 1f;
+
+        GameObject textGo = new GameObject("Label");
+        textGo.transform.SetParent(go.transform, false);
+        var rt = textGo.AddComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = new Vector2(10f, 0f);
+        rt.offsetMax = new Vector2(-10f, 0f);
+
+        var tmp = textGo.AddComponent<TextMeshProUGUI>();
+        tmp.text = label;
+        tmp.alignment = TextAlignmentOptions.Left;
+        tmp.raycastTarget = false;
+        tmp.fontSize = Mathf.Clamp(22f * panelScale, 18f, 60f);
+        tmp.color = Color.white;
+        if (_roomListFont != null) tmp.font = _roomListFont;
+
+        btn.onClick.AddListener(() => onClick?.Invoke());
+    }
+
+    /// <summary>
+    /// 根据 NetworkManager.GetAllPlayers() 刷新房间玩家列表。
+    /// 房主条目带 ★ 标记并置顶，自身条目带（你）标记。
+    /// </summary>
+    private static void RefreshRoomList()
+    {
+        if (_roomListRoot == null || _roomListContainer == null)
+        {
+            return;
+        }
+
+        try
+        {
+            foreach (Transform child in _roomListContainer)
+            {
+                UnityEngine.Object.Destroy(child.gameObject);
+            }
+
+            INetworkManager manager = ServiceProvider?.GetService<INetworkManager>();
+            string selfId = NetworkIdentityTracker.GetSelfPlayerId();
+
+            var entries = new List<(string Id, string Name, bool IsHost)>();
+            if (manager != null)
+            {
+                foreach (INetworkPlayer p in manager.GetAllPlayers() ?? Enumerable.Empty<INetworkPlayer>())
+                {
+                    if (p == null || string.IsNullOrWhiteSpace(p.playerId)) continue;
+                    string name = string.IsNullOrWhiteSpace(p.userName) ? p.playerId : p.userName;
+                    entries.Add((p.playerId, name, p.IsLobbyOwner()));
+                }
+            }
+
+            // 兜底：NetworkManager 尚未注册玩家，但身份追踪器已有 selfId 时，至少展示自己。
+            if (entries.Count == 0 && !string.IsNullOrWhiteSpace(selfId))
+            {
+                entries.Add((selfId, ResolveSelfDisplayName(), NetworkIdentityTracker.GetSelfIsHost()));
+            }
+
+            // 排序：房主置顶，其余按 id 稳定排序。
+            entries.Sort((a, b) =>
+            {
+                int ha = a.IsHost ? 0 : 1;
+                int hb = b.IsHost ? 0 : 1;
+                if (ha != hb) return ha.CompareTo(hb);
+                return string.Compare(a.Id, b.Id, StringComparison.Ordinal);
+            });
+
+            // 副标题：玩家数量 / 空状态。
+            if (_roomListEmptyText != null)
+            {
+                _roomListEmptyText.text = entries.Count == 0
+                    ? "暂无玩家（等待连接或玩家加入…）"
+                    : $"共 {entries.Count} 名玩家";
+            }
+
+            if (entries.Count == 0)
+            {
+                _roomListScroll?.gameObject.SetActive(false);
+            }
+            else
+            {
+                _roomListScroll?.gameObject.SetActive(true);
+                foreach (var e in entries)
+                {
+                    bool isSelf = !string.IsNullOrWhiteSpace(selfId)
+                        && string.Equals(e.Id, selfId, StringComparison.Ordinal);
+                    string label = e.IsHost ? $"★ {e.Name}（房主）" : e.Name;
+                    if (isSelf) label += "（你）";
+                    CreateRoomListRow(_roomListContainer, label, e.IsHost, isSelf);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] 刷新房间玩家列表失败: {ex}");
+        }
+    }
+
+    private static void CreateRoomListRow(Transform container, string label, bool isHost, bool isSelf)
+    {
+        GameObject go = new GameObject("RoomPlayer");
+        go.transform.SetParent(container, false);
+
+        var img = go.AddComponent<Image>();
+        img.color = isHost
+            ? new Color(0.5f, 0.4f, 0.15f, 0.85f)
+            : (isSelf ? new Color(0.2f, 0.35f, 0.55f, 0.8f) : new Color(0.2f, 0.2f, 0.24f, 0.8f));
+        img.raycastTarget = false;
+
+        var le = go.AddComponent<LayoutElement>();
+        le.preferredHeight = 36f;
+        le.flexibleWidth = 1f;
+
+        GameObject textGo = new GameObject("Label");
+        textGo.transform.SetParent(go.transform, false);
+        var rt = textGo.AddComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = new Vector2(10f, 0f);
+        rt.offsetMax = new Vector2(-10f, 0f);
+
+        var tmp = textGo.AddComponent<TextMeshProUGUI>();
+        tmp.text = label;
+        tmp.alignment = TextAlignmentOptions.Left;
+        tmp.raycastTarget = false;
+        tmp.fontSize = 26f;
+        tmp.color = Color.white;
+        if (_roomListFont != null) tmp.font = _roomListFont;
+    }
+
+    private static string ResolveSelfDisplayName()
+    {
+        try
+        {
+            ConfigManager config = TryGetConfig();
+            string name = config?.PlayerNameOverride?.Value;
+            if (!string.IsNullOrWhiteSpace(name)) return name;
+            name = config?.HostPlayerNameOverride?.Value;
+            if (!string.IsNullOrWhiteSpace(name)) return name;
+            name = Singleton<GameMaster>.Instance?.CurrentProfile?.Name;
+            if (!string.IsNullOrWhiteSpace(name)) return name;
+        }
+        catch
+        {
+            // ignored
+        }
+        return NetworkIdentityTracker.GetSelfPlayerId() ?? "我";
+    }
+
+    private static void HideRoomListOverlay()
+    {
+        if (_roomListRoot == null) return;
+        if (_roomListAnimator != null && _roomListRoot.activeInHierarchy)
+        {
+            _roomListAnimator.PlayClose(() => _roomListRoot.SetActive(false));
+        }
+        else
+        {
+            _roomListRoot.SetActive(false);
+        }
+        UnsubscribeRoomListEvents();
+    }
+
+    private static void SubscribeRoomListEvents()
+    {
+        if (_roomListEventSubscribed) return;
+        INetworkClient client = TryGetNetworkClient();
+        if (client == null) return;
+        try
+        {
+            client.OnGameEventReceived += _onRoomListGameEvent;
+            client.OnConnectionStateChanged += _onRoomListConnStateChanged;
+            _roomListSubscribedClient = client;
+            _roomListEventSubscribed = true;
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static void UnsubscribeRoomListEvents()
+    {
+        if (!_roomListEventSubscribed) return;
+        try
+        {
+            if (_roomListSubscribedClient != null)
+            {
+                _roomListSubscribedClient.OnGameEventReceived -= _onRoomListGameEvent;
+                _roomListSubscribedClient.OnConnectionStateChanged -= _onRoomListConnStateChanged;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+        _roomListSubscribedClient = null;
+        _roomListEventSubscribed = false;
+    }
+
+    private static void OnRoomListGameEventReceived(string eventType, object payload)
+    {
+        if (eventType == NetworkMessageTypes.Welcome
+            || eventType == NetworkMessageTypes.PlayerListUpdate
+            || eventType == NetworkMessageTypes.PlayerJoined
+            || eventType == NetworkMessageTypes.PlayerLeft
+            || eventType == NetworkMessageTypes.HostChanged)
+        {
+            RefreshRoomList();
+        }
+    }
+
+    private static void OnRoomListConnectionStateChanged(bool connected)
+    {
+        RefreshRoomList();
+    }
+
+    #region 连接状态浮层
+
+    /// <summary>
+    /// 显示连接状态浮层（轻量，仅文字提示）。
+    /// </summary>
+    private static void ShowConnectionStatusOverlay(string initialText)
+    {
+        try
+        {
+            if (_connStatusRoot != null)
+            {
+                if (_connStatusText != null) _connStatusText.text = initialText;
+                _connStatusRoot.SetActive(true);
+                _connStatusRoot.transform.SetAsLastSibling();
+                _connStatusAnimator?.PlayOpen();
+                return;
+            }
+
+            Transform parent = TryGetRootCanvasRectTransform(UiManager.Instance?.transform) ?? UiManager.Instance?.transform;
+            if (parent == null) return;
+
+            _connStatusFont = _defaultFont ?? FindDefaultFont(parent);
+
+            GameObject root = new GameObject(ConnStatusRootName);
+            root.transform.SetParent(parent, false);
+            root.transform.SetAsLastSibling();
+            _connStatusRoot = root;
+
+            var rootRect = root.AddComponent<RectTransform>();
+            rootRect.anchorMin = Vector2.zero;
+            rootRect.anchorMax = Vector2.one;
+            rootRect.offsetMin = Vector2.zero;
+            rootRect.offsetMax = Vector2.zero;
+
+            var bg = root.AddComponent<Image>();
+            bg.color = new Color(0f, 0f, 0f, 0.45f);
+            bg.raycastTarget = true;
+
+            var rootGroup = root.AddComponent<CanvasGroup>();
+            rootGroup.alpha = 0f;
+            rootGroup.interactable = false;
+            rootGroup.blocksRaycasts = true;
+
+            // 小型居中面板。
+            GameObject frame = new GameObject(ConnStatusRootName + "_Frame");
+            frame.transform.SetParent(root.transform, false);
+            var frameRect = frame.AddComponent<RectTransform>();
+            frameRect.anchorMin = new Vector2(0.5f, 0.5f);
+            frameRect.anchorMax = new Vector2(0.5f, 0.5f);
+            frameRect.pivot = new Vector2(0.5f, 0.5f);
+            frameRect.sizeDelta = new Vector2(420f, 120f);
+            frameRect.anchoredPosition = Vector2.zero;
+
+            var frameBg = frame.AddComponent<Image>();
+            frameBg.color = new Color(0.10f, 0.09f, 0.14f, 0.96f);
+            frameBg.raycastTarget = true;
+
+            try
+            {
+                var outline = frame.AddComponent<Outline>();
+                outline.effectColor = new Color(0.78f, 0.63f, 0.25f, 0.8f);
+                outline.effectDistance = new Vector2(2f, 2f);
+            }
+            catch
+            {
+                // ignored
+            }
+
+            // 状态文字。
+            GameObject textGo = new GameObject("StatusText");
+            textGo.transform.SetParent(frame.transform, false);
+            var textRt = textGo.AddComponent<RectTransform>();
+            textRt.anchorMin = Vector2.zero;
+            textRt.anchorMax = Vector2.one;
+            textRt.offsetMin = new Vector2(20f, 15f);
+            textRt.offsetMax = new Vector2(-20f, -15f);
+
+            _connStatusText = textGo.AddComponent<TextMeshProUGUI>();
+            _connStatusText.text = initialText;
+            _connStatusText.alignment = TextAlignmentOptions.Center;
+            _connStatusText.fontSize = 22f;
+            _connStatusText.color = new Color(0.9f, 0.88f, 0.7f, 1f);
+            _connStatusText.raycastTarget = false;
+            if (_connStatusFont != null) _connStatusText.font = _connStatusFont;
+
+            try
+            {
+                _connStatusAnimator = root.AddComponent<PanelAnimator>();
+                _connStatusAnimator.Init(rootGroup, frameRect);
+                _connStatusAnimator.PlayOpen();
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] 显示连接状态浮层失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 更新连接状态文字。
+    /// </summary>
+    private static void UpdateConnectionStatusText(string text)
+    {
+        if (_connStatusText != null)
+        {
+            _connStatusText.text = text;
+        }
+    }
+
+    /// <summary>
+    /// 隐藏并销毁连接状态浮层。
+    /// </summary>
+    private static void HideConnectionStatusOverlay()
+    {
+        if (_connStatusRoot != null)
+        {
+            try { _connStatusAnimator?.PlayClose(); } catch { /* ignored */ }
+            UnityEngine.Object.Destroy(_connStatusRoot);
+        }
+        _connStatusRoot = null;
+        _connStatusText = null;
+        _connStatusAnimator = null;
+    }
+
+    #endregion
+
+    /// <summary>
+    /// 等待联机连接建立后弹出房间玩家列表面板（仅在主菜单停留时使用）。
+    /// </summary>
+    private static IEnumerator CoWaitForConnectedThenShowRoomList(float timeoutSeconds = 8f)
+    {
+        INetworkClient client = TryGetNetworkClient();
+        float start = Time.realtimeSinceStartup;
+
+        while (Time.realtimeSinceStartup - start < timeoutSeconds)
+        {
+            bool connected = false;
+            try
+            {
+                connected = client != null && client.IsConnected;
+            }
+            catch
+            {
+                connected = false;
+            }
+            if (connected) break;
+            yield return null;
+        }
+
+        bool ok = false;
+        try
+        {
+            ok = client != null && client.IsConnected;
+        }
+        catch
+        {
+            ok = false;
+        }
+
+        HideConnectionStatusOverlay();
+
+        if (!ok)
+        {
+            Plugin.Logger?.LogWarning("[MainMenuMultiplayerEntry] 等待联机连接超时，房间玩家列表未弹出。");
+            UiManager.GetDialog<MessageDialog>().Show(
+                new MessageContent
+                {
+                    Text = "连接服务器超时。\n\n请检查网络连接、服务器地址和端口是否正确。",
+                    Icon = MessageIcon.Error,
+                    Buttons = DialogButtons.Confirm,
+                }
+            );
+            yield break;
+        }
+
+        ShowRoomPlayerListOverlay();
+    }
+
+    /// <summary>
+    /// 连接服务器并在连接成功后弹出房间玩家列表面板（仅用于停留主菜单的新游戏流程）。
+    /// </summary>
+    internal static void TryConnectToServerAndShowRoomList(string host, int port)
+    {
+        ShowConnectionStatusOverlay($"正在连接到 {host}:{port}…");
+        bool started = TryConnectToServer(host, port);
+        if (!started)
+        {
+            HideConnectionStatusOverlay();
+            return;
+        }
+        UpdateConnectionStatusText($"已发起连接请求到 {host}:{port}，等待服务器响应…");
+        try
+        {
+            Singleton<GameMaster>.Instance.StartCoroutine(CoWaitForConnectedThenShowRoomList());
+        }
+        catch
+        {
+            HideConnectionStatusOverlay();
+        }
+    }
+
+    /// <summary>
+    /// 启动本机服务器、连接并在连接成功后弹出房间玩家列表面板（仅用于停留主菜单的新游戏流程）。
+    /// </summary>
+    internal static void TryHostLocalServerAndConnectAndShowRoomList()
+    {
+        ShowConnectionStatusOverlay("正在启动本机服务器…");
+        TryHostLocalServerAndConnect();
+        UpdateConnectionStatusText("正在连接到本机服务器…");
+        try
+        {
+            Singleton<GameMaster>.Instance.StartCoroutine(CoWaitForConnectedThenShowRoomList());
+        }
+        catch
+        {
+            HideConnectionStatusOverlay();
+        }
     }
 
     #endregion
@@ -2246,8 +3078,8 @@ public static class MainMenuMultiplayerEntryPatch
             UiManager.GetDialog<MessageDialog>().Show(
                 new MessageContent
                 {
-                    Text = "启动本机服务器失败，请检查日志。",
-                    Icon = MessageIcon.Warning,
+                    Text = $"启动本机服务器失败：\n{ex.Message}",
+                    Icon = MessageIcon.Error,
                     Buttons = DialogButtons.Confirm,
                 }
             );
@@ -2358,7 +3190,7 @@ public static class MainMenuMultiplayerEntryPatch
     /// </summary>
     /// <param name="host">服务器地址。</param>
     /// <param name="port">服务器端口。</param>
-    internal static void TryConnectToServer(string host, int port)
+    internal static bool TryConnectToServer(string host, int port)
     {
         INetworkClient client = TryGetNetworkClient();
         if (client == null)
@@ -2367,11 +3199,11 @@ public static class MainMenuMultiplayerEntryPatch
                 new MessageContent
                 {
                     Text = "网络客户端未初始化（INetworkClient 解析失败）。\n请先确认依赖注入与网络模块已就绪。",
-                    Icon = MessageIcon.Warning,
+                    Icon = MessageIcon.Error,
                     Buttons = DialogButtons.Confirm,
                 }
             );
-            return;
+            return false;
         }
 
         // 确保客户端已启动（重复启动可能抛异常，因此做容错）。
@@ -2388,10 +3220,20 @@ public static class MainMenuMultiplayerEntryPatch
         try
         {
             client.ConnectToServer(host, port);
+            return true;
         }
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] 连接失败: {ex.Message}");
+            UiManager.GetDialog<MessageDialog>().Show(
+                new MessageContent
+                {
+                    Text = $"连接服务器失败：\n{ex.Message}",
+                    Icon = MessageIcon.Error,
+                    Buttons = DialogButtons.Confirm,
+                }
+            );
+            return false;
         }
     }
 
