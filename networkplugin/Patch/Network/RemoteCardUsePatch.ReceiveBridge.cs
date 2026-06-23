@@ -8,6 +8,7 @@ using LBoL.Presentation.Units;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Patch.UI;
+using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -210,6 +211,20 @@ public static partial class RemoteCardUsePatch
 
             TryPlayRemoteCardUseAnimation(root);
 
+            // TargetUnitKind=="Enemy" 表示对战斗敌人出牌，由 host 执行（host 持有完整战斗状态）。
+            string targetUnitKind = GetString(root, "TargetUnitKind");
+            if (string.Equals(targetUnitKind, "Enemy", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!NetworkIdentityTracker.GetSelfIsHost())
+                {
+                    return;
+                }
+                ShowTopMessage($"{senderName} used {cardName ?? "a card"} on enemy.");
+                TryExecuteRemoteCardUse(root);
+                return;
+            }
+
+            // 默认：对玩家出牌，仅目标玩家自己执行。
             if (string.IsNullOrWhiteSpace(selfId) || !string.Equals(selfId, targetId, StringComparison.Ordinal))
             {
                 return;

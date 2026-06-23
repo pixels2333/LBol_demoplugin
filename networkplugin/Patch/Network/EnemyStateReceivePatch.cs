@@ -2,10 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using HarmonyLib;
+using LBoL.Core;
 using LBoL.Core.Battle;
+using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Units;
 using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Panels;
+using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
@@ -64,7 +67,7 @@ public static class EnemyStateReceivePatch
                 NetworkIdentityTracker.EnsureSubscribed(client);
             }
 
-            if (__instance == null || __instance.Battle == null || IsSelfHost())
+            if (__instance == null || __instance.Battle == null)
             {
                 return;
             }
@@ -128,11 +131,6 @@ public static class EnemyStateReceivePatch
             return;
         }
 
-        if (NetworkIdentityTracker.GetSelfIsHost())
-        {
-            return;
-        }
-
         if (!TryGetJsonElement(payload, out JsonElement root))
         {
             return;
@@ -191,13 +189,9 @@ public static class EnemyStateReceivePatch
             return;
         }
 
-        string localBattleId = battle.GetHashCode().ToString();
-        if (!string.IsNullOrWhiteSpace(battleId) && !string.Equals(battleId, "unknown", StringComparison.Ordinal) &&
-            !string.Equals(localBattleId, battleId, StringComparison.Ordinal))
-        {
-            return;
-        }
-
+        // 不校验 battleId：host 与 client 的 BattleController 实例不同，
+        // GetHashCode().ToString() 必然不同，校验会导致跨端 pending 永远不应用。
+        // 每端同一时刻只有一个活跃战斗，直接尝试应用到所有敌人。
         foreach (EnemyUnit enemy in battle.EnemyGroup)
         {
             if (enemy == null)
@@ -231,13 +225,97 @@ public static class EnemyStateReceivePatch
 
     private static void ApplyState(EnemyUnit enemy, PendingState pending)
     {
-        TrySetEnemyProperty(enemy, "Hp", Math.Max(0, pending.CurrentHp));
-        TrySetEnemyProperty(enemy, "Block", Math.Max(0, pending.Block));
-        TrySetEnemyProperty(enemy, "Shield", Math.Max(0, pending.Shield));
+        if (enemy == null || !enemy.IsAlive)
+        {
+            return;
+        }
+
+        int oldHp = enemy.Hp;
+        int oldBlock = enemy.Block;
+        int oldShield = enemy.Shield;
+
+        int newHp = Math.Max(0, pending.CurrentHp);
+        int newBlock = Math.Max(0, pending.Block);
+        int newShield = Math.Max(0, pending.Shield);
 
         if (!pending.IsAlive || pending.IsDying)
         {
-            TrySetEnemyProperty(enemy, "Hp", 0);
+            newHp = 0;
+        }
+
+        // 应用远端状态时抑制 EnemySyncPatch 广播回环
+        using (EnemySyncPatch.EnterApplyRemoteStateScope())
+        {
+            TrySetEnemyProperty(enemy, "Hp", newHp);
+            TrySetEnemyProperty(enemy, "Block", newBlock);
+            TrySetEnemyProperty(enemy, "Shield", newShield);
+        }
+
+        // 若 HP 变为 0，则触发死亡流
+        if (newHp == 0)
+        {
+            var battle = enemy.Battle;
+            if (battle != null)
+            {
+                battle.RequestDebugAction(new ForceKillAction(battle.Player, enemy), "RemoteForceKill");
+            }
+            return;
+        }
+
+        // 触发 UI 与 View 视图层更新
+        try
+        {
+            var view = GameDirector.GetEnemy(enemy);
+            if (view != null)
+            {
+                int hpDamage = oldHp - newHp;
+                int blockDamage = Math.Max(0, oldBlock - newBlock);
+                int shieldDamage = Math.Max(0, oldShield - newShield);
+                int healAmount = newHp - oldHp;
+
+                if (hpDamage > 0 || blockDamage > 0 || shieldDamage > 0)
+                {
+                    DamageInfo damageInfo = DamageInfo.Attack(hpDamage);
+                    damageInfo.DamageBlocked = blockDamage;
+                    damageInfo.DamageShielded = shieldDamage;
+
+                    view.ComingDamage = damageInfo;
+                    view.Hit(ignoreCoolDown: true);
+
+                    // 触发漂浮伤害数值
+                    if (PopupHud.Instance != null)
+                    {
+                        PopupHud.Instance.DamagePopupFromScene(damageInfo, view.transform.position, sourceIsPlayer: true);
+                    }
+
+                    // 更新 HP Bar UI
+                    view.OnDamageReceived(damageInfo);
+                }
+                else if (healAmount > 0)
+                {
+                    // 触发漂浮治疗数值
+                    if (PopupHud.Instance != null)
+                    {
+                        PopupHud.Instance.HealPopupFromScene(healAmount, view.transform.position);
+                    }
+
+                    // 更新 HP Bar UI
+                    view.OnHealingReceived(healAmount);
+                }
+                else if (newBlock != oldBlock || newShield != oldShield)
+                {
+                    // 仅 Block/Shield 变化，通过反射获取 _statusWidget 并触发 HP Bar UI 状态刷新
+                    var widget = Traverse.Create(view).Field("_statusWidget").GetValue();
+                    if (widget != null)
+                    {
+                        Traverse.Create(widget).Method("OnBlockShieldChanged").GetValue();
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[EnemyStateReceivePatch] ApplyState presentation logic failed: {ex}");
         }
     }
 
@@ -293,9 +371,12 @@ public static class EnemyStateReceivePatch
 
     private static string BuildSpawnKey(string battleId, string spawnId, int rootIndex, string enemyId)
     {
+        // key 不含 battleId：host 与 client 的 BattleController 实例不同，
+        // GetHashCode().ToString() 必然不同，会导致跨端 pending 永远匹配不上。
+        // 每端同一时刻只有一个活跃战斗，spawnId 或 rootIndex|enemyId 已足够唯一。
         if (!string.IsNullOrWhiteSpace(spawnId))
         {
-            return $"{battleId ?? ""}|spawn:{spawnId}";
+            return $"spawn:{spawnId}";
         }
 
         return BuildLegacyKey(battleId, rootIndex, enemyId);
@@ -303,7 +384,7 @@ public static class EnemyStateReceivePatch
 
     private static string BuildLegacyKey(string battleId, int rootIndex, string enemyId)
     {
-        return $"{battleId ?? ""}|root:{rootIndex}|id:{enemyId ?? ""}";
+        return $"root:{rootIndex}|id:{enemyId ?? ""}";
     }
 
     private static void UpsertPending(string key, PendingState pending)

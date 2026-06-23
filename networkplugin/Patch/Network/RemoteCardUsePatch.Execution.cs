@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using HarmonyLib;
@@ -182,14 +181,20 @@ public static partial class RemoteCardUsePatch
             }
 
             PlayerUnit caster = TryCreateRemoteCaster(root, battle) ?? battle.Player;
+
+            // 根据 TargetUnitKind 选择伤害目标：Enemy 时从 EnemyGroup 按 Id 查找，否则用本地玩家。
+            Unit targetUnit = ResolveTargetUnit(root, battle);
+
             using (EnterRemotePipelineScope())
             {
-                List<BattleAction> actions = BuildReplayActions(root, battle, caster);
+                List<BattleAction> actions = BuildReplayActions(root, battle, caster, targetUnit);
                 if (actions.Count == 0)
                 {
+                    Plugin.Logger?.LogWarning("[RemoteCardUse] BuildReplayActions 返回空列表，跳过执行");
                     return;
                 }
 
+                Plugin.Logger?.LogInfo($"[RemoteCardUse] 准备执行: caster={(caster == null ? "null" : caster.GetType().Name)}, target={(targetUnit == null ? "null" : targetUnit.GetType().Name)}, actions={actions.Count}, card={(actionSourceCard == null ? "null" : actionSourceCard.Id)}");
                 InvokeBattleReact(battle, actions, actionSourceCard);
                 TryBroadcastResolvedState(root, battle);
             }
@@ -198,6 +203,47 @@ public static partial class RemoteCardUsePatch
         {
             Plugin.Logger?.LogError($"[RemoteCardUse] Execute failed: {ex.Message}");
         }
+    }
+
+    // 根据载荷中 TargetUnitKind 选择效果目标。
+    // "Enemy"：按 TargetPlayerId 从 EnemyGroup 查找匹配 EnemyUnit（先按 Id，再按 RootIndex）。
+    // 默认（"Player" 或缺失）：返回 battle.Player（本地玩家自己承受效果）。
+    private static Unit ResolveTargetUnit(JsonElement root, BattleController battle)
+    {
+        string targetUnitKind = NetworkEventHelper.GetString(root, "TargetUnitKind");
+        if (!string.Equals(targetUnitKind, "Enemy", StringComparison.OrdinalIgnoreCase))
+        {
+            return battle.Player;
+        }
+
+        string targetId = NetworkEventHelper.GetString(root, "TargetPlayerId");
+        if (string.IsNullOrWhiteSpace(targetId) || battle.EnemyGroup == null)
+        {
+            return battle.Player;
+        }
+
+        // 优先按 Id 精确匹配。
+        foreach (EnemyUnit enemy in battle.EnemyGroup)
+        {
+            if (enemy != null && !string.IsNullOrWhiteSpace(enemy.Id) &&
+                string.Equals(enemy.Id, targetId, StringComparison.Ordinal))
+            {
+                return enemy;
+            }
+        }
+
+        // 兜底：按 RootIndex（数字字符串）匹配。
+        if (int.TryParse(targetId, out int rootIndex))
+        {
+            EnemyUnit byIndex = battle.GetEnemyByRootIndex(rootIndex);
+            if (byIndex != null)
+            {
+                return byIndex;
+            }
+        }
+
+        Plugin.Logger?.LogWarning($"[RemoteCardUse] Enemy target not found: {targetId}, fallback to battle.Player.");
+        return battle.Player;
     }
 
     private static void InvokeBattleReact(BattleController battle, List<BattleAction> actions, Card actionSourceCard)
@@ -209,40 +255,34 @@ public static partial class RemoteCardUsePatch
 
         try
         {
-            Reactor reactor = new Reactor(actions);
-            GameEntity source = actionSourceCard;
-
-            MethodInfo react = battle.GetType().GetMethod(
-                "React",
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                binder: null,
-                types: new[] { typeof(Reactor), typeof(GameEntity), typeof(ActionCause) },
-                modifiers: null);
-
-            if (react != null)
+            // BattleController.React(Reactor, GameEntity, ActionCause) 要求当前处于 action 解析上下文
+            //（_resolver._reactors != null），在网络回调中直接调用会抛 InvalidOperationException:
+            // "Reacting out of action-resolving status"。
+            // 正确入口是 public RequestDebugAction(BattleAction, string)：将 action 入队 _debugActionQueue，
+            // 由战斗协程在 ResolveAction→ResolveDebugActions 中消费执行。
+            // 逐个入队：Queue 是 FIFO，ResolveDebugActions 会依次 resolve 每个 action。
+            string recordPrefix = "RemoteCard";
+            int i = 0;
+            foreach (BattleAction action in actions)
             {
-                react.Invoke(battle, new object[] { reactor, source, ActionCause.Card });
-                return;
+                if (action == null)
+                {
+                    continue;
+                }
+
+                // 绑定卡牌来源（可能为 null，SetSource(null) 安全）和出牌原因。
+                action.SetSource(actionSourceCard).SetCause(ActionCause.Card);
+
+                string recordName = $"{recordPrefix}:{action.GetType().Name}:{i}";
+                battle.RequestDebugAction(action, recordName);
+                i++;
             }
 
-            react = battle.GetType().GetMethod(
-                "React",
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                binder: null,
-                types: new[] { typeof(Reactor) },
-                modifiers: null);
-
-            if (react != null)
-            {
-                react.Invoke(battle, new object[] { reactor });
-                return;
-            }
-
-            Plugin.Logger?.LogWarning("[RemoteCardUse] BattleController.React not found; remote actions skipped.");
+            Plugin.Logger?.LogInfo($"[RemoteCardUse] 已入队 {i} 个 debug action 等待战斗协程执行");
         }
         catch (Exception ex)
         {
-            Plugin.Logger?.LogError($"[RemoteCardUse] BattleController.React invoke failed: {ex.Message}");
+            Plugin.Logger?.LogError($"[RemoteCardUse] RequestDebugAction enqueue failed: {ex.Message}\n{ex.StackTrace}");
         }
     }
 
@@ -417,7 +457,7 @@ public static partial class RemoteCardUsePatch
         }
     }
 
-    private static List<BattleAction> BuildReplayActions(JsonElement root, BattleController battle, PlayerUnit caster)
+    private static List<BattleAction> BuildReplayActions(JsonElement root, BattleController battle, PlayerUnit caster, Unit targetUnit)
     {
         List<BattleAction> list = new List<BattleAction>();
         try
@@ -443,13 +483,13 @@ public static partial class RemoteCardUsePatch
                 switch (kind)
                 {
                     case "Damage":
-                        TryAddReplayDamage(list, item, caster, battle.Player);
+                        TryAddReplayDamage(list, item, caster, targetUnit);
                         break;
                     case "Heal":
-                        TryAddReplayHeal(list, item, caster, battle.Player);
+                        TryAddReplayHeal(list, item, caster, targetUnit);
                         break;
                     case "ApplyStatusEffect":
-                        TryAddReplayStatus(list, item, battle.Player);
+                        TryAddReplayStatus(list, item, targetUnit);
                         break;
                 }
             }

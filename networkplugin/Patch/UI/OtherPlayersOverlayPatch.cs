@@ -154,6 +154,9 @@ public static partial class OtherPlayersOverlayPatch
             if (!_uiDirty && _uiDirtyCounter < UiRefreshFrameInterval)
                 return;
             _uiDirtyCounter = 0;
+            // 先保存脏标记再重置：玩家列表变化(PlayerJoined/PlayerLeft 等)时需要重建远程角色视图，
+            // 否则中途加入的玩家 spine 视图不会被创建（EnsureRemoteCharacters 仅在可见性切换时调用）。
+            bool rosterDirty = _uiDirty;
             _uiDirty = false;
 
             EnsureSceneBoundBindingsCurrent();
@@ -207,6 +210,9 @@ public static partial class OtherPlayersOverlayPatch
             }
             else if (showRemoteChars)
             {
+                // 玩家列表变化时（如中途加入），即使可见性状态未切换也需重建远程角色视图，
+                // 否则新玩家的 spine 视图不会被创建，直到下次地图开关制造 false→true 切换。
+                if (rosterDirty) { EnsureRemoteCharacters(); }
                 UpdateRemoteCharactersLayout();
             }
         }

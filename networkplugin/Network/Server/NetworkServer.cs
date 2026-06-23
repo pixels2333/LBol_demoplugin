@@ -482,6 +482,10 @@ public partial class NetworkServer : BaseGameServer
             {
                 session.Metadata["LocationName"] = nameElem.GetString();
             }
+            if (root.TryGetProperty("CharacterId", out JsonElement charElem) && charElem.ValueKind == JsonValueKind.String)
+            {
+                session.Metadata["CharacterId"] = charElem.GetString();
+            }
 
             BroadcastPlayerList();
         }

@@ -857,7 +857,6 @@ public class RelayServer : BaseGameServer
                 return;
             }
 
-            // 逐字段读取并写入 session.Metadata：避免引入新的强类型字段导致会话结构变化过大。
             if (root.TryGetProperty("LocationX", out var xElem) && xElem.TryGetInt32(out int x))
             {
                 session.Metadata["LocationX"] = x;
@@ -873,6 +872,10 @@ public class RelayServer : BaseGameServer
             if (root.TryGetProperty("LocationName", out var nameElem) && nameElem.ValueKind == JsonValueKind.String)
             {
                 session.Metadata["LocationName"] = nameElem.GetString();
+            }
+            if (root.TryGetProperty("CharacterId", out var charElem) && charElem.ValueKind == JsonValueKind.String)
+            {
+                session.Metadata["CharacterId"] = charElem.GetString();
             }
 
             if (!string.IsNullOrEmpty(session.CurrentRoomId) && _rooms.TryGetValue(session.CurrentRoomId, out var room))

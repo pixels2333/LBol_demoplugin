@@ -423,6 +423,16 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
 
         try
         {
+            string characterId = null;
+            try
+            {
+                characterId = CurrentPlayer?.ModelName;
+            }
+            catch
+            {
+                // ignored
+            }
+
             // 与 MapPanelUpdateMapNodesStatusPatch 约定的系统消息一致：UpdatePlayerLocation
             _client.SendRequest(
                 "UpdatePlayerLocation",
@@ -433,7 +443,8 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
                         LocationY = visitingnode.Y,
                         LocationName = visitingnode.StationType.ToString(),
                         LocationType = visitingnode.GetType().Name,
-                        Stage = visitingnode.Act
+                        Stage = visitingnode.Act,
+                        CharacterId = characterId
                     }
                 )
             );

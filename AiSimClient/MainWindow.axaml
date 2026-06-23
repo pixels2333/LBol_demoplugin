@@ -21,7 +21,13 @@
                 <TextBlock Grid.Row="1" Grid.Column="0" Text="密钥:" VerticalAlignment="Center" Margin="0,6,4,0"/>
                 <TextBox  Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" x:Name="KeyBox" Text="LBoL_Network_Plugin" Margin="0,6,0,0"/>
                 <TextBlock Grid.Row="1" Grid.Column="4" Text="目标:" VerticalAlignment="Center" Margin="8,6,4,0"/>
-                <ComboBox Grid.Row="1" Grid.Column="5" Grid.ColumnSpan="3" x:Name="TargetCombo" MinWidth="180" PlaceholderText="(无目标)" Margin="0,6,0,0"/>
+                <ComboBox Grid.Row="1" Grid.Column="5" Grid.ColumnSpan="3" x:Name="TargetCombo" MinWidth="180" PlaceholderText="(无目标)" Margin="0,6,0,0">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Display}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
 
                 <TextBlock Grid.Row="2" Grid.Column="0" Text="状态:" VerticalAlignment="Center" Margin="0,6,4,0"/>
                 <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="7" x:Name="StatusText" Text="未连接" VerticalAlignment="Center" Margin="0,6,0,0"/>
@@ -30,11 +36,24 @@
 
         <!-- 出牌动作 -->
         <Expander Grid.Row="1" Header="出牌动作" IsExpanded="True" Margin="0,0,0,8">
-            <StackPanel Orientation="Horizontal" Margin="0,6" Spacing="8">
-                <Button x:Name="PlayCardBtn" Content="出牌(OnRemoteCardUse)" Click="PlayCardBtn_OnClick" IsEnabled="False"/>
-                <Button x:Name="ResolveBtn" Content="结算(OnRemoteCardResolved)" Click="ResolveBtn_OnClick" IsEnabled="False"/>
-                <Button x:Name="MidGameJoinBtn" Content="请求中途加入" Click="MidGameJoinBtn_OnClick" IsEnabled="False"/>
-            </StackPanel>
+            <Grid ColumnDefinitions="Auto,*,Auto,*,Auto,*,Auto,*" RowDefinitions="Auto,Auto" Margin="0,6">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="卡牌ID:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                <TextBox  Grid.Row="0" Grid.Column="1" x:Name="CardIdBox" Text="Strike"/>
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="卡牌名:" VerticalAlignment="Center" Margin="8,0,4,0"/>
+                <TextBox  Grid.Row="0" Grid.Column="3" x:Name="CardNameBox" Text="Strike"/>
+                <TextBlock Grid.Row="0" Grid.Column="4" Text="卡牌类型:" VerticalAlignment="Center" Margin="8,0,4,0"/>
+                <TextBox  Grid.Row="0" Grid.Column="5" x:Name="CardTypeBox" Text="Attack"/>
+                <TextBlock Grid.Row="0" Grid.Column="6" Text="角色ID:" VerticalAlignment="Center" Margin="8,0,4,0"/>
+                <TextBox  Grid.Row="0" Grid.Column="7" x:Name="CharIdBox" Text="Reimu"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="GunName:" VerticalAlignment="Center" Margin="0,6,4,0"/>
+                <TextBox  Grid.Row="1" Grid.Column="1" x:Name="GunNameBox" Text="Instant" Margin="0,6,0,0"/>
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="GunType:" VerticalAlignment="Center" Margin="8,6,4,0"/>
+                <TextBox  Grid.Row="1" Grid.Column="3" x:Name="GunTypeBox" Text="Single" Margin="0,6,0,0"/>
+                <Button   Grid.Row="1" Grid.Column="4" Grid.ColumnSpan="2" x:Name="PlayCardBtn" Content="出牌(OnRemoteCardUse)" Click="PlayCardBtn_OnClick" IsEnabled="False" Margin="8,6,0,0"/>
+                <Button   Grid.Row="1" Grid.Column="6" x:Name="ResolveBtn" Content="结算(Resolved)" Click="ResolveBtn_OnClick" IsEnabled="False" Margin="8,6,0,0"/>
+                <Button   Grid.Row="1" Grid.Column="7" x:Name="MidGameJoinBtn" Content="中途加入" Click="MidGameJoinBtn_OnClick" IsEnabled="False" Margin="8,6,0,0"/>
+            </Grid>
         </Expander>
 
         <!-- 联机动作面板 -->

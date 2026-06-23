@@ -24,6 +24,7 @@ namespace NetworkPlugin.Patch.Network;
 /// - 敌人意图（CreateEnemyIntention）
 /// - 敌人死亡
 /// </remarks>
+[HarmonyPatch]
 public class EnemySyncPatch
 {
     #region 依赖注入
@@ -33,8 +34,37 @@ public class EnemySyncPatch
     /// </summary>
     private static IServiceProvider serviceProvider => ModService.ServiceProvider;
 
-    private static INetworkClient TryGetHostNetworkClient()
-        => SendSyncHelper.TryGetHostClient();
+    // 当 EnemyStateReceivePatch 正在应用远端敌人状态时置 true，
+    // 此时本地 setter 不应再广播，避免"收到→应用→再广播"的回环。
+    // 参考 sts2 lockstep 模式：动作经主机广播后各端本地执行，
+    // 远端驱动的状态变更不应再回传。
+    [ThreadStatic]
+    private static bool _isApplyingRemoteState;
+    internal static bool IsApplyingRemoteState => _isApplyingRemoteState;
+    internal static IDisposable EnterApplyRemoteStateScope() => new ApplyRemoteStateScope();
+
+    private sealed class ApplyRemoteStateScope : IDisposable
+    {
+        private bool _disposed;
+        public ApplyRemoteStateScope() => _isApplyingRemoteState = true;
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _isApplyingRemoteState = false;
+        }
+    }
+
+    private static INetworkClient TryGetSyncNetworkClient()
+    {
+        // 允许任何已连接客户端（含非房主）广播敌人状态变化，
+        // 使非房主打敌人时所有人都能同步收到。
+        // 正在应用远端状态时跳过（防止回环）。
+        if (_isApplyingRemoteState) return null;
+        var client = SendSyncHelper.TryGetClient();
+        if (client?.IsConnected != true) return null;
+        return client;
+    }
 
     private static void SendEnemyStateUpdate(INetworkClient networkClient, string json)
     {
@@ -51,11 +81,11 @@ public class EnemySyncPatch
     /// </summary>
     /// <param name="__instance">敌人单位。</param>
     /// <param name="__state">用于保存变更前的 HP。</param>
-    [HarmonyPatch(typeof(EnemyUnit), "Hp", MethodType.Setter)]
+    [HarmonyPatch(typeof(Unit), "Hp", MethodType.Setter)]
     [HarmonyPrefix]
-    public static void EnemyHpChanged_Prefix(EnemyUnit __instance, ref int __state)
+    public static void EnemyHpChanged_Prefix(Unit __instance, ref int __state)
     {
-        // 记录旧值供后置比较。
+        if (__instance is not EnemyUnit) return;
         __state = __instance.Hp;
     }
 
@@ -65,33 +95,31 @@ public class EnemySyncPatch
     /// <param name="__instance">敌人单位。</param>
     /// <param name="hp">设置后的 HP 值。</param>
     /// <param name="__state">前置记录的旧 HP。</param>
-    [HarmonyPatch(typeof(EnemyUnit), "Hp", MethodType.Setter)]
+    [HarmonyPatch(typeof(Unit), "Hp", MethodType.Setter)]
     [HarmonyPostfix]
-    public static void EnemyHpChanged_Postfix(EnemyUnit __instance, int hp, int __state)
+    public static void EnemyHpChanged_Postfix(Unit __instance, int hp, int __state)
     {
+        if (__instance is not EnemyUnit enemy) return;
         try
         {
-            INetworkClient networkClient = TryGetHostNetworkClient();
+            INetworkClient networkClient = TryGetSyncNetworkClient();
             if (networkClient == null)
             {
                 return;
             }
 
-            // 只同步战斗中的敌人（非战斗对象忽略）。
-            if (__instance.Battle == null)
+            if (enemy.Battle == null)
             {
                 return;
             }
 
-            // 没有变化则不发送。
             int oldHp = __state;
             if (oldHp == hp)
             {
                 return;
             }
 
-            // 构建事件数据并发送。
-            object enemyData = BuildEnemyUpdateData(__instance, "HpChanged", new
+            object enemyData = BuildEnemyUpdateData(enemy, "HpChanged", new
             {
                 OldHp = oldHp,
                 NewHp = hp,
@@ -101,7 +129,7 @@ public class EnemySyncPatch
             string json = JsonCompat.Serialize(enemyData);
             SendEnemyStateUpdate(networkClient, json);
 
-            Plugin.Logger?.LogInfo($"[EnemySync] 敌人 {__instance.Name} HP: {oldHp} -> {hp}");
+            Plugin.Logger?.LogInfo($"[EnemySync] 敌人 {enemy.Name} HP: {oldHp} -> {hp}");
         }
         catch (Exception ex)
         {
@@ -118,11 +146,11 @@ public class EnemySyncPatch
     /// </summary>
     /// <param name="__instance">敌人单位。</param>
     /// <param name="__state">用于保存变更前的 Block。</param>
-    [HarmonyPatch(typeof(EnemyUnit), "Block", MethodType.Setter)]
+    [HarmonyPatch(typeof(Unit), "Block", MethodType.Setter)]
     [HarmonyPrefix]
-    public static void EnemyBlockChanged_Prefix(EnemyUnit __instance, ref int __state)
+    public static void EnemyBlockChanged_Prefix(Unit __instance, ref int __state)
     {
-        // 记录旧值供后置比较。
+        if (__instance is not EnemyUnit) return;
         __state = __instance.Block;
     }
 
@@ -132,19 +160,20 @@ public class EnemySyncPatch
     /// <param name="__instance">敌人单位。</param>
     /// <param name="block">设置后的 Block 值。</param>
     /// <param name="__state">前置记录的旧 Block。</param>
-    [HarmonyPatch(typeof(EnemyUnit), "Block", MethodType.Setter)]
+    [HarmonyPatch(typeof(Unit), "Block", MethodType.Setter)]
     [HarmonyPostfix]
-    public static void EnemyBlockChanged_Postfix(EnemyUnit __instance, int block, int __state)
+    public static void EnemyBlockChanged_Postfix(Unit __instance, int block, int __state)
     {
+        if (__instance is not EnemyUnit enemy) return;
         try
         {
-            INetworkClient networkClient = TryGetHostNetworkClient();
+            INetworkClient networkClient = TryGetSyncNetworkClient();
             if (networkClient == null)
             {
                 return;
             }
 
-            if (__instance.Battle == null)
+            if (enemy.Battle == null)
             {
                 return;
             }
@@ -155,7 +184,7 @@ public class EnemySyncPatch
                 return;
             }
 
-            object enemyData = BuildEnemyUpdateData(__instance, "BlockChanged", new
+            object enemyData = BuildEnemyUpdateData(enemy, "BlockChanged", new
             {
                 OldBlock = oldBlock,
                 NewBlock = block,
@@ -165,7 +194,7 @@ public class EnemySyncPatch
             string json = JsonCompat.Serialize(enemyData);
             SendEnemyStateUpdate(networkClient, json);
 
-            Plugin.Logger?.LogDebug($"[EnemySync] 敌人 {__instance.Name} Block: {oldBlock} -> {block}");
+            Plugin.Logger?.LogInfo($"[EnemySync] 敌人 {enemy.Name} Block: {oldBlock} -> {block}");
         }
         catch (Exception ex)
         {
@@ -182,11 +211,11 @@ public class EnemySyncPatch
     /// </summary>
     /// <param name="__instance">敌人单位。</param>
     /// <param name="__state">用于保存变更前的 Shield。</param>
-    [HarmonyPatch(typeof(EnemyUnit), "Shield", MethodType.Setter)]
+    [HarmonyPatch(typeof(Unit), "Shield", MethodType.Setter)]
     [HarmonyPrefix]
-    public static void EnemyShieldChanged_Prefix(EnemyUnit __instance, ref int __state)
+    public static void EnemyShieldChanged_Prefix(Unit __instance, ref int __state)
     {
-        // 记录旧值供后置比较。
+        if (__instance is not EnemyUnit) return;
         __state = __instance.Shield;
     }
 
@@ -196,19 +225,20 @@ public class EnemySyncPatch
     /// <param name="__instance">敌人单位。</param>
     /// <param name="shield">设置后的 Shield 值。</param>
     /// <param name="__state">前置记录的旧 Shield。</param>
-    [HarmonyPatch(typeof(EnemyUnit), "Shield", MethodType.Setter)]
+    [HarmonyPatch(typeof(Unit), "Shield", MethodType.Setter)]
     [HarmonyPostfix]
-    public static void EnemyShieldChanged_Postfix(EnemyUnit __instance, int shield, int __state)
+    public static void EnemyShieldChanged_Postfix(Unit __instance, int shield, int __state)
     {
+        if (__instance is not EnemyUnit enemy) return;
         try
         {
-            INetworkClient networkClient = TryGetHostNetworkClient();
+            INetworkClient networkClient = TryGetSyncNetworkClient();
             if (networkClient == null)
             {
                 return;
             }
 
-            if (__instance.Battle == null)
+            if (enemy.Battle == null)
             {
                 return;
             }
@@ -219,7 +249,7 @@ public class EnemySyncPatch
                 return;
             }
 
-            object enemyData = BuildEnemyUpdateData(__instance, "ShieldChanged", new
+            object enemyData = BuildEnemyUpdateData(enemy, "ShieldChanged", new
             {
                 OldShield = oldShield,
                 NewShield = shield,
@@ -229,7 +259,7 @@ public class EnemySyncPatch
             string json = JsonCompat.Serialize(enemyData);
             SendEnemyStateUpdate(networkClient, json);
 
-            Plugin.Logger?.LogDebug($"[EnemySync] 敌人 {__instance.Name} Shield: {oldShield} -> {shield}");
+            Plugin.Logger?.LogDebug($"[EnemySync] 敌人 {enemy.Name} Shield: {oldShield} -> {shield}");
         }
         catch (Exception ex)
         {
@@ -252,7 +282,7 @@ public class EnemySyncPatch
     {
         try
         {
-            INetworkClient networkClient = TryGetHostNetworkClient();
+            INetworkClient networkClient = TryGetSyncNetworkClient();
             if (networkClient == null)
             {
                 return;
@@ -294,7 +324,7 @@ public class EnemySyncPatch
     {
         try
         {
-            INetworkClient networkClient = TryGetHostNetworkClient();
+            INetworkClient networkClient = TryGetSyncNetworkClient();
             if (networkClient == null)
             {
                 return;
@@ -340,7 +370,7 @@ public class EnemySyncPatch
     {
         try
         {
-            INetworkClient networkClient = TryGetHostNetworkClient();
+            INetworkClient networkClient = TryGetSyncNetworkClient();
             if (networkClient == null)
             {
                 return;
@@ -385,7 +415,7 @@ public class EnemySyncPatch
     {
         try
         {
-            INetworkClient networkClient = TryGetHostNetworkClient();
+            INetworkClient networkClient = TryGetSyncNetworkClient();
             if (networkClient == null)
             {
                 return;

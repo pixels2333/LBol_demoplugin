@@ -9,6 +9,7 @@ using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.MidGameJoin;
 using NetworkPlugin.Network.Snapshot;
+using NetworkPlugin.Patch.Network;
 using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.MidGameJoin;
@@ -91,16 +92,21 @@ public static class JoinerStartGameLockPatch
             MapCatchUpOrchestrator catchUp = TryGetCatchUp();
             if (catchUp == null)
             {
+                // 无 MapCatchUpOrchestrator（非中途加入场景），尝试用 GameSeedSyncPatch 缓存的房主种子兜底。
+                TryApplyCachedHostSeed(ref seed);
                 return;
             }
 
             if (!catchUp.TryGetPendingFullSnapshot(out FullStateSnapshot snapshot))
             {
+                // 无 pending FullStateSnapshot（正常联机开始），用 GameSeedSyncPatch 缓存的房主种子兜底。
+                TryApplyCachedHostSeed(ref seed);
                 return;
             }
 
             if (snapshot?.GameState == null)
             {
+                TryApplyCachedHostSeed(ref seed);
                 return;
             }
 
@@ -112,6 +118,8 @@ public static class JoinerStartGameLockPatch
                 snapshot.GameState.StageTypeNames == null ||
                 snapshot.GameState.StageTypeNames.Count == 0)
             {
+                // FullStateSnapshot 不完整，尝试用缓存种子兜底。
+                TryApplyCachedHostSeed(ref seed);
                 return;
             }
 
@@ -225,6 +233,38 @@ public static class JoinerStartGameLockPatch
         catch
         {
             return null;
+        }
+    }
+
+    /// <summary>
+    /// 正常联机开始游戏（无 FullStateSnapshot）时，用 GameSeedSyncPatch 缓存的房主种子覆盖 seed，
+    /// 使客户端的 RootSeed 与房主一致，保证 SpawnedEnemyManager 的确定性敌人生成种子相同。
+    /// </summary>
+    private static void TryApplyCachedHostSeed(ref ulong? seed)
+    {
+        try
+        {
+            if (GameSeedSyncPatch.TryGetCachedHostConfig(
+                out ulong rootSeed,
+                out GameDifficulty difficulty,
+                out PuzzleFlag puzzles,
+                out GameMode gameMode,
+                out bool showRandomResult,
+                out List<string> stageTypeNames,
+                out string? debutAdventureTypeName))
+            {
+                seed = rootSeed;
+                Plugin.Logger?.LogInfo($"[JoinerStartGameLock] 使用缓存房主种子: RootSeed={rootSeed}");
+            }
+            else if (GameSeedSyncPatch.TryGetCachedHostSeed(out ulong cachedSeed))
+            {
+                seed = cachedSeed;
+                Plugin.Logger?.LogInfo($"[JoinerStartGameLock] 使用缓存房主种子(仅seed): RootSeed={cachedSeed}");
+            }
+        }
+        catch
+        {
+            // ignored
         }
     }
 }

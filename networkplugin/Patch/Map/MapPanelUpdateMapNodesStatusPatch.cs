@@ -103,13 +103,24 @@ public class MapPanelUpdateMapNodesStatusPatch
                 return;
             }
 
+            string characterId = null;
+            try
+            {
+                characterId = GameStateUtils.GetCurrentPlayer()?.ModelName;
+            }
+            catch
+            {
+                // ignored
+            }
+
             var locationData = new
             {
                 LocationX = visitingNode.X,
                 LocationY = visitingNode.Y,
                 LocationName = visitingNode.StationType.ToString(),
                 LocationType = visitingNode.GetType().Name,
-                Stage = visitingNode.Act
+                Stage = visitingNode.Act,
+                CharacterId = characterId
             };
 
             string json = JsonCompat.Serialize(locationData);

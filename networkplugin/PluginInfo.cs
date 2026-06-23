@@ -27,7 +27,7 @@ public class PluginInfo
     /// 采用语义化版本控制，格式为 主版本号.次版本号.修订号
     /// 用于插件更新管理和版本兼容性检查
     /// </summary>
-    public const string PLUGIN_VERSION = "1.0.1";
+    public const string PLUGIN_VERSION = "9.9.9";
 
     /// <summary>
     /// Harmony补丁管理器实例

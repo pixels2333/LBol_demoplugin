@@ -230,10 +230,51 @@ public static partial class OtherPlayersOverlayPatch
 
         try
         {
-            Singleton<GameDirector>.Instance.StartCoroutine(view.LoadUnitModelAsync(unit.ModelName, true, default(float?)).ToCoroutine());
+            LoadAndActivateRemoteModelAsync(view, unit, container).Forget();
         }
         catch
         {
+        }
+    }
+
+    /// <summary>
+    /// 异步加载远程玩家的 spine 模型，加载完成后通过一次 SetActive(false)→SetActive(true)
+    /// 切换强制触发 OnEnable，使 SkeletonAnimation/SkeletonMecanim 组件重新初始化并渲染。
+    /// 否则模型加载完成时 GameObject 已激活，OnEnable 不会再次调用，spine 不显示。
+    /// </summary>
+    private static async UniTaskVoid LoadAndActivateRemoteModelAsync(UnitView view, PlayerUnit unit, GameObject container)
+    {
+        try
+        {
+            await view.LoadUnitModelAsync(unit.ModelName, true, default(float?));
+            
+            // 等待直到远端角色根节点在层级中处于激活状态（意味着场景已加载完毕且Overlay处于可见状态）
+            while (_remoteCharactersRoot == null || !_remoteCharactersRoot.gameObject.activeInHierarchy)
+            {
+                await UniTask.DelayFrame(1);
+            }
+
+            // 在根节点激活后，再等待几帧让 Unity 完成渲染管线的相关设置
+            await UniTask.DelayFrame(5);
+
+            if (container != null)
+            {
+                // 彻底禁用
+                container.SetActive(false);
+                
+                // 延迟 2 帧，确保 Unity 状态机和 Spine 组件彻底卸载/重置
+                await UniTask.DelayFrame(2);
+
+                if (container != null)
+                {
+                    // 重新启用，强制触发 OnEnable 重建 Spine 动画渲染
+                    container.SetActive(true);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogWarning($"[OtherPlayersOverlay] LoadAndActivateRemoteModelAsync 失败: {ex}");
         }
     }
     private static void DisableRemoteCharacterInteractions(UnitView view)
@@ -1443,6 +1484,33 @@ public static partial class OtherPlayersOverlayPatch
         }
 
         return true;
+    }
+
+    public static void ForceRefreshRemoteCharacters()
+    {
+        Plugin.RunOnMainThread(() =>
+        {
+            try
+            {
+                if (_remoteCharactersRoot != null && _remoteCharactersRoot.gameObject.activeInHierarchy)
+                {
+                    Plugin.Logger?.LogInfo("[OtherPlayersOverlay] Active Spine refresh triggered programmatically.");
+                    _remoteCharactersRoot.gameObject.SetActive(false);
+                    
+                    UniTask.DelayFrame(3).ContinueWith(() =>
+                    {
+                        if (_remoteCharactersRoot != null)
+                        {
+                            _remoteCharactersRoot.gameObject.SetActive(true);
+                        }
+                    }).Forget();
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogWarning($"[OtherPlayersOverlay] ForceRefreshRemoteCharacters 异常: {ex}");
+            }
+        });
     }
 
     private static void ResetMapIconLayoutCache()

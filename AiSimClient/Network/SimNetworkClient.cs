@@ -16,6 +16,78 @@ public class PlayerInfo
     public bool IsConnected { get; set; }
 }
 
+// 战斗敌人快照（对齐 networkplugin EnemyStateSnapshot）。
+public class EnemyInfo
+{
+    public string EnemyId { get; set; } = "";
+    public string EnemyName { get; set; } = "";
+    public int Health { get; set; }
+    public int MaxHealth { get; set; }
+    public int Index { get; set; }
+    public bool IsAlive { get; set; } = true;
+    public string Display => string.IsNullOrWhiteSpace(EnemyName)
+        ? $"敌人:{EnemyId}"
+        : $"敌人:{EnemyName}";
+}
+
+// 目标下拉统一条目：区分玩家与敌人。
+public class TargetEntry
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Display { get; set; } = "";
+    public bool IsEnemy { get; set; }
+}
+
+// OnBattleStart 载荷中对齐 networkplugin BattleStateSnapshot.Enemies 的结构。
+public class BattleStateData
+{
+    public List<EnemyInfo>? Enemies { get; set; }
+}
+
+public class BattleStartData
+{
+    public BattleStateData? BattleState { get; set; }
+}
+
+// BattleEnemyIntentChanged 载荷中的 Enemy 子对象。
+public class EnemyRef
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public int RootIndex { get; set; }
+}
+
+public class EnemyIntentPayload
+{
+    public EnemyRef? Enemy { get; set; }
+}
+
+// BattleEnemyStateChanged / EnemyStateUpdate 载荷中的 Enemy 子对象。
+public class EnemyStateData
+{
+    public string? SpawnId { get; set; }
+    public string? Id { get; set; }
+    public string? Name { get; set; }
+    public int RootIndex { get; set; }
+    public int MaxHp { get; set; }
+    public int CurrentHp { get; set; }
+    public int Block { get; set; }
+    public int Shield { get; set; }
+    public string? Status { get; set; }
+    public bool IsAlive { get; set; } = true;
+    public bool IsDying { get; set; }
+}
+
+// 敌人状态变化事件载荷（对齐 EnemySyncPatch.BuildEnemyUpdateData）。
+public class EnemyStateChangedPayload
+{
+    public string? UpdateType { get; set; }
+    public long Timestamp { get; set; }
+    public string? BattleId { get; set; }
+    public EnemyStateData? Enemy { get; set; }
+}
+
 // Welcome 消息载荷：服务器分配的自身 PlayerId 与房间玩家列表。
 // NetworkServer.Broadcast.cs 用 PlayerList 字段名；RelayServer 可能用 Players，两者兼容。
 public class WelcomeData
@@ -50,6 +122,11 @@ public class SimNetworkClient
     public event Action<string>? OnConnectedEvent;       // endpoint
     public event Action? OnDisconnectedEvent;
     public event Action<WelcomeData>? OnWelcomeEvent;
+    public event Action<List<EnemyInfo>>? OnBattleStartEvent;
+    // 单个敌人发现事件：host 通过 BattleEnemyIntentChanged 增量广播每个敌人，sim 端去重累积。
+    public event Action<EnemyInfo>? OnEnemyDiscoveredEvent;
+    // 敌人状态变化事件：host 通过 BattleEnemyStateChanged 广播敌人 HP/Block/Shield/死亡变化。
+    public event Action<EnemyStateData>? OnEnemyStateChangedEvent;
     public event Action<string>? OnMidGameJoinResponse;  // MidGameJoinResponse json
     public event Action<string, string>? OnLog;        // (level, message)
 
@@ -112,6 +189,18 @@ public class SimNetworkClient
                     Log("RECV", $"MidGameJoinResponse: {Truncate(json, 300)}");
                     OnMidGameJoinResponse?.Invoke(json);
                 }
+                else if (msgType == "OnBattleStart")
+                {
+                    HandleBattleStart(json);
+                }
+                else if (msgType == "BattleEnemyIntentChanged")
+                {
+                    HandleEnemyIntentChanged(json);
+                }
+                else if (msgType == "BattleEnemyStateChanged" || msgType == "EnemyStateUpdate")
+                {
+                    HandleEnemyStateChanged(json);
+                }
                 else if (msgType == "FullStateSyncResponse")
                 {
                     Log("RECV", $"FullStateSyncResponse: {Truncate(json, 300)}");
@@ -158,6 +247,75 @@ public class SimNetworkClient
         catch (Exception ex)
         {
             Log("ERROR", $"解析 Welcome 失败: {ex.Message}");
+        }
+    }
+
+    // 解析 OnBattleStart，提取当前战斗敌人列表供目标下拉使用。
+    private void HandleBattleStart(string json)
+    {
+        try
+        {
+            var data = JsonConvert.DeserializeObject<BattleStartData>(json, JsonSettings);
+            var enemies = data?.BattleState?.Enemies ?? new List<EnemyInfo>();
+            enemies = enemies.FindAll(e => e.IsAlive && !string.IsNullOrWhiteSpace(e.EnemyId));
+            Log("INFO", $"收到 OnBattleStart: 存活敌人 {enemies.Count} 个");
+            foreach (var e in enemies)
+                Log("INFO", $"  敌人: {e.EnemyId}={e.EnemyName} Hp={e.Health}/{e.MaxHealth} Idx={e.Index}");
+            OnBattleStartEvent?.Invoke(enemies);
+        }
+        catch (Exception ex)
+        {
+            Log("ERROR", $"解析 OnBattleStart 失败: {ex.Message}");
+        }
+    }
+
+    // 解析 BattleEnemyIntentChanged，提取单个敌人信息。host 在 sim 端连接后会重广播当前敌人意图，
+    // 也在每回合敌人更新意图时广播，使 sim 端能持续获取/刷新敌人列表。
+    private void HandleEnemyIntentChanged(string json)
+    {
+        try
+        {
+            var data = JsonConvert.DeserializeObject<EnemyIntentPayload>(json, JsonSettings);
+            var enemyRef = data?.Enemy;
+            if (enemyRef == null || string.IsNullOrWhiteSpace(enemyRef.Id))
+            {
+                return;
+            }
+
+            var info = new EnemyInfo
+            {
+                EnemyId = enemyRef.Id,
+                EnemyName = enemyRef.Name ?? "",
+                Index = enemyRef.RootIndex,
+                IsAlive = true,
+            };
+            Log("INFO", $"发现敌人: {info.EnemyId}={info.EnemyName} Idx={info.Index}");
+            OnEnemyDiscoveredEvent?.Invoke(info);
+        }
+        catch (Exception ex)
+        {
+            Log("ERROR", $"解析 BattleEnemyIntentChanged 失败: {ex.Message}");
+        }
+    }
+
+    // 解析 BattleEnemyStateChanged / EnemyStateUpdate，提取敌人 HP/Block/Shield/死亡状态。
+    private void HandleEnemyStateChanged(string json)
+    {
+        try
+        {
+            var data = JsonConvert.DeserializeObject<EnemyStateChangedPayload>(json, JsonSettings);
+            var enemy = data?.Enemy;
+            if (enemy == null || (string.IsNullOrWhiteSpace(enemy.Id) && string.IsNullOrWhiteSpace(enemy.SpawnId)))
+            {
+                return;
+            }
+
+            Log("INFO", $"敌人状态变化: {enemy.Name ?? enemy.Id} HP={enemy.CurrentHp}/{enemy.MaxHp} Block={enemy.Block} Alive={enemy.IsAlive} Type={data?.UpdateType}");
+            OnEnemyStateChangedEvent?.Invoke(enemy);
+        }
+        catch (Exception ex)
+        {
+            Log("ERROR", $"解析 BattleEnemyStateChanged 失败: {ex.Message}");
         }
     }
 

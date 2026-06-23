@@ -142,8 +142,9 @@ public static partial class OtherPlayersOverlayPatch
                 LastUpdateTime = Time.unscaledTime,
             };
         }
-
+        
         MarkOverlayUiDirty();
+        ForceRefreshRemoteCharacters();
     }
 
     private static void HandleHostChanged(JsonElement root)
@@ -242,6 +243,7 @@ public static partial class OtherPlayersOverlayPatch
         }
 
         MarkOverlayUiDirty();
+        ForceRefreshRemoteCharacters();
     }
 
     #endregion

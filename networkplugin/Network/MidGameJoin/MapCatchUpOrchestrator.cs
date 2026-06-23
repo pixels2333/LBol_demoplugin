@@ -432,6 +432,10 @@ public sealed class MapCatchUpOrchestrator
                 MarkApplied();
                 ClearPendingAfterApplied_NoThrow();
                 _logger?.LogInfo($"[MapCatchUp] Applied MapState (incremental): checkpoint={checkpointId}, receivedAt={receivedAt}");
+                
+                // 追赶完成，主动触发远端玩家 Spine 渲染刷新，避免依赖开关地图
+                NetworkPlugin.Patch.UI.OtherPlayersOverlayPatch.ForceRefreshRemoteCharacters();
+                
                 return true;
             }
 
