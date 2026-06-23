@@ -93,11 +93,11 @@ public class EnemySyncPatch
     /// HP Setter 后置：若 HP 发生变化则发送同步。
     /// </summary>
     /// <param name="__instance">敌人单位。</param>
-    /// <param name="hp">设置后的 HP 值。</param>
+    /// <param name="value">设置后的 HP 值。</param>
     /// <param name="__state">前置记录的旧 HP。</param>
     [HarmonyPatch(typeof(Unit), "Hp", MethodType.Setter)]
     [HarmonyPostfix]
-    public static void EnemyHpChanged_Postfix(Unit __instance, int hp, int __state)
+    public static void EnemyHpChanged_Postfix(Unit __instance, int value, int __state)
     {
         if (__instance is not EnemyUnit enemy) return;
         try
@@ -114,7 +114,7 @@ public class EnemySyncPatch
             }
 
             int oldHp = __state;
-            if (oldHp == hp)
+            if (oldHp == value)
             {
                 return;
             }
@@ -122,14 +122,14 @@ public class EnemySyncPatch
             object enemyData = BuildEnemyUpdateData(enemy, "HpChanged", new
             {
                 OldHp = oldHp,
-                NewHp = hp,
-                HpDifference = hp - oldHp,
+                NewHp = value,
+                HpDifference = value - oldHp,
             });
 
             string json = JsonCompat.Serialize(enemyData);
             SendEnemyStateUpdate(networkClient, json);
 
-            Plugin.Logger?.LogInfo($"[EnemySync] 敌人 {enemy.Name} HP: {oldHp} -> {hp}");
+            Plugin.Logger?.LogInfo($"[EnemySync] 敌人 {enemy.Name} HP: {oldHp} -> {value}");
         }
         catch (Exception ex)
         {
@@ -158,11 +158,11 @@ public class EnemySyncPatch
     /// Block Setter 后置：若 Block 发生变化则发送同步。
     /// </summary>
     /// <param name="__instance">敌人单位。</param>
-    /// <param name="block">设置后的 Block 值。</param>
+    /// <param name="value">设置后的 Block 值。</param>
     /// <param name="__state">前置记录的旧 Block。</param>
     [HarmonyPatch(typeof(Unit), "Block", MethodType.Setter)]
     [HarmonyPostfix]
-    public static void EnemyBlockChanged_Postfix(Unit __instance, int block, int __state)
+    public static void EnemyBlockChanged_Postfix(Unit __instance, int value, int __state)
     {
         if (__instance is not EnemyUnit enemy) return;
         try
@@ -179,7 +179,7 @@ public class EnemySyncPatch
             }
 
             int oldBlock = __state;
-            if (oldBlock == block)
+            if (oldBlock == value)
             {
                 return;
             }
@@ -187,14 +187,14 @@ public class EnemySyncPatch
             object enemyData = BuildEnemyUpdateData(enemy, "BlockChanged", new
             {
                 OldBlock = oldBlock,
-                NewBlock = block,
-                BlockDifference = block - oldBlock,
+                NewBlock = value,
+                BlockDifference = value - oldBlock,
             });
 
             string json = JsonCompat.Serialize(enemyData);
             SendEnemyStateUpdate(networkClient, json);
 
-            Plugin.Logger?.LogInfo($"[EnemySync] 敌人 {enemy.Name} Block: {oldBlock} -> {block}");
+            Plugin.Logger?.LogInfo($"[EnemySync] 敌人 {enemy.Name} Block: {oldBlock} -> {value}");
         }
         catch (Exception ex)
         {
@@ -223,11 +223,11 @@ public class EnemySyncPatch
     /// Shield Setter 后置：若 Shield 发生变化则发送同步。
     /// </summary>
     /// <param name="__instance">敌人单位。</param>
-    /// <param name="shield">设置后的 Shield 值。</param>
+    /// <param name="value">设置后的 Shield 值。</param>
     /// <param name="__state">前置记录的旧 Shield。</param>
     [HarmonyPatch(typeof(Unit), "Shield", MethodType.Setter)]
     [HarmonyPostfix]
-    public static void EnemyShieldChanged_Postfix(Unit __instance, int shield, int __state)
+    public static void EnemyShieldChanged_Postfix(Unit __instance, int value, int __state)
     {
         if (__instance is not EnemyUnit enemy) return;
         try
@@ -244,7 +244,7 @@ public class EnemySyncPatch
             }
 
             int oldShield = __state;
-            if (oldShield == shield)
+            if (oldShield == value)
             {
                 return;
             }
@@ -252,14 +252,14 @@ public class EnemySyncPatch
             object enemyData = BuildEnemyUpdateData(enemy, "ShieldChanged", new
             {
                 OldShield = oldShield,
-                NewShield = shield,
-                ShieldDifference = shield - oldShield,
+                NewShield = value,
+                ShieldDifference = value - oldShield,
             });
 
             string json = JsonCompat.Serialize(enemyData);
             SendEnemyStateUpdate(networkClient, json);
 
-            Plugin.Logger?.LogDebug($"[EnemySync] 敌人 {enemy.Name} Shield: {oldShield} -> {shield}");
+            Plugin.Logger?.LogDebug($"[EnemySync] 敌人 {enemy.Name} Shield: {oldShield} -> {value}");
         }
         catch (Exception ex)
         {
@@ -362,12 +362,12 @@ public class EnemySyncPatch
     /// <summary>
     /// 敌人创建/更新意图后置：同步敌人当前意图。
     /// </summary>
-    /// <param name="__instance">战斗控制器实例。</param>
-    /// <param name="enemy">敌人单位。</param>
-    [HarmonyPatch(typeof(BattleController), "CreateEnemyIntention")]
+    /// <param name="__instance">敌人单位实例。</param>
+    [HarmonyPatch(typeof(EnemyUnit), nameof(EnemyUnit.NotifyIntentionsChanged))]
     [HarmonyPostfix]
-    public static void EnemyIntentionCreated_Postfix(BattleController __instance, EnemyUnit enemy)
+    public static void EnemyIntentionCreated_Postfix(EnemyUnit __instance)
     {
+        EnemyUnit enemy = __instance;
         try
         {
             INetworkClient networkClient = TryGetSyncNetworkClient();

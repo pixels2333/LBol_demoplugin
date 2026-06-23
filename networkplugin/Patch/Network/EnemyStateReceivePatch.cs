@@ -54,6 +54,23 @@ public static class EnemyStateReceivePatch
         public bool IsDying;
     }
 
+    [HarmonyPatch(typeof(GameDirector), "Update")]
+    private static class SubscribeHook
+    {
+        [HarmonyPostfix]
+        public static void Postfix()
+        {
+            INetworkClient client = TryGetNetworkClient();
+            if (client == null)
+            {
+                return;
+            }
+
+            EnsureSubscribed(client);
+            NetworkIdentityTracker.EnsureSubscribed(client);
+        }
+    }
+
     [HarmonyPatch(typeof(EnemyUnit), nameof(EnemyUnit.UpdateTurnMoves))]
     private static class EnemyUnit_UpdateTurnMoves_ApplyRemote
     {
@@ -130,6 +147,8 @@ public static class EnemyStateReceivePatch
         {
             return;
         }
+
+        Plugin.Logger?.LogInfo($"[EnemyStateReceive] Received event {eventType} (SelfIsHost: {NetworkIdentityTracker.GetSelfIsHost()})");
 
         if (!TryGetJsonElement(payload, out JsonElement root))
         {
@@ -242,6 +261,8 @@ public static class EnemyStateReceivePatch
         {
             newHp = 0;
         }
+
+        Plugin.Logger?.LogInfo($"[EnemyStateReceive] ApplyState: {enemy.Name} Hp: {oldHp}->{newHp}, Block: {oldBlock}->{newBlock}, Shield: {oldShield}->{newShield}");
 
         // 应用远端状态时抑制 EnemySyncPatch 广播回环
         using (EnemySyncPatch.EnterApplyRemoteStateScope())

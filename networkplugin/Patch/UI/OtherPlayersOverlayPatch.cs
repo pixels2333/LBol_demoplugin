@@ -2159,5 +2159,35 @@ public static partial class OtherPlayersOverlayPatch
         public bool HasInitializedHealthBar { get; set; }
         public string LastDebugSnapshot { get; set; }
     }
+
+    [HarmonyPatch(typeof(GameDirector), nameof(GameDirector.GetUnit))]
+    private static class GameDirector_GetUnit_Patch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(LBoL.Core.Units.Unit unit, ref UnitView __result)
+        {
+            if (__result != null || unit == null)
+            {
+                return;
+            }
+
+            lock (_syncLock)
+            {
+                if (_remoteCharacters == null || _remoteCharacters.Count == 0)
+                {
+                    return;
+                }
+
+                foreach (var rc in _remoteCharacters.Values)
+                {
+                    if (rc?.View != null && rc.View.Unit == unit)
+                    {
+                        __result = rc.View;
+                        return;
+                    }
+                }
+            }
+        }
+    }
 }
     #endregion

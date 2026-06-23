@@ -429,6 +429,19 @@ public static partial class RemoteCardUsePatch
     {
         try
         {
+            string senderId = NetworkEventHelper.GetString(root, "SenderPlayerId");
+            if (!string.IsNullOrWhiteSpace(senderId))
+            {
+                if (OtherPlayersOverlayPatch.TryGetRemoteCharacterUnitView(senderId, out UnitView casterView) && casterView?.Unit is PlayerUnit playerUnit)
+                {
+                    if (root.TryGetProperty("SenderStatusEffects", out JsonElement effectsEl2) && effectsEl2.ValueKind == JsonValueKind.Array)
+                    {
+                        ApplyStatusEffectSnapshot(playerUnit, battle, effectsEl2);
+                    }
+                    return playerUnit;
+                }
+            }
+
             string characterId = GetString(root, "SenderCharacterId");
             if (string.IsNullOrWhiteSpace(characterId))
             {
