@@ -11,6 +11,9 @@ using NetworkPlugin.Network.RoomSync;
 using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Snapshot;
 using NetworkPlugin.Utils;
+using LBoL.Presentation;
+using LBoL.Presentation.UI.Panels;
+using LBoL.Presentation.UI.Widgets;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -23,6 +26,8 @@ namespace NetworkPlugin.Patch.Network;
 [HarmonyPatch]
 public static class RoomStateSyncPatch
 {
+    public static readonly HashSet<string> PendingRequests = new(StringComparer.Ordinal);
+
     private static INetworkClient TryGetClient()
         => SendSyncHelper.TryGetClient();
 
@@ -52,8 +57,118 @@ public static class RoomStateSyncPatch
         return !string.IsNullOrWhiteSpace(roomKey);
     }
 
+    [HarmonyPatch(typeof(MapPanel), "RequestEnterNode")]
+    [HarmonyPrefix]
+    public static bool MapPanel_RequestEnterNode_Prefix(MapPanel __instance, MapNodeWidget enteringWidget)
+    {
+        try
+        {
+            INetworkClient client = TryGetClient();
+            if (client == null || !client.IsConnected)
+            {
+                return true;
+            }
+
+            __instance.StartCoroutine(CustomRequestEnterNodeRunner(__instance, enteringWidget));
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[RoomStateSync] CustomRequestEnterNodeRunner failed to start: {ex}");
+            return true;
+        }
+    }
+
+    private static System.Collections.IEnumerator CustomRequestEnterNodeRunner(MapPanel mapPanel, MapNodeWidget enteringWidget)
+    {
+        try
+        {
+            mapPanel.EnterNode(enteringWidget);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[RoomStateSync] mapPanel.EnterNode failed: {ex}");
+        }
+
+        string roomKey = null;
+        if (enteringWidget?.MapNode != null)
+        {
+            string stationType = enteringWidget.MapNode.StationType.ToString();
+            roomKey = RoomSyncManager.BuildRoomKey(enteringWidget.MapNode.Act, enteringWidget.X, enteringWidget.Y, stationType);
+
+            var roomSync = TryGetRoomSync();
+            if (roomSync != null)
+            {
+                roomSync.SetLastEnteredNode(enteringWidget.MapNode.Act, enteringWidget.X, enteringWidget.Y, stationType);
+                lock (PendingRequests)
+                {
+                    PendingRequests.Add(roomKey);
+                }
+                RoomStateSnapshot known = roomSync.TryGetClientRoomState(roomKey);
+                roomSync.RequestRoomState(roomKey, known?.RoomVersion ?? 0);
+            }
+        }
+
+        float elapsed = 0f;
+        while (elapsed < 0.5f)
+        {
+            elapsed += UnityEngine.Time.deltaTime;
+            yield return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(roomKey))
+        {
+            float timeout = 0f;
+            bool isPending = true;
+            while (isPending && timeout < 3.0f)
+            {
+                lock (PendingRequests)
+                {
+                    isPending = PendingRequests.Contains(roomKey);
+                }
+
+                if (isPending)
+                {
+                    timeout += UnityEngine.Time.deltaTime;
+                    yield return null;
+                }
+            }
+
+            if (timeout >= 3.0f)
+            {
+                Plugin.Logger?.LogWarning($"[RoomStateSync] 等待房间快照超时 (roomKey={roomKey})，强制放行。");
+                lock (PendingRequests)
+                {
+                    PendingRequests.Remove(roomKey);
+                }
+            }
+        }
+
+        try
+        {
+            GameMaster.Instance.StartCoroutine(DelayEnterNode(enteringWidget));
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[RoomStateSync] RequestEnterMapNode failed: {ex}");
+        }
+    }
+
+    private static System.Collections.IEnumerator DelayEnterNode(MapNodeWidget enteringWidget)
+    {
+        yield return null;
+        try
+        {
+            GameMaster.RequestEnterMapNode(enteringWidget.X, enteringWidget.Y);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[RoomStateSync] GameMaster.RequestEnterMapNode failed: {ex}");
+        }
+    }
+
     /// <summary>
-    /// 进入节点时请求房间状态快照
+    /// 进入节点时记录房间元数据
     /// </summary>
     [HarmonyPatch(typeof(GameMap), nameof(GameMap.EnterNode))]
     private static class GameMap_EnterNode_RequestRoomState
@@ -63,14 +178,7 @@ public static class RoomStateSyncPatch
         {
             try
             {
-                if (node == null)
-                {
-                    return;
-                }
-
-                // Catch-up / restore paths may call EnterNode with forced=true.
-                // Ignore those to avoid spamming RoomStateRequest.
-                if (forced)
+                if (node == null || forced)
                 {
                     return;
                 }
@@ -81,15 +189,9 @@ public static class RoomStateSyncPatch
                     return;
                 }
 
-                // 记录本地“最后进入节点”，供后续上传/应用时构造 RoomKey。
                 string stationType = node.StationType.ToString();
                 var roomSync = TryGetRoomSync();
                 roomSync?.SetLastEnteredNode(node.Act, node.X, node.Y, stationType);
-
-                // 每次进入节点都向主机请求一次该房间快照（LAN 下不做防刷）。
-                string roomKey = RoomSyncManager.BuildRoomKey(node.Act, node.X, node.Y, stationType);
-                RoomStateSnapshot known = roomSync?.TryGetClientRoomState(roomKey);
-                roomSync?.RequestRoomState(roomKey, known?.RoomVersion ?? 0);
             }
             catch
             {

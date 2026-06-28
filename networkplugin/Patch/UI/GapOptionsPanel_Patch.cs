@@ -561,8 +561,11 @@ public class GapOptionsPanel_Patch
             AddOrUpdateCandidate(selfPlayerId, GameStateUtils.GetCurrentPlayerName(), true, false);
         }
 
-        AddOrUpdateCandidate("aidefault", "AI Default", true, false);
-        AddOrUpdateCandidate("aidefault2", "AI Default 2", true, false);
+        if (ConfigManager?.DebugVirtualPlayerAiDefault?.Value == true || ConfigManager?.DebugFakePlayersForTrade?.Value == true)
+        {
+            AddOrUpdateCandidate("aidefault", "AI Default", true, false);
+            AddOrUpdateCandidate("aidefault2", "AI Default 2", true, false);
+        }
 
         foreach (string knownPlayerId in candidatePlayers.Keys.ToList())
         {
