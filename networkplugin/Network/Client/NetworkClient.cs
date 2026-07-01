@@ -287,8 +287,21 @@ public class NetworkClient : INetworkClient
             string characterId = null;
             try
             {
-                // 使用 ModelName（而非 DisplayName），可直接用于加载头像/模型资源
-                characterId = GameStateUtils.GetCurrentPlayer()?.ModelName;
+                // 如果当前在角色选择面板，直接获取该面板选择的角色 ID
+                var startGamePanel = LBoL.Presentation.UI.UiManager.GetPanel<LBoL.Presentation.UI.Panels.StartGamePanel>();
+                if (startGamePanel != null)
+                {
+                    var playerUnit = HarmonyLib.Traverse.Create(startGamePanel).Field("_player").GetValue<LBoL.Core.Units.PlayerUnit>();
+                    if (playerUnit != null)
+                    {
+                        characterId = playerUnit.Id;
+                    }
+                }
+                if (string.IsNullOrEmpty(characterId))
+                {
+                    // 使用 ModelName（而非 DisplayName），可直接用于加载头像/模型资源
+                    characterId = GameStateUtils.GetCurrentPlayer()?.ModelName;
+                }
             }
             catch
             {

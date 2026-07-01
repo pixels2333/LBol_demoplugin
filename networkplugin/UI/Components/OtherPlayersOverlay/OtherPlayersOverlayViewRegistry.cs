@@ -1216,7 +1216,7 @@ public static partial class OtherPlayersOverlayPatch
         icon.Image.sprite = sprite ?? GetWhiteSprite();
     }
 
-    private static Sprite TryGetAvatarSprite(string characterId)
+    internal static Sprite TryGetAvatarSprite(string characterId)
     {
         if (string.IsNullOrWhiteSpace(characterId))
         {

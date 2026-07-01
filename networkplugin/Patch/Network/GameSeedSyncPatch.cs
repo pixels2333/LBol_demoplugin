@@ -282,6 +282,9 @@ public static class GameSeedSyncPatch
             }
 
             Plugin.Logger?.LogInfo($"[GameSeedSync] 已缓存房主种子: RootSeed={rootSeed}, HostId={hostPlayerId}");
+
+            // 房主开局后，自动引导客户端玩家开局
+            NetworkPlugin.Patch.UI.MainMenuMultiplayerEntryPatch.OnLobbyGameStartedReceived();
         }
         catch (Exception ex)
         {

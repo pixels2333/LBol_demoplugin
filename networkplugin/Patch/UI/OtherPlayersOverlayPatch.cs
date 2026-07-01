@@ -1993,7 +1993,7 @@ public static partial class OtherPlayersOverlayPatch
         return _whiteSprite;
     }
 
-    private static Sprite GetCircleBorderSprite()
+    internal static Sprite GetCircleBorderSprite()
     {
         if (_circleBorderSprite != null)
         {
@@ -2023,7 +2023,7 @@ public static partial class OtherPlayersOverlayPatch
         return _circleBorderSprite;
     }
 
-    private static Sprite GetCircleMaskSprite()
+    internal static Sprite GetCircleMaskSprite()
     {
         if (_circleMaskSprite != null)
         {
