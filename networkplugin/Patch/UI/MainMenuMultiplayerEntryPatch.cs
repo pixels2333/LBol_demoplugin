@@ -3,10 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text.Json;
 using System.Threading;
 using HarmonyLib;
 using LBoL.Core;
 using LBoL.Core.SaveData;
+using LBoL.Core.Units;
 using LBoL.Presentation;
 using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Dialogs;
@@ -68,6 +70,12 @@ public static class MainMenuMultiplayerEntryPatch
     private static INetworkClient _roomListSubscribedClient;
     private static readonly Action<string, object> _onRoomListGameEvent = OnRoomListGameEventReceived;
     private static readonly Action<bool> _onRoomListConnStateChanged = OnRoomListConnectionStateChanged;
+
+    /// <summary>玩家准备状态缓存（PlayerId -> Ready）</summary>
+    private static readonly Dictionary<string, bool> _playerReadyStates = new(StringComparer.Ordinal);
+
+    /// <summary>底部就绪/开始按钮</summary>
+    private static Button _readyOrStartButton;
 
     // 连接状态浮层相关字段。
     private const string ConnStatusRootName = "NetworkPlugin_ConnectionStatusPanel";
@@ -2548,7 +2556,11 @@ public static class MainMenuMultiplayerEntryPatch
                     HideRoomListOverlay();
                 });
 
-                foreach (var b in new[] { refreshBtn, closeBtn, disconnectBtn })
+                // 就绪/开始按钮
+                _readyOrStartButton = CreateDialogButton(template, buttonsGo.transform, RoomListRootName + "_ReadyStartBtn", "准备就绪", panelScale);
+                _readyOrStartButton.onClick.AddListener(OnActionBtnClicked);
+
+                foreach (var b in new[] { refreshBtn, closeBtn, disconnectBtn, _readyOrStartButton })
                 {
                     if (b == null) continue;
                     var r = b.GetComponent<RectTransform>();
@@ -2566,6 +2578,8 @@ public static class MainMenuMultiplayerEntryPatch
                     Disconnect(c);
                     HideRoomListOverlay();
                 });
+                CreateSimpleTextButton(buttonsGo.transform, RoomListRootName + "_ReadyStartBtn", "准备就绪", panelScale, OnActionBtnClicked);
+                _readyOrStartButton = buttonsGo.transform.Find(RoomListRootName + "_ReadyStartBtn")?.GetComponent<Button>();
             }
 
             // 入场动画。
@@ -2622,10 +2636,53 @@ public static class MainMenuMultiplayerEntryPatch
     }
 
     /// <summary>
+    /// 房主开局后，客户端收到 OnGameStart 时自动进入游戏。
+    /// 隐藏联机面板并模拟点击 StartGamePanel 确认按钮。
+    /// </summary>
+    public static void OnLobbyGameStartedReceived()
+    {
+        try
+        {
+            // 隐藏联机大厅面板
+            HideRoomListOverlay();
+
+            // 在主线程延迟一帧后模拟点击 StartGamePanel 确认按钮
+            Singleton<GameMaster>.Instance.StartCoroutine(DelayedStartGame());
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] OnLobbyGameStartedReceived 失败: {ex}");
+        }
+    }
+
+    private static IEnumerator DelayedStartGame()
+    {
+        yield return null; // 等待一帧确保面板已隐藏
+        try
+        {
+            StartGamePanel startGamePanel = UiManager.GetPanel<StartGamePanel>();
+            if (startGamePanel != null)
+            {
+                Button confirmBtn = Traverse.Create(startGamePanel).Field("characterConfirmButton").GetValue<Button>();
+                confirmBtn?.onClick?.Invoke();
+                Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 客户端自动进入游戏");
+            }
+            else
+            {
+                Plugin.Logger?.LogWarning("[MainMenuMultiplayerEntry] 未找到 StartGamePanel，无法自动进入游戏");
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] 延迟启动游戏失败: {ex}");
+        }
+    }
+
+    /// <summary>
     /// 根据 NetworkManager.GetAllPlayers() 刷新房间玩家列表。
     /// 房主条目带 ★ 标记并置顶，自身条目带（你）标记。
     /// </summary>
-    private static void RefreshRoomList()
+    internal static void RefreshRoomList()
     {
         if (_roomListRoot == null || _roomListContainer == null)
         {
@@ -2641,30 +2698,36 @@ public static class MainMenuMultiplayerEntryPatch
 
             INetworkManager manager = ServiceProvider?.GetService<INetworkManager>();
             string selfId = NetworkIdentityTracker.GetSelfPlayerId();
+            bool selfIsHost = NetworkIdentityTracker.GetSelfIsHost();
 
-            var entries = new List<(string Id, string Name, bool IsHost)>();
+            var entries = new List<(string Id, string Name, bool IsHost, string CharaId, bool IsReady)>();
             if (manager != null)
             {
                 foreach (INetworkPlayer p in manager.GetAllPlayers() ?? Enumerable.Empty<INetworkPlayer>())
                 {
                     if (p == null || string.IsNullOrWhiteSpace(p.playerId)) continue;
                     string name = string.IsNullOrWhiteSpace(p.userName) ? p.playerId : p.userName;
-                    entries.Add((p.playerId, name, p.IsLobbyOwner()));
+                    string charaId = p.chara;
+                    bool isReady = _playerReadyStates.TryGetValue(p.playerId, out var rdy) && rdy;
+                    entries.Add((p.playerId, name, p.IsLobbyOwner(), charaId, isReady));
                 }
             }
 
             // 兜底：NetworkManager 尚未注册玩家，但身份追踪器已有 selfId 时，至少展示自己。
             if (entries.Count == 0 && !string.IsNullOrWhiteSpace(selfId))
             {
-                entries.Add((selfId, ResolveSelfDisplayName(), NetworkIdentityTracker.GetSelfIsHost()));
+                entries.Add((selfId, ResolveSelfDisplayName(), selfIsHost, null, false));
             }
 
-            // 排序：房主置顶，其余按 id 稳定排序。
+            // 排序：房主置顶，本人次之，其余按 id 稳定排序。
             entries.Sort((a, b) =>
             {
                 int ha = a.IsHost ? 0 : 1;
                 int hb = b.IsHost ? 0 : 1;
                 if (ha != hb) return ha.CompareTo(hb);
+                bool aSelf = !string.IsNullOrWhiteSpace(selfId) && string.Equals(a.Id, selfId, StringComparison.Ordinal);
+                bool bSelf = !string.IsNullOrWhiteSpace(selfId) && string.Equals(b.Id, selfId, StringComparison.Ordinal);
+                if (aSelf != bSelf) return aSelf ? -1 : 1;
                 return string.Compare(a.Id, b.Id, StringComparison.Ordinal);
             });
 
@@ -2687,11 +2750,12 @@ public static class MainMenuMultiplayerEntryPatch
                 {
                     bool isSelf = !string.IsNullOrWhiteSpace(selfId)
                         && string.Equals(e.Id, selfId, StringComparison.Ordinal);
-                    string label = e.IsHost ? $"★ {e.Name}（房主）" : e.Name;
-                    if (isSelf) label += "（你）";
-                    CreateRoomListRow(_roomListContainer, label, e.IsHost, isSelf);
+                    CreateRoomListRow(_roomListContainer, e.Id, e.Name, e.IsHost, isSelf, e.CharaId, e.IsReady);
                 }
             }
+
+            // 更新底部就绪/开始按钮
+            UpdateActionBtn(selfIsHost, selfId);
         }
         catch (Exception ex)
         {
@@ -2699,7 +2763,104 @@ public static class MainMenuMultiplayerEntryPatch
         }
     }
 
-    private static void CreateRoomListRow(Transform container, string label, bool isHost, bool isSelf)
+    /// <summary>
+    /// 更新底部就绪/开始按钮的文案和可交互状态。
+    /// </summary>
+    private static void UpdateActionBtn(bool selfIsHost, string selfId)
+    {
+        if (_readyOrStartButton == null) return;
+
+        try
+        {
+            if (selfIsHost)
+            {
+                // 房主：显示"开始游戏"，全员就绪时可交互
+                bool allReady = AreAllClientsReady(selfId);
+                _readyOrStartButton.interactable = allReady;
+                var label = _readyOrStartButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (label != null) label.text = allReady ? "开始游戏" : "等待玩家准备…";
+            }
+            else
+            {
+                // 客机：显示"准备就绪"/"取消准备"
+                bool isReady = _playerReadyStates.TryGetValue(selfId ?? "", out var rdy) && rdy;
+                _readyOrStartButton.interactable = true;
+                var label = _readyOrStartButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (label != null) label.text = isReady ? "取消准备" : "准备就绪";
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    /// <summary>
+    /// 判断所有客机（非房主玩家）是否都已准备就绪。
+    /// </summary>
+    private static bool AreAllClientsReady(string selfId)
+    {
+        INetworkManager manager = ServiceProvider?.GetService<INetworkManager>();
+        if (manager == null) return false;
+
+        foreach (INetworkPlayer p in manager.GetAllPlayers() ?? Enumerable.Empty<INetworkPlayer>())
+        {
+            if (p == null || string.IsNullOrWhiteSpace(p.playerId)) continue;
+            if (p.IsLobbyOwner()) continue; // 房主不需要准备
+            if (!_playerReadyStates.TryGetValue(p.playerId, out var rdy) || !rdy)
+                return false;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// 底部就绪/开始按钮点击逻辑。
+    /// </summary>
+    private static void OnActionBtnClicked()
+    {
+        try
+        {
+            string selfId = NetworkIdentityTracker.GetSelfPlayerId();
+            bool selfIsHost = NetworkIdentityTracker.GetSelfIsHost();
+            INetworkClient client = TryGetNetworkClient();
+
+            if (selfIsHost)
+            {
+                // 房主：开始游戏
+                if (AreAllClientsReady(selfId))
+                {
+                    Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 房主开始游戏");
+                    StartGamePanel startGamePanel = UiManager.GetPanel<StartGamePanel>();
+                    Button confirmBtn = startGamePanel != null
+                        ? Traverse.Create(startGamePanel).Field("characterConfirmButton").GetValue<Button>()
+                        : null;
+                    confirmBtn?.onClick?.Invoke();
+                    HideRoomListOverlay();
+                }
+            }
+            else
+            {
+                // 客机：切换准备状态
+                bool isReady = _playerReadyStates.TryGetValue(selfId ?? "", out var rdy) && rdy;
+                bool newReady = !isReady;
+                _playerReadyStates[selfId ?? ""] = newReady;
+
+                if (client != null)
+                {
+                    client.SendGameEventData(NetworkMessageTypes.PlayerReadyChanged, new { IsReady = newReady });
+                    Plugin.Logger?.LogInfo($"[MainMenuMultiplayerEntry] 发送准备状态: {newReady}");
+                }
+
+                RefreshRoomList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] OnActionBtnClicked 失败: {ex}");
+        }
+    }
+
+    private static void CreateRoomListRow(Transform container, string playerId, string playerName, bool isHost, bool isSelf, string charaId, bool isReady)
     {
         GameObject go = new GameObject("RoomPlayer");
         go.transform.SetParent(container, false);
@@ -2711,24 +2872,74 @@ public static class MainMenuMultiplayerEntryPatch
         img.raycastTarget = false;
 
         var le = go.AddComponent<LayoutElement>();
-        le.preferredHeight = 36f;
+        le.preferredHeight = 44f;
         le.flexibleWidth = 1f;
 
+        // 角色头像
+        if (!string.IsNullOrWhiteSpace(charaId))
+        {
+            Sprite avatar = OtherPlayersOverlayPatch.TryGetAvatarSprite(charaId);
+            if (avatar != null)
+            {
+                GameObject avatarGo = new GameObject("Avatar");
+                avatarGo.transform.SetParent(go.transform, false);
+                var avatarRt = avatarGo.AddComponent<RectTransform>();
+                avatarRt.anchorMin = new Vector2(0f, 0.5f);
+                avatarRt.anchorMax = new Vector2(0f, 0.5f);
+                avatarRt.pivot = new Vector2(0f, 0.5f);
+                avatarRt.sizeDelta = new Vector2(36f, 36f);
+                avatarRt.anchoredPosition = new Vector2(8f, 0f);
+                var avatarImg = avatarGo.AddComponent<Image>();
+                avatarImg.sprite = avatar;
+                avatarImg.raycastTarget = false;
+            }
+        }
+
+        // 玩家名 + 角色名 + 状态标签
         GameObject textGo = new GameObject("Label");
         textGo.transform.SetParent(go.transform, false);
         var rt = textGo.AddComponent<RectTransform>();
         rt.anchorMin = Vector2.zero;
         rt.anchorMax = Vector2.one;
-        rt.offsetMin = new Vector2(10f, 0f);
+        rt.offsetMin = new Vector2(52f, 0f);
         rt.offsetMax = new Vector2(-10f, 0f);
 
         var tmp = textGo.AddComponent<TextMeshProUGUI>();
+        // 解析角色中文名
+        string charaName = ResolveCharacterDisplayName(charaId);
+        string label = isHost ? $"★ {playerName}（房主）" : playerName;
+        if (isSelf) label += "（你）";
+        if (!string.IsNullOrWhiteSpace(charaName)) label += $" [{charaName}]";
+        if (!isHost)
+        {
+            label += isReady ? "  <color=#4CAF50>已就绪</color>" : "  <color=#888888>准备中</color>";
+        }
         tmp.text = label;
         tmp.alignment = TextAlignmentOptions.Left;
         tmp.raycastTarget = false;
-        tmp.fontSize = 26f;
+        tmp.fontSize = 22f;
         tmp.color = Color.white;
+        tmp.richText = true;
         if (_roomListFont != null) tmp.font = _roomListFont;
+    }
+
+    /// <summary>
+    /// 通过 Library.TryCreatePlayerUnit 解析角色中文名。
+    /// </summary>
+    private static string ResolveCharacterDisplayName(string charaId)
+    {
+        if (string.IsNullOrWhiteSpace(charaId)) return null;
+        try
+        {
+            PlayerUnit unit = Library.TryCreatePlayerUnit(charaId);
+            if (unit != null && !string.IsNullOrWhiteSpace(unit.ModelName))
+                return unit.ModelName;
+        }
+        catch
+        {
+            // ignored
+        }
+        return null;
     }
 
     private static string ResolveSelfDisplayName()
@@ -2809,7 +3020,53 @@ public static class MainMenuMultiplayerEntryPatch
             || eventType == NetworkMessageTypes.PlayerLeft
             || eventType == NetworkMessageTypes.HostChanged)
         {
+            // 从 Welcome / PlayerListUpdate 中解析玩家准备状态
+            if (eventType == NetworkMessageTypes.Welcome || eventType == NetworkMessageTypes.PlayerListUpdate)
+            {
+                ParseReadyStatesFromPayload(payload);
+            }
             RefreshRoomList();
+        }
+    }
+
+    /// <summary>
+    /// 从 Welcome / PlayerListUpdate 消息负载中解析每个玩家的准备状态。
+    /// </summary>
+    private static void ParseReadyStatesFromPayload(object payload)
+    {
+        try
+        {
+            // 客户端收到的 payload 是 JSON 字符串，直接反序列化即可
+            string json = payload as string;
+            if (string.IsNullOrWhiteSpace(json)) return;
+
+            JsonElement root = JsonSerializer.Deserialize<JsonElement>(json);
+            if (root.ValueKind != JsonValueKind.Object) return;
+
+            // Welcome 消息：PlayerList 数组
+            // PlayerListUpdate 消息：Players 数组
+            JsonElement playersElem = default;
+            if (root.TryGetProperty("PlayerList", out var pl) && pl.ValueKind == JsonValueKind.Array)
+                playersElem = pl;
+            else if (root.TryGetProperty("Players", out var ps) && ps.ValueKind == JsonValueKind.Array)
+                playersElem = ps;
+
+            if (playersElem.ValueKind != JsonValueKind.Array) return;
+
+            foreach (JsonElement player in playersElem.EnumerateArray())
+            {
+                if (player.ValueKind != JsonValueKind.Object) continue;
+                if (!player.TryGetProperty("PlayerId", out var idElem) || idElem.ValueKind != JsonValueKind.String) continue;
+                string pid = idElem.GetString();
+                if (string.IsNullOrWhiteSpace(pid)) continue;
+
+                bool ready = player.TryGetProperty("Ready", out var rdyElem) && rdyElem.ValueKind == JsonValueKind.True;
+                _playerReadyStates[pid] = ready;
+            }
+        }
+        catch
+        {
+            // ignored
         }
     }
 

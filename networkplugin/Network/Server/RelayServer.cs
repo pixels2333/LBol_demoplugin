@@ -221,6 +221,10 @@ public class RelayServer : BaseGameServer
                     // 更新位置信息：用于房间 UI 显示（地图坐标/关卡/地点名）。
                     HandleUpdatePlayerLocation(session, message);
                     return;
+                case NetworkMessageTypes.PlayerReadyChanged:
+                    // 玩家准备状态变更：存入会话 Metadata 并广播更新后的成员列表。
+                    HandlePlayerReadyChanged(session, message);
+                    return;
 
                 case NetworkMessageTypes.FullStateSyncRequest:
                     // 完整状态快照请求：按 roomId 作用域定向转发给房主（避免广播泄漏 JoinToken）。
@@ -890,6 +894,32 @@ public class RelayServer : BaseGameServer
         }
     }
 
+    /// <summary>
+    /// 处理玩家准备状态变更：将 Ready 存入会话 Metadata 并广播更新后的成员列表。
+    /// </summary>
+    private void HandlePlayerReadyChanged(PlayerSession session, NetworkMessage message)
+    {
+        try
+        {
+            JsonElement root = GetJsonElement(message.Payload);
+            if (root.ValueKind != JsonValueKind.Object) return;
+
+            bool isReady = root.TryGetProperty("IsReady", out var readyProp) && readyProp.ValueKind == JsonValueKind.True;
+            session.Metadata["Ready"] = isReady;
+
+            _logger.LogInformation("[RelayServer] Player {PlayerId} ready state: {IsReady}", session.PlayerId, isReady);
+
+            if (!string.IsNullOrEmpty(session.CurrentRoomId) && _rooms.TryGetValue(session.CurrentRoomId, out var room))
+            {
+                BroadcastPlayerList(room);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[RelayServer] Error handling PlayerReadyChanged");
+        }
+    }
+
     #endregion
 
     #region 游戏事件转发与成员列表广播
@@ -940,6 +970,7 @@ public class RelayServer : BaseGameServer
                 LocationY = TryGetMetadataInt(s.Metadata, "LocationY") ?? -1,
                 Stage = TryGetMetadataInt(s.Metadata, "Stage") ?? -1,
                 LocationName = TryGetMetadataString(s.Metadata, "LocationName"),
+                Ready = s.Metadata.TryGetValue("Ready", out var rdy) && rdy is bool b && b,
             })
             .ToList();
 

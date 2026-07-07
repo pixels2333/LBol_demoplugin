@@ -172,7 +172,8 @@ public partial class NetworkServer
                 LocationX = TryGetMetadataInt(s.Metadata, "LocationX") ?? -1,
                 LocationY = TryGetMetadataInt(s.Metadata, "LocationY") ?? -1,
                 Stage = TryGetMetadataInt(s.Metadata, "Stage") ?? -1,
-                LocationName = TryGetMetadataString(s.Metadata, "LocationName")
+                LocationName = TryGetMetadataString(s.Metadata, "LocationName"),
+                Ready = TryGetMetadataBool(s.Metadata, "Ready") ?? false
             }).ToList()
         };
 
@@ -195,7 +196,8 @@ public partial class NetworkServer
             LocationX = TryGetMetadataInt(s.Metadata, "LocationX") ?? -1,
             LocationY = TryGetMetadataInt(s.Metadata, "LocationY") ?? -1,
             Stage = TryGetMetadataInt(s.Metadata, "Stage") ?? -1,
-            LocationName = TryGetMetadataString(s.Metadata, "LocationName")
+            LocationName = TryGetMetadataString(s.Metadata, "LocationName"),
+            Ready = TryGetMetadataBool(s.Metadata, "Ready") ?? false
         }).ToList();
 
         BroadcastMessage(NetworkMessageTypes.PlayerListUpdate, new { Players = playerList });
@@ -264,6 +266,22 @@ public partial class NetworkServer
         }
 
         BroadcastPlayerList();
+    }
+
+    /// <summary>
+    /// 从会话元数据中安全提取 bool 值。
+    /// </summary>
+    private static bool? TryGetMetadataBool(Dictionary<string, object> metadata, string key)
+    {
+        if (metadata == null || !metadata.TryGetValue(key, out var value) || value == null)
+            return null;
+        return value switch
+        {
+            bool b => b,
+            JsonElement je when je.ValueKind == JsonValueKind.True => true,
+            JsonElement je when je.ValueKind == JsonValueKind.False => false,
+            _ => null
+        };
     }
 
     #endregion

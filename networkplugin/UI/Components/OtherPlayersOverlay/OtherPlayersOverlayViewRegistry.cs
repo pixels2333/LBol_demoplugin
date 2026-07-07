@@ -26,6 +26,9 @@ public static partial class OtherPlayersOverlayPatch
 
     private static void EnsureRemoteCharacters()
     {
+        // 确保渲染时 _selfPlayerId 已同步，过滤逻辑才能正确排除本地玩家
+        _selfPlayerId = NetworkIdentityTracker.GetSelfPlayerId();
+
         if (!ShouldRenderRemoteCharacters(IsMapPanelVisible()))
         {
             HideRemoteCharacters();

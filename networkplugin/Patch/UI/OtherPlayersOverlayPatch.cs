@@ -13,6 +13,7 @@ using LBoL.Presentation.Units;
 using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.NetworkPlayer;
+using NetworkPlugin.Utils;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -139,6 +140,9 @@ public static partial class OtherPlayersOverlayPatch
     {
         try
         {
+            // 每帧同步 _selfPlayerId，确保开局渲染远程玩家时过滤逻辑正确
+            _selfPlayerId = NetworkIdentityTracker.GetSelfPlayerId();
+
             INetworkClient client = TryGetNetworkClient();
 
             // 每帧仅轮询网络事件（轻量级）

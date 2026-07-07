@@ -169,6 +169,9 @@ public partial class NetworkServer : BaseGameServer
                 case NetworkMessageTypes.DirectMessage:
                     HandleDirectMessage(senderSession, jsonPayload);
                     return;
+                case NetworkMessageTypes.PlayerReadyChanged:
+                    HandlePlayerReadyChanged(senderSession, jsonPayload);
+                    return;
                 default:
                     Plugin.Logger?.LogInfo($"[服务器] 未知系统消息类型: {messageType}, 来自 {senderSession.Peer.EndPoint}");
                     _logger?.LogWarning($"[服务器] 未知系统消息类型: {messageType}, 来自 {senderSession.Peer.EndPoint}");
@@ -221,6 +224,33 @@ public partial class NetworkServer : BaseGameServer
         catch (Exception ex)
         {
             _logger?.LogError($"[服务器] 处理 DirectMessage 异常: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 处理玩家准备状态变更消息，将 Ready 状态存入会话 Metadata 并广播更新后的玩家列表。
+    /// </summary>
+    private void HandlePlayerReadyChanged(PlayerSession senderSession, string jsonPayload)
+    {
+        try
+        {
+            JsonElement root = JsonSerializer.Deserialize<JsonElement>(jsonPayload);
+            if (root.ValueKind != JsonValueKind.Object) return;
+
+            bool isReady = false;
+            if (root.TryGetProperty("IsReady", out var readyProp))
+            {
+                isReady = readyProp.ValueKind == JsonValueKind.True;
+            }
+
+            senderSession.Metadata["Ready"] = isReady;
+            Plugin.Logger?.LogInfo($"[服务器] 玩家 {senderSession.PlayerId} 准备状态变更: {(isReady ? "已就绪" : "取消准备")}");
+
+            BroadcastPlayerList();
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[服务器] 处理 PlayerReadyChanged 失败: {ex.Message}");
         }
     }
 
