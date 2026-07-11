@@ -67,6 +67,7 @@ public static class MainMenuMultiplayerEntryPatch
     private static Transform _roomListContainer;
     private static TextMeshProUGUI _roomListEmptyText;
     private static bool _roomListEventSubscribed;
+    private static float _roomListPanelScale = 2.2f;
     private static INetworkClient _roomListSubscribedClient;
     private static readonly Action<string, object> _onRoomListGameEvent = OnRoomListGameEventReceived;
     private static readonly Action<bool> _onRoomListConnStateChanged = OnRoomListConnectionStateChanged;
@@ -1142,7 +1143,7 @@ public static class MainMenuMultiplayerEntryPatch
             rootGroup.interactable = false;
             rootGroup.blocksRaycasts = true;
 
-            float panelScale = 3f;
+            float panelScale = 2.2f;
             try
             {
                 const float baseW = 520f;
@@ -1150,15 +1151,18 @@ public static class MainMenuMultiplayerEntryPatch
                 const float widthFactor = 1.00f;
                 const float heightFactor = 0.95f;
 
-                float maxW = Mathf.Max(1f, rootRect.rect.width * 0.92f);
-                float maxH = Mathf.Max(1f, rootRect.rect.height * 0.92f);
-                float fitScale = Mathf.Min(maxW / (baseW * widthFactor), maxH / (baseH * heightFactor));
-                panelScale = Mathf.Min(3f, fitScale);
-                panelScale = Mathf.Max(1f, panelScale);
+                var parentRect = panelTransform.GetComponent<RectTransform>();
+                if (parentRect != null)
+                {
+                    float maxW = Mathf.Max(1f, parentRect.rect.width * 0.92f);
+                    float maxH = Mathf.Max(1f, parentRect.rect.height * 0.92f);
+                    float fitScale = Mathf.Min(maxW / (baseW * widthFactor), maxH / (baseH * heightFactor));
+                    panelScale = Mathf.Clamp(fitScale, 1f, 2.2f);
+                }
             }
             catch
             {
-                panelScale = 3f;
+                panelScale = 2.2f;
             }
 
             // 实例化原生弹窗框体作为中央容器
@@ -1938,6 +1942,11 @@ public static class MainMenuMultiplayerEntryPatch
                     {
                         label.fontSize = Mathf.Clamp(label.fontSize * scale, 14f, 72f);
                     }
+                    // 禁用换行并开启自动收缩，防止多字换行
+                    label.enableWordWrapping = false;
+                    label.enableAutoSizing = true;
+                    label.fontSizeMin = 10f * scale;
+                    label.fontSizeMax = Mathf.Clamp(18f * scale, 14f, 60f);
                 }
             }
 
@@ -2391,19 +2400,24 @@ public static class MainMenuMultiplayerEntryPatch
             rootGroup.blocksRaycasts = true;
 
             // 自适应缩放，保证面板不超出画布。
-            float panelScale = 3f;
+            float panelScale = 2.2f;
             try
             {
                 const float baseW = 520f;
-                const float baseH = 460f;
-                float maxW = Mathf.Max(1f, rootRect.rect.width * 0.92f);
-                float maxH = Mathf.Max(1f, rootRect.rect.height * 0.92f);
-                panelScale = Mathf.Clamp(Mathf.Min(maxW / baseW, maxH / baseH), 1f, 3f);
+                const float baseH = 400f;
+                var parentRect = parent.GetComponent<RectTransform>();
+                if (parentRect != null)
+                {
+                    float maxW = Mathf.Max(1f, parentRect.rect.width * 0.92f);
+                    float maxH = Mathf.Max(1f, parentRect.rect.height * 0.92f);
+                    panelScale = Mathf.Clamp(Mathf.Min(maxW / baseW, maxH / baseH), 1f, 2.2f);
+                }
             }
             catch
             {
-                panelScale = 3f;
+                panelScale = 2.2f;
             }
+            _roomListPanelScale = panelScale;
 
             // frame：中央面板，自建背景框。
             GameObject frame = new GameObject(RoomListRootName + "_Frame");
@@ -2412,7 +2426,7 @@ public static class MainMenuMultiplayerEntryPatch
             frameRect.anchorMin = new Vector2(0.5f, 0.5f);
             frameRect.anchorMax = new Vector2(0.5f, 0.5f);
             frameRect.pivot = new Vector2(0.5f, 0.5f);
-            frameRect.sizeDelta = new Vector2(520f * panelScale, 460f * panelScale);
+            frameRect.sizeDelta = new Vector2(520f * panelScale, 400f * panelScale);
             frameRect.anchoredPosition = Vector2.zero;
             _roomListFrameRect = frameRect;
 
@@ -2433,9 +2447,9 @@ public static class MainMenuMultiplayerEntryPatch
             }
 
             // 顶部金色分隔线（标题下方）。
-            CreateHorizontalRule(frame.transform, RoomListRootName + "_TopRule", 1f, -50f * panelScale, 3f * panelScale, new Color(0.78f, 0.63f, 0.25f, 0.9f));
+            CreateHorizontalRule(frame.transform, RoomListRootName + "_TopRule", 1f, -88f * panelScale, 2f * panelScale, new Color(0.78f, 0.63f, 0.25f, 0.9f));
             // 底部分隔线（按钮区上方）。
-            CreateHorizontalRule(frame.transform, RoomListRootName + "_BottomRule", 0f, 74f * panelScale, 2f * panelScale, new Color(0.78f, 0.63f, 0.25f, 0.6f));
+            CreateHorizontalRule(frame.transform, RoomListRootName + "_BottomRule", 0f, 70f * panelScale, 2f * panelScale, new Color(0.78f, 0.63f, 0.25f, 0.6f));
 
             // 标题。
             GameObject titleGo = new GameObject("Title");
@@ -2444,12 +2458,12 @@ public static class MainMenuMultiplayerEntryPatch
             titleRt.anchorMin = new Vector2(0f, 1f);
             titleRt.anchorMax = new Vector2(1f, 1f);
             titleRt.pivot = new Vector2(0.5f, 1f);
-            titleRt.anchoredPosition = new Vector2(0f, -16f * panelScale);
-            titleRt.sizeDelta = new Vector2(-40f * panelScale, 40f * panelScale);
+            titleRt.anchoredPosition = new Vector2(0f, -12f * panelScale);
+            titleRt.sizeDelta = new Vector2(-40f * panelScale, 36f * panelScale);
             var title = titleGo.AddComponent<TextMeshProUGUI>();
             title.text = "房间玩家列表";
             title.alignment = TextAlignmentOptions.Center;
-            title.fontSize = Mathf.Clamp(26f * panelScale, 24f, 80f);
+            title.fontSize = Mathf.Clamp(22f * panelScale, 20f, 72f);
             title.color = new Color(1f, 0.92f, 0.6f, 1f);
             title.raycastTarget = false;
             if (_roomListFont != null) title.font = _roomListFont;
@@ -2461,11 +2475,11 @@ public static class MainMenuMultiplayerEntryPatch
             subRt.anchorMin = new Vector2(0f, 1f);
             subRt.anchorMax = new Vector2(1f, 1f);
             subRt.pivot = new Vector2(0.5f, 1f);
-            subRt.anchoredPosition = new Vector2(0f, -58f * panelScale);
-            subRt.sizeDelta = new Vector2(-40f * panelScale, 30f * panelScale);
+            subRt.anchoredPosition = new Vector2(0f, -50f * panelScale);
+            subRt.sizeDelta = new Vector2(-40f * panelScale, 26f * panelScale);
             _roomListEmptyText = subGo.AddComponent<TextMeshProUGUI>();
             _roomListEmptyText.alignment = TextAlignmentOptions.Center;
-            _roomListEmptyText.fontSize = Mathf.Clamp(18f * panelScale, 16f, 48f);
+            _roomListEmptyText.fontSize = Mathf.Clamp(15f * panelScale, 14f, 48f);
             _roomListEmptyText.color = new Color(0.85f, 0.85f, 0.85f, 1f);
             _roomListEmptyText.raycastTarget = false;
             if (_roomListFont != null) _roomListEmptyText.font = _roomListFont;
@@ -2474,8 +2488,8 @@ public static class MainMenuMultiplayerEntryPatch
             GameObject scrollGo = new GameObject("PlayerScroll");
             scrollGo.transform.SetParent(frame.transform, false);
             var scrollRt = scrollGo.AddComponent<RectTransform>();
-            scrollRt.anchorMin = new Vector2(0.1f, 0.2f);
-            scrollRt.anchorMax = new Vector2(0.9f, 0.82f);
+            scrollRt.anchorMin = new Vector2(0.05f, 0.175f);
+            scrollRt.anchorMax = new Vector2(0.95f, 0.75f);
             scrollRt.offsetMin = Vector2.zero;
             scrollRt.offsetMax = Vector2.zero;
 
@@ -2529,8 +2543,8 @@ public static class MainMenuMultiplayerEntryPatch
             buttonsRt.anchorMin = new Vector2(0.5f, 0f);
             buttonsRt.anchorMax = new Vector2(0.5f, 0f);
             buttonsRt.pivot = new Vector2(0.5f, 0f);
-            buttonsRt.sizeDelta = new Vector2(440f * panelScale, 58f * panelScale);
-            buttonsRt.anchoredPosition = new Vector2(0f, 18f * panelScale);
+            buttonsRt.sizeDelta = new Vector2(470f * panelScale, 50f * panelScale);
+            buttonsRt.anchoredPosition = new Vector2(0f, 10f * panelScale);
 
             var hlg = buttonsGo.AddComponent<HorizontalLayoutGroup>();
             hlg.childAlignment = TextAnchor.MiddleCenter;
@@ -2538,7 +2552,7 @@ public static class MainMenuMultiplayerEntryPatch
             hlg.childControlHeight = true;
             hlg.childForceExpandWidth = true;
             hlg.childForceExpandHeight = false;
-            hlg.spacing = 20f * panelScale;
+            hlg.spacing = 10f * panelScale;
 
             if (template != null)
             {
@@ -2564,7 +2578,7 @@ public static class MainMenuMultiplayerEntryPatch
                 {
                     if (b == null) continue;
                     var r = b.GetComponent<RectTransform>();
-                    if (r != null) r.sizeDelta = new Vector2(r.sizeDelta.x, 58f * panelScale);
+                    if (r != null) r.sizeDelta = new Vector2(r.sizeDelta.x, 50f * panelScale);
                 }
             }
             else
@@ -2613,7 +2627,7 @@ public static class MainMenuMultiplayerEntryPatch
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = img;
         var le = go.AddComponent<LayoutElement>();
-        le.preferredHeight = 58f * panelScale;
+        le.preferredHeight = 50f * panelScale;
         le.flexibleWidth = 1f;
 
         GameObject textGo = new GameObject("Label");
@@ -2626,10 +2640,14 @@ public static class MainMenuMultiplayerEntryPatch
 
         var tmp = textGo.AddComponent<TextMeshProUGUI>();
         tmp.text = label;
-        tmp.alignment = TextAlignmentOptions.Left;
+        tmp.alignment = TextAlignmentOptions.Center;
         tmp.raycastTarget = false;
-        tmp.fontSize = Mathf.Clamp(22f * panelScale, 18f, 60f);
+        tmp.fontSize = Mathf.Clamp(16f * panelScale, 14f, 54f);
         tmp.color = Color.white;
+        tmp.enableWordWrapping = false;
+        tmp.enableAutoSizing = true;
+        tmp.fontSizeMin = 10f * panelScale;
+        tmp.fontSizeMax = Mathf.Clamp(16f * panelScale, 14f, 54f);
         if (_roomListFont != null) tmp.font = _roomListFont;
 
         btn.onClick.AddListener(() => onClick?.Invoke());
@@ -2750,7 +2768,7 @@ public static class MainMenuMultiplayerEntryPatch
                 {
                     bool isSelf = !string.IsNullOrWhiteSpace(selfId)
                         && string.Equals(e.Id, selfId, StringComparison.Ordinal);
-                    CreateRoomListRow(_roomListContainer, e.Id, e.Name, e.IsHost, isSelf, e.CharaId, e.IsReady);
+                    CreateRoomListRow(_roomListContainer, e.Id, e.Name, e.IsHost, isSelf, e.CharaId, e.IsReady, _roomListPanelScale);
                 }
             }
 
@@ -2860,67 +2878,178 @@ public static class MainMenuMultiplayerEntryPatch
         }
     }
 
-    private static void CreateRoomListRow(Transform container, string playerId, string playerName, bool isHost, bool isSelf, string charaId, bool isReady)
+    private static void CreateRoomListRow(Transform container, string playerId, string playerName, bool isHost, bool isSelf, string charaId, bool isReady, float panelScale)
     {
         GameObject go = new GameObject("RoomPlayer");
         go.transform.SetParent(container, false);
 
+        // 背景：使用深色 Slate，更加高级、透明感
         var img = go.AddComponent<Image>();
-        img.color = isHost
-            ? new Color(0.5f, 0.4f, 0.15f, 0.85f)
-            : (isSelf ? new Color(0.2f, 0.35f, 0.55f, 0.8f) : new Color(0.2f, 0.2f, 0.24f, 0.8f));
+        img.color = new Color(0.12f, 0.11f, 0.15f, 0.85f);
         img.raycastTarget = false;
 
-        var le = go.AddComponent<LayoutElement>();
-        le.preferredHeight = 44f;
-        le.flexibleWidth = 1f;
-
-        // 角色头像
-        if (!string.IsNullOrWhiteSpace(charaId))
+        // 边框描边：根据身份显示不同颜色
+        try
         {
-            Sprite avatar = OtherPlayersOverlayPatch.TryGetAvatarSprite(charaId);
-            if (avatar != null)
-            {
-                GameObject avatarGo = new GameObject("Avatar");
-                avatarGo.transform.SetParent(go.transform, false);
-                var avatarRt = avatarGo.AddComponent<RectTransform>();
-                avatarRt.anchorMin = new Vector2(0f, 0.5f);
-                avatarRt.anchorMax = new Vector2(0f, 0.5f);
-                avatarRt.pivot = new Vector2(0f, 0.5f);
-                avatarRt.sizeDelta = new Vector2(36f, 36f);
-                avatarRt.anchoredPosition = new Vector2(8f, 0f);
-                var avatarImg = avatarGo.AddComponent<Image>();
-                avatarImg.sprite = avatar;
-                avatarImg.raycastTarget = false;
-            }
+            var borderOutline = go.AddComponent<Outline>();
+            borderOutline.effectColor = isHost
+                ? new Color(0.95f, 0.78f, 0.25f, 0.5f) // 金色半透明
+                : (isSelf ? new Color(0.25f, 0.65f, 0.95f, 0.5f) : new Color(0.6f, 0.6f, 0.6f, 0.25f)); // 天蓝 / 银灰
+            borderOutline.effectDistance = new Vector2(1.5f * panelScale, 1.5f * panelScale);
+        }
+        catch
+        {
+            // ignored
         }
 
-        // 玩家名 + 角色名 + 状态标签
+        // 左侧特色彩色指示条
+        GameObject leftStripe = new GameObject("LeftStripe");
+        leftStripe.transform.SetParent(go.transform, false);
+        var stripeRt = leftStripe.AddComponent<RectTransform>();
+        stripeRt.anchorMin = new Vector2(0f, 0f);
+        stripeRt.anchorMax = new Vector2(0f, 1f);
+        stripeRt.pivot = new Vector2(0f, 0.5f);
+        stripeRt.sizeDelta = new Vector2(6f * panelScale, 0f);
+        stripeRt.anchoredPosition = Vector2.zero;
+        var stripeImg = leftStripe.AddComponent<Image>();
+        stripeImg.color = isHost
+            ? new Color(0.95f, 0.78f, 0.25f, 1f) // 金色
+            : (isSelf ? new Color(0.25f, 0.65f, 0.95f, 1f) : new Color(0.75f, 0.75f, 0.75f, 1f)); // 天蓝 / 银灰
+        stripeImg.raycastTarget = false;
+
+        var le = go.AddComponent<LayoutElement>();
+        le.preferredHeight = 50f * panelScale;
+        le.flexibleWidth = 1f;
+
+        // 角色头像（使用圆形遮罩与金色/白色圆形边框）
+        Sprite avatar = null;
+        if (!string.IsNullOrWhiteSpace(charaId))
+        {
+            avatar = OtherPlayersOverlayPatch.TryGetAvatarSprite(charaId);
+        }
+        // 如果头像加载失败或为空，尝试 fallback 到 Koishi
+        if (avatar == null)
+        {
+            avatar = OtherPlayersOverlayPatch.TryGetAvatarSprite("Koishi");
+        }
+
+        if (avatar != null)
+        {
+            // 头像根容器
+            GameObject avatarRoot = new GameObject("AvatarRoot");
+            avatarRoot.transform.SetParent(go.transform, false);
+            var avatarRootRt = avatarRoot.AddComponent<RectTransform>();
+            avatarRootRt.anchorMin = new Vector2(0f, 0.5f);
+            avatarRootRt.anchorMax = new Vector2(0f, 0.5f);
+            avatarRootRt.pivot = new Vector2(0.5f, 0.5f);
+            avatarRootRt.sizeDelta = new Vector2(38f * panelScale, 38f * panelScale);
+            avatarRootRt.anchoredPosition = new Vector2(28f * panelScale, 0f);
+
+            // 圆形遮罩
+            GameObject maskGo = new GameObject("AvatarMask");
+            maskGo.transform.SetParent(avatarRoot.transform, false);
+            var maskRt = maskGo.AddComponent<RectTransform>();
+            maskRt.anchorMin = new Vector2(0.5f, 0.5f);
+            maskRt.anchorMax = new Vector2(0.5f, 0.5f);
+            maskRt.pivot = new Vector2(0.5f, 0.5f);
+            maskRt.sizeDelta = new Vector2(34f * panelScale, 34f * panelScale);
+            maskRt.anchoredPosition = Vector2.zero;
+
+            var maskImg = maskGo.AddComponent<Image>();
+            maskImg.sprite = OtherPlayersOverlayPatch.GetCircleMaskSprite();
+            maskImg.color = Color.white;
+            maskImg.raycastTarget = false;
+            maskImg.preserveAspect = true;
+
+            var mask = maskGo.AddComponent<Mask>();
+            mask.showMaskGraphic = false;
+
+            // 头像 Image
+            GameObject avatarGo = new GameObject("AvatarImage");
+            avatarGo.transform.SetParent(maskGo.transform, false);
+            var avatarRt = avatarGo.AddComponent<RectTransform>();
+            avatarRt.anchorMin = new Vector2(0.5f, 0.5f);
+            avatarRt.anchorMax = new Vector2(0.5f, 0.5f);
+            avatarRt.pivot = new Vector2(0.5f, 0.5f);
+            avatarRt.sizeDelta = new Vector2(34f * panelScale, 34f * panelScale);
+            avatarRt.anchoredPosition = Vector2.zero;
+
+            var avatarImg = avatarGo.AddComponent<Image>();
+            avatarImg.sprite = avatar;
+            avatarImg.raycastTarget = false;
+            avatarImg.preserveAspect = true;
+
+            // 圆形边框
+            GameObject borderGo = new GameObject("Border");
+            borderGo.transform.SetParent(avatarRoot.transform, false);
+            var borderRt = borderGo.AddComponent<RectTransform>();
+            borderRt.anchorMin = new Vector2(0.5f, 0.5f);
+            borderRt.anchorMax = new Vector2(0.5f, 0.5f);
+            borderRt.pivot = new Vector2(0.5f, 0.5f);
+            borderRt.sizeDelta = new Vector2(38f * panelScale, 38f * panelScale);
+            borderRt.anchoredPosition = Vector2.zero;
+
+            var borderImg = borderGo.AddComponent<Image>();
+            borderImg.sprite = OtherPlayersOverlayPatch.GetCircleBorderSprite();
+            borderImg.color = isHost
+                ? new Color(0.95f, 0.78f, 0.25f, 1f) // 金色
+                : (isSelf ? new Color(0.25f, 0.65f, 0.95f, 1f) : Color.white); // 天蓝 / 白色
+            borderImg.raycastTarget = false;
+            borderImg.preserveAspect = true;
+        }
+
+        // 玩家名 + 角色名 Label
         GameObject textGo = new GameObject("Label");
         textGo.transform.SetParent(go.transform, false);
         var rt = textGo.AddComponent<RectTransform>();
         rt.anchorMin = Vector2.zero;
         rt.anchorMax = Vector2.one;
-        rt.offsetMin = new Vector2(52f, 0f);
-        rt.offsetMax = new Vector2(-10f, 0f);
+        // 如果有头像，缩进 56f * panelScale；否则缩进 16f * panelScale
+        rt.offsetMin = new Vector2((avatar != null ? 56f : 16f) * panelScale, 0f);
+        // 右侧为状态标签预留 140f * panelScale 的宽度
+        rt.offsetMax = new Vector2(-140f * panelScale, 0f);
 
         var tmp = textGo.AddComponent<TextMeshProUGUI>();
-        // 解析角色中文名
         string charaName = ResolveCharacterDisplayName(charaId);
-        string label = isHost ? $"★ {playerName}（房主）" : playerName;
+        string label = isHost ? $"★ {playerName}" : playerName;
         if (isSelf) label += "（你）";
         if (!string.IsNullOrWhiteSpace(charaName)) label += $" [{charaName}]";
-        if (!isHost)
-        {
-            label += isReady ? "  <color=#4CAF50>已就绪</color>" : "  <color=#888888>准备中</color>";
-        }
+
         tmp.text = label;
         tmp.alignment = TextAlignmentOptions.Left;
         tmp.raycastTarget = false;
-        tmp.fontSize = 22f;
+        tmp.fontSize = Mathf.Clamp(19f * panelScale, 15f, 60f);
         tmp.color = Color.white;
         tmp.richText = true;
         if (_roomListFont != null) tmp.font = _roomListFont;
+
+        // 右侧状态文本 (Status Label)
+        GameObject statusGo = new GameObject("StatusLabel");
+        statusGo.transform.SetParent(go.transform, false);
+        var statusRt = statusGo.AddComponent<RectTransform>();
+        statusRt.anchorMin = new Vector2(1f, 0.5f);
+        statusRt.anchorMax = new Vector2(1f, 0.5f);
+        statusRt.pivot = new Vector2(1f, 0.5f);
+        statusRt.sizeDelta = new Vector2(120f * panelScale, 50f * panelScale);
+        statusRt.anchoredPosition = new Vector2(-15f * panelScale, 0f);
+
+        var statusTmp = statusGo.AddComponent<TextMeshProUGUI>();
+        string statusLabel = "";
+        if (isHost)
+        {
+            statusLabel = "<color=#FFD700>★ 房主</color>";
+        }
+        else
+        {
+            statusLabel = isReady ? "<color=#4CAF50>● 已就绪</color>" : "<color=#B0BEC5>● 准备中</color>";
+        }
+        statusTmp.text = statusLabel;
+        statusTmp.alignment = TextAlignmentOptions.Right;
+        statusTmp.raycastTarget = false;
+        statusTmp.fontSize = Mathf.Clamp(18f * panelScale, 14f, 54f);
+        statusTmp.color = Color.white;
+        statusTmp.richText = true;
+        if (_roomListFont != null) statusTmp.font = _roomListFont;
     }
 
     /// <summary>

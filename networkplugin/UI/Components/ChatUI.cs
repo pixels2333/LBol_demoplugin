@@ -42,7 +42,13 @@ public class ChatUI : MonoBehaviour
         _networkClient = ModService.ServiceProvider?.GetService<INetworkClient>();
 
         SetupUI();
-        RegisterNetworkEvents();
+
+        // 注册聊天消息接收事件（当前通过 NetworkClient.OnGameEventReceived 分发）
+        if (_networkClient is NetworkClient concrete)
+        {
+            NetworkIdentityTracker.EnsureSubscribed(concrete);
+            concrete.OnGameEventReceived += OnNetworkGameEventReceived;
+        }
     }    // 初始化聊天UI，设置服务依赖和事件注册
 
     private void Update()
@@ -53,7 +59,10 @@ public class ChatUI : MonoBehaviour
 
     private void OnDestroy()
     {
-        UnregisterNetworkEvents();
+        if (_networkClient is NetworkClient concrete)
+        {
+            concrete.OnGameEventReceived -= OnNetworkGameEventReceived;
+        }
     }    // 组件销毁时清理网络事件监听
 
     /// <summary>
@@ -63,40 +72,29 @@ public class ChatUI : MonoBehaviour
     {
         if (inputField != null)
         {
-            inputField.onSubmit.AddListener(OnMessageSubmitted);
+            inputField.onSubmit.AddListener(message =>
+            {
+                SendMessage(message);
+                inputField.text = "";
+                inputField.Select();
+                inputField.ActivateInputField();
+            });
             inputField.characterLimit = 200;
         }
 
-        sendButton?.onClick.AddListener(OnSendButtonClicked);
+        sendButton?.onClick.AddListener(() =>
+        {
+            if (inputField != null && !string.IsNullOrEmpty(inputField.text))
+            {
+                SendMessage(inputField.text);
+                inputField.text = "";
+            }
+        });
 
         if (chatDisplay != null) chatDisplay.text = "聊天系统已启用...\n";
 
         // 初始隐藏聊天容器
         chatContainer?.SetActive(false);
-    }
-
-    /// <summary>
-    /// 注册网络事件
-    /// </summary>
-    private void RegisterNetworkEvents()
-    {
-        // 注册聊天消息接收事件（当前通过 NetworkClient.OnGameEventReceived 分发）
-        if (_networkClient is NetworkClient concrete)
-        {
-            NetworkIdentityTracker.EnsureSubscribed(concrete);
-            concrete.OnGameEventReceived += OnNetworkGameEventReceived;
-        }
-    }
-
-    /// <summary>
-    /// 取消注册网络事件
-    /// </summary>
-    private void UnregisterNetworkEvents()
-    {
-        if (_networkClient is NetworkClient concrete)
-        {
-            concrete.OnGameEventReceived -= OnNetworkGameEventReceived;
-        }
     }
 
     private void OnNetworkGameEventReceived(string eventType, object payload)
@@ -109,7 +107,7 @@ public class ChatUI : MonoBehaviour
         ChatMessage message = TryDeserializeChatMessage(payload);
         if (message != null)
         {
-            OnChatMessageReceived(message);
+            AddMessageToChat(message);
         }
     }
 
@@ -212,7 +210,12 @@ public class ChatUI : MonoBehaviour
         }
 
         CreateMessageObject(message);
-        UpdateChatDisplay();
+        
+        if (scrollRect != null)
+        {
+            Canvas.ForceUpdateCanvases();
+            scrollRect.verticalNormalizedPosition = 0f; // 滚动到底部
+        }
     }
 
     /// <summary>
@@ -233,13 +236,7 @@ public class ChatUI : MonoBehaviour
         AddMessageToChat(systemMessage);
     }
 
-    /// <summary>
-    /// 处理接收到的聊天消息
-    /// </summary>
-    private void OnChatMessageReceived(ChatMessage message)
-    {
-        AddMessageToChat(message);
-    }
+
 
     /// <summary>
     /// 创建消息UI对象
@@ -256,7 +253,12 @@ public class ChatUI : MonoBehaviour
 
         if (textComponent != null)
         {
-            string formattedMessage = FormatMessage(message);
+            string timeStr = message.Timestamp.ToString("HH:mm:ss");
+            string formattedMessage = message.MessageType switch
+            {
+                ChatMessageType.System => $"[{timeStr}] {message.Content}",
+                _ => $"[{timeStr}] {message.PlayerName}: {message.Content}"
+            };
             textComponent.text = formattedMessage;
             textComponent.color = message.MessageType == ChatMessageType.System ? systemMessageColor : playerMessageColor;
 
@@ -276,30 +278,7 @@ public class ChatUI : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 格式化消息显示
-    /// </summary>
-    private string FormatMessage(ChatMessage message)
-    {
-        string timeStr = message.Timestamp.ToString("HH:mm:ss");
-        return message.MessageType switch
-        {
-            ChatMessageType.System => $"[{timeStr}] {message.Content}",
-            _ => $"[{timeStr}] {message.PlayerName}: {message.Content}"
-        };
-    }
 
-    /// <summary>
-    /// 更新聊天显示
-    /// </summary>
-    private void UpdateChatDisplay()
-    {
-        if (scrollRect != null)
-        {
-            Canvas.ForceUpdateCanvases();
-            scrollRect.verticalNormalizedPosition = 0f; // 滚动到底部
-        }
-    }
 
     /// <summary>
     /// 更新消息淡出效果
@@ -338,28 +317,7 @@ public class ChatUI : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 处理消息提交（回车键）
-    /// </summary>
-    private void OnMessageSubmitted(string message)
-    {
-        SendMessage(message);
-        inputField.text = "";
-        inputField.Select();
-        inputField.ActivateInputField();
-    }
 
-    /// <summary>
-    /// 处理发送按钮点击
-    /// </summary>
-    private void OnSendButtonClicked()
-    {
-        if (inputField != null && !string.IsNullOrEmpty(inputField.text))
-        {
-            SendMessage(inputField.text);
-            inputField.text = "";
-        }
-    }
 
     /// <summary>
     /// 获取当前玩家ID

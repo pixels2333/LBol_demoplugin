@@ -117,6 +117,16 @@ if ($sourceFull -ieq $destFull) {
 
 Copy-Item -LiteralPath $sourceFull -Destination $destFile -Force
 
+# Copy Assets folder if present
+$sourceAssets = Join-Path -Path $scriptRoot -ChildPath "networkplugin\Assets"
+if (Test-Path -LiteralPath $sourceAssets -PathType Container) {
+  $destAssets = Join-Path -Path $DestDir -ChildPath "Assets"
+  if (-not (Test-Path -LiteralPath $destAssets -PathType Container)) {
+    New-Item -ItemType Directory -Path $destAssets -Force | Out-Null
+  }
+  Copy-Item -Path (Join-Path $sourceAssets "*") -Destination $destAssets -Force -Recurse
+}
+
 if ($CopyPdb) {
   $sourcePdb = [System.IO.Path]::ChangeExtension($sourceFull, '.pdb')
   if (Test-Path -LiteralPath $sourcePdb -PathType Leaf) {

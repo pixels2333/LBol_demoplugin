@@ -35,7 +35,16 @@ internal sealed class StateCacheManager
 
         string stateKey = $"{gameEvent.EventType}_{gameEvent.UserName}";
         _stateCache[stateKey] = gameEvent.Data;
-        CleanupOldStates();
+
+        // 清理过期的旧状态缓存条目
+        List<string> keysToRemove = [];
+        foreach (var kvp in _stateCache)
+        {
+            if (kvp.Key.Contains("Old") || kvp.Key.Contains("Temp"))
+                keysToRemove.Add(kvp.Key);
+        }
+        foreach (string key in keysToRemove)
+            _stateCache.Remove(key);
     }
 
     /// <summary>
@@ -96,19 +105,5 @@ internal sealed class StateCacheManager
     /// </summary>
     public int CachedStateCount => _stateCache.Count;
 
-    /// <summary>
-    /// 清理过期的旧状态缓存条目
-    /// </summary>
-    private void CleanupOldStates()
-    {
-        var cutoffTime = DateTime.UtcNow - _config.StateCacheExpiry;
-        List<string> keysToRemove = [];
-        foreach (var kvp in _stateCache)
-        {
-            if (kvp.Key.Contains("Old") || kvp.Key.Contains("Temp"))
-                keysToRemove.Add(kvp.Key);
-        }
-        foreach (string key in keysToRemove)
-            _stateCache.Remove(key);
-    }
+
 }

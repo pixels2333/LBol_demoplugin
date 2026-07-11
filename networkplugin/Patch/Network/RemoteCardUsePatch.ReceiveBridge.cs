@@ -4,6 +4,7 @@ using System.Text.Json;
 using HarmonyLib;
 using LBoL.Base;
 using LBoL.Core;
+using LBoL.Core.Battle;
 using LBoL.Presentation.Units;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
@@ -209,29 +210,52 @@ public static partial class RemoteCardUsePatch
                 cardName = GetString(cardEl, "CardName") ?? GetString(cardEl, "CardId");
             }
 
-            TryPlayRemoteCardUseAnimation(root);
+            GameRunController run = GameStateUtils.GetCurrentGameRun();
+            BattleController battle = run?.Battle;
 
-            // TargetUnitKind=="Enemy" 表示对战斗敌人出牌，由 host 执行（host 持有完整战斗状态）。
+            // Check if this client is the executing client
+            bool isExecutingClient = false;
             string targetUnitKind = GetString(root, "TargetUnitKind");
             if (string.Equals(targetUnitKind, "Enemy", StringComparison.OrdinalIgnoreCase))
             {
-                if (!NetworkIdentityTracker.GetSelfIsHost())
+                if (NetworkIdentityTracker.GetSelfIsHost())
                 {
-                    return;
+                    isExecutingClient = true;
                 }
-                ShowTopMessage($"{senderName} used {cardName ?? "a card"} on enemy.");
-                TryExecuteRemoteCardUse(root);
-                return;
             }
-
-            // 默认：对玩家出牌，仅目标玩家自己执行。
-            if (string.IsNullOrWhiteSpace(selfId) || !string.Equals(selfId, targetId, StringComparison.Ordinal))
+            else
             {
-                return;
+                if (!string.IsNullOrWhiteSpace(selfId) && string.Equals(selfId, targetId, StringComparison.Ordinal))
+                {
+                    isExecutingClient = true;
+                }
             }
 
-            ShowTopMessage($"{senderName} used {cardName ?? "a card"} on you.");
-            TryExecuteRemoteCardUse(root);
+            // Start playing visuals on all clients
+            if (battle != null)
+            {
+                if (root.TryGetProperty("Actions", out JsonElement actionsEl))
+                {
+                    Singleton<LBoL.Presentation.Units.GameDirector>.Instance?.StartCoroutine(PlayVisualsCoroutine(actionsEl.Clone(), battle, isExecutingClient));
+                }
+            }
+
+            if (isExecutingClient)
+            {
+                if (string.Equals(targetUnitKind, "Enemy", StringComparison.OrdinalIgnoreCase))
+                {
+                    ShowTopMessage($"{senderName} used {cardName ?? "a card"} on enemy.");
+                }
+                else
+                {
+                    ShowTopMessage($"{senderName} used {cardName ?? "a card"} on you.");
+                }
+                TryExecuteRemoteCardUse(root);
+            }
+            else
+            {
+                ShowTopMessage($"{senderName} used {cardName ?? "a card"}.");
+            }
         }
         catch (Exception ex)
         {

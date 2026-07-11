@@ -125,3 +125,8 @@ UpdateMapIcons()
 - [x] 获取 BepInEx 日志中 `MapIcon`/`Group` 行，确认头像位置计算正确
 - [x] 清理诊断代码：`GetRedSprite()`、`_redSprite`/`_redTexture`、详细位置日志、`catch (Exception ex)`
 - [x] 参考远程玩家头像模板（圆角 mask、边框）优化本地玩家/所有玩家图标样式
+
+## 交付规范
+
+- 生成 `implementation_plan.md` 和 `walkthrough.md` 交付件时，必须使用**中文**进行编写和表达。
+

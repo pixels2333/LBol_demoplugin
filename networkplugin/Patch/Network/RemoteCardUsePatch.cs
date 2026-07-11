@@ -542,49 +542,23 @@ public static partial class RemoteCardUsePatch
         card.PendingTarget = proxy;
         card.KickerPlaying = kicker;
 
-        // 简化：仅按卡牌类型播放基础动画（不尝试复刻 Config.Perform）
-        BattleAction playAnimation = null;
         try
         {
-            if (card.Battle?.Player != null)
+            if (card.Battle != null && actionBlueprint != null && actionBlueprint.Length > 0)
             {
-                string anim = card.CardType switch
+                string serializedActions = JsonSerializer.Serialize(actionBlueprint);
+                using (JsonDocument doc = JsonDocument.Parse(serializedActions))
                 {
-                    CardType.Attack => "shoot1",
-                    CardType.Defense => "defend",
-                    CardType.Skill => "skill",
-                    CardType.Ability => "spell",
-                    CardType.Tool => "spell",
-                    _ => "spell"
-                };
-
-                playAnimation = PerformAction.Animation(card.Battle.Player, anim, 0.2f, null, 0f, -1);
+                    Singleton<GameDirector>.Instance?.StartCoroutine(PlayVisualsCoroutine(doc.RootElement.Clone(), card.Battle, false));
+                }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // ignored
+            Plugin.Logger?.LogError($"[RemoteCardUse] Caster play visuals failed: {ex.Message}");
         }
 
-        if (playAnimation != null)
-        {
-            yield return playAnimation;
-        }
-
-        // 3) 发送者不会收到服务器转发的 OnRemoteCardUse，所以在本地补一次对“被选中目标”的动画预播放
-        try
-        {
-            if ((hasDamage || hasHeal || hasStatus) &&
-                !string.IsNullOrWhiteSpace(proxy.RemotePlayerId) &&
-                OtherPlayersOverlayPatch.TryGetRemoteCharacterUnitView(proxy.RemotePlayerId, out UnitView targetView))
-            {
-                targetView.PlayAnimation(hasDamage ? "hit" : "spell");
-            }
-        }
-        catch
-        {
-            // ignored
-        }
+        yield return PerformAction.Wait(0.4f);
 
         card.PendingManaUsage = null;
         card.PendingTarget = null;
@@ -594,6 +568,25 @@ public static partial class RemoteCardUsePatch
     #endregion
 
     #region Shared Blueprint + JSON Helpers
+
+    private static object SerializeUnit(Unit unit)
+    {
+        if (unit == null) return null;
+        if (unit is PlayerUnit pu)
+        {
+            string pid = OtherPlayersOverlayPatch.GetPlayerIdFromUnit(pu);
+            if (pid == null)
+            {
+                pid = NetworkIdentityTracker.GetSelfPlayerId() ?? "__local__";
+            }
+            return new { Kind = "Player", PlayerId = pid };
+        }
+        if (unit is EnemyUnit eu)
+        {
+            return new { Kind = "Enemy", EnemyId = eu.Id, RootIndex = eu.RootIndex };
+        }
+        return new { Kind = "Unknown", Id = unit.Id };
+    }
 
     private static object[] BuildActionBlueprint(IEnumerable<BattleAction> actions)
         => BuildActionBlueprint(actions, out _, out _, out _);
@@ -625,9 +618,19 @@ public static partial class RemoteCardUsePatch
                         {
                             hasDamage = true;
                             DamageInfo info = da.DealingArgs.DamageInfo;
+                            var targetsList = new List<object>();
+                            if (da.DealingArgs.Targets != null)
+                            {
+                                foreach (var t in da.DealingArgs.Targets)
+                                {
+                                    targetsList.Add(SerializeUnit(t));
+                                }
+                            }
                             list.Add(new
                             {
                                 Kind = "Damage",
+                                Caster = SerializeUnit(da.DealingArgs.Source),
+                                Targets = targetsList.ToArray(),
                                 Damage = info.Damage,
                                 DamageType = info.DamageType.ToString(),
                                 IsAccuracy = info.IsAccuracy,
@@ -643,6 +646,8 @@ public static partial class RemoteCardUsePatch
                             list.Add(new
                             {
                                 Kind = "Heal",
+                                Caster = SerializeUnit(ha.Args.Source),
+                                Target = SerializeUnit(ha.Args.Target),
                                 Amount = ha.Args.Amount,
                                 HealType = ha.Args.HealType.ToString(),
                                 WaitTime = ha.WaitTime
@@ -662,6 +667,7 @@ public static partial class RemoteCardUsePatch
                             list.Add(new
                             {
                                 Kind = "ApplyStatusEffect",
+                                Target = SerializeUnit(args.Unit),
                                 EffectId = effect.Id,
                                 Level = args.Level,
                                 Duration = args.Duration,
@@ -670,6 +676,161 @@ public static partial class RemoteCardUsePatch
                                 WaitTime = args.WaitTime,
                                 StartAutoDecreasing = SafeGetAutoDecreasing(effect)
                             });
+                            break;
+                        }
+                    case PerformAction pa:
+                        {
+                            var paArgs = pa.Args;
+                            if (paArgs is PerformAction.ViewCardArgs vca)
+                            {
+                                list.Add(new {
+                                    Kind = "PerformAction",
+                                    Type = "ViewCard",
+                                    CardId = vca.Card?.Id,
+                                    Zone = vca.Zone.ToString()
+                                });
+                            }
+                            else if (paArgs is PerformAction.GunArgs ga)
+                            {
+                                list.Add(new {
+                                    Kind = "PerformAction",
+                                    Type = "Gun",
+                                    Source = SerializeUnit(ga.Source),
+                                    Target = SerializeUnit(ga.Target),
+                                    GunId = ga.GunId,
+                                    WaitTime = ga.WaitTime
+                                });
+                            }
+                            else if (paArgs is PerformAction.DollArgs daArg)
+                            {
+                                list.Add(new {
+                                    Kind = "PerformAction",
+                                    Type = "Doll",
+                                    Target = SerializeUnit(daArg.Target),
+                                    GunId = daArg.GunId,
+                                    WaitTime = daArg.WaitTime,
+                                    DebugString = daArg.DebugString
+                                });
+                            }
+                            else if (paArgs is PerformAction.AnimationArgs aa)
+                            {
+                                list.Add(new {
+                                    Kind = "PerformAction",
+                                    Type = "Animation",
+                                    Source = SerializeUnit(aa.Source),
+                                    AnimationName = aa.AnimationName,
+                                    WaitTime = aa.WaitTime,
+                                    SfxId = aa.SfxId,
+                                    SfxDelay = aa.SfxDelay,
+                                    ShakeLevel = aa.ShakeLevel
+                                });
+                            }
+                            else if (paArgs is PerformAction.SfxArgs sfx)
+                            {
+                                list.Add(new {
+                                    Kind = "PerformAction",
+                                    Type = "Sfx",
+                                    Id = sfx.Id,
+                                    Delay = sfx.Delay
+                                });
+                            }
+                            else if (paArgs is PerformAction.UiSoundArgs uiSound)
+                            {
+                                list.Add(new {
+                                    Kind = "PerformAction",
+                                    Type = "UiSound",
+                                    Id = uiSound.Id
+                                });
+                            }
+                            else if (paArgs is PerformAction.ChatArgs chat)
+                            {
+                                list.Add(new {
+                                    Kind = "PerformAction",
+                                    Type = "Chat",
+                                    Source = SerializeUnit(chat.Source),
+                                    Content = chat.Content,
+                                    ChatTime = chat.ChatTime,
+                                    Delay = chat.Delay,
+                                    WaitTime = chat.WaitTime,
+                                    Talk = chat.Talk
+                                });
+                            }
+                            else if (paArgs is PerformAction.SpellArgs spell)
+                            {
+                                list.Add(new {
+                                    Kind = "PerformAction",
+                                    Type = "Spell",
+                                    Source = SerializeUnit(spell.Source),
+                                    SpellName = spell.SpellName
+                                });
+                            }
+                            else if (paArgs is PerformAction.EffectArgs effect)
+                            {
+                                list.Add(new {
+                                    Kind = "PerformAction",
+                                    Type = "Effect",
+                                    Source = SerializeUnit(effect.Source),
+                                    EffectName = effect.EffectName,
+                                    Delay = effect.Delay,
+                                    WaitTime = effect.WaitTime,
+                                    SfxId = effect.SfxId,
+                                    SfxDelay = effect.SfxDelay,
+                                    EffectType = effect.EffectType.ToString()
+                                });
+                            }
+                            else if (paArgs is PerformAction.EffectMessageArgs ema)
+                            {
+                                list.Add(new {
+                                    Kind = "PerformAction",
+                                    Type = "EffectMessage",
+                                    Source = SerializeUnit(ema.Source),
+                                    EffectName = ema.EffectName,
+                                    Message = ema.Message
+                                });
+                            }
+                            else if (paArgs is PerformAction.SePopArgs sePop)
+                            {
+                                list.Add(new {
+                                    Kind = "PerformAction",
+                                    Type = "SePop",
+                                    Source = SerializeUnit(sePop.Source),
+                                    PopContent = sePop.PopContent
+                                });
+                            }
+                            else if (paArgs is PerformAction.SummonFriendArgs sfa)
+                            {
+                                list.Add(new {
+                                    Kind = "PerformAction",
+                                    Type = "SummonFriend",
+                                    CardId = sfa.Card?.Id
+                                });
+                            }
+                            else if (paArgs is PerformAction.TransformModelArgs tma)
+                            {
+                                list.Add(new {
+                                    Kind = "PerformAction",
+                                    Type = "TransformModel",
+                                    Source = SerializeUnit(tma.Source),
+                                    ModelName = tma.ModelName
+                                });
+                            }
+                            else if (paArgs is PerformAction.DeathAnimationArgs daa)
+                            {
+                                list.Add(new {
+                                    Kind = "PerformAction",
+                                    Type = "DeathAnimation",
+                                    Source = SerializeUnit(daa.Source)
+                                });
+                            }
+                            else if (paArgs is PerformAction.WaitArgs wait)
+                            {
+                                list.Add(new {
+                                    Kind = "PerformAction",
+                                    Type = "Wait",
+                                    Time = wait.Time,
+                                    Unscale = wait.Unscale
+                                });
+                            }
                             break;
                         }
                 }

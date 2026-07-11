@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text.Json;
 using LBoL.Core.Battle;
 using Microsoft.Extensions.DependencyInjection;
@@ -111,8 +111,16 @@ public static class NetworkEventHelper
         value = 0;
         if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement prop))
             return false;
-        if (prop.ValueKind == JsonValueKind.Number && prop.TryGetInt32(out value))
-            return true;
+        if (prop.ValueKind == JsonValueKind.Number)
+        {
+            if (prop.TryGetInt32(out value))
+                return true;
+            if (prop.TryGetDouble(out double dVal))
+            {
+                value = (int)Math.Round(dVal);
+                return true;
+            }
+        }
         if (prop.ValueKind == JsonValueKind.String && int.TryParse(prop.GetString(), out value))
             return true;
         return false;
@@ -122,8 +130,16 @@ public static class NetworkEventHelper
         value = 0;
         if (elem.ValueKind != JsonValueKind.Object || !elem.TryGetProperty(property, out JsonElement prop))
             return false;
-        if (prop.ValueKind == JsonValueKind.Number && prop.TryGetInt64(out value))
-            return true;
+        if (prop.ValueKind == JsonValueKind.Number)
+        {
+            if (prop.TryGetInt64(out value))
+                return true;
+            if (prop.TryGetDouble(out double dVal))
+            {
+                value = (long)Math.Round(dVal);
+                return true;
+            }
+        }
         if (prop.ValueKind == JsonValueKind.String && long.TryParse(prop.GetString(), out value))
             return true;
         return false;

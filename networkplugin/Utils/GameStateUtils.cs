@@ -15,17 +15,7 @@ namespace NetworkPlugin.Utils
     {
         private static GameMaster _cachedGameMaster;
 
-        private static GameMaster TryGetGameMaster()
-        {
-            if (_cachedGameMaster != null)
-            {
-                return _cachedGameMaster;
-            }
 
-            // 避免隐式创建新的单例实例。
-            _cachedGameMaster = UnityEngine.Object.FindObjectOfType<GameMaster>();
-            return _cachedGameMaster;
-        }
 
         public static PlayerUnit GetCurrentPlayer()
         {
@@ -35,6 +25,11 @@ namespace NetworkPlugin.Utils
 
         public static string GetCurrentPlayerId()
         {
+            string netId = NetworkIdentityTracker.GetSelfPlayerId();
+            if (!string.IsNullOrWhiteSpace(netId))
+            {
+                return netId;
+            }
             var player = GetCurrentPlayer();
             return player?.Id ?? "unknown_player";
         }
@@ -75,7 +70,11 @@ namespace NetworkPlugin.Utils
         public static bool TryGetCurrentGameRun(out GameRunController run, out string source)
         {
             // 优先走 GameMaster 当前局面。
-            GameMaster gm = TryGetGameMaster();
+            if (_cachedGameMaster == null)
+            {
+                _cachedGameMaster = UnityEngine.Object.FindObjectOfType<GameMaster>();
+            }
+            GameMaster gm = _cachedGameMaster;
             run = gm?.CurrentGameRun;
             if (run != null)
             {

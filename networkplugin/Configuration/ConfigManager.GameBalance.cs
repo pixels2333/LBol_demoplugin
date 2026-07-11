@@ -43,21 +43,6 @@ public partial class ConfigManager
     /// </summary>
     private void BindGameBalanceSettings(ConfigFile configFile)
     {
-        // 绑定难度平衡配置
-        BindDifficultyBalanceSettings(configFile);
-
-        // 绑定奖励分配配置
-        BindRewardDistributionSettings(configFile);
-
-        // 绑定战斗复活配置
-        BindBattleReviveSettings(configFile);
-    }
-
-    /// <summary>
-    /// 绑定难度平衡设置
-    /// </summary>
-    private void BindDifficultyBalanceSettings(ConfigFile configFile)
-    {
         // 敌方血量调整系数
         EnemyHpMultiplier = configFile.Bind(
             "GameBalance.Difficulty",
@@ -79,13 +64,7 @@ public partial class ConfigManager
             "1.2 = 1.2倍伤害\n" +
             "1.5 = 1.5倍伤害"
         );
-    }
 
-    /// <summary>
-    /// 绑定奖励分配设置
-    /// </summary>
-    private void BindRewardDistributionSettings(ConfigFile configFile)
-    {
         // 奖励金币调整系数
         RewardGoldMultiplier = configFile.Bind(
             "GameBalance.Rewards",
@@ -107,13 +86,8 @@ public partial class ConfigManager
             "1.5 = 1.5倍经验\n" +
             "2.0 = 2倍经验"
         );
-    }
 
-    /// <summary>
-    /// 绑定战斗结束自动复活设置。
-    /// </summary>
-    private void BindBattleReviveSettings(ConfigFile configFile)
-    {
+        // 绑定战斗结束自动复活设置。
         BattleAutoReviveHpPercent = configFile.Bind(
             "GameBalance.Battle",
             "BattleAutoReviveHpPercent",

@@ -1,9 +1,11 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
 using HarmonyLib;
 using LBoL.Base;
+using LBoL.Base.Extensions;
 using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
@@ -496,13 +498,20 @@ public static partial class RemoteCardUsePatch
                 switch (kind)
                 {
                     case "Damage":
-                        TryAddReplayDamage(list, item, caster, targetUnit);
+                        TryAddReplayDamage(list, item, caster, targetUnit, battle);
                         break;
                     case "Heal":
-                        TryAddReplayHeal(list, item, caster, targetUnit);
+                        TryAddReplayHeal(list, item, caster, targetUnit, battle);
                         break;
                     case "ApplyStatusEffect":
-                        TryAddReplayStatus(list, item, targetUnit);
+                        TryAddReplayStatus(list, item, targetUnit, battle);
+                        break;
+                    case "PerformAction":
+                        var pa = ReconstructPerformAction(item, battle);
+                        if (pa != null)
+                        {
+                            list.Add(pa);
+                        }
                         break;
                 }
             }
@@ -515,7 +524,7 @@ public static partial class RemoteCardUsePatch
         return list;
     }
 
-    private static void TryAddReplayDamage(List<BattleAction> list, JsonElement item, Unit caster, Unit target)
+    private static void TryAddReplayDamage(List<BattleAction> list, JsonElement item, Unit caster, Unit target, BattleController battle)
     {
         try
         {
@@ -546,7 +555,25 @@ public static partial class RemoteCardUsePatch
             string gunTypeStr = GetString(item, "GunType");
             GunType gunType = Enum.TryParse(gunTypeStr, out GunType parsed) ? parsed : GunType.Single;
 
-            list.Add(new DamageAction(caster, target, info, gunName, gunType));
+            Unit actionCaster = ResolveUnit(item.TryGetProperty("Caster", out JsonElement cEl) ? cEl : default, battle) ?? caster;
+            var targets = new List<Unit>();
+            if (item.TryGetProperty("Targets", out JsonElement targetsEl) && targetsEl.ValueKind == JsonValueKind.Array)
+            {
+                foreach (JsonElement tEl in targetsEl.EnumerateArray())
+                {
+                    Unit t = ResolveUnit(tEl, battle);
+                    if (t != null)
+                    {
+                        targets.Add(t);
+                    }
+                }
+            }
+            if (targets.Count == 0)
+            {
+                targets.Add(target);
+            }
+
+            list.Add(new DamageAction(actionCaster, targets, info, gunName, gunType));
         }
         catch
         {
@@ -554,7 +581,7 @@ public static partial class RemoteCardUsePatch
         }
     }
 
-    private static void TryAddReplayHeal(List<BattleAction> list, JsonElement item, Unit caster, Unit target)
+    private static void TryAddReplayHeal(List<BattleAction> list, JsonElement item, Unit caster, Unit target, BattleController battle)
     {
         try
         {
@@ -577,7 +604,11 @@ public static partial class RemoteCardUsePatch
             HealType healType = Enum.TryParse(typeStr, out HealType parsed) ? parsed : HealType.Normal;
 
             float waitTime = GetFloat(item, "WaitTime") ?? 0.2f;
-            list.Add(new HealAction(caster, target, amount.Value, healType, waitTime));
+
+            Unit actionCaster = ResolveUnit(item.TryGetProperty("Caster", out JsonElement cEl) ? cEl : default, battle) ?? caster;
+            Unit actionTarget = ResolveUnit(item.TryGetProperty("Target", out JsonElement tEl) ? tEl : default, battle) ?? target;
+
+            list.Add(new HealAction(actionCaster, actionTarget, amount.Value, healType, waitTime));
         }
         catch
         {
@@ -585,7 +616,7 @@ public static partial class RemoteCardUsePatch
         }
     }
 
-    private static void TryAddReplayStatus(List<BattleAction> list, JsonElement item, Unit target)
+    private static void TryAddReplayStatus(List<BattleAction> list, JsonElement item, Unit target, BattleController battle)
     {
         try
         {
@@ -608,7 +639,9 @@ public static partial class RemoteCardUsePatch
             float waitTime = GetFloat(item, "WaitTime") ?? 0f;
             bool startAutoDecreasing = GetBool(item, "StartAutoDecreasing") ?? true;
 
-            list.Add(new ApplyStatusEffectAction(effect.GetType(), target, level, duration, count, limit, waitTime, startAutoDecreasing));
+            Unit actionTarget = ResolveUnit(item.TryGetProperty("Target", out JsonElement tEl) ? tEl : default, battle) ?? target;
+
+            list.Add(new ApplyStatusEffectAction(effect.GetType(), actionTarget, level, duration, count, limit, waitTime, startAutoDecreasing));
         }
         catch
         {
@@ -757,6 +790,625 @@ public static partial class RemoteCardUsePatch
         {
             // ignored
         }
+    }
+
+    // Helper to resolve a Unit from serialized JSON representation
+    private static Unit ResolveUnit(JsonElement elem, BattleController battle)
+    {
+        if (elem.ValueKind != JsonValueKind.Object) return null;
+        string kind = GetString(elem, "Kind");
+        if (kind == "Player")
+        {
+            string playerId = GetString(elem, "PlayerId");
+            if (string.IsNullOrWhiteSpace(playerId)) return battle.Player;
+
+            string selfId;
+            lock (_syncLock)
+            {
+                selfId = _selfPlayerId;
+            }
+            if (string.Equals(playerId, selfId, StringComparison.Ordinal) || playerId == "__local__")
+            {
+                return battle.Player;
+            }
+
+            if (OtherPlayersOverlayPatch.TryGetRemoteCharacterUnitView(playerId, out UnitView view) && view?.Unit != null)
+            {
+                return view.Unit;
+            }
+
+            return battle.Player;
+        }
+        else if (kind == "Enemy")
+        {
+            string enemyId = GetString(elem, "EnemyId");
+            int? rootIndex = GetInt(elem, "RootIndex");
+            if (battle.EnemyGroup == null) return null;
+
+            foreach (EnemyUnit enemy in battle.EnemyGroup)
+            {
+                if (enemy != null && string.Equals(enemy.Id, enemyId, StringComparison.Ordinal))
+                {
+                    if (rootIndex == null || enemy.RootIndex == rootIndex.Value)
+                    {
+                        return enemy;
+                    }
+                }
+            }
+            if (rootIndex != null)
+            {
+                EnemyUnit byIndex = battle.GetEnemyByRootIndex(rootIndex.Value);
+                if (byIndex != null) return byIndex;
+            }
+            return null;
+        }
+        return null;
+    }
+
+    // Helper to reconstruct PerformAction subclasses from JSON
+    private static PerformAction ReconstructPerformAction(JsonElement elem, BattleController battle)
+    {
+        string type = GetString(elem, "Type");
+        switch (type)
+        {
+            case "ViewCard":
+                {
+                    string cardId = GetString(elem, "CardId");
+                    string zoneStr = GetString(elem, "Zone");
+                    Card card = Library.TryCreateCard(cardId, false, null);
+                    if (card != null && Enum.TryParse(zoneStr, out CardZone zone))
+                    {
+                        TrySetGameRun(card, battle.GameRun);
+                        TryEnterBattle(card, battle);
+                        return PerformAction.ViewCard(card);
+                    }
+                    break;
+                }
+            case "Gun":
+                {
+                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    Unit target = ResolveUnit(elem.GetProperty("Target"), battle);
+                    string gunId = GetString(elem, "GunId");
+                    float waitTime = GetFloat(elem, "WaitTime") ?? 0f;
+                    if (source != null && target != null)
+                    {
+                        return PerformAction.Gun(source, target, gunId, waitTime);
+                    }
+                    break;
+                }
+            case "Doll":
+                {
+                    Unit target = ResolveUnit(elem.GetProperty("Target"), battle);
+                    string gunId = GetString(elem, "GunId");
+                    float waitTime = GetFloat(elem, "WaitTime") ?? 0f;
+                    string debugString = GetString(elem, "DebugString") ?? "";
+                    if (target != null)
+                    {
+                        return PerformAction.Doll(null, target, gunId, waitTime, debugString);
+                    }
+                    break;
+                }
+            case "Animation":
+                {
+                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    string animationName = GetString(elem, "AnimationName");
+                    float waitTime = GetFloat(elem, "WaitTime") ?? 0f;
+                    string sfxId = GetString(elem, "SfxId");
+                    float sfxDelay = GetFloat(elem, "SfxDelay") ?? 0f;
+                    int shakeLevel = GetInt(elem, "ShakeLevel") ?? -1;
+                    if (source != null)
+                    {
+                        return PerformAction.Animation(source, animationName, waitTime, sfxId, sfxDelay, shakeLevel);
+                    }
+                    break;
+                }
+            case "Sfx":
+                {
+                    string id = GetString(elem, "Id");
+                    float delay = GetFloat(elem, "Delay") ?? 0f;
+                    return PerformAction.Sfx(id, delay);
+                }
+            case "UiSound":
+                {
+                    string id = GetString(elem, "Id");
+                    return PerformAction.UiSound(id);
+                }
+            case "Chat":
+                {
+                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    string content = GetString(elem, "Content");
+                    float chatTime = GetFloat(elem, "ChatTime") ?? 2f;
+                    float delay = GetFloat(elem, "Delay") ?? 0f;
+                    float waitTime = GetFloat(elem, "WaitTime") ?? 0f;
+                    bool talk = GetBool(elem, "Talk") ?? true;
+                    if (source != null)
+                    {
+                        return PerformAction.Chat(source, content, chatTime, delay, waitTime, talk);
+                    }
+                    break;
+                }
+            case "Spell":
+                {
+                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    string spellName = GetString(elem, "SpellName");
+                    if (source != null)
+                    {
+                        return PerformAction.Spell(source, spellName);
+                    }
+                    break;
+                }
+            case "Effect":
+                {
+                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    string effectName = GetString(elem, "EffectName");
+                    float delay = GetFloat(elem, "Delay") ?? 0f;
+                    float waitTime = GetFloat(elem, "WaitTime") ?? 0f;
+                    string sfxId = GetString(elem, "SfxId");
+                    float sfxDelay = GetFloat(elem, "SfxDelay") ?? 0f;
+                    string effectTypeStr = GetString(elem, "EffectType");
+                    if (source != null && Enum.TryParse(effectTypeStr, out PerformAction.EffectBehavior effectType))
+                    {
+                        return PerformAction.Effect(source, effectName, delay, sfxId, sfxDelay, effectType, waitTime);
+                    }
+                    break;
+                }
+            case "EffectMessage":
+                {
+                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    string effectName = GetString(elem, "EffectName");
+                    string message = GetString(elem, "Message");
+                    if (source != null)
+                    {
+                        return PerformAction.EffectMessage(source, effectName, message, null);
+                    }
+                    break;
+                }
+            case "SePop":
+                {
+                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    string popContent = GetString(elem, "PopContent");
+                    if (source != null)
+                    {
+                        return PerformAction.SePop(source, popContent);
+                    }
+                    break;
+                }
+            case "SummonFriend":
+                {
+                    string cardId = GetString(elem, "CardId");
+                    Card card = Library.TryCreateCard(cardId, false, null);
+                    if (card != null)
+                    {
+                        TrySetGameRun(card, battle.GameRun);
+                        TryEnterBattle(card, battle);
+                        return PerformAction.SummonFriend(card);
+                    }
+                    break;
+                }
+            case "TransformModel":
+                {
+                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    string modelName = GetString(elem, "ModelName");
+                    if (source != null)
+                    {
+                        return PerformAction.TransformModel(source, modelName);
+                    }
+                    break;
+                }
+            case "DeathAnimation":
+                {
+                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    if (source != null)
+                    {
+                        return PerformAction.DeathAnimation(source);
+                    }
+                    break;
+                }
+            case "Wait":
+                {
+                    float time = GetFloat(elem, "Time") ?? 0f;
+                    bool unscale = GetBool(elem, "Unscale") ?? false;
+                    return PerformAction.Wait(time, unscale);
+                }
+        }
+        return null;
+    }
+
+    // Play visuals sequentially on non-executing client via a coroutine
+    public static System.Collections.IEnumerator PlayVisualsCoroutine(JsonElement actionsEl, BattleController battle, bool skipStateVisuals)
+    {
+        if (actionsEl.ValueKind != JsonValueKind.Array)
+        {
+            yield break;
+        }
+
+        foreach (JsonElement actionEl in actionsEl.EnumerateArray())
+        {
+            if (actionEl.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            string kind = GetString(actionEl, "Kind");
+            if (kind == "PerformAction")
+            {
+                string type = GetString(actionEl, "Type");
+                yield return PlayPerformActionVisual(type, actionEl, battle);
+            }
+            else if (kind == "Damage" && !skipStateVisuals)
+            {
+                yield return PlayDamageVisual(actionEl, battle);
+            }
+            else if (kind == "Heal" && !skipStateVisuals)
+            {
+                yield return PlayHealVisual(actionEl, battle);
+            }
+            else if (kind == "ApplyStatusEffect" && !skipStateVisuals)
+            {
+                yield return PlayStatusEffectVisual(actionEl, battle);
+            }
+        }
+    }
+
+    private static System.Collections.IEnumerator PlayPerformActionVisual(string type, JsonElement elem, BattleController battle)
+    {
+        switch (type)
+        {
+            case "ViewCard":
+                {
+                    string cardId = GetString(elem, "CardId");
+                    string zoneStr = GetString(elem, "Zone");
+                    Card card = Library.TryCreateCard(cardId, false, null);
+                    if (card != null && Enum.TryParse(zoneStr, out CardZone zone))
+                    {
+                        yield return LBoL.Presentation.UI.UiManager.GetPanel<LBoL.Presentation.UI.Panels.PlayBoard>().CardUi.ViewCardFromZone(card, zone);
+                    }
+                    break;
+                }
+            case "Gun":
+                {
+                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    Unit target = ResolveUnit(elem.GetProperty("Target"), battle);
+                    string gunId = GetString(elem, "GunId");
+                    float waitTime = GetFloat(elem, "WaitTime") ?? 0f;
+                    UnitView sourceView = GameDirector.GetUnit(source);
+                    UnitView targetView = GameDirector.GetUnit(target);
+                    if (sourceView != null && targetView != null && !string.IsNullOrEmpty(gunId) && gunId != "Empty")
+                    {
+                        sourceView.Target = targetView;
+                        sourceView.Targets.Clear();
+                        sourceView.Targets.Add(targetView);
+                        targetView.ComingDamage = DamageInfo.Attack(0f, false);
+                        sourceView.PerformShoot(gunId);
+                        yield return new UnityEngine.WaitForSeconds(waitTime);
+                    }
+                    break;
+                }
+            case "Doll":
+                {
+                    float waitTime = GetFloat(elem, "WaitTime") ?? 0f;
+                    yield return new UnityEngine.WaitForSeconds(waitTime);
+                    break;
+                }
+            case "Animation":
+                {
+                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    string animationName = GetString(elem, "AnimationName");
+                    float waitTime = GetFloat(elem, "WaitTime") ?? 0f;
+                    string sfxId = GetString(elem, "SfxId");
+                    float sfxDelay = GetFloat(elem, "SfxDelay") ?? 0f;
+                    int shakeLevel = GetInt(elem, "ShakeLevel") ?? -1;
+
+                    if (!string.IsNullOrEmpty(sfxId))
+                    {
+                        LBoL.Presentation.AudioManager.PlaySfxDelay(sfxId, sfxDelay);
+                    }
+                    if (shakeLevel >= 0)
+                    {
+                        GameDirector.Shake(shakeLevel, true);
+                    }
+                    UnitView sourceView = GameDirector.GetUnit(source);
+                    if (sourceView != null && !string.IsNullOrEmpty(animationName))
+                    {
+                        sourceView.PlayAnimation(animationName);
+                        yield return new UnityEngine.WaitForSeconds(waitTime);
+                    }
+                    break;
+                }
+            case "Sfx":
+                {
+                    string sfxId = GetString(elem, "Id");
+                    float delay = GetFloat(elem, "Delay") ?? 0f;
+                    if (!string.IsNullOrEmpty(sfxId))
+                    {
+                        LBoL.Presentation.AudioManager.PlaySfxDelay(sfxId, delay);
+                    }
+                    break;
+                }
+            case "UiSound":
+                {
+                    string sfxId = GetString(elem, "Id");
+                    if (!string.IsNullOrEmpty(sfxId))
+                    {
+                        LBoL.Presentation.AudioManager.PlayUi(sfxId, false);
+                    }
+                    break;
+                }
+            case "Chat":
+                {
+                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    string content = GetString(elem, "Content");
+                    float chatTime = GetFloat(elem, "ChatTime") ?? 2f;
+                    float delay = GetFloat(elem, "Delay") ?? 0f;
+                    float waitTime = GetFloat(elem, "WaitTime") ?? 0f;
+                    bool talk = GetBool(elem, "Talk") ?? true;
+                    UnitView sourceView = GameDirector.GetUnit(source);
+                    if (sourceView != null && sourceView.Unit.IsAlive && !sourceView.IsHidden)
+                    {
+                        sourceView.Chat(content, chatTime, talk ? ((sourceView == GameDirector.Player) ? LBoL.Presentation.UI.Widgets.ChatWidget.CloudType.LeftTalk : LBoL.Presentation.UI.Widgets.ChatWidget.CloudType.RightTalk) : ((sourceView == GameDirector.Player) ? LBoL.Presentation.UI.Widgets.ChatWidget.CloudType.LeftThink : LBoL.Presentation.UI.Widgets.ChatWidget.CloudType.RightThink), delay);
+                        yield return new UnityEngine.WaitForSecondsRealtime(waitTime);
+                    }
+                    break;
+                }
+            case "Spell":
+                {
+                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    string spellName = GetString(elem, "SpellName");
+                    UnitView sourceView = GameDirector.GetUnit(source);
+                    if (sourceView != null && !string.IsNullOrEmpty(spellName))
+                    {
+                        yield return sourceView.SpellDeclare(spellName);
+                    }
+                    break;
+                }
+            case "Effect":
+                {
+                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    string effectName = GetString(elem, "EffectName");
+                    float delay = GetFloat(elem, "Delay") ?? 0f;
+                    float waitTime = GetFloat(elem, "WaitTime") ?? 0f;
+                    string sfxId = GetString(elem, "SfxId");
+                    float sfxDelay = GetFloat(elem, "SfxDelay") ?? 0f;
+                    string effectTypeStr = GetString(elem, "EffectType");
+                    UnitView sourceView = GameDirector.GetUnit(source);
+                    if (sourceView != null && !string.IsNullOrEmpty(effectName))
+                    {
+                        if (Enum.TryParse(effectTypeStr, out PerformAction.EffectBehavior effectType))
+                        {
+                            switch (effectType)
+                            {
+                                case PerformAction.EffectBehavior.PlayOneShot:
+                                    sourceView.PlayEffectOneShot(effectName, delay);
+                                    break;
+                                case PerformAction.EffectBehavior.Add:
+                                    sourceView.PlayEffectLoop(effectName);
+                                    break;
+                                case PerformAction.EffectBehavior.Remove:
+                                    sourceView.EndEffectLoop(effectName, true);
+                                    break;
+                                case PerformAction.EffectBehavior.DieOut:
+                                    sourceView.EndEffectLoop(effectName, false);
+                                    break;
+                            }
+                        }
+                        if (!string.IsNullOrEmpty(sfxId))
+                        {
+                            LBoL.Presentation.AudioManager.PlaySfxDelay(sfxId, sfxDelay);
+                        }
+                        yield return new UnityEngine.WaitForSeconds(waitTime);
+                    }
+                    break;
+                }
+            case "EffectMessage":
+                {
+                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    string effectName = GetString(elem, "EffectName");
+                    string message = GetString(elem, "Message");
+                    UnitView sourceView = GameDirector.GetUnit(source);
+                    if (sourceView != null && !string.IsNullOrEmpty(effectName))
+                    {
+                        sourceView.SendEffectMessage(effectName, message, null);
+                    }
+                    break;
+                }
+            case "SePop":
+                {
+                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    string popContent = GetString(elem, "PopContent");
+                    UnitView sourceView = GameDirector.GetUnit(source);
+                    if (sourceView != null && sourceView.Unit.IsAlive && !string.IsNullOrEmpty(popContent))
+                    {
+                        sourceView.ShowSePopup(popContent, StatusEffectType.Positive, 0, LBoL.Presentation.UI.Widgets.UnitInfoWidget.SePopType.Amulet);
+                    }
+                    break;
+                }
+            case "SummonFriend":
+                {
+                    string cardId = GetString(elem, "CardId");
+                    Card card = Library.TryCreateCard(cardId, false, null);
+                    if (card != null)
+                    {
+                        LBoL.Presentation.UI.UiManager.GetPanel<LBoL.Presentation.UI.Panels.PlayBoard>().CardUi.PlaySummonEffect(card);
+                        yield return new UnityEngine.WaitForSeconds(0.5f);
+                    }
+                    break;
+                }
+            case "TransformModel":
+                {
+                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    string modelName = GetString(elem, "ModelName");
+                    UnitView sourceView = GameDirector.GetUnit(source);
+                    if (sourceView != null && !string.IsNullOrEmpty(modelName))
+                    {
+                        yield return sourceView.LoadUnitModelAsync(modelName, false, null);
+                    }
+                    break;
+                }
+            case "DeathAnimation":
+                {
+                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    UnitView sourceView = GameDirector.GetUnit(source);
+                    if (sourceView != null)
+                    {
+                        sourceView.DeathAnimation();
+                    }
+                    break;
+                }
+            case "Wait":
+                {
+                    float time = GetFloat(elem, "Time") ?? 0f;
+                    bool unscale = GetBool(elem, "Unscale") ?? false;
+                    if (unscale)
+                    {
+                        yield return new UnityEngine.WaitForSecondsRealtime(time);
+                    }
+                    else
+                    {
+                        yield return new UnityEngine.WaitForSeconds(time);
+                    }
+                    break;
+                }
+        }
+    }
+
+    private static System.Collections.IEnumerator PlayDamageVisual(JsonElement actionEl, BattleController battle)
+    {
+        Unit source = ResolveUnit(actionEl.GetProperty("Caster"), battle);
+        if (source == null)
+        {
+            yield break;
+        }
+
+        var targets = new List<Unit>();
+        if (actionEl.TryGetProperty("Targets", out JsonElement targetsEl) && targetsEl.ValueKind == JsonValueKind.Array)
+        {
+            foreach (JsonElement tEl in targetsEl.EnumerateArray())
+            {
+                Unit t = ResolveUnit(tEl, battle);
+                if (t != null) targets.Add(t);
+            }
+        }
+
+        if (targets.Count == 0)
+        {
+            yield break;
+        }
+
+        string gunName = GetString(actionEl, "GunName") ?? "Instant";
+        string gunTypeStr = GetString(actionEl, "GunType");
+        GunType gunType = Enum.TryParse(gunTypeStr, out GunType parsed) ? parsed : GunType.Single;
+
+        UnitView sourceView = GameDirector.GetUnit(source);
+        var targetViews = new List<UnitView>();
+        foreach (var t in targets)
+        {
+            UnitView tv = GameDirector.GetUnit(t);
+            if (tv != null) targetViews.Add(tv);
+        }
+
+        if (sourceView != null && targetViews.Count > 0 && !string.IsNullOrEmpty(gunName) && gunName != "Empty" && gunName != "Instant")
+        {
+            var pairs = new List<ValueTuple<UnitView, DamageInfo>>();
+            foreach (var tv in targetViews)
+            {
+                pairs.Add(new ValueTuple<UnitView, DamageInfo>(tv, DamageInfo.Attack(0f, false)));
+            }
+
+            var method = Traverse.Create(typeof(GameDirector)).Method("GunShootAction", sourceView, pairs, gunName, gunType);
+            if (method.MethodExists())
+            {
+                yield return (System.Collections.IEnumerator)method.GetValue();
+            }
+        }
+        else
+        {
+            foreach (var tv in targetViews)
+            {
+                tv.PlayAnimation("hit");
+            }
+        }
+    }
+
+    private static System.Collections.IEnumerator PlayHealVisual(JsonElement actionEl, BattleController battle)
+    {
+        Unit target = ResolveUnit(actionEl.GetProperty("Target"), battle);
+        if (target == null)
+        {
+            yield break;
+        }
+
+        UnitView targetView = GameDirector.GetUnit(target);
+        if (targetView == null)
+        {
+            yield break;
+        }
+
+        int amount = GetInt(actionEl, "Amount") ?? 0;
+        bool large = amount > 12;
+
+        LBoL.Presentation.Effect.EffectManager.CreateEffect(large ? "UnitHealLarge" : "UnitHeal", targetView.EffectRoot, true);
+        LBoL.Presentation.AudioManager.PlayUi(large ? "HealLarge" : "Heal", false);
+        yield return new UnityEngine.WaitForSeconds(0.2f);
+    }
+
+    private static System.Collections.IEnumerator PlayStatusEffectVisual(JsonElement actionEl, BattleController battle)
+    {
+        Unit target = ResolveUnit(actionEl.GetProperty("Target"), battle);
+        if (target == null)
+        {
+            yield break;
+        }
+
+        UnitView targetView = GameDirector.GetUnit(target);
+        if (targetView == null)
+        {
+            yield break;
+        }
+
+        string effectId = GetString(actionEl, "EffectId");
+        if (string.IsNullOrEmpty(effectId))
+        {
+            yield break;
+        }
+
+        StatusEffect effect = Library.TryCreateStatusEffect(effectId);
+        if (effect == null)
+        {
+            yield break;
+        }
+
+        int level = GetInt(actionEl, "Level") ?? 0;
+        int duration = GetInt(actionEl, "Duration") ?? 0;
+        int count = GetInt(actionEl, "Count") ?? 0;
+        int num = 0;
+        if (effect.HasLevel) num = level;
+        else if (effect.HasDuration) num = duration;
+
+        targetView.ShowSePopup(effect.Name, effect.Type, num, LBoL.Presentation.UI.Widgets.UnitInfoWidget.SePopType.Add);
+
+        if (string.IsNullOrEmpty(effect.Config.SFX) || effect.Config.SFX == "Default")
+        {
+            switch (effect.Config.Type)
+            {
+                case StatusEffectType.Positive:
+                    LBoL.Presentation.AudioManager.PlaySfx("Buff", -1f);
+                    break;
+                case StatusEffectType.Negative:
+                    LBoL.Presentation.AudioManager.PlaySfx("Debuff", -1f);
+                    break;
+            }
+        }
+        else
+        {
+            LBoL.Presentation.AudioManager.PlaySfx(effect.Config.SFX, -1f);
+        }
+
+        if (!string.IsNullOrEmpty(effect.Config.VFX) && effect.Config.VFX != "Default")
+        {
+            LBoL.Presentation.Effect.EffectManager.CreateEffect(effect.Config.VFX, targetView.EffectRoot, 0f, null, false, true);
+        }
+
+        yield return new UnityEngine.WaitForSeconds(0.2f);
     }
 
     #endregion

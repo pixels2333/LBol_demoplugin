@@ -115,43 +115,7 @@ public class TradeSlotWidget : CommonButtonWidget
 		_capturedButtonStyle = true;
 	}
 
-	private void ApplyEmptyVisual()
-	{
-		var bg = ResolveBackgroundImage();
-		if (bg != null)
-		{
-			// 空槽位时彻底关闭渲染和射线命中区域。
-			bg.enabled = false;
-			bg.raycastTarget = false;
-			var c = bg.color;
-			c.a = 0f;
-			bg.color = c;
-		}
 
-		if (button != null)
-		{
-			CaptureButtonStyleOnce();
-			button.transition = Selectable.Transition.None;
-		}
-	}
-
-	private void ApplyFilledVisual()
-	{
-		var bg = ResolveBackgroundImage();
-		if (bg != null)
-		{
-			bg.enabled = true;
-			bg.raycastTarget = true;
-			// 透明度和染色交给 SetSelected() 处理。
-		}
-
-		if (button != null)
-		{
-			CaptureButtonStyleOnce();
-			button.transition = _originalTransition;
-			button.colors = _originalColors;
-		}
-	}
 
 	public void SetCard(Card card, Action<Card> removeCallback = null)
 	{
@@ -172,7 +136,20 @@ public class TradeSlotWidget : CommonButtonWidget
 			// 使用纹理时隐藏占位图标。
 			cardIcon?.gameObject.SetActive(false);
 
-			ApplyFilledVisual();
+			var bg = ResolveBackgroundImage();
+			if (bg != null)
+			{
+				bg.enabled = true;
+				bg.raycastTarget = true;
+				// 透明度和染色交给 SetSelected() 处理。
+			}
+
+			if (button != null)
+			{
+				CaptureButtonStyleOnce();
+				button.transition = _originalTransition;
+				button.colors = _originalColors;
+			}
 
 			// 启用按钮交互
 			if (button != null) button.interactable = true;
@@ -256,7 +233,23 @@ public class TradeSlotWidget : CommonButtonWidget
 		}
 
 		SetSelected(false);
-		ApplyEmptyVisual();
+		
+		var bg = ResolveBackgroundImage();
+		if (bg != null)
+		{
+			// 空槽位时彻底关闭渲染和射线命中区域。
+			bg.enabled = false;
+			bg.raycastTarget = false;
+			var c = bg.color;
+			c.a = 0f;
+			bg.color = c;
+		}
+
+		if (button != null)
+		{
+			CaptureButtonStyleOnce();
+			button.transition = Selectable.Transition.None;
+		}
 
 		lockedOverlay?.SetActive(false);
 	}

@@ -85,7 +85,24 @@ public class NetworkManager : INetworkManager
             MarkPlayersDirty_NoLock();
         }
 
-        TrySubscribeToClientEvents();
+        try
+        {
+            NetworkIdentityTracker.EnsureSubscribed(_networkClient);
+
+            // 复活同步补丁：监听所有对等端（尤其是房主）的复活事件
+            ResurrectSyncPatch.EnsureSubscribed(_networkClient);
+
+            // GapOptions 同步补丁：监听 GapOptions 相关事件
+            GapOptionsSyncPatch.EnsureSubscribed(_networkClient);
+
+            _networkClient.OnGameEventReceived += OnGameEventReceived;
+            _networkClient.OnConnectionStateChanged += OnConnectionStateChanged;
+        }
+        catch
+        {
+            // TODO: 应记录事件订阅失败的异常信息，便于排查初始化问题
+            // 订阅失败不应阻止 NetworkManager 初始化；后续事件会在下次 EnsureSubscribed 时重试
+        }
     }
 
     #endregion
@@ -311,27 +328,7 @@ public class NetworkManager : INetworkManager
     /// 在构造函数中调用一次即可；多次调用会被内部去重（EnsureSubscribed 模式）。
     /// 失败时静默处理，避免构造异常导致插件初始化中断。
     /// </remarks>
-    private void TrySubscribeToClientEvents()
-    {
-        try
-        {
-            NetworkIdentityTracker.EnsureSubscribed(_networkClient);
 
-            // 复活同步补丁：监听所有对等端（尤其是房主）的复活事件
-            ResurrectSyncPatch.EnsureSubscribed(_networkClient);
-
-            // GapOptions 同步补丁：监听 GapOptions 相关事件
-            GapOptionsSyncPatch.EnsureSubscribed(_networkClient);
-
-            _networkClient.OnGameEventReceived += OnGameEventReceived;
-            _networkClient.OnConnectionStateChanged += OnConnectionStateChanged;
-        }
-        catch
-        {
-            // TODO: 应记录事件订阅失败的异常信息，便于排查初始化问题
-            // 订阅失败不应阻止 NetworkManager 初始化；后续事件会在下次 EnsureSubscribed 时重试
-        }
-    }
 
     /// <summary>
     /// 连接状态变化回调。断连时清空本地玩家集合，防止残留过期数据。
@@ -526,7 +523,8 @@ public class NetworkManager : INetworkManager
             switch (eventType)
             {
                 case NetworkMessageTypes.Welcome:
-                    if (TryGetPlayersArrayFromWelcome(root, out JsonElement list))
+                    if ((root.TryGetProperty("Players", out JsonElement list) && list.ValueKind == JsonValueKind.Array) ||
+                        (root.TryGetProperty("PlayerList", out list) && list.ValueKind == JsonValueKind.Array))
                     {
                         UpdatePlayersFromArray(list);
                     }
@@ -689,23 +687,7 @@ public class NetworkManager : INetworkManager
     /// <param name="root">Welcome 消息的 JSON 根元素。</param>
     /// <param name="list">输出玩家数组。</param>
     /// <returns>成功提取到数组返回 true，否则 false。</returns>
-    private static bool TryGetPlayersArrayFromWelcome(JsonElement root, out JsonElement list)
-    {
-        // 优先尝试新协议属性名 "Players"
-        if (root.TryGetProperty("Players", out list) && list.ValueKind == JsonValueKind.Array)
-        {
-            return true;
-        }
 
-        // 回退兼容历史协议中的 "PlayerList"（早期版本或第三方实现可能仍使用此键）
-        if (root.TryGetProperty("PlayerList", out list) && list.ValueKind == JsonValueKind.Array)
-        {
-            return true;
-        }
-
-        list = default;
-        return false;
-    }
 
     /// <summary>
     /// 将事件负载安全转换为 <see cref="JsonElement"/>，支持已经是 JsonElement 的情况或 JSON 字符串。

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -1331,6 +1331,17 @@ public class EventSyncPatch
 
     private static IEnumerator WrapShowOptions(VnPanel panel, DialogOption[] options, IEnumerator original)
     {
+        // 先调用第一个 MoveNext() 让原版完成 UI 初始化。
+        bool hasNext = false;
+        try
+        {
+            hasNext = (original != null && original.MoveNext());
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[EventSync] WrapShowOptions MoveNext 异常: {ex.Message}");
+        }
+
         // 进入 ShowOptions 时，如果收到了远端选择但本地还没进入等待，可在此处自动落地。
         if (panel != null && options != null)
         {
@@ -1354,33 +1365,89 @@ public class EventSyncPatch
             ShouldBroadcastAgain(ref _lastDialogOptionsBroadcastTicks, TimeSpan.FromSeconds(2));
         }
 
-        while (original != null && original.MoveNext())
+        // 客机非投票事件：将选项设置为禁用状态，并修改文本提示
+        var client = serviceProvider?.GetService<INetworkClient>();
+        if (panel != null && client != null && client.IsConnected && !NetworkIdentityTracker.GetSelfIsHost())
         {
-            // 每帧推进时尝试落地 pending selection（直到成功）。
-            try
+            string eventId;
+            lock (SyncLock)
             {
-                string eventId;
-                lock (SyncLock)
-                {
-                    eventId = _activeEventId;
-                }
+                eventId = _activeEventId;
+            }
 
-                if (!string.IsNullOrWhiteSpace(eventId))
+            if (!string.IsNullOrWhiteSpace(eventId) && !EventVotingSystem.IsVotingRequired(eventId))
+            {
+                try
                 {
-                    TryApplyPendingSelectionNow(eventId);
-
-                    if (NetworkIdentityTracker.GetSelfIsHost() && ShouldBroadcastAgain(ref _lastDialogOptionsBroadcastTicks, TimeSpan.FromSeconds(2)))
+                    var widgets = AccessTools.Field(typeof(VnPanel), "optionWidgets")?.GetValue(panel) as LBoL.Presentation.UI.Widgets.OptionWidget[];
+                    if (widgets != null)
                     {
-                        TrySendDialogOptions(panel, options);
+                        for (int i = 0; i < widgets.Length; i++)
+                        {
+                            var widget = widgets[i];
+                            if (widget != null && widget.gameObject.activeSelf)
+                            {
+                                // 禁用按钮交互
+                                var btn = widget.GetComponentInChildren<UnityEngine.UI.Button>();
+                                if (btn != null)
+                                {
+                                    btn.interactable = false;
+                                }
+                                widget.enabled = false;
+
+                                // 追加禁用文本
+                                var tmp = widget.GetComponentInChildren<TextMeshProUGUI>();
+                                if (tmp != null)
+                                {
+                                    string suffix = " (等待房主选择,此选项已禁用)";
+                                    if (!tmp.text.Contains(suffix))
+                                    {
+                                        tmp.text += suffix;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
+                catch (Exception ex)
+                {
+                    Plugin.Logger?.LogError($"[EventSync] 禁用对话选项异常: {ex}");
+                }
             }
-            catch
-            {
-                // ignored
-            }
+        }
 
+        if (hasNext)
+        {
             yield return original.Current;
+
+            while (original != null && original.MoveNext())
+            {
+                // 每帧推进时尝试落地 pending selection（直到成功）。
+                try
+                {
+                    string eventId;
+                    lock (SyncLock)
+                    {
+                        eventId = _activeEventId;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(eventId))
+                    {
+                        TryApplyPendingSelectionNow(eventId);
+
+                        if (NetworkIdentityTracker.GetSelfIsHost() && ShouldBroadcastAgain(ref _lastDialogOptionsBroadcastTicks, TimeSpan.FromSeconds(2)))
+                        {
+                            TrySendDialogOptions(panel, options);
+                        }
+                    }
+                }
+                catch
+                {
+                    // ignored
+                }
+
+                yield return original.Current;
+            }
         }
     }
 

@@ -92,24 +92,7 @@ public class DeathPatches
     /// <returns>优先返回网络 PlayerId，取不到时回退到本地单位 Id。</returns>
     private static string ResolveLocalPlayerRegistryId(PlayerUnit player)
     {
-        string playerId = null;
-
-        try
-        {
-            NetworkIdentityTracker.EnsureSubscribed(NetworkClient);
-            playerId = NetworkIdentityTracker.GetSelfPlayerId();
-        }
-        catch
-        {
-            // ignored
-        }
-
-        if (!string.IsNullOrWhiteSpace(playerId))
-        {
-            return playerId;
-        }
-
-        return player?.Id;
+        return GameStateUtils.GetCurrentPlayerId();
     }
 
     /// <summary>
@@ -268,7 +251,7 @@ public class DeathPatches
             // 兜底：极少数情况下 Welcome 尚未到达，先退回本地 Id。
             if (string.IsNullOrWhiteSpace(playerId))
             {
-                playerId = player?.Id;
+                playerId = GameStateUtils.GetCurrentPlayerId();
             }
 
             var deathData = new
@@ -347,7 +330,7 @@ public class DeathPatches
 
             if (string.IsNullOrWhiteSpace(playerId))
             {
-                playerId = player?.Id;
+                playerId = GameStateUtils.GetCurrentPlayerId();
             }
 
             var resurrectionData = new

@@ -4,6 +4,7 @@ using System.Text.Json;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Utils;
+using NetworkPlugin.Network.NetworkPlayer;
 using UnityEngine;
 
 namespace NetworkPlugin.Patch.UI;
@@ -91,11 +92,55 @@ public static partial class OtherPlayersOverlayPatch
                 case NetworkMessageTypes.HostChanged:
                     HandleHostChanged(root);
                     break;
+                case NetworkMessageTypes.OnPlayerStateUpdate:
+                    HandlePlayerStateUpdate(root);
+                    break;
             }
         }
         catch (Exception ex)
         {
             Plugin.Logger?.LogDebug($"[OtherPlayersOverlayPatch] 处理网络事件失败: {eventType}, {ex.Message}");
+        }
+    }
+
+    private static void HandlePlayerStateUpdate(JsonElement root)
+    {
+        try
+        {
+            string playerId = GetString(root, "PlayerId");
+            if (string.IsNullOrWhiteSpace(playerId))
+            {
+                return;
+            }
+
+            if (!root.TryGetProperty("Player", out JsonElement playerElem) || playerElem.ValueKind != JsonValueKind.Object)
+            {
+                return;
+            }
+
+            int hp = GetInt(playerElem, "Hp", 0);
+            int maxHp = GetInt(playerElem, "MaxHp", 0);
+            int block = GetInt(playerElem, "Block", 0);
+            int shield = GetInt(playerElem, "Shield", 0);
+
+            INetworkManager manager = TryGetNetworkManager();
+            if (manager != null)
+            {
+                INetworkPlayer networkPlayer = manager.GetPlayer(playerId);
+                if (networkPlayer != null)
+                {
+                    networkPlayer.HP = hp;
+                    networkPlayer.maxHP = maxHp;
+                    networkPlayer.block = block;
+                    networkPlayer.shield = shield;
+
+                    MarkOverlayUiDirty();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogWarning($"[OtherPlayersOverlayPatch] HandlePlayerStateUpdate 失败: {ex.Message}");
         }
     }
 

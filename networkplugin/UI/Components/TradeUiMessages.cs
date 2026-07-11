@@ -16,11 +16,7 @@ internal static class TradeUiMessages
 {
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
-    private static bool IsDebugMode()
-    {
-        var cfg = ServiceProvider?.GetService<ConfigManager>();
-        return cfg?.DebugVirtualPlayerAiDefault?.Value == true || cfg?.DebugFakePlayersForTrade?.Value == true;
-    }
+
 
     /// <summary>
     /// 检查交易功能是否已启用且已连接到服务器
@@ -42,7 +38,7 @@ internal static class TradeUiMessages
         var client = serviceProvider?.GetService<INetworkClient>();
         if (client == null || !client.IsConnected)
         {
-            if (IsDebugMode())
+            if (config?.DebugVirtualPlayerAiDefault?.Value == true || config?.DebugFakePlayersForTrade?.Value == true)
             {
                 return true;
             }

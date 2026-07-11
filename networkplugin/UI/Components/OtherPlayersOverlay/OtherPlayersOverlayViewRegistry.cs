@@ -411,6 +411,26 @@ public static partial class OtherPlayersOverlayPatch
         return false;
     }
 
+    internal static string GetPlayerIdFromUnit(PlayerUnit pu)
+    {
+        if (pu == null)
+        {
+            return null;
+        }
+
+        lock (_syncLock)
+        {
+            foreach (var kv in _remoteCharacters)
+            {
+                if (kv.Value?.View != null && ReferenceEquals(kv.Value.View.Unit, pu))
+                {
+                    return kv.Key;
+                }
+            }
+        }
+        return null;
+    }
+
     internal static bool TryGetRemoteCharacterUnitView(string playerId, out UnitView view)
     {
         view = null;

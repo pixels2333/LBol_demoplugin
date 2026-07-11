@@ -68,7 +68,41 @@ public class NetworkStatusIndicator : MonoBehaviour
     /// </summary>
     private void SetupUI()
     {
-        reconnectButton?.onClick.AddListener(OnReconnectButtonClicked);
+        reconnectButton?.onClick.AddListener(() =>
+        {
+            if (_networkClient == null)
+            {
+                return;
+            }
+
+            if (_networkClient.IsConnected)
+            {
+                AddSystemLog("已处于连接状态");
+                return;
+            }
+
+            string host = Plugin.ConfigManager?.ServerIP?.Value;
+            int port = Plugin.ConfigManager?.ServerPort?.Value ?? 0;
+
+            if (string.IsNullOrWhiteSpace(host) || port <= 0)
+            {
+                AddSystemLog("重连失败：未配置 ServerIP/ServerPort");
+                return;
+            }
+
+            try
+            {
+                _networkClient.Start();
+                _networkClient.EnableAutoReconnect(true);
+                _networkClient.ConnectToServer(host, port);
+                AddSystemLog($"正在尝试重新连接: {host}:{port} ...");
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogError($"[NetworkStatusIndicator] 重连失败: {ex.Message}");
+                AddSystemLog("重连失败，请检查网络设置");
+            }
+        });
 
         connectionPanel?.SetActive(true);
 
@@ -80,7 +114,23 @@ public class NetworkStatusIndicator : MonoBehaviour
     /// </summary>
     private void UpdateConnectionStatus()
     {
-        var currentState = GetConnectionState();
+        ConnectionState currentState;
+        if (_networkClient == null)
+        {
+            currentState = ConnectionState.Disconnected;
+        }
+        else if (_networkClient.IsConnected)
+        {
+            currentState = ConnectionState.Connected;
+        }
+        else if (_networkClient.IsConnecting)
+        {
+            currentState = ConnectionState.Connecting;
+        }
+        else
+        {
+            currentState = ConnectionState.Disconnected;
+        }
 
         if (currentState != _lastConnectionState)
         {
@@ -88,31 +138,12 @@ public class NetworkStatusIndicator : MonoBehaviour
             _lastConnectionState = currentState;
         }
 
-        UpdatePlayerCount();
+        if (playerCountText != null)
+        {
+            int playerCount = GetConnectedPlayerCount();
+            playerCountText.text = $"玩家: {playerCount}";
+        }
     } // 更新连接状态显示，检测状态变化并更新UI和玩家数量
-
-    /// <summary>
-    /// 获取当前连接状态
-    /// </summary>
-    private ConnectionState GetConnectionState()
-    {
-        if (_networkClient == null)
-        {
-            return ConnectionState.Disconnected;
-        }
-
-        if (_networkClient.IsConnected)
-        {
-            return ConnectionState.Connected;
-        }
-
-        if (_networkClient.IsConnecting)
-        {
-            return ConnectionState.Connecting;
-        }
-
-        return ConnectionState.Disconnected;
-    } // 获取当前连接状态，根据网络客户端属性返回相应的状态枚举
 
     /// <summary>
     /// 更新连接状态UI
@@ -184,19 +215,7 @@ public class NetworkStatusIndicator : MonoBehaviour
     private int GetPingValue()
         => _networkClient?.Ping ?? 0; // 获取网络延迟值，从网络客户端获取实际延迟或返回 0
 
-    /// <summary>
-    /// 更新玩家数量显示
-    /// </summary>
-    private void UpdatePlayerCount()
-    {
-        if (playerCountText == null)
-        {
-            return;
-        }
 
-        int playerCount = GetConnectedPlayerCount();
-        playerCountText.text = $"玩家: {playerCount}";
-    } // 更新玩家数量显示，获取连接玩家数量并更新UI文本
 
     /// <summary>
     /// 更新 NAT 状态显示
@@ -235,44 +254,7 @@ public class NetworkStatusIndicator : MonoBehaviour
         return NetworkIdentityTracker.GetPlayerIdsSnapshot().Count;
     } // 获取连接的玩家数量，根据网络连接状态返回玩家数量
 
-    /// <summary>
-    /// 处理重连按钮点击
-    /// </summary>
-    private void OnReconnectButtonClicked()
-    {
-        if (_networkClient == null)
-        {
-            return;
-        }
 
-        if (_networkClient.IsConnected)
-        {
-            AddSystemLog("已处于连接状态");
-            return;
-        }
-
-        string host = Plugin.ConfigManager?.ServerIP?.Value;
-        int port = Plugin.ConfigManager?.ServerPort?.Value ?? 0;
-
-        if (string.IsNullOrWhiteSpace(host) || port <= 0)
-        {
-            AddSystemLog("重连失败：未配置 ServerIP/ServerPort");
-            return;
-        }
-
-        try
-        {
-            _networkClient.Start();
-            _networkClient.EnableAutoReconnect(true);
-            _networkClient.ConnectToServer(host, port);
-            AddSystemLog($"正在尝试重新连接: {host}:{port} ...");
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[NetworkStatusIndicator] 重连失败: {ex.Message}");
-            AddSystemLog("重连失败，请检查网络设置");
-        }
-    } // 处理重连按钮点击，尝试重新连接网络并记录状态
 
     /// <summary>
     /// 添加系统日志到UI
@@ -286,15 +268,6 @@ public class NetworkStatusIndicator : MonoBehaviour
     /// 显示连接详情面板
     /// </summary>
     public void ShowConnectionDetails()
-    {
-        string details = GenerateConnectionDetails();
-        Plugin.Logger?.LogInfo($"[NetworkStatus] Connection Details:\n{details}");
-    } // 显示连接详情面板，生成并输出详细的网络连接信息
-
-    /// <summary>
-    /// 生成连接详情
-    /// </summary>
-    private string GenerateConnectionDetails()
     {
         StringBuilder details = new StringBuilder();
         details.AppendLine("=== 网络连接详情 ===");
@@ -311,8 +284,9 @@ public class NetworkStatusIndicator : MonoBehaviour
         details.AppendLine(NatTraversal.GetStatusSummary());
         details.AppendLine(NatTraversal.GetConnectionStrategySummary());
 
-        return details.ToString();
-    } // 生成连接详情字符串，包含状态、延迟、地址和NAT信息
+        string connectionDetailsStr = details.ToString();
+        Plugin.Logger?.LogInfo($"[NetworkStatus] Connection Details:\n{connectionDetailsStr}");
+    } // 显示连接详情面板，生成并输出详细的网络连接信息
 
     /// <summary>
     /// 获取连接状态字符串

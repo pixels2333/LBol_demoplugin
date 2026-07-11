@@ -15,15 +15,6 @@ public partial class ConfigManager
     /// <param name="configFile">BepInEx配置文件实例</param>
     public ConfigManager(ConfigFile configFile)
     {
-        BindConfigurations(configFile);
-    }
-
-    /// <summary>
-    /// 绑定所有配置项到BepInEx配置系统
-    /// </summary>
-    /// <param name="configFile">BepInEx配置文件实例</param>
-    private void BindConfigurations(ConfigFile configFile)
-    {
         // 绑定功能开关配置
         BindFeatureToggles(configFile);
 
