@@ -19,4 +19,9 @@
   <ItemGroup>
     <ProjectReference Include="..\NetWorkPlugin.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Reference Include="..\..\lib\*.dll">
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
 </Project>

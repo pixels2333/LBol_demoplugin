@@ -5,6 +5,7 @@ using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Utils;
 using NetworkPlugin.Network.NetworkPlayer;
+using HarmonyLib;
 using UnityEngine;
 
 namespace NetworkPlugin.Patch.UI;
@@ -122,6 +123,9 @@ public static partial class OtherPlayersOverlayPatch
             int maxHp = GetInt(playerElem, "MaxHp", 0);
             int block = GetInt(playerElem, "Block", 0);
             int shield = GetInt(playerElem, "Shield", 0);
+            int power = GetInt(playerElem, "Power", 0);
+            int powerPerLevel = GetInt(playerElem, "PowerPerLevel", 100);
+            int maxPowerLevel = GetInt(playerElem, "MaxPowerLevel", 3);
 
             INetworkManager manager = TryGetNetworkManager();
             if (manager != null)
@@ -133,6 +137,19 @@ public static partial class OtherPlayersOverlayPatch
                     networkPlayer.maxHP = maxHp;
                     networkPlayer.block = block;
                     networkPlayer.shield = shield;
+
+                    if (networkPlayer is RemoteNetworkPlayer remotePlayer)
+                    {
+                        remotePlayer.Power = power;
+                        remotePlayer.PowerPerLevel = powerPerLevel;
+                        remotePlayer.MaxPowerLevel = maxPowerLevel;
+                    }
+                    else
+                    {
+                        Traverse.Create(networkPlayer).Property("Power").SetValue(power);
+                        Traverse.Create(networkPlayer).Property("PowerPerLevel").SetValue(powerPerLevel);
+                        Traverse.Create(networkPlayer).Property("MaxPowerLevel").SetValue(maxPowerLevel);
+                    }
 
                     MarkOverlayUiDirty();
                 }

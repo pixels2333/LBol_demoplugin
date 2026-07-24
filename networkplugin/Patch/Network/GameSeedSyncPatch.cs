@@ -44,6 +44,7 @@ public static class GameSeedSyncPatch
     private static List<string>? _cachedStageTypeNames;
     private static string? _cachedDebutAdventureTypeName;
     private static string? _cachedHostPlayerId;
+    private static List<string>? _cachedJadeBoxIds;
 
     private static bool _subscribed;
     private static INetworkClient? _subscribedClient;
@@ -76,7 +77,8 @@ public static class GameSeedSyncPatch
         out GameMode gameMode,
         out bool showRandomResult,
         out List<string> stageTypeNames,
-        out string? debutAdventureTypeName)
+        out string? debutAdventureTypeName,
+        out List<string> jadeBoxIds)
     {
         lock (CacheLock)
         {
@@ -87,6 +89,7 @@ public static class GameSeedSyncPatch
             showRandomResult = default;
             stageTypeNames = new();
             debutAdventureTypeName = null;
+            jadeBoxIds = new();
 
             if (!_cachedRootSeed.HasValue ||
                 _cachedDifficulty == null ||
@@ -105,6 +108,7 @@ public static class GameSeedSyncPatch
             showRandomResult = _cachedShowRandomResult ?? false;
             stageTypeNames = new List<string>(_cachedStageTypeNames);
             debutAdventureTypeName = _cachedDebutAdventureTypeName;
+            jadeBoxIds = _cachedJadeBoxIds != null ? new List<string>(_cachedJadeBoxIds) : new();
             return true;
         }
     }
@@ -176,6 +180,20 @@ public static class GameSeedSyncPatch
             // ignored
         }
 
+        List<string> jadeBoxIds = new();
+        try
+        {
+            foreach (var jb in run.JadeBoxes)
+            {
+                if (!string.IsNullOrWhiteSpace(jb.Id))
+                    jadeBoxIds.Add(jb.Id);
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
         string hostId = NetworkIdentityTracker.GetSelfPlayerId();
         if (string.IsNullOrWhiteSpace(hostId))
         {
@@ -194,6 +212,7 @@ public static class GameSeedSyncPatch
             ShowRandomResult = run.ShowRandomResult,
             StageTypeNames = stageTypeNames,
             DebutAdventureTypeName = debutAdventureTypeName,
+            JadeBoxIds = jadeBoxIds,
         };
 
         client.SendGameEventData(NetworkMessageTypes.OnGameStart, payload);
@@ -268,6 +287,7 @@ public static class GameSeedSyncPatch
             List<string> stageTypeNames = GetStringList(root, "StageTypeNames");
             string? debutAdventureTypeName = NetworkEventHelper.GetString(root, "DebutAdventureTypeName");
             string? hostPlayerId = NetworkEventHelper.GetString(root, "HostPlayerId");
+            List<string> jadeBoxIds = GetStringList(root, "JadeBoxIds");
 
             lock (CacheLock)
             {
@@ -279,6 +299,7 @@ public static class GameSeedSyncPatch
                 _cachedStageTypeNames = stageTypeNames;
                 _cachedDebutAdventureTypeName = debutAdventureTypeName;
                 _cachedHostPlayerId = hostPlayerId;
+                _cachedJadeBoxIds = jadeBoxIds;
             }
 
             Plugin.Logger?.LogInfo($"[GameSeedSync] 已缓存房主种子: RootSeed={rootSeed}, HostId={hostPlayerId}");

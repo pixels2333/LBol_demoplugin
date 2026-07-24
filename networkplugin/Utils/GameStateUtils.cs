@@ -15,15 +15,30 @@ namespace NetworkPlugin.Utils
     {
         private static GameMaster _cachedGameMaster;
 
+        public static Func<PlayerUnit> GetCurrentPlayerProvider { get; set; } = DefaultGetCurrentPlayer;
+        public static Func<string> GetCurrentPlayerIdProvider { get; set; } = DefaultGetCurrentPlayerId;
+        public static Func<string> GetCurrentPlayerNameProvider { get; set; } = DefaultGetCurrentPlayerName;
+        public static Func<GameRunController> GetCurrentGameRunProvider { get; set; } = DefaultGetCurrentGameRun;
+        public static Func<bool> IsHostProvider { get; set; } = DefaultIsHost;
 
+        public static void ResetProviders()
+        {
+            GetCurrentPlayerProvider = DefaultGetCurrentPlayer;
+            GetCurrentPlayerIdProvider = DefaultGetCurrentPlayerId;
+            GetCurrentPlayerNameProvider = DefaultGetCurrentPlayerName;
+            GetCurrentGameRunProvider = DefaultGetCurrentGameRun;
+            IsHostProvider = DefaultIsHost;
+        }
 
-        public static PlayerUnit GetCurrentPlayer()
+        public static PlayerUnit GetCurrentPlayer() => GetCurrentPlayerProvider();
+        private static PlayerUnit DefaultGetCurrentPlayer()
         {
             var gameRun = GetCurrentGameRun();
             return gameRun?.Player;
         }
 
-        public static string GetCurrentPlayerId()
+        public static string GetCurrentPlayerId() => GetCurrentPlayerIdProvider();
+        private static string DefaultGetCurrentPlayerId()
         {
             string netId = NetworkIdentityTracker.GetSelfPlayerId();
             if (!string.IsNullOrWhiteSpace(netId))
@@ -34,7 +49,8 @@ namespace NetworkPlugin.Utils
             return player?.Id ?? "unknown_player";
         }
 
-        public static string GetCurrentPlayerName()
+        public static string GetCurrentPlayerName() => GetCurrentPlayerNameProvider();
+        private static string DefaultGetCurrentPlayerName()
         {
             PlayerUnit player = GetCurrentPlayer();
             if (player != null)
@@ -61,7 +77,8 @@ namespace NetworkPlugin.Utils
             return GetCurrentPlayerId();
         }
 
-        public static GameRunController GetCurrentGameRun()
+        public static GameRunController GetCurrentGameRun() => GetCurrentGameRunProvider();
+        private static GameRunController DefaultGetCurrentGameRun()
         {
             _ = TryGetCurrentGameRun(out GameRunController run, out _);
             return run;
@@ -126,7 +143,8 @@ namespace NetworkPlugin.Utils
             return false;
         }
 
-        public static bool IsHost()
+        public static bool IsHost() => IsHostProvider();
+        private static bool DefaultIsHost()
         {
             try
             {

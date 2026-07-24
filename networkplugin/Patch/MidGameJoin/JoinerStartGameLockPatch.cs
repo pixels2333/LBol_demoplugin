@@ -69,7 +69,7 @@ public static class JoinerStartGameLockPatch
         IEnumerable<Card> deck,
         ref IEnumerable<Stage> stages,
         ref Type debutAdventureType,
-        IEnumerable<JadeBox> jadeBoxes,
+        ref IEnumerable<JadeBox> jadeBoxes,
         ref GameMode gameMode,
         ref bool showRandomResult)
     {
@@ -92,21 +92,21 @@ public static class JoinerStartGameLockPatch
             MapCatchUpOrchestrator catchUp = TryGetCatchUp();
             if (catchUp == null)
             {
-                // 无 MapCatchUpOrchestrator（非中途加入场景），尝试用 GameSeedSyncPatch 缓存的房主种子兜底。
-                TryApplyCachedHostSeed(ref seed);
+                // 无 MapCatchUpOrchestrator（非中途加入场景），尝试用 GameSeedSyncPatch 缓存的房主配置兜底。
+                TryApplyCachedHostSeed(ref seed, ref difficulty, ref puzzles, ref stages, ref debutAdventureType, ref jadeBoxes, ref gameMode, ref showRandomResult);
                 return;
             }
 
             if (!catchUp.TryGetPendingFullSnapshot(out FullStateSnapshot snapshot))
             {
-                // 无 pending FullStateSnapshot（正常联机开始），用 GameSeedSyncPatch 缓存的房主种子兜底。
-                TryApplyCachedHostSeed(ref seed);
+                // 无 pending FullStateSnapshot（正常联机开始），用 GameSeedSyncPatch 缓存的房主配置兜底。
+                TryApplyCachedHostSeed(ref seed, ref difficulty, ref puzzles, ref stages, ref debutAdventureType, ref jadeBoxes, ref gameMode, ref showRandomResult);
                 return;
             }
 
             if (snapshot?.GameState == null)
             {
-                TryApplyCachedHostSeed(ref seed);
+                TryApplyCachedHostSeed(ref seed, ref difficulty, ref puzzles, ref stages, ref debutAdventureType, ref jadeBoxes, ref gameMode, ref showRandomResult);
                 return;
             }
 
@@ -118,8 +118,8 @@ public static class JoinerStartGameLockPatch
                 snapshot.GameState.StageTypeNames == null ||
                 snapshot.GameState.StageTypeNames.Count == 0)
             {
-                // FullStateSnapshot 不完整，尝试用缓存种子兜底。
-                TryApplyCachedHostSeed(ref seed);
+                // FullStateSnapshot 不完整，尝试用缓存配置兜底。
+                TryApplyCachedHostSeed(ref seed, ref difficulty, ref puzzles, ref stages, ref debutAdventureType, ref jadeBoxes, ref gameMode, ref showRandomResult);
                 return;
             }
 
@@ -237,24 +237,52 @@ public static class JoinerStartGameLockPatch
     }
 
     /// <summary>
-    /// 正常联机开始游戏（无 FullStateSnapshot）时，用 GameSeedSyncPatch 缓存的房主种子覆盖 seed，
-    /// 使客户端的 RootSeed 与房主一致，保证 SpawnedEnemyManager 的确定性敌人生成种子相同。
+    /// 正常联机开始游戏（无 FullStateSnapshot）时，用 GameSeedSyncPatch 缓存的房主配置覆盖
+    /// seed/difficulty/puzzles/gameMode/showRandomResult/stages/debutAdventure/jadeBoxes，
+    /// 使客户端的开局配置与房主完全一致。
     /// </summary>
-    private static void TryApplyCachedHostSeed(ref ulong? seed)
+    private static void TryApplyCachedHostSeed(
+        ref ulong? seed,
+        ref GameDifficulty difficulty,
+        ref PuzzleFlag puzzles,
+        ref IEnumerable<Stage> stages,
+        ref Type debutAdventureType,
+        ref IEnumerable<JadeBox> jadeBoxes,
+        ref GameMode gameMode,
+        ref bool showRandomResult)
     {
         try
         {
             if (GameSeedSyncPatch.TryGetCachedHostConfig(
                 out ulong rootSeed,
-                out GameDifficulty difficulty,
-                out PuzzleFlag puzzles,
-                out GameMode gameMode,
-                out bool showRandomResult,
+                out GameDifficulty cachedDifficulty,
+                out PuzzleFlag cachedPuzzles,
+                out GameMode cachedGameMode,
+                out bool cachedShowRandomResult,
                 out List<string> stageTypeNames,
-                out string? debutAdventureTypeName))
+                out string? debutAdventureTypeName,
+                out List<string> jadeBoxIds))
             {
                 seed = rootSeed;
-                Plugin.Logger?.LogInfo($"[JoinerStartGameLock] 使用缓存房主种子: RootSeed={rootSeed}");
+                difficulty = cachedDifficulty;
+                puzzles = cachedPuzzles;
+                gameMode = cachedGameMode;
+                showRandomResult = cachedShowRandomResult;
+
+                stages = BuildStages(stageTypeNames, stages);
+
+                if (!string.IsNullOrWhiteSpace(debutAdventureTypeName))
+                {
+                    Type resolved = TryResolveDebutAdventureType(debutAdventureTypeName);
+                    if (resolved != null)
+                    {
+                        debutAdventureType = resolved;
+                    }
+                }
+
+                jadeBoxes = BuildJadeBoxes(jadeBoxIds, jadeBoxes);
+
+                Plugin.Logger?.LogInfo($"[JoinerStartGameLock] 使用缓存房主配置: RootSeed={rootSeed}, Difficulty={cachedDifficulty}, Mode={cachedGameMode}, JadeBoxes={jadeBoxIds.Count}");
             }
             else if (GameSeedSyncPatch.TryGetCachedHostSeed(out ulong cachedSeed))
             {
@@ -265,6 +293,38 @@ public static class JoinerStartGameLockPatch
         catch
         {
             // ignored
+        }
+    }
+
+    private static IEnumerable<JadeBox> BuildJadeBoxes(List<string> jadeBoxIds, IEnumerable<JadeBox> fallback)
+    {
+        try
+        {
+            if (jadeBoxIds == null || jadeBoxIds.Count == 0)
+            {
+                return fallback;
+            }
+
+            List<JadeBox> result = new();
+            foreach (string id in jadeBoxIds)
+            {
+                if (string.IsNullOrWhiteSpace(id))
+                {
+                    continue;
+                }
+
+                JadeBox jb = Library.TryCreateJadeBox(id);
+                if (jb != null)
+                {
+                    result.Add(jb);
+                }
+            }
+
+            return result.Count > 0 ? result : fallback;
+        }
+        catch
+        {
+            return fallback;
         }
     }
 }

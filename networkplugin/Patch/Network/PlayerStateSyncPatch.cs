@@ -78,6 +78,9 @@ public static class PlayerStateSyncPatch
             player?.Shield,
             player?.IsAlive,
             Status = player?.Status.ToString(),
+            Power = player?.Power,
+            PowerPerLevel = player?.Us != null ? (int?)player.PowerPerLevel : null,
+            MaxPowerLevel = player?.Us != null ? (int?)player.Us.MaxPowerLevel : null,
         };
 
     #endregion
@@ -358,12 +361,76 @@ public static class PlayerStateSyncPatch
         }
     }
 
+    [HarmonyPatch(typeof(PlayerUnit), "set_Power")]
+    private static class PlayerUnit_SetPower_Sync
+    {
+        [HarmonyPrefix]
+        public static void Prefix(PlayerUnit __instance, ref int __state)
+        {
+            __state = int.MinValue;
+            try
+            {
+                if (!ShouldSend() || RemoteCardUsePatch.IsInRemoteCardPipeline)
+                {
+                    return;
+                }
+
+                if (__instance != GameStateUtils.GetCurrentPlayer())
+                {
+                    return;
+                }
+
+                __state = __instance.Power;
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+
+        [HarmonyPostfix]
+        public static void Postfix(PlayerUnit __instance, int __state)
+        {
+            try
+            {
+                if (!ShouldSend() || RemoteCardUsePatch.IsInRemoteCardPipeline)
+                {
+                    return;
+                }
+
+                if (__instance != GameStateUtils.GetCurrentPlayer())
+                {
+                    return;
+                }
+
+                if (__state == int.MinValue || __state == __instance.Power)
+                {
+                    return;
+                }
+
+                Send(NetworkMessageTypes.OnPlayerStateUpdate, new
+                {
+                    Timestamp = DateTime.Now.Ticks,
+                    UpdateType = "PowerChanged",
+                    PlayerId = NetworkIdentityTracker.GetSelfPlayerId(),
+                    Before = new { Power = __state },
+                    After = new { Power = __instance.Power },
+                    Player = SnapshotPlayer(__instance),
+                });
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogError($"[PlayerStateSync] set_Power 后置同步失败: {ex.Message}");
+            }
+        }
+    }
+
     #endregion
 
     #region 金钱变化同步
 
     [HarmonyPatch(typeof(GameRunController), nameof(GameRunController.GainMoney))]
-    private static class GameRun_GainMoney_Sync
+    internal static class GameRun_GainMoney_Sync
     {
         /// <summary>
         /// 前置：记录变更前的金钱。
@@ -432,7 +499,7 @@ public static class PlayerStateSyncPatch
     }
 
     [HarmonyPatch(typeof(GameRunController), nameof(GameRunController.ConsumeMoney))]
-    private static class GameRun_ConsumeMoney_Sync
+    internal static class GameRun_ConsumeMoney_Sync
     {
         /// <summary>
         /// 前置：记录变更前的金钱。
@@ -501,7 +568,7 @@ public static class PlayerStateSyncPatch
     }
 
     [HarmonyPatch(typeof(GameRunController), nameof(GameRunController.LoseMoney))]
-    private static class GameRun_LoseMoney_Sync
+    internal static class GameRun_LoseMoney_Sync
     {
         /// <summary>
         /// 前置：记录变更前的金钱。

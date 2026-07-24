@@ -263,7 +263,7 @@ public class NetworkClient : INetworkClient
                 Plugin.Logger?.LogWarning($"[客户端] 通知同步管理器失败: {ex.Message}");
             }
 
-            // 获取当前玩家信息，优先从 NetworkManager 取，回退到注入的 _networkPlayer
+            // 获取当前玩家信息，优先从 NetworkManager 取，回退到注入的 _networkPlayer，最后回退到 GetSelf()
             string playerName = null;
             try
             {
@@ -271,6 +271,10 @@ public class NetworkClient : INetworkClient
                 if (string.IsNullOrWhiteSpace(playerName))
                 {
                     playerName = _networkPlayer?.userName;
+                }
+                if (string.IsNullOrWhiteSpace(playerName))
+                {
+                    playerName = GetSelf()?.userName;
                 }
             }
             catch
@@ -553,7 +557,7 @@ public class NetworkClient : INetworkClient
                     }
                     else
                     {
-                        keyToUse = config.RelayServerConnectionKey?.Value ?? "LBoL_Network_Plugin";
+                        keyToUse = config.HostConnectionKey?.Value ?? config.RelayServerConnectionKey?.Value ?? "LBoL_Network_Plugin";
                     }
                 }
             }

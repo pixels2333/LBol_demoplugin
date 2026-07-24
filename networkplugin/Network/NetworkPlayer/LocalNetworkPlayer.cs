@@ -107,6 +107,27 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
         set => _userName = string.IsNullOrWhiteSpace(value) ? "Player" : value;
     }
 
+    /// <summary>本地玩家的当前能量值（从本地游戏实例读取）</summary>
+    public int Power
+    {
+        get => CurrentPlayer?.Power ?? 0;
+        set { }
+    }
+
+    /// <summary>本地玩家的每层能量需求（从本地游戏实例读取）</summary>
+    public int PowerPerLevel
+    {
+        get => CurrentPlayer?.Us != null ? CurrentPlayer.PowerPerLevel : 100;
+        set { }
+    }
+
+    /// <summary>本地玩家的最大能量层级（从本地游戏实例读取）</summary>
+    public int MaxPowerLevel
+    {
+        get => CurrentPlayer?.Us != null ? CurrentPlayer.Us.MaxPowerLevel : 3;
+        set { }
+    }
+
     /// <summary>本地玩家的当前生命值（从本地游戏实例读取）</summary>
     public int HP
     {

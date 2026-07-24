@@ -53,6 +53,21 @@ public sealed class RemoteNetworkPlayer : INetworkPlayer
     public int shield { get; set; }
 
     /// <summary>
+    /// 当前能量值（Power）。
+    /// </summary>
+    public int Power { get; set; }
+
+    /// <summary>
+    /// 每层级能量（PowerPerLevel）。
+    /// </summary>
+    public int PowerPerLevel { get; set; } = 100;
+
+    /// <summary>
+    /// 最大能量层级（MaxPowerLevel）。
+    /// </summary>
+    public int MaxPowerLevel { get; set; } = 3;
+
+    /// <summary>
     /// 当前金币数量。
     /// </summary>
     public int coins { get; set; }

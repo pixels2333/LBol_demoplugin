@@ -56,10 +56,12 @@ public static partial class OtherPlayersOverlayPatch
             return false;
         }
 
-        int health = hasSnapshot ? snapshot.Health : networkPlayer.HP;
-        int maxHealth = hasSnapshot ? snapshot.MaxHealth : networkPlayer.maxHP;
-        int shield = hasSnapshot ? snapshot.Shield : networkPlayer.shield;
-        int block = hasSnapshot ? snapshot.Block : networkPlayer.block;
+        bool useRuntime = networkPlayer != null && networkPlayer.maxHP > 0;
+
+        int health = useRuntime ? networkPlayer.HP : (hasSnapshot ? snapshot.Health : 0);
+        int maxHealth = useRuntime ? networkPlayer.maxHP : (hasSnapshot ? snapshot.MaxHealth : 0);
+        int shield = useRuntime ? networkPlayer.shield : (hasSnapshot ? snapshot.Shield : 0);
+        int block = useRuntime ? networkPlayer.block : (hasSnapshot ? snapshot.Block : 0);
         int currentPower = networkPlayer?.GetCurrentPowerSafe() ?? 0;
         int powerPerLevel = networkPlayer?.GetPowerPerLevelSafe() ?? 0;
         int maxPowerLevel = networkPlayer?.GetMaxPowerLevelSafe() ?? 0;

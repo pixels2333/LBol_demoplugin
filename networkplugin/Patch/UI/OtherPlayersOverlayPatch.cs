@@ -48,10 +48,10 @@ public static partial class OtherPlayersOverlayPatch
     private const float AvatarPanelOffsetY = -30f;
     private static readonly Vector3 HealthBarLocalPosition = new(350f, -500f, 0f);
     private static readonly Vector3 HealthBarLocalScale = new(0.7f, 0.7f, 1f);
-    private static readonly Vector3 PlayerNameLocalPosition = new(350f, -450f, 0f);
+    private static readonly Vector3 PlayerNameLocalPosition = new(330f, -440f, 0f);
     private static readonly Vector3 PlayerNameLocalScale = new(1f, 1f, 1f);
-    private static readonly Vector2 PlayerNameSize = new(100f, 28f);
-    private const float PlayerNameFontSize = 24f;
+    private static readonly Vector2 PlayerNameSize = new(220f, 36f);
+    private const float PlayerNameFontSize = 28f;
     private const float RuntimeLayoutEpsilon = 0.01f;
     private const float OverlayDebugLogInterval = 0.5f;
     private static readonly Vector3 OverlayRootLocalPosition = new(1360f, 900f, 0f);
@@ -671,7 +671,7 @@ public static partial class OtherPlayersOverlayPatch
 
         rect.anchorMin = new Vector2(0.5f, 0.5f);
         rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0f, 0.5f);
         rect.localPosition = PlayerNameLocalPosition;
         rect.sizeDelta = PlayerNameSize;
         rect.localScale = PlayerNameLocalScale;
@@ -749,6 +749,7 @@ public static partial class OtherPlayersOverlayPatch
         Transform playerNameParent = root.transform;
         TextMeshProUGUI playerNameLabel = CreateTmpText(playerNameParent, "PlayerNameLabel", ResolveDisplayName(playerId), PlayerNameFontSize);
         playerNameLabel.alignment = TextAlignmentOptions.Left;
+        playerNameLabel.fontStyle = FontStyles.Bold;
         playerNameLabel.enableWordWrapping = false;
         playerNameLabel.overflowMode = TextOverflowModes.Ellipsis;
         RectTransform playerNameRect = playerNameLabel.rectTransform;

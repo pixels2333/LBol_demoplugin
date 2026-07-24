@@ -11,6 +11,7 @@ using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.UI.Widgets;
 using LBoL.Presentation.Units;
 using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.NetworkPlayer;
 using NetworkPlugin.Utils;
 using TMPro;
 using UnityEngine;
@@ -156,6 +157,8 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
+        INetworkManager manager = TryGetNetworkManager();
+
         foreach (RemoteCharacterView rc in _remoteCharacters.Values)
         {
             if (rc?.View == null || rc.Root == null || !rc.Root.activeInHierarchy)
@@ -164,6 +167,139 @@ public static partial class OtherPlayersOverlayPatch
             }
 
             rc.View.Tick();
+
+            PlayerSummary summary = null;
+            lock (_syncLock)
+            {
+                _players.TryGetValue(rc.PlayerId, out summary);
+            }
+
+            if (summary != null && TryGetRemoteBattleState(summary, out RemoteBattleState battleState))
+            {
+                UpdateRemoteCharacterStatsValues(rc.View, battleState.Block, battleState.Shield, battleState.Health, battleState.MaxHealth);
+            }
+            else if (manager != null)
+            {
+                INetworkPlayer networkPlayer = manager.GetPlayer(rc.PlayerId);
+                if (networkPlayer != null)
+                {
+                    UpdateRemoteCharacterStatsValues(rc.View, networkPlayer.block, networkPlayer.shield, networkPlayer.HP, networkPlayer.maxHP);
+                }
+            }
+        }
+    }
+
+    private static void UpdateRemoteCharacterStats(UnitView view, INetworkPlayer networkPlayer)
+    {
+        if (networkPlayer == null) return;
+        UpdateRemoteCharacterStatsValues(view, networkPlayer.block, networkPlayer.shield, networkPlayer.HP, networkPlayer.maxHP);
+    }
+
+    private static void UpdateRemoteCharacterStatsValues(UnitView view, int rawBlock, int rawShield, int rawHp, int rawMaxHp)
+    {
+        try
+        {
+            if (view == null || view.Unit == null)
+            {
+                return;
+            }
+
+            bool isShieldActive = rawShield > 0;
+            bool isBlockActive = rawBlock > 0;
+
+            var traverse = Traverse.Create(view);
+            bool currentHasShield = traverse.Property<bool>("HasShield").Value;
+            bool currentHasBlock = traverse.Property<bool>("HasBlock").Value;
+
+            // 1. 如果盾的状态发生改变，调用属性 set 改变常驻外罩显示
+            if (currentHasShield != isShieldActive)
+            {
+                traverse.Property<bool>("HasShield").Value = isShieldActive;
+                if (isShieldActive)
+                {
+                    var method = AccessTools.Method(typeof(UnitView), "CreateLocalShieldEffect", new[] { typeof(string), typeof(bool) });
+                    method?.Invoke(view, new object[] { "GainShield", true });
+                }
+            }
+
+            // 2. 如果格挡状态发生改变，同理
+            if (currentHasBlock != isBlockActive)
+            {
+                traverse.Property<bool>("HasBlock").Value = isBlockActive;
+                if (isBlockActive)
+                {
+                    var method = AccessTools.Method(typeof(UnitView), "CreateLocalShieldEffect", new[] { typeof(string), typeof(bool) });
+                    method?.Invoke(view, new object[] { "GainBlock", false });
+                }
+            }
+
+            // 3. 对齐数值
+            int oldBlock = view.Unit.Block;
+            int oldShield = view.Unit.Shield;
+            int oldHp = view.Unit.Hp;
+            int oldMaxHp = view.Unit.MaxHp;
+
+            int newBlock = Math.Max(0, rawBlock);
+            int newShield = Math.Max(0, rawShield);
+            int newHp = Math.Max(0, rawHp);
+            int newMaxHp = Math.Max(1, rawMaxHp);
+
+            bool needsHpTween = false;
+            bool needsMaxHpRefresh = false;
+
+            var unitTraverse = Traverse.Create(view.Unit);
+
+            if (oldBlock != newBlock || oldShield != newShield)
+            {
+                unitTraverse.Property<int>("Block").Value = newBlock;
+                unitTraverse.Property<int>("Shield").Value = newShield;
+                needsHpTween = true;
+            }
+
+            if (oldHp != newHp)
+            {
+                unitTraverse.Property<int>("Hp").Value = newHp;
+                needsHpTween = true;
+            }
+
+            if (oldMaxHp != newMaxHp)
+            {
+                unitTraverse.Property<int>("MaxHp").Value = newMaxHp;
+                needsMaxHpRefresh = true;
+            }
+
+            // 4. 触发状态条 Widget UI 刷新与防定位组件销毁重置
+            object statusWidgetObj = traverse.Field("_statusWidget").GetValue();
+            if (statusWidgetObj != null)
+            {
+                var statusWidget = (LBoL.Presentation.UI.Widgets.UnitStatusWidget)statusWidgetObj;
+                statusWidget.Alpha = 1f;
+                
+                // 重点：修复 ScenePositionTier 因没有 TargetTransform 自我销毁导致血条滞留左下角的 Bug
+                var scenePositionTier = statusWidget.GetComponent<LBoL.Presentation.UI.ScenePositionTier>();
+                if (scenePositionTier == null)
+                {
+                    scenePositionTier = statusWidget.gameObject.AddComponent<LBoL.Presentation.UI.ScenePositionTier>();
+                    Transform hpBarPoint = Traverse.Create(view).Field("hpBarPoint").GetValue<Transform>();
+                    scenePositionTier.TargetTransform = hpBarPoint;
+                    
+                    // 通过反射重新给 statusWidget 内部的 _scenePositionTier 字段设值
+                    Traverse.Create(statusWidget).Field("_scenePositionTier").SetValue(scenePositionTier);
+                }
+
+                if (needsMaxHpRefresh)
+                {
+                    AccessTools.Method(statusWidgetObj.GetType(), "OnMaxHpChanged")?.Invoke(statusWidgetObj, null);
+                }
+                else if (needsHpTween)
+                {
+                    AccessTools.Method(statusWidgetObj.GetType(), "TweenHpBar")?.Invoke(statusWidgetObj, null);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogWarning($"[OtherPlayersOverlay] UpdateRemoteCharacterStats 失败: {ex.Message}");
         }
     }
 
@@ -216,8 +352,9 @@ public static partial class OtherPlayersOverlayPatch
         }
 
         view.Unit = unit;
-        view.SetStatusWidget(hud.CreateStatusWidget(unit), 0f);
-        view.SetInfoWidget(hud.CreateInfoWidget(unit), 0f);
+        view.SetStatusWidget(hud.CreateStatusWidget(unit), 1f);
+        view.SetInfoWidget(hud.CreateInfoWidget(unit), 1f);
+        view.SetStatusVisible(true, true);
 
         unit.SetView(view);
         view.IsHidden = false;

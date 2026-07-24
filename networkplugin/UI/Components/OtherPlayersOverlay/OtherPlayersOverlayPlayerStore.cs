@@ -454,5 +454,21 @@ public static partial class OtherPlayersOverlayPatch
         return !string.IsNullOrWhiteSpace(playerId);
     }
 
+    internal static bool IsPlayerConnected(string playerId)
+    {
+        if (string.IsNullOrWhiteSpace(playerId))
+        {
+            return false;
+        }
+        lock (_syncLock)
+        {
+            if (_players.TryGetValue(playerId, out PlayerSummary p) && p != null)
+            {
+                return p.IsConnected;
+            }
+        }
+        return true;
+    }
+
     #endregion
 }
