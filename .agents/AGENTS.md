@@ -74,6 +74,7 @@ powershell -ExecutionPolicy Bypass -File copy_networkplugin_dll.ps1
 - **魔数**: 已有 5 个常量文件（`NetworkConstants`, `SyncConstants`, `UIConstants`, `LogConstants`, `ServerConstants`），不要硬编码字面量。
 - **配置文件漂移**: 同名配置项只在 `ConfigManager` 中绑定一次。
 - **Harmony Patch 与 DI**: Harmony 通过反射实例化 Patch 类，**无法使用构造函数注入**。因此 Patch 类必须通过 `ModService.ServiceProvider?.GetService<T>()` 静态获取 DI 服务。这是 Harmony 机制决定的必要模式，不是反模式。非 Patch 类（普通服务/管理器/工具类）仍应使用构造函数注入，不要模仿 Patch 类的写法。
+- **UI 锚点与坐标系平衡**: 调整 UI 组件位置时，严禁随意改动同级/关联控件的 Anchor 或 Pivot。若发生错位，禁止采用巨额硬编码 localPosition 偏移（例如 `(350f, -500f)`）强行硬拉，必须统一 Anchor 锚定基准（如顶部居中 `(0.5f, 1f)`）并使用 `anchoredPosition` 维持相对排布。
 
 
 ### 过程中的错误与修正
@@ -94,6 +95,7 @@ powershell -ExecutionPolicy Bypass -File copy_networkplugin_dll.ps1
 | 13 | 居中锚定后 `sizeDelta.x = 0` | 头像 Image 宽度为 0，完全不可见 | 改为 `sizeDelta = (100, 100)` | 居中锚定下两轴 sizeDelta 都必须非零 |
 | 14 | 诊断代码未清理 | `GetRedSprite()`、详细位置日志等残留较多 | 已全部清理，高频 Log 移出，保留关键的 LogError 异常捕获 | 功能验证稳定后应及时清理调试日志，避免日志噪音 |
 | 15 | 地图头像无圆形遮罩与边框 | 头像显示为普通矩形框，没有与战斗界面保持圆角和精美边框的一致性 | 引入 `AvatarMask` (使用圆形遮罩) + `Border` 边框，本地玩家金色边框，远程玩家白色边框 | 差异化 UI 需要统一考虑层级与风格对齐 |
+| 16 | 调整 UI 控件时随意改动关联组件 Anchor 破坏坐标平衡 | 控件位置严重偏移飞出，需使用巨大硬编码 `localPosition` 补偿，打破卡片/条目整体布局 | 统一同级控件 Anchor 锚点基准（如 `(0.5, 1)`），采用相对 `anchoredPosition` 自上而下线性排布 | 严禁随意修改关联 UI 的 Anchor/Pivot；禁止使用巨额硬编码 localPosition (如 350, -500) 强行拉回错位控件，必须保持坐标系基准统一与布局平衡 |
 
 > 完整过程记录见 [handoffs/handoff-local-player-avatar.md](../handoffs/handoff-local-player-avatar.md)
 

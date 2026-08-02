@@ -34,8 +34,6 @@ public static partial class OtherPlayersOverlayPatch
     #region 常量和字段
 
     private const float AvatarEntryBaseWidth = 260f;
-    // `RemotePlayerHealthBar` 当前被放在条目根节点的更低位置，
-    // 因此条目本身的高度也必须覆盖这部分可视范围，否则后续条目会压到它们上面。
     private const float AvatarEntryBaseHeight = 350f;
     private const float AvatarVisualSize = 230f;
     private const float AvatarMaskDiameterScale = 1f;
@@ -48,10 +46,10 @@ public static partial class OtherPlayersOverlayPatch
     private const float AvatarPanelOffsetY = -30f;
     private static readonly Vector3 HealthBarLocalPosition = new(350f, -500f, 0f);
     private static readonly Vector3 HealthBarLocalScale = new(0.7f, 0.7f, 1f);
-    private static readonly Vector3 PlayerNameLocalPosition = new(330f, -440f, 0f);
+    private static readonly Vector3 PlayerNameLocalPosition = new(350f, -440f, 0f);
     private static readonly Vector3 PlayerNameLocalScale = new(1f, 1f, 1f);
-    private static readonly Vector2 PlayerNameSize = new(220f, 36f);
-    private const float PlayerNameFontSize = 28f;
+    private static readonly Vector2 PlayerNameSize = new(250f, 36f);
+    private const float PlayerNameFontSize = 26f;
     private const float RuntimeLayoutEpsilon = 0.01f;
     private const float OverlayDebugLogInterval = 0.5f;
     private static readonly Vector3 OverlayRootLocalPosition = new(1360f, 900f, 0f);
@@ -1044,12 +1042,7 @@ public static partial class OtherPlayersOverlayPatch
 
             entry.PlayerNameLabel.text = ResolveDisplayName(player.PlayerId, player.PlayerName);
             entry.PlayerNameLabel.color = isConnected ? Color.white : new Color(0.72f, 0.72f, 0.72f, 0.96f);
-
-            // 贴合文字宽度：根据 preferredWidth 动态调整 Rect，避免固定宽度过大
-            entry.PlayerNameLabel.ForceMeshUpdate();
-            float preferredWidth = entry.PlayerNameLabel.preferredWidth;
-            float targetWidth = Mathf.Max(preferredWidth + 4f, 40f);
-            entry.PlayerNameRect.sizeDelta = new Vector2(targetWidth, PlayerNameSize.y);
+            entry.PlayerNameRect.sizeDelta = PlayerNameSize;
         }
 
         LogAvatarEntryDebug(entry, player, "ApplyAvatarEntry");
@@ -1350,12 +1343,7 @@ public static partial class OtherPlayersOverlayPatch
 
         ApplyRuntimeEditableRectLayout(entry.HealthRootRect, entry.HealthRootLayoutState, rect =>
         {
-            rect.anchorMin = new Vector2(0.5f, 0f);
-            rect.anchorMax = new Vector2(0.5f, 0f);
-            rect.pivot = new Vector2(0.5f, 0f);
-            rect.localPosition = HealthBarLocalPosition;
-            rect.localScale = HealthBarLocalScale;
-            rect.localEulerAngles = Vector3.zero;
+            ConfigureHealthBarRect(rect);
         });
     }
 
@@ -1717,7 +1705,35 @@ public static partial class OtherPlayersOverlayPatch
             return _defaultFont;
         }
 
-        if (searchRoot != null)
+        try
+        {
+            if (UiManager.Instance != null)
+            {
+                var tmps = UiManager.Instance.GetComponentsInChildren<TextMeshProUGUI>(true);
+                if (tmps != null && tmps.Length > 0)
+                {
+                    _defaultFont = tmps
+                        .Select(tmp => tmp?.font)
+                        .FirstOrDefault(font => font != null && !string.IsNullOrEmpty(font.name) &&
+                            (font.name.IndexOf("Han", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                             font.name.IndexOf("Source", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                             font.name.IndexOf("Noto", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                             font.name.IndexOf("Chinese", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                             font.name.IndexOf("SDF", StringComparison.OrdinalIgnoreCase) >= 0));
+
+                    if (_defaultFont == null)
+                    {
+                        _defaultFont = tmps.Select(tmp => tmp?.font).FirstOrDefault(font => font != null);
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        if (_defaultFont == null && searchRoot != null)
         {
             _defaultFont = FindDefaultFont(searchRoot);
         }
@@ -1727,18 +1743,6 @@ public static partial class OtherPlayersOverlayPatch
             try
             {
                 _defaultFont = TMP_Settings.defaultFontAsset;
-            }
-            catch
-            {
-                // ignored
-            }
-        }
-
-        if (_defaultFont == null)
-        {
-            try
-            {
-                _defaultFont = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
             }
             catch
             {
