@@ -46,10 +46,10 @@ public static partial class OtherPlayersOverlayPatch
     private const float AvatarPanelOffsetY = -30f;
     private static readonly Vector3 HealthBarLocalPosition = new(350f, -500f, 0f);
     private static readonly Vector3 HealthBarLocalScale = new(0.7f, 0.7f, 1f);
-    private static readonly Vector3 PlayerNameLocalPosition = new(350f, -440f, 0f);
+    private static readonly Vector3 PlayerNameLocalPosition = new(180f, -410f, 0f);
     private static readonly Vector3 PlayerNameLocalScale = new(1f, 1f, 1f);
-    private static readonly Vector2 PlayerNameSize = new(250f, 36f);
-    private const float PlayerNameFontSize = 26f;
+    private static readonly Vector2 PlayerNameSize = new(400f, 65f);
+    private const float PlayerNameFontSize = 48f;
     private const float RuntimeLayoutEpsilon = 0.01f;
     private const float OverlayDebugLogInterval = 0.5f;
     private static readonly Vector3 OverlayRootLocalPosition = new(1360f, 900f, 0f);
