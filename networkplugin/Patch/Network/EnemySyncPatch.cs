@@ -298,7 +298,7 @@ public class EnemySyncPatch
 
             object enemyData = BuildEnemyUpdateData(enemy, "StatusAdded", new
             {
-                statusEffects,
+                StatusEffects = statusEffects,
                 StatusEffectCount = statusEffects.Count,
             });
 
@@ -352,6 +352,38 @@ public class EnemySyncPatch
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[EnemySync] EnemyStatusEffectRemoved 异常: {ex.Message}");
+        }
+    }
+
+    internal static void SyncEnemyStatusEffectChanged(EnemyUnit enemy)
+    {
+        if (enemy == null || _isApplyingRemoteState)
+        {
+            return;
+        }
+
+        try
+        {
+            INetworkClient networkClient = TryGetSyncNetworkClient();
+            if (networkClient == null)
+            {
+                return;
+            }
+
+            var statusEffects = GetEnemyStatusEffects(enemy);
+
+            object enemyData = BuildEnemyUpdateData(enemy, "StatusChanged", new
+            {
+                StatusEffects = statusEffects,
+                StatusEffectCount = statusEffects.Count,
+            });
+
+            string json = JsonCompat.Serialize(enemyData);
+            SendEnemyStateUpdate(networkClient, json);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[EnemySync] SyncEnemyStatusEffectChanged 异常: {ex.Message}");
         }
     }
 
@@ -508,14 +540,35 @@ public class EnemySyncPatch
 
             foreach (var effect in statusEffects)
             {
+                if (effect == null)
+                {
+                    continue;
+                }
+
+                int level = 0;
+                if (effect.HasLevel)
+                {
+                    level = effect.Level;
+                }
+                else if (effect.HasCount)
+                {
+                    level = effect.Count;
+                }
+
+                int duration = 0;
+                if (effect.HasDuration)
+                {
+                    duration = effect.Duration;
+                }
+
                 effects.Add(new EnemyStatusEffectInfo
                 {
                     Id = effect.Id,
                     Name = effect.Name,
                     Type = effect.GetType().Name,
-                    Level = effect.Level,
-                    Duration = effect.Duration,
-                    IsDebuff = false,
+                    Level = level,
+                    Duration = duration,
+                    IsDebuff = effect.Type == LBoL.Base.StatusEffectType.Negative,
                 });
             }
         }

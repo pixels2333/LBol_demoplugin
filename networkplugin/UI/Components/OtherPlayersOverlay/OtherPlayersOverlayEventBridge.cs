@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
+using NetworkPlugin.Network.Snapshot;
 using NetworkPlugin.Utils;
 using NetworkPlugin.Network.NetworkPlayer;
 using HarmonyLib;
@@ -96,12 +97,155 @@ public static partial class OtherPlayersOverlayPatch
                 case NetworkMessageTypes.OnPlayerStateUpdate:
                     HandlePlayerStateUpdate(root);
                     break;
+                case NetworkMessageTypes.BattlePlayerUsUsedBroadcast:
+                    HandlePlayerUsUsed(root);
+                    break;
+                case NetworkMessageTypes.BattlePlayerCardUsedBroadcast:
+                    HandlePlayerCardUsed(root);
+                    break;
+                case NetworkMessageTypes.BattlePlayerStatusEffectsDeltaBroadcast:
+                case NetworkMessageTypes.BattlePlayerStatusEffectsFullBroadcast:
+                    HandlePlayerStatusEffectsBroadcast(root);
+                    break;
+                case NetworkMessageTypes.OnEnemyAttackPlayerVisual:
+                    HandleEnemyAttackPlayerVisual(root);
+                    break;
             }
         }
         catch (Exception ex)
         {
             Plugin.Logger?.LogDebug($"[OtherPlayersOverlayPatch] 处理网络事件失败: {eventType}, {ex.Message}");
         }
+    }
+
+    private static void HandleEnemyAttackPlayerVisual(JsonElement root)
+    {
+        try
+        {
+            string playerId = GetString(root, "PlayerId");
+            if (string.IsNullOrWhiteSpace(playerId) || string.Equals(playerId, _selfPlayerId, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            string enemyId = GetString(root, "EnemyId");
+            string gunName = GetString(root, "GunName") ?? "Instant";
+            string gunTypeStr = GetString(root, "GunType");
+            LBoL.Core.Cards.GunType gunType = Enum.TryParse(gunTypeStr, out LBoL.Core.Cards.GunType parsed) ? parsed : LBoL.Core.Cards.GunType.Single;
+            bool isGrazed = GetBool(root, "IsGrazed");
+            bool isAccuracy = GetBool(root, "IsAccuracy");
+            int damage = GetInt(root, "Damage", 0);
+
+            TriggerRemoteEnemyAttackVisual(playerId, enemyId, gunName, gunType, isGrazed, isAccuracy, damage);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogWarning($"[OtherPlayersOverlayEventBridge] HandleEnemyAttackPlayerVisual 异常: {ex.Message}");
+        }
+    }
+
+    private static void HandlePlayerUsUsed(JsonElement root)
+    {
+        try
+        {
+            string playerId = GetString(root, "PlayerId");
+            string usName = GetString(root, "UsName") ?? GetString(root, "CardName") ?? "符卡";
+            if (!string.IsNullOrWhiteSpace(playerId) && !string.Equals(playerId, _selfPlayerId, StringComparison.Ordinal))
+            {
+                JsonElement? actions = root.TryGetProperty("Actions", out JsonElement actionsEl) && actionsEl.ValueKind == JsonValueKind.Array ? actionsEl : null;
+                TriggerRemoteCharacterCardUseEffect(playerId, usName, isUs: true, actions);
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogWarning($"[OtherPlayersOverlayEventBridge] HandlePlayerUsUsed 异常: {ex.Message}");
+        }
+    }
+
+    private static void HandlePlayerCardUsed(JsonElement root)
+    {
+        try
+        {
+            string playerId = GetString(root, "PlayerId");
+            string cardName = GetString(root, "CardName") ?? "卡牌";
+            if (!string.IsNullOrWhiteSpace(playerId) && !string.Equals(playerId, _selfPlayerId, StringComparison.Ordinal))
+            {
+                JsonElement? actions = root.TryGetProperty("Actions", out JsonElement actionsEl) && actionsEl.ValueKind == JsonValueKind.Array ? actionsEl : null;
+                TriggerRemoteCharacterCardUseEffect(playerId, cardName, isUs: false, actions);
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogWarning($"[OtherPlayersOverlayEventBridge] HandlePlayerCardUsed 异常: {ex.Message}");
+        }
+    }
+
+    private static void HandlePlayerStatusEffectsBroadcast(JsonElement root)
+    {
+        try
+        {
+            string playerId = GetString(root, "PlayerId");
+            if (string.IsNullOrWhiteSpace(playerId) || string.Equals(playerId, _selfPlayerId, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            List<RemoteStatusEffectInfo> statusEffects = null;
+            if (root.TryGetProperty("StatusEffects", out JsonElement seElem) && seElem.ValueKind == JsonValueKind.Array)
+            {
+                statusEffects = ParsePlayerStatusEffectsArray(seElem);
+            }
+
+            if (statusEffects != null)
+            {
+                ApplyStatusEffectsToRemotePlayer(playerId, statusEffects);
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogWarning($"[OtherPlayersOverlayEventBridge] HandlePlayerStatusEffectsBroadcast 异常: {ex.Message}");
+        }
+    }
+
+    private static List<RemoteStatusEffectInfo> ParsePlayerStatusEffectsArray(JsonElement seArrayElem)
+    {
+        List<RemoteStatusEffectInfo> list = new();
+        foreach (JsonElement elem in seArrayElem.EnumerateArray())
+        {
+            if (elem.ValueKind == JsonValueKind.Object)
+            {
+                string id = GetString(elem, "Id");
+                string type = GetString(elem, "Type") ?? id;
+                int level = GetInt(elem, "Level", 0);
+                int duration = GetInt(elem, "Duration", 0);
+                list.Add(new RemoteStatusEffectInfo
+                {
+                    Id = id,
+                    Type = type,
+                    Level = level,
+                    Duration = duration,
+                });
+            }
+            else if (elem.ValueKind == JsonValueKind.String)
+            {
+                string str = elem.GetString();
+                if (!string.IsNullOrWhiteSpace(str))
+                {
+                    string[] parts = str.Split(':', '|');
+                    string type = parts[0];
+                    int level = parts.Length > 1 && int.TryParse(parts[1], out int l) ? l : 1;
+                    int duration = parts.Length > 2 && int.TryParse(parts[2], out int d) ? d : 0;
+                    list.Add(new RemoteStatusEffectInfo
+                    {
+                        Id = type,
+                        Type = type,
+                        Level = level,
+                        Duration = duration,
+                    });
+                }
+            }
+        }
+        return list;
     }
 
     private static void HandlePlayerStateUpdate(JsonElement root)
@@ -152,6 +296,15 @@ public static partial class OtherPlayersOverlayPatch
                     }
 
                     MarkOverlayUiDirty();
+                }
+            }
+
+            if (playerElem.TryGetProperty("StatusEffects", out JsonElement seElem) && seElem.ValueKind == JsonValueKind.Array)
+            {
+                var statusEffects = ParsePlayerStatusEffectsArray(seElem);
+                if (statusEffects != null && !string.Equals(playerId, _selfPlayerId, StringComparison.Ordinal))
+                {
+                    ApplyStatusEffectsToRemotePlayer(playerId, statusEffects);
                 }
             }
         }

@@ -279,7 +279,8 @@ public static class NetworkIdentityTracker
 
             if (payload is string s)
             {
-                root = JsonDocument.Parse(s).RootElement;
+                using JsonDocument doc = JsonDocument.Parse(s);
+                root = doc.RootElement.Clone();
                 return true;
             }
         }

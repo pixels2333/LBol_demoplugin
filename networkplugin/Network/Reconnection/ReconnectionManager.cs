@@ -94,6 +94,11 @@ public sealed class ReconnectionManager : IDisposable
     private readonly Timer _snapshotTimer;
 
     /// <summary>
+    /// 取消令牌源：插件销毁时用于取消未完成的延迟任务。
+    /// </summary>
+    private readonly CancellationTokenSource _cts = new();
+
+    /// <summary>
     /// 地图关键提交点序号（仅主机递增）。
     /// </summary>
     private long _mapCheckpointSequence;
@@ -221,12 +226,23 @@ public sealed class ReconnectionManager : IDisposable
                 return;
             }
 
-            FullStateSnapshot snapshot = CreateFullSnapshot();
-            SaveSnapshot(snapshot);
+            // 关键：Timer 回调在 ThreadPool 线程，读取 Unity/LBoL 游戏状态（GameRunController 等）必须切到主线程
+            Plugin.RunOnMainThread(() =>
+            {
+                try
+                {
+                    FullStateSnapshot snapshot = CreateFullSnapshot();
+                    SaveSnapshot(snapshot);
+                }
+                catch (Exception ex)
+                {
+                    LogError($"[ReconnectionManager] Error saving periodic snapshot on main thread: {ex.Message}");
+                }
+            });
         }
         catch (Exception ex)
         {
-            LogError($"[ReconnectionManager] Error saving periodic snapshot: {ex.Message}");
+            LogError($"[ReconnectionManager] Error scheduling periodic snapshot: {ex.Message}");
         }
     }
 
@@ -301,10 +317,9 @@ public sealed class ReconnectionManager : IDisposable
                             .Select(s => s.GetType().Name)
                             .ToList();
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // TODO: 应记录异常详情，避免静默失败。
-                        // ignored
+                        LogDebug($"[ReconnectionManager] Reading StageTypeNames failed: {ex.Message}");
                     }
 
                     try
@@ -313,16 +328,14 @@ public sealed class ReconnectionManager : IDisposable
                             ? run.Stages[0]?.DebutAdventureType?.Name
                             : null;
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // TODO: 应记录异常详情，避免静默失败。
-                        // ignored
+                        LogDebug($"[ReconnectionManager] Reading DebutAdventureTypeName failed: {ex.Message}");
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // TODO: 应记录异常详情，避免静默失败。
-                    // ignored
+                    LogDebug($"[ReconnectionManager] Reading GameState fields failed: {ex.Message}");
                 }
 
                 TryFillMapStateFromRun(run, snapshot.MapState);
@@ -637,8 +650,14 @@ public sealed class ReconnectionManager : IDisposable
         PlayerDisconnected?.Invoke(playerId, reason);
 
         // Fire-and-forget：到达最大重连窗口后再次检查是否已重连（避免永久保留快照）。
-        Task.Delay(TimeSpan.FromMinutes(_config.MaxReconnectionMinutes))
-            .ContinueWith(_ => CheckReconnectionTimeout(playerId));
+        Task.Delay(TimeSpan.FromMinutes(_config.MaxReconnectionMinutes), _cts.Token)
+            .ContinueWith(t =>
+            {
+                if (t.IsCompletedSuccessfully && !_cts.IsCancellationRequested)
+                {
+                    CheckReconnectionTimeout(playerId);
+                }
+            }, TaskContinuationOptions.OnlyOnRanToCompletion);
     }
 
     /// <summary>
@@ -649,47 +668,57 @@ public sealed class ReconnectionManager : IDisposable
     {
         try
         {
-            PlayerStateSnapshot snapshot = SavePlayerStateSnapshot(playerId);
-
-            // 没有 token 时生成一次，确保后续重连请求可以进行最基本的校验。
-            snapshot.ReconnectToken = string.IsNullOrWhiteSpace(snapshot.ReconnectToken)
-                ? GenerateReconnectToken()
-                : snapshot.ReconnectToken;
-            snapshot.DisconnectTime = DateTime.UtcNow.Ticks;
-            snapshot.LastUpdateTime = snapshot.DisconnectTime;
-
-            lock (_syncLock)
+            Plugin.RunOnMainThread(() =>
             {
-                _playerSnapshots[playerId] = snapshot;
-
-                if (_playerSnapshots.Count > _config.MaxSavedPlayerSnapshots)
+                try
                 {
-                    // 控制内存占用：移除最早断线的玩家快照。
-                    string? oldestKey = null;
-                    long oldestDisconnectTime = long.MaxValue;
+                    PlayerStateSnapshot snapshot = SavePlayerStateSnapshot(playerId);
 
-                    foreach ((string key, PlayerStateSnapshot s) in _playerSnapshots)
+                    // 没有 token 时生成一次，确保后续重连请求可以进行最基本的校验。
+                    snapshot.ReconnectToken = string.IsNullOrWhiteSpace(snapshot.ReconnectToken)
+                        ? GenerateReconnectToken()
+                        : snapshot.ReconnectToken;
+                    snapshot.DisconnectTime = DateTime.UtcNow.Ticks;
+                    snapshot.LastUpdateTime = snapshot.DisconnectTime;
+
+                    lock (_syncLock)
                     {
-                        long dt = s.DisconnectTime;
-                        if (dt > 0 && dt < oldestDisconnectTime)
+                        _playerSnapshots[playerId] = snapshot;
+
+                        if (_playerSnapshots.Count > _config.MaxSavedPlayerSnapshots)
                         {
-                            oldestDisconnectTime = dt;
-                            oldestKey = key;
+                            // 控制内存占用：移除最早断线的玩家快照。
+                            string? oldestKey = null;
+                            long oldestDisconnectTime = long.MaxValue;
+
+                            foreach ((string key, PlayerStateSnapshot s) in _playerSnapshots)
+                            {
+                                long dt = s.DisconnectTime;
+                                if (dt > 0 && dt < oldestDisconnectTime)
+                                {
+                                    oldestDisconnectTime = dt;
+                                    oldestKey = key;
+                                }
+                            }
+
+                            if (!string.IsNullOrWhiteSpace(oldestKey))
+                            {
+                                _playerSnapshots.Remove(oldestKey);
+                            }
                         }
                     }
 
-                    if (!string.IsNullOrWhiteSpace(oldestKey))
-                    {
-                        _playerSnapshots.Remove(oldestKey);
-                    }
+                    LogInformation($"[ReconnectionManager] Saved snapshot for player {playerId} before disconnect");
                 }
-            }
-
-            LogInformation($"[ReconnectionManager] Saved snapshot for player {playerId} before disconnect");
+                catch (Exception ex)
+                {
+                    LogError($"[ReconnectionManager] Error saving player {playerId} snapshot on main thread: {ex.Message}");
+                }
+            });
         }
         catch (Exception ex)
         {
-            LogError($"[ReconnectionManager] Error saving player {playerId} snapshot: {ex.Message}");
+            LogError($"[ReconnectionManager] Error scheduling player {playerId} snapshot: {ex.Message}");
         }
     }
 
@@ -1033,6 +1062,16 @@ public sealed class ReconnectionManager : IDisposable
         {
             // TODO: 应记录异常详情，避免静默失败。
             // ignored
+        }
+
+        try
+        {
+            _cts.Cancel();
+            _cts.Dispose();
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"[ReconnectionManager] Error cancelling pending tasks: {ex.Message}");
         }
 
         _heartbeatTimer.Dispose();

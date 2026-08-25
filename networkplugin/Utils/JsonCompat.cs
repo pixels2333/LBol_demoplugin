@@ -183,11 +183,13 @@ public static class JsonCompat
 
             if (payload is string s)
             {
-                return JsonDocument.Parse(s).RootElement;
+                using JsonDocument doc = JsonDocument.Parse(s);
+                return doc.RootElement.Clone();
             }
 
             // 先用 Newtonsoft 生成 JSON，再用 System.Text.Json 解析为 JsonElement（避免 Utf8JsonWriter）。
-            return JsonDocument.Parse(Serialize(payload)).RootElement;
+            using JsonDocument doc2 = JsonDocument.Parse(Serialize(payload));
+            return doc2.RootElement.Clone();
         }
         catch
         {

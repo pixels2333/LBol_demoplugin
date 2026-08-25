@@ -117,7 +117,7 @@ public sealed class LocalNetworkPlayer : INetworkPlayer
     /// <summary>本地玩家的每层能量需求（从本地游戏实例读取）</summary>
     public int PowerPerLevel
     {
-        get => CurrentPlayer?.Us != null ? CurrentPlayer.PowerPerLevel : 100;
+        get => CurrentPlayer?.Us != null ? CurrentPlayer.Us.PowerPerLevel : 100;
         set { }
     }
 

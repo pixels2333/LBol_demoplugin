@@ -201,4 +201,29 @@ public partial class ConfigManager
             "中继服务器每个房间最大玩家数"
         );
     }
+
+    /// <summary>
+    /// 获取中继服务器配置对象
+    /// </summary>
+    public NetworkPlugin.Network.Server.RelayServerConfig GetRelayServerConfig()
+    {
+        return new NetworkPlugin.Network.Server.RelayServerConfig
+        {
+            Port = RelayServerPort?.Value ?? NetworkConstants.RelayPort,
+            MaxConnections = RelayServerMaxConnections?.Value ?? 1000,
+            ConnectionKey = RelayServerConnectionKey?.Value ?? "LBoL_Network_Plugin",
+            MaxRooms = RelayServerMaxRooms?.Value ?? NetworkPlugin.Network.Server.ServerConstants.MaxRoomCount,
+            MaxPlayersPerRoom = RelayServerMaxPlayersPerRoom?.Value ?? NetworkPlugin.Network.Server.ServerConstants.DefaultMaxPlayersPerRoom
+        };
+    }
+
+    /// <summary>
+    /// 检查指定的日志等级是否满足 LogVerbosity 的阈值
+    /// 0 = 仅错误 (level 0), 1 = 错误和警告 (level <= 1), 2 = 全部 (level <= 2)
+    /// </summary>
+    public bool ShouldLog(int level)
+    {
+        int verbosity = LogVerbosity?.Value ?? 2;
+        return verbosity >= level;
+    }
 }

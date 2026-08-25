@@ -155,7 +155,7 @@ public class SynchronizationManagerTests : IDisposable
     }
 
     [Fact]
-    public void OnConnectionLost_SetsUnavailable_And_BroadcastsConnectionLost()
+    public void OnConnectionLost_SetsUnavailable_And_SwitchesToOfflineMode()
     {
         // Arrange
         _mockNetworkClient.Setup(c => c.IsConnected).Returns(true);
@@ -169,8 +169,9 @@ public class SynchronizationManagerTests : IDisposable
 
         // Assert
         Assert.False(_netAvailTracker.IsAvailable);
-        // 网络不可用时，SendGameEvent 应该跳过发送，即 Verify 不会调用 SendRequest
+        // 网络丢失后切换到离线模式，不尝试向底层发送 ConnectionLost 消息
         _mockNetworkClient.Verify(c => c.SendRequest("ConnectionLost", It.IsAny<object>()), Times.Never);
+        _mockNetworkClient.Verify(c => c.SendGameEventData("ConnectionLost", It.IsAny<object>()), Times.Never);
     }
 
     [Fact]
@@ -277,6 +278,13 @@ public class SynchronizationManagerTests : IDisposable
     public void SyncGameEventToNetwork_LargeBatchSingleThread_QueuesAllEvents()
     {
         // Arrange
+        _configManager.MaxQueueSize.Value = 500;
+        var syncManager = new SynchronizationManager(
+            _mockNetworkClient.Object,
+            _netAvailTracker,
+            _mockLogger.Object,
+            _configManager
+        );
         _mockNetworkClient.Setup(c => c.IsConnected).Returns(false);
         int totalEvents = 400;
 
@@ -284,12 +292,38 @@ public class SynchronizationManagerTests : IDisposable
         for (int i = 0; i < totalEvents; i++)
         {
             var gameEvent = new GameEvent("CardPlayed", "player_me", new Dictionary<string, object> { ["Index"] = i });
-            _syncManager.SyncGameEventToNetwork(gameEvent);
+            syncManager.SyncGameEventToNetwork(gameEvent);
         }
 
         // Assert
-        var stats = _syncManager.GetSyncStatistics();
+        var stats = syncManager.GetSyncStatistics();
         var queuedCount = (int)stats.GetType().GetProperty("QueuedEvents")!.GetValue(stats)!;
         Assert.Equal(totalEvents, queuedCount);
+    }
+
+    [Fact]
+    public void SyncGameEventToNetwork_ExceedsMaxQueueSize_CapsQueue()
+    {
+        // Arrange
+        _configManager.MaxQueueSize.Value = 50;
+        var syncManager = new SynchronizationManager(
+            _mockNetworkClient.Object,
+            _netAvailTracker,
+            _mockLogger.Object,
+            _configManager
+        );
+        _mockNetworkClient.Setup(c => c.IsConnected).Returns(false);
+
+        // Act
+        for (int i = 0; i < 100; i++)
+        {
+            var gameEvent = new GameEvent("CardPlayed", "player_me", new Dictionary<string, object> { ["Index"] = i });
+            syncManager.SyncGameEventToNetwork(gameEvent);
+        }
+
+        // Assert
+        var stats = syncManager.GetSyncStatistics();
+        var queuedCount = (int)stats.GetType().GetProperty("QueuedEvents")!.GetValue(stats)!;
+        Assert.Equal(50, queuedCount);
     }
 }

@@ -1,9 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using Cysharp.Threading.Tasks;
 using HarmonyLib;
+using LBoL.Base;
 using LBoL.Core;
+using LBoL.Core.Battle;
+using LBoL.Core.Cards;
 using LBoL.Core.Units;
 using LBoL.Presentation;
 using LBoL.Presentation.UI;
@@ -12,6 +16,8 @@ using LBoL.Presentation.UI.Widgets;
 using LBoL.Presentation.Units;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.NetworkPlayer;
+using NetworkPlugin.Network.Snapshot;
+using NetworkPlugin.Patch.Network;
 using NetworkPlugin.Utils;
 using TMPro;
 using UnityEngine;
@@ -439,7 +445,178 @@ public static partial class OtherPlayersOverlayPatch
         if (selector != null)
         {
             selector.enabled = false;
-            selector.gameObject.SetActive(false);
+        }
+    }
+
+    public static void TriggerRemoteCharacterCardUseEffect(string playerId, string cardOrUsName, bool isUs, JsonElement? actions = null)
+    {
+        if (string.IsNullOrWhiteSpace(playerId))
+        {
+            return;
+        }
+
+        Plugin.RunOnMainThread(() =>
+        {
+            try
+            {
+                if (!_remoteCharacters.TryGetValue(playerId, out RemoteCharacterView charView) || charView?.View == null)
+                {
+                    return;
+                }
+
+                UnitView view = charView.View;
+
+                // 1. 头顶气泡与招式名称
+                if (!string.IsNullOrWhiteSpace(cardOrUsName))
+                {
+                    string bubbleText = isUs ? $"【符卡】{cardOrUsName}" : cardOrUsName;
+                    view.Chat(bubbleText, 2.0f);
+                }
+
+                // 2. 特效回放：如果有动作蓝图，调度 PlayVisualsCoroutine 播放卡牌专属弹幕与特效
+                bool hasBlueprintActions = actions.HasValue && actions.Value.ValueKind == JsonValueKind.Array && actions.Value.GetArrayLength() > 0;
+                if (hasBlueprintActions)
+                {
+                    BattleController battle = GameStateUtils.GetCurrentGameRun()?.Battle;
+                    Singleton<GameDirector>.Instance?.StartCoroutine(RemoteCardUsePatch.PlayVisualsCoroutine(actions.Value.Clone(), battle, skipStateVisuals: true, defaultSenderPlayerId: playerId));
+                }
+                else
+                {
+                    // 兜底：通用动作与声光
+                    string animName = isUs ? "spell" : "cast";
+                    try
+                    {
+                        view.PlayAnimation(animName);
+                    }
+                    catch
+                    {
+                        try { view.PlayAnimation("spell"); } catch { }
+                    }
+
+                    try
+                    {
+                        view.PlayEffectOneShot(isUs ? "UsCast" : "CardCast", 0f);
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogWarning($"[OtherPlayersOverlay] TriggerRemoteCharacterCardUseEffect 异常: {ex.Message}");
+            }
+        });
+    }
+
+    /// <summary>
+    /// 触发敌人攻击队友小人的视觉效果（弹幕射击与擦弹/受击动作）。
+    /// </summary>
+    public static void TriggerRemoteEnemyAttackVisual(
+        string playerId,
+        string enemyId,
+        string gunName,
+        GunType gunType,
+        bool isGrazed,
+        bool isAccuracy,
+        int damage)
+    {
+        if (string.IsNullOrWhiteSpace(playerId))
+        {
+            return;
+        }
+
+        Plugin.RunOnMainThread(() =>
+        {
+            try
+            {
+                if (!_remoteCharacters.TryGetValue(playerId, out RemoteCharacterView charView) || charView?.View == null)
+                {
+                    return;
+                }
+
+                UnitView targetView = charView.View;
+                if (targetView == null || targetView.gameObject == null || !targetView.gameObject.activeInHierarchy)
+                {
+                    return;
+                }
+
+                // 查找当前场景中的敌人 UnitView
+                UnitView enemyView = FindMatchingEnemyUnitView(enemyId);
+
+                DamageInfo info = DamageInfo.Attack((float)damage, isAccuracy);
+                info.IsGrazed = isGrazed;
+
+                if (enemyView != null && !string.IsNullOrEmpty(gunName) && gunName != "Empty" && gunName != "Instant")
+                {
+                    var pairs = new List<ValueTuple<UnitView, DamageInfo>>
+                    {
+                        new(targetView, info)
+                    };
+
+                    var method = Traverse.Create(typeof(GameDirector)).Method("GunShootAction", enemyView, pairs, gunName, gunType);
+                    if (method.MethodExists())
+                    {
+                        System.Collections.IEnumerator coroutine = (System.Collections.IEnumerator)method.GetValue();
+                        Singleton<GameDirector>.Instance?.StartCoroutine(coroutine);
+                        return;
+                    }
+                    else
+                    {
+                        enemyView.PerformShoot(gunName);
+                    }
+                }
+
+                // 兜底或即时动画
+                if (isGrazed)
+                {
+                    targetView.PlayAnimation("graze");
+                }
+                else
+                {
+                    targetView.PlayAnimation("hit");
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogWarning($"[OtherPlayersOverlay] TriggerRemoteEnemyAttackVisual 异常: {ex.Message}");
+            }
+        });
+    }
+
+    private static UnitView FindMatchingEnemyUnitView(string enemyId)
+    {
+        try
+        {
+            GameDirector gd = Singleton<GameDirector>.Instance;
+            if (gd == null) return null;
+
+            IReadOnlyList<UnitView> enemyViews = GameDirector.Enemies;
+            if (enemyViews == null || enemyViews.Count == 0) return null;
+
+            if (!string.IsNullOrWhiteSpace(enemyId))
+            {
+                foreach (UnitView ev in enemyViews)
+                {
+                    if (ev != null && ev.Unit != null && ev.Unit.IsAlive)
+                    {
+                        if (string.Equals(ev.Unit.Id, enemyId, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(ev.Unit.Name, enemyId, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return ev;
+                        }
+                    }
+                }
+            }
+
+            // 找不到匹配 ID 则回退到第一个存活敌人
+            return enemyViews.FirstOrDefault(ev => ev != null && ev.Unit != null && ev.Unit.IsAlive) 
+                   ?? enemyViews.FirstOrDefault(ev => ev != null);
+        }
+        catch
+        {
+            return null;
         }
     }
 
@@ -846,7 +1023,6 @@ public static partial class OtherPlayersOverlayPatch
 
     private static void UpdateMapIcons(MapPanel mapPanel)
     {
-        Plugin.Logger?.LogInfo("[NetworkPlugin] UpdateMapIcons START");
         if (mapPanel == null)
         {
             return;
@@ -966,13 +1142,6 @@ public static partial class OtherPlayersOverlayPatch
         {
             HideAllMapIcons();
             return;
-        }
-
-        // 强制重建本地玩家图标，排除旧缓存干扰
-        if (!string.IsNullOrWhiteSpace(_selfPlayerId) && _mapIcons.TryGetValue(_selfPlayerId, out MapIconUi selfIcon) && selfIcon?.Root != null)
-        {
-            UnityEngine.Object.Destroy(selfIcon.Root);
-            _mapIcons.Remove(_selfPlayerId);
         }
 
         _lastMapIconLayoutFingerprint = 0;
@@ -1694,6 +1863,88 @@ public static partial class OtherPlayersOverlayPatch
         public Image BorderImage { get; set; }
         public TextMeshProUGUI Label { get; set; }
         public string CharacterId { get; set; }
+    }
+
+    public static void ApplyStatusEffectsToRemotePlayer(string playerId, List<RemoteStatusEffectInfo> remoteEffects)
+    {
+        Plugin.RunOnMainThread(() =>
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(playerId) || remoteEffects == null) return;
+                if (!_remoteCharacters.TryGetValue(playerId, out RemoteCharacterView remoteChar) || remoteChar?.View == null) return;
+
+                Unit unit = remoteChar.View.Unit;
+                if (unit == null) return;
+
+                var currentEffectsList = unit.StatusEffects;
+                if (currentEffectsList == null) return;
+                var currentEffects = currentEffectsList.Where(se => se != null).ToList();
+
+                HashSet<string> remoteTypes = new(StringComparer.Ordinal);
+                foreach (var rInfo in remoteEffects)
+                {
+                    if (string.IsNullOrWhiteSpace(rInfo.Type)) continue;
+
+                    string typeName = rInfo.Type;
+                    remoteTypes.Add(typeName);
+
+                    LBoL.Core.StatusEffects.StatusEffect existing = currentEffects.FirstOrDefault(se => string.Equals(se.GetType().Name, typeName, StringComparison.Ordinal));
+                    if (existing != null)
+                    {
+                        if (existing.HasLevel) existing.Level = rInfo.Level;
+                        else if (existing.HasCount) existing.Count = rInfo.Level;
+                        if (existing.HasDuration) existing.Duration = rInfo.Duration;
+
+                        if (remoteChar?.View != null && !string.IsNullOrEmpty(existing.UnitEffectName))
+                        {
+                            remoteChar.View.SendEffectMessage(existing.UnitEffectName, "OnPropertyChanged", existing);
+                        }
+                    }
+                    else
+                    {
+                        LBoL.Core.StatusEffects.StatusEffect newEffect = Library.TryCreateStatusEffect(typeName);
+                        if (newEffect != null)
+                        {
+                            Traverse.Create(newEffect).Property("GameRun").SetValue(unit.GameRun ?? unit.Battle?.GameRun);
+
+                            if (newEffect.HasLevel && rInfo.Level > 0) newEffect.Level = rInfo.Level;
+                            else if (newEffect.HasCount && rInfo.Level > 0) newEffect.Count = rInfo.Level;
+                            if (newEffect.HasDuration && rInfo.Duration > 0) newEffect.Duration = rInfo.Duration;
+
+                            Traverse.Create(unit).Method("TryAddStatusEffect", newEffect).GetValue();
+
+                            if (!string.IsNullOrEmpty(newEffect.UnitEffectName) && remoteChar?.View != null)
+                            {
+                                remoteChar.View.TryPlayEffectLoop(newEffect.UnitEffectName);
+                                remoteChar.View.SendEffectMessage(newEffect.UnitEffectName, "OnPropertyChanged", newEffect);
+                            }
+                        }
+                    }
+                }
+
+                List<LBoL.Core.StatusEffects.StatusEffect> toRemove = currentEffects.Where(se => !remoteTypes.Contains(se.GetType().Name)).ToList();
+                foreach (var se in toRemove)
+                {
+                    if (!string.IsNullOrEmpty(se.UnitEffectName) && remoteChar?.View != null)
+                    {
+                        remoteChar.View.EndEffectLoop(se.UnitEffectName, true);
+                    }
+
+                    Traverse.Create(unit).Method("TryRemoveStatusEffect", se).GetValue();
+                }
+
+                var widgetObj = Traverse.Create(remoteChar.View).Field("_statusWidget").GetValue();
+                if (widgetObj != null)
+                {
+                    Traverse.Create(widgetObj).Method("SetStatusEffects").GetValue();
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogWarning($"[OtherPlayersOverlay] ApplyStatusEffectsToRemotePlayer 异常: {ex.Message}");
+            }
+        });
     }
 
     #endregion

@@ -9,6 +9,7 @@ namespace NetworkPlugin.Network.Server.Core;
 /// </summary>
 public sealed class ServerMessageQueue
 {
+    private readonly object _lock = new();
     private readonly Queue<ServerInboundMessage>[] _queues =
     {
         new Queue<ServerInboundMessage>(), // Low
@@ -20,7 +21,16 @@ public sealed class ServerMessageQueue
     private int _count;
 
     /// <summary>当前队列中的消息总数</summary>
-    public int Count => _count;
+    public int Count
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _count;
+            }
+        }
+    }
 
     /// <summary>
     /// 将消息入队，按优先级放入对应队列
@@ -29,17 +39,20 @@ public sealed class ServerMessageQueue
     /// <param name="maxQueueSize">队列上限，超过时丢弃最低优先级消息</param>
     public void Enqueue(ServerInboundMessage message, int maxQueueSize)
     {
-        if (maxQueueSize > 0 && _count >= maxQueueSize)
+        lock (_lock)
         {
-            DropOne();
             if (maxQueueSize > 0 && _count >= maxQueueSize)
             {
-                return;
+                DropOneLocked();
+                if (maxQueueSize > 0 && _count >= maxQueueSize)
+                {
+                    return;
+                }
             }
-        }
 
-        _queues[(int)message.Priority].Enqueue(message);
-        _count++;
+            _queues[(int)message.Priority].Enqueue(message);
+            _count++;
+        }
     }
 
     /// <summary>
@@ -49,24 +62,42 @@ public sealed class ServerMessageQueue
     /// <returns>是否成功出队</returns>
     public bool TryDequeueHighest(out ServerInboundMessage message)
     {
-        for (int priority = 3; priority >= 0; priority--)
+        lock (_lock)
         {
-            if (_queues[priority].Count > 0)
+            for (int priority = 3; priority >= 0; priority--)
             {
-                message = _queues[priority].Dequeue();
-                _count--;
-                return true;
+                if (_queues[priority].Count > 0)
+                {
+                    message = _queues[priority].Dequeue();
+                    _count--;
+                    return true;
+                }
             }
-        }
 
-        message = default;
-        return false;
+            message = default;
+            return false;
+        }
     }
 
     /// <summary>
-    /// 丢弃一条最低优先级的消息
+    /// 清空所有优先级的消息队列
     /// </summary>
-    private void DropOne()
+    public void Clear()
+    {
+        lock (_lock)
+        {
+            for (int priority = 0; priority <= 3; priority++)
+            {
+                _queues[priority].Clear();
+            }
+            _count = 0;
+        }
+    }
+
+    /// <summary>
+    /// 丢弃一条最低优先级的消息（已持有 _lock 时调用）
+    /// </summary>
+    private void DropOneLocked()
     {
         for (int priority = 0; priority <= 3; priority++)
         {

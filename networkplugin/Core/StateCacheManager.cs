@@ -12,8 +12,8 @@ namespace NetworkPlugin.Core;
 /// </summary>
 internal sealed class StateCacheManager
 {
-    /// <summary>本地状态缓存字典</summary>
-    private readonly Dictionary<string, object> _stateCache = new(StringComparer.Ordinal);
+    /// <summary>本地状态缓存字典 (key -> (data, updatedTime))</summary>
+    private readonly Dictionary<string, (object Data, DateTime UpdatedTime)> _stateCache = new(StringComparer.Ordinal);
     /// <summary>同步配置</summary>
     private readonly SyncConfiguration _config;
 
@@ -34,13 +34,15 @@ internal sealed class StateCacheManager
         if (gameEvent == null) return;
 
         string stateKey = $"{gameEvent.EventType}_{gameEvent.UserName}";
-        _stateCache[stateKey] = gameEvent.Data;
+        DateTime now = DateTime.UtcNow;
+        _stateCache[stateKey] = (gameEvent.Data, now);
 
-        // 清理过期的旧状态缓存条目
+        // 清理包含 Old/Temp 或超过 StateCacheExpiry 的过期状态缓存条目
+        DateTime cutoffTime = now - _config.StateCacheExpiry;
         List<string> keysToRemove = [];
         foreach (var kvp in _stateCache)
         {
-            if (kvp.Key.Contains("Old") || kvp.Key.Contains("Temp"))
+            if (kvp.Key.Contains("Old") || kvp.Key.Contains("Temp") || kvp.Value.UpdatedTime < cutoffTime)
                 keysToRemove.Add(kvp.Key);
         }
         foreach (string key in keysToRemove)

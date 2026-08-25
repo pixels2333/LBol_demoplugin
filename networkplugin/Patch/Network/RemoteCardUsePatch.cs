@@ -588,10 +588,10 @@ public static partial class RemoteCardUsePatch
         return new { Kind = "Unknown", Id = unit.Id };
     }
 
-    private static object[] BuildActionBlueprint(IEnumerable<BattleAction> actions)
+    internal static object[] BuildActionBlueprint(IEnumerable<BattleAction> actions)
         => BuildActionBlueprint(actions, out _, out _, out _);
 
-    private static object[] BuildActionBlueprint(IEnumerable<BattleAction> actions, out bool hasDamage, out bool hasHeal, out bool hasStatus)
+    internal static object[] BuildActionBlueprint(IEnumerable<BattleAction> actions, out bool hasDamage, out bool hasHeal, out bool hasStatus)
     {
         hasDamage = false;
         hasHeal = false;

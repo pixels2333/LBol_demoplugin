@@ -29,6 +29,11 @@ public partial class NatTraversal
     private static readonly ManualLogSource _logger;
 
     /// <summary>
+    /// 静态同步锁对象，保护 _peerNatInfo 及 NAT 状态的线程安全
+    /// </summary>
+    private static readonly object _syncLock = new();
+
+    /// <summary>
     /// 对等方NAT信息缓存
     /// 存储所有已注册的对等方的网络地址转换信息
     /// </summary>
@@ -37,17 +42,17 @@ public partial class NatTraversal
     /// <summary>
     /// UPnP功能启用状态
     /// </summary>
-    private static bool _upnpEnabled = false;
+    private static volatile bool _upnpEnabled = false;
 
     /// <summary>
     /// UPnP 状态标签（DisabledByConfig / UnsupportedOrUnavailable / AvailableButNotImplemented / Enabled）。
     /// </summary>
-    private static string _upnpState = "DisabledByConfig";
+    private static volatile string _upnpState = "DisabledByConfig";
 
     /// <summary>
     /// 最近一次 NAT 探测结果。
     /// </summary>
-    private static NatType _lastDetectedNatType = NatType.Unknown;
+    private static volatile NatType _lastDetectedNatType = NatType.Unknown;
 
     public static string UpnpState => _upnpState;
     public static NatType LastDetectedNatType => _lastDetectedNatType;
@@ -979,7 +984,10 @@ public partial class NatTraversal
     /// <param name="natInfo">对等方的NAT信息</param>
     public static void RegisterPeerNatInfo(string peerId, NatInfo natInfo)
     {
-        _peerNatInfo[peerId] = natInfo;
+        lock (_syncLock)
+        {
+            _peerNatInfo[peerId] = natInfo;
+        }
         _logger?.LogInfo($"[NATTraversal] Registered NAT info for peer: {peerId}");
     } // 注册对等方NAT信息：存储对等方的网络地址转换信息，用于P2P连接
 
@@ -991,8 +999,11 @@ public partial class NatTraversal
     /// <returns>NAT信息对象，如果未找到则返回null</returns>
     public static NatInfo GetPeerNatInfo(string peerId)
     {
-        _peerNatInfo.TryGetValue(peerId, out var info);
-        return info;
+        lock (_syncLock)
+        {
+            _peerNatInfo.TryGetValue(peerId, out var info);
+            return info;
+        }
     } // 获取对等方NAT信息：从缓存中获取指定对等方的网络地址转换信息
 
     /// <summary>
@@ -1002,7 +1013,10 @@ public partial class NatTraversal
     /// <param name="peerId">对等方唯一标识符</param>
     public static void RemovePeerNatInfo(string peerId)
     {
-        _peerNatInfo.Remove(peerId);
+        lock (_syncLock)
+        {
+            _peerNatInfo.Remove(peerId);
+        }
         _logger?.LogInfo($"[NATTraversal] Removed NAT info for peer: {peerId}");
     } // 移除对等方NAT信息：从缓存中删除对等方的网络地址转换信息
 
@@ -1013,7 +1027,10 @@ public partial class NatTraversal
     /// <returns>包含所有对等方NAT信息的字典</returns>
     public static Dictionary<string, NatInfo> GetAllPeerNatInfo()
     {
-        return new Dictionary<string, NatInfo>(_peerNatInfo);
+        lock (_syncLock)
+        {
+            return new Dictionary<string, NatInfo>(_peerNatInfo);
+        }
     } // 获取所有注册的对等方NAT信息：返回所有对等方的网络地址转换信息副本
 
     /// <summary>

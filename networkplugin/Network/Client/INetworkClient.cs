@@ -43,9 +43,14 @@ public interface INetworkClient
     void Stop();
 
     /// <summary>
-    /// 获取客户端是否已连接到服务器
+    /// 获取当前客户端连接是否活跃
     /// </summary>
     bool IsConnected { get; }
+
+    /// <summary>
+    /// 获取最近一次与服务器断开的具体原因（如 ConnectionRejected、ConnectionFailed、Timeout 等）
+    /// </summary>
+    string LastDisconnectReason { get; }
 
     /// <summary>
     /// 客户端是否处于“正在连接”状态。

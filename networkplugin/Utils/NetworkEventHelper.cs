@@ -60,7 +60,19 @@ public static class NetworkEventHelper
             }
             if (payload is string s)
             {
+                if (string.IsNullOrWhiteSpace(s) || (!s.TrimStart().StartsWith("{") && !s.TrimStart().StartsWith("[")))
+                {
+                    root = default;
+                    return false;
+                }
                 using JsonDocument doc = JsonDocument.Parse(s);
+                root = doc.RootElement.Clone();
+                return true;
+            }
+            if (payload != null && !payload.GetType().IsPrimitive && !(payload is ValueType))
+            {
+                string json = JsonCompat.Serialize(payload);
+                using JsonDocument doc = JsonDocument.Parse(json);
                 root = doc.RootElement.Clone();
                 return true;
             }

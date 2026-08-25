@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using HarmonyLib;
+using LBoL.Base;
 using LBoL.Core;
 using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
@@ -64,6 +65,23 @@ public class DamageAction_Patch
                 return;
             }
 
+            // 如果是敌人对本地玩家的攻击，广播敌人攻击视觉事件（包含弹幕武器与是否擦弹/闪避）
+            if (source is EnemyUnit enemy)
+            {
+                if (targets != null)
+                {
+                    foreach (Unit target in targets)
+                    {
+                        if (target is PlayerUnit localPlayer)
+                        {
+                            TryBroadcastEnemyAttackVisual(syncManager, player, enemy, localPlayer, damageInfo, gunName, gunType);
+                            break;
+                        }
+                    }
+                }
+                return;
+            }
+
             // 只同步“玩家造成的伤害”，避免把敌人内部结算也广播出去。
             if (source is not PlayerUnit)
             {
@@ -98,16 +116,20 @@ public class DamageAction_Patch
                 List<Dictionary<string, object>> targetList = new();
                 foreach (Unit target in targets)
                 {
+                    if (target == null)
+                    {
+                        continue;
+                    }
+
                     targetList.Add(new Dictionary<string, object>
                     {
                         ["TargetId"] = target.Id,
                         ["TargetName"] = target.Name,
-                        ["TargetType"] = target.GetType().Name,
-                        ["CurrentHp"] = target.Hp,
                     });
                 }
 
                 damageData["Targets"] = targetList;
+                damageData["TargetCount"] = targetList.Count;
             }
 
             // 组装事件并发送。
@@ -155,6 +177,13 @@ public class DamageAction_Patch
                 return;
             }
 
+            // 如果是敌人对本地玩家的攻击，广播敌人攻击视觉事件
+            if (source is EnemyUnit enemy && unit is PlayerUnit localPlayer)
+            {
+                TryBroadcastEnemyAttackVisual(syncManager, player, enemy, localPlayer, damageInfo, gunName, gunType);
+                return;
+            }
+
             // 只同步“玩家造成的伤害”。
             if (source is not PlayerUnit)
             {
@@ -197,6 +226,60 @@ public class DamageAction_Patch
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[DamageSync] SingleTargetConstructor_Postfix 错误: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 当敌人攻击本地玩家时，向远端广播攻击视觉事件（包含弹幕武器与是否擦弹/闪避）。
+    /// </summary>
+    private static void TryBroadcastEnemyAttackVisual(
+        ISynchronizationManager syncManager,
+        INetworkPlayer player,
+        EnemyUnit enemy,
+        PlayerUnit localPlayer,
+        DamageInfo damageInfo,
+        string gunName,
+        GunType gunType)
+    {
+        try
+        {
+            if (damageInfo.DamageType != DamageType.Attack)
+            {
+                return;
+            }
+
+            bool isGrazed = damageInfo.Amount > 0 &&
+                            localPlayer.HasStatusEffect<LBoL.Core.StatusEffects.Graze>() &&
+                            !damageInfo.IsAccuracy;
+
+            Dictionary<string, object> attackVisualData = new()
+            {
+                ["PlayerId"] = player.playerId,
+                ["UserName"] = player.userName,
+                ["Timestamp"] = DateTime.Now.Ticks,
+                ["EnemyId"] = enemy.Id,
+                ["EnemyName"] = enemy.Name,
+                ["GunName"] = string.IsNullOrEmpty(gunName) ? "Instant" : gunName,
+                ["GunType"] = gunType.ToString(),
+                ["Damage"] = damageInfo.Amount,
+                ["DamageType"] = damageInfo.DamageType.ToString(),
+                ["IsGrazed"] = isGrazed,
+                ["IsAccuracy"] = damageInfo.IsAccuracy,
+            };
+
+            GameEvent gameEvent = GameEventManager.CreateEvent(
+                NetworkMessageTypes.OnEnemyAttackPlayerVisual,
+                player.userName,
+                attackVisualData
+            );
+
+            syncManager.SendGameEvent(gameEvent);
+
+            Plugin.Logger?.LogInfo($"[DamageSync] 敌人攻击玩家视觉同步: {enemy.Name} -> {localPlayer.Name} (伤害: {damageInfo.Amount}, 擦弹: {isGrazed}, 武器: {gunName})");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[DamageSync] TryBroadcastEnemyAttackVisual 错误: {ex.Message}");
         }
     }
 

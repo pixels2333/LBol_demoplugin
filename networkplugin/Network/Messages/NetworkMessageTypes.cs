@@ -246,6 +246,11 @@ namespace NetworkPlugin.Network.Messages
         /// </summary>
         public const string OnPlayerStateUpdate = "OnPlayerStateUpdate";
 
+        /// <summary>
+        /// 敌人攻击玩家视觉事件（包含弹幕武器与是否擦弹/闪避）
+        /// </summary>
+        public const string OnEnemyAttackPlayerVisual = "OnEnemyAttackPlayerVisual";
+
         // === Battle* (Host 权威广播 / Client 上报) ===
 
         /// <summary>
@@ -287,6 +292,26 @@ namespace NetworkPlugin.Network.Messages
         /// 主机广播：玩家状态效果全量快照(用于校验/追赶)。
         /// </summary>
         public const string BattlePlayerStatusEffectsFullBroadcast = "BattlePlayerStatusEffectsFullBroadcast";
+
+        /// <summary>
+        /// 客户端上报：玩家使用符卡/终极技能。
+        /// </summary>
+        public const string BattlePlayerUsUsedReport = "BattlePlayerUsUsedReport";
+
+        /// <summary>
+        /// 主机广播：玩家使用符卡/终极技能。
+        /// </summary>
+        public const string BattlePlayerUsUsedBroadcast = "BattlePlayerUsUsedBroadcast";
+
+        /// <summary>
+        /// 客户端上报：玩家使用卡牌。
+        /// </summary>
+        public const string BattlePlayerCardUsedReport = "BattlePlayerCardUsedReport";
+
+        /// <summary>
+        /// 主机广播：玩家使用卡牌。
+        /// </summary>
+        public const string BattlePlayerCardUsedBroadcast = "BattlePlayerCardUsedBroadcast";
 
         // === 回合同步消息 ===
 

@@ -68,10 +68,10 @@ public class CoreIntegrationTests
             processedTypes.Add(gameEvent.EventType);
         });
 
-        // Currently SortedList orders by key (timestamp), so both should be processed
-        Assert.Contains("First", processedTypes);
-        Assert.Contains("Second", processedTypes);
+        // Assert events were processed in chronological order based on timestamp key
         Assert.Equal(2, processedTypes.Count);
+        Assert.Equal("First", processedTypes[0]);
+        Assert.Equal("Second", processedTypes[1]);
     }
 
     [Fact]

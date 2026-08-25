@@ -90,14 +90,20 @@ public class NetworkClient : INetworkClient
     #region 自动重连配置
 
     /// <summary>是否启用自动重连，默认关闭，由上层逻辑按需开启。</summary>
-    private bool _autoReconnectEnabled = false;
+    private volatile bool _autoReconnectEnabled = false;
+    /// <summary>客户端是否已被显式停止；停止后禁止断线回调重启自动重连。</summary>
+    private volatile bool _isStopped;
     /// <summary>重连尝试间隔（毫秒），默认值取自 <see cref="NetworkConstants.ReconnectIntervalMs"/>。</summary>
     private int _retryInterval = NetworkConstants.ReconnectIntervalMs;
+    /// <summary>最大重连尝试次数</summary>
+    private int _maxReconnectAttempts = NetworkConstants.DefaultMaxReconnectAttempts;
+    /// <summary>当前已尝试重连的次数</summary>
+    private int _reconnectAttemptCount = 0;
     /// <summary>
     /// 连接超时（毫秒），与服务端默认值 30s 保持一致。
     /// 取值过小会导致"结束回合→空闲→断连"的误判。
     /// </summary>
-    private int _connectionTimeout = 30_000;
+    private int _connectionTimeout = NetworkConstants.DefaultNetworkTimeoutSeconds * 1000;
     /// <summary>上次成功连接的主机地址，用于断线后自动重连。</summary>
     private string _lastConnectHost;
     /// <summary>上次成功连接的端口号，用于断线后自动重连。</summary>
@@ -122,6 +128,9 @@ public class NetworkClient : INetworkClient
 
     #region 构造函数
 
+    /// <summary>配置管理器（用于按 LogVerbosity 过滤日志等）。</summary>
+    private ConfigManager _configManager;
+
     /// <summary>
     /// 从配置管理器构造客户端，自动读取连接密钥和超时配置。
     /// </summary>
@@ -134,6 +143,7 @@ public class NetworkClient : INetworkClient
     public NetworkClient(ConfigManager configManager, ISynchronizationManager synchronizationManager)
         : this(configManager?.RelayServerConnectionKey?.Value ?? "LBoL_Network_Plugin", null, null, synchronizationManager)
     {
+        _configManager = configManager;
         try
         {
             if (configManager != null)
@@ -181,6 +191,8 @@ public class NetworkClient : INetworkClient
     /// <remarks>必须在 <see cref="ConnectToServer"/> 之前调用；在游戏主循环中通过 <see cref="PollEvents"/> 驱动事件处理。</remarks>
     public void Start()
     {
+        // 重新启动后复位停止标记，允许后续断线按配置触发自动重连
+        _isStopped = false;
         // 同步连接超时配置到 NetManager，确保 LiteNetLib 断连判定与客户端逻辑一致
         _netManager.DisconnectTimeout = _connectionTimeout;
 
@@ -329,6 +341,7 @@ public class NetworkClient : INetworkClient
         _listener.PeerDisconnectedEvent += (peer, disconnectInfo) =>
         {
             Plugin.Logger?.LogWarning($"[客户端] 已从服务器断开: {peer.EndPoint}, 原因: {disconnectInfo.Reason}");
+            LastDisconnectReason = disconnectInfo.Reason.ToString();
             // 清空对端引用，标记为离线状态；后续 IsConnected 将返回 false
             _serverPeer = null;
             // 重置心跳时间戳到哨兵值，避免重连后误判心跳间隔过长导致立即重发
@@ -348,8 +361,8 @@ public class NetworkClient : INetworkClient
                 Plugin.Logger?.LogWarning($"[客户端] 通知同步管理器失败: {ex.Message}");
             }
 
-            // 若已启用自动重连，则启动周期性重连定时器
-            if (_autoReconnectEnabled)
+            // 若已启用自动重连且客户端未被显式停止，则启动周期性重连定时器
+            if (_autoReconnectEnabled && !_isStopped)
             {
                 Plugin.Logger?.LogInfo($"[客户端] 已启用自动重连，将在 {_retryInterval}ms 后重试");
                 StartAutoReconnectTimer_NoThrow();
@@ -465,7 +478,11 @@ public class NetworkClient : INetworkClient
 
             LogPayloadPreviewOnce(eventType, jsonPayload);
 
-            Plugin.Logger?.LogInfo($"[客户端] 收到游戏事件: {eventType}");
+            // 接收事件 Info 日志按 LogVerbosity 过滤：默认(2)输出，调低后仅保留 Debug。
+            if (_configManager?.ShouldLog(2) == true)
+            {
+                Plugin.Logger?.LogInfo($"[客户端] 收到游戏事件: {eventType}");
+            }
             // 高频：仅 Debug，避免刷屏。
             Plugin.Logger?.LogDebug($"[客户端] 收到游戏事件: {eventType}");
 
@@ -513,10 +530,8 @@ public class NetworkClient : INetworkClient
 
         // 仅打印一次：用于定位“无效的网络事件数据格式”根因
         string summary = NetLogHelper.BuildSummary(eventType, jsonPayload);
-        Plugin.Logger?.LogInfo($"[客户端] Payload 预览(仅一次): event={eventType}, {summary}");
         try
         {
-            // 双重保险：某些 Logger 实现可能在异步上下文抛异常，再试一次
             Plugin.Logger?.LogInfo($"[客户端] Payload 预览(仅一次): event={eventType}, {summary}");
         }
         catch
@@ -638,7 +653,9 @@ public class NetworkClient : INetworkClient
     /// </summary>
     public void Stop()
     {
-        // 先停止重连定时器，避免 Stop 后仍在后台尝试重连导致资源泄漏
+        // 显式标记停止并禁用自动重连，防止 Stop 产生的断线事件在后台重启重连
+        _isStopped = true;
+        _autoReconnectEnabled = false;
         StopAutoReconnectTimer_NoThrow();
         _netManager.Stop();
         _serverPeer = null;
@@ -683,7 +700,15 @@ public class NetworkClient : INetworkClient
                             return;
                         }
 
-                        Plugin.Logger?.LogInfo($"[客户端] 自动重连尝试：{_lastConnectHost}:{_lastConnectPort}");
+                        if (_reconnectAttemptCount >= _maxReconnectAttempts)
+                        {
+                            Plugin.Logger?.LogWarning($"[客户端] 自动重连达到最大尝试次数 ({_maxReconnectAttempts})，已停止。");
+                            StopAutoReconnectTimer_NoThrow();
+                            return;
+                        }
+
+                        _reconnectAttemptCount++;
+                        Plugin.Logger?.LogInfo($"[客户端] 自动重连尝试 ({_reconnectAttemptCount}/{_maxReconnectAttempts})：{_lastConnectHost}:{_lastConnectPort}");
                         ConnectToServer(_lastConnectHost, _lastConnectPort);
                     }
                     catch (Exception ex)
@@ -708,6 +733,7 @@ public class NetworkClient : INetworkClient
         {
             lock (_reconnectLock)
             {
+                _reconnectAttemptCount = 0;
                 _reconnectTimer?.Dispose();
                 _reconnectTimer = null;
             }
@@ -730,6 +756,11 @@ public class NetworkClient : INetworkClient
     /// 该属性在断连事件触发后立即返回 false，可用于 UI 状态指示器和发送前的连接检查。
     /// </remarks>
     public bool IsConnected => _serverPeer != null && _serverPeer.ConnectionState == ConnectionState.Connected;
+
+    /// <summary>
+    /// 最近一次断开连接的原因（如 ConnectionRejected, ConnectionFailed 等）。
+    /// </summary>
+    public string LastDisconnectReason { get; private set; }
 
     /// <summary>
     /// 客户端是否处于“正在连接”状态。

@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using HarmonyLib;
 using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Units;
+using LBoL.Presentation.Units;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
@@ -69,7 +72,17 @@ public static class PlayerStateSyncPatch
     /// <param name="player">玩家单位。</param>
     /// <returns>匿名对象快照。</returns>
     private static object SnapshotPlayer(PlayerUnit player)
-        => new
+    {
+        var statusEffects = player?.StatusEffects == null ? new List<object>() :
+            player.StatusEffects.Where(se => se != null).Select(se => new
+            {
+                Id = se.Id,
+                Type = se.GetType().Name,
+                Level = se.HasLevel ? se.Level : (se.HasCount ? se.Count : 0),
+                Duration = se.HasDuration ? se.Duration : 0
+            }).ToList<object>();
+
+        return new
         {
             PlayerUnitId = player?.Id?.ToString(),
             player?.Hp,
@@ -81,7 +94,9 @@ public static class PlayerStateSyncPatch
             Power = player?.Power,
             PowerPerLevel = player?.Us != null ? (int?)player.PowerPerLevel : null,
             MaxPowerLevel = player?.Us != null ? (int?)player.Us.MaxPowerLevel : null,
+            StatusEffects = statusEffects,
         };
+    }
 
     #endregion
 
@@ -632,6 +647,97 @@ public static class PlayerStateSyncPatch
             catch (Exception ex)
             {
                 Plugin.Logger?.LogError($"[PlayerStateSync] LoseMoney 后置同步失败: {ex.Message}");
+            }
+        }
+    }
+
+    #endregion
+
+    #region 开局即刻上报与 0.5s 定时脉冲同步
+
+    private static float _lastPeriodicStateSentTime;
+
+    public static void SendFullPlayerStateSnapshot(BattleController battle, string reason)
+    {
+        try
+        {
+            if (!ShouldSend()) return;
+            PlayerUnit player = battle?.Player;
+            if (player == null) return;
+
+            string selfId = NetworkIdentityTracker.GetSelfPlayerId();
+            if (string.IsNullOrWhiteSpace(selfId)) return;
+
+            Send(NetworkMessageTypes.OnPlayerStateUpdate, new
+            {
+                Timestamp = DateTime.Now.Ticks,
+                UpdateType = reason,
+                PlayerId = selfId,
+                Player = new
+                {
+                    Hp = player.Hp,
+                    MaxHp = player.MaxHp,
+                    Block = player.Block,
+                    Shield = player.Shield,
+                    IsAlive = player.IsAlive,
+                    Status = player.Status.ToString(),
+                    Power = player.Power,
+                    PowerPerLevel = player.Us != null ? (int?)player.PowerPerLevel : 1,
+                    MaxPowerLevel = player.Us != null ? (int?)player.Us.MaxPowerLevel : 3,
+                },
+                PlayerUnitId = player.Id,
+            });
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogWarning($"[PlayerStateSync] SendFullPlayerStateSnapshot 异常: {ex.Message}");
+        }
+    }
+
+    [HarmonyPatch(typeof(BattleController), "StartBattle")]
+    internal static class BattleController_StartBattle_SyncInitialState
+    {
+        [HarmonyPostfix]
+        public static void Postfix(BattleController __instance)
+        {
+            try
+            {
+                SendFullPlayerStateSnapshot(__instance, "StartBattle");
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogError($"[PlayerStateSync] StartBattle 后置初入状态上报失败: {ex.Message}");
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(GameDirector), "Update")]
+    internal static class GameDirector_PeriodicHeartbeat_Sync
+    {
+        [HarmonyPostfix]
+        public static void Postfix()
+        {
+            try
+            {
+                if (!ShouldSend() || RemoteCardUsePatch.IsInRemoteCardPipeline)
+                {
+                    return;
+                }
+
+                var battle = GameStateUtils.GetCurrentGameRun()?.Battle;
+                if (battle == null || !ShouldSyncLocalBattle(battle))
+                {
+                    return;
+                }
+
+                if (UnityEngine.Time.unscaledTime - _lastPeriodicStateSentTime >= 0.5f)
+                {
+                    _lastPeriodicStateSentTime = UnityEngine.Time.unscaledTime;
+                    SendFullPlayerStateSnapshot(battle, "Periodic0.5sHeartbeat");
+                }
+            }
+            catch
+            {
             }
         }
     }

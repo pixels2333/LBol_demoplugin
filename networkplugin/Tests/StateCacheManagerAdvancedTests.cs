@@ -83,4 +83,22 @@ public class StateCacheManagerAdvancedTests
         var exception = Record.Exception(() => mgr.ApplyRemoteEvent(null));
         Assert.Null(exception);
     }
+
+    [Fact]
+    public async System.Threading.Tasks.Task UpdateLocalState_ExpiredCache_IsRemoved()
+    {
+        var mgr = new StateCacheManager(new SyncConfiguration
+        {
+            StateCacheExpiry = TimeSpan.FromMilliseconds(50)
+        });
+
+        mgr.UpdateLocalState(new GameEvent("EventA", "p1", "data1"));
+        Assert.Equal(1, mgr.CachedStateCount);
+
+        await System.Threading.Tasks.Task.Delay(100);
+
+        mgr.UpdateLocalState(new GameEvent("EventB", "p1", "data2"));
+        // EventA > 50ms 缓存应被清理，只保留 EventB
+        Assert.Equal(1, mgr.CachedStateCount);
+    }
 }

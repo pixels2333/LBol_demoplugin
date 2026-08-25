@@ -1,6 +1,7 @@
 using System;
 using HarmonyLib;
 using LBoL.Core;
+using LBoL.Core.Stations;
 using LBoL.Presentation.UI.Panels;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Services;
@@ -176,6 +177,76 @@ public class MapPanelUpdateMapNodesStatusPatch
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[MapSyncPatch] Error in Postfix: {ex.Message}\n{ex.StackTrace}");
+        }
+    }
+
+    /// <summary>
+    /// 主动上报当前玩家位置（进入新关卡/节点时调用，跳过防抖动限制）
+    /// </summary>
+    public static void SendLocationUpdateActive(bool force = false)
+    {
+        try
+        {
+            if (force)
+            {
+                lock (_locationSendLock)
+                {
+                    _lastSentFp = 0;
+                    _lastSentAtTicks = 0;
+                }
+            }
+
+            var gameRun = GameStateUtils.GetCurrentGameRun();
+            var visitingNode = gameRun?.CurrentMap?.VisitingNode;
+            if (visitingNode == null)
+            {
+                return;
+            }
+
+            IServiceProvider sp = ModService.ServiceProvider;
+            var networkClient = sp?.GetService<INetworkClient>();
+            if (networkClient == null || !networkClient.IsConnected)
+            {
+                return;
+            }
+
+            string characterId = null;
+            try { characterId = GameStateUtils.GetCurrentPlayer()?.ModelName; } catch { }
+
+            var locationData = new
+            {
+                LocationX = visitingNode.X,
+                LocationY = visitingNode.Y,
+                LocationName = visitingNode.StationType.ToString(),
+                LocationType = visitingNode.GetType().Name,
+                Stage = visitingNode.Act,
+                CharacterId = characterId
+            };
+
+            string json = JsonCompat.Serialize(locationData);
+            networkClient.SendRequest("UpdatePlayerLocation", json);
+            Plugin.Logger?.LogInfo($"[MapSyncPatch] 主动发送位置更新: ({visitingNode.X}, {visitingNode.Y}) - {visitingNode.StationType}");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogWarning($"[MapSyncPatch] SendLocationUpdateActive 失败: {ex.Message}");
+        }
+    }
+}
+
+[HarmonyPatch(typeof(GameRunController), "EnterStation")]
+internal static class GameRunController_EnterStation_ActiveLocationPatch
+{
+    [HarmonyPostfix]
+    public static void Postfix(GameRunController __instance, Station station)
+    {
+        try
+        {
+            MapPanelUpdateMapNodesStatusPatch.SendLocationUpdateActive(force: true);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[ActiveLocationPatch] EnterStation 后置位置主动上传失败: {ex.Message}");
         }
     }
 }

@@ -42,4 +42,14 @@ public partial class ConfigManager
             "调试：为所有 UI 控件添加红色 5px 边界，用于查看控件边界"
         );
     }
+
+    /// <summary>
+    /// 获取其他玩家 Overlay 在右上角停靠时的 (X, Y) 偏移量。
+    /// </summary>
+    public (float X, float Y) GetOtherPlayersOverlayRightOffset()
+    {
+        float x = OtherPlayersOverlayRightOffsetX?.Value ?? -24f;
+        float y = OtherPlayersOverlayRightOffsetY?.Value ?? -144f;
+        return (x, y);
+    }
 }

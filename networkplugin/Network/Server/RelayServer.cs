@@ -321,8 +321,19 @@ public class RelayServer : BaseGameServer
             HandleLeaveRoom(session);
         }
 
+        var relayConfig = _configManager.GetRelayServerConfig();
+        if (_rooms.Count >= relayConfig.MaxRooms)
+        {
+            SendErrorMessage(session.Peer, "CreateRoomFailed", $"Relay server max rooms limit ({relayConfig.MaxRooms}) reached");
+            return;
+        }
+
         // 从 payload 解析房间配置（最大人数、模式等）。
         RoomConfig roomConfig = message.GetRoomConfigPayload();
+        if (roomConfig != null && relayConfig.MaxPlayersPerRoom > 0)
+        {
+            roomConfig.MaxPlayers = Math.Min(roomConfig.MaxPlayers, relayConfig.MaxPlayersPerRoom);
+        }
 
         // 生成短房间号：便于客户端显示/手动输入加入。
         string roomId = GenerateRoomId();
@@ -1418,13 +1429,14 @@ public class RelayServer : BaseGameServer
     /// </summary>
     private static IServerCore CreateCore(ConfigManager configManager, ILogger<RelayServer> logger)
     {
+        var relayConfig = configManager.GetRelayServerConfig();
         // 把配置映射为 ServerOptions：端口、最大连接数、连接密钥、超时等。
         return new ServerCore(
             new ServerOptions
             {
-                Port = configManager.RelayServerPort.Value,
-                MaxConnections = configManager.RelayServerMaxConnections.Value,
-                ConnectionKey = configManager.RelayServerConnectionKey.Value,
+                Port = relayConfig.Port,
+                MaxConnections = relayConfig.MaxConnections,
+                ConnectionKey = relayConfig.ConnectionKey,
                 DisconnectTimeoutMs = configManager.NetworkTimeoutSeconds.Value * 1000,
                 PingIntervalMs = 1000,
                 MaxQueueSize = 2000,
@@ -1587,13 +1599,19 @@ public class RelayServer : BaseGameServer
     }
 
     /// <summary>
+    /// 线程局部的 Random 实例，用于生成短房间号（避免并发冲突与频繁 GC）。
+    /// </summary>
+    [ThreadStatic]
+    private static Random? _threadRandom;
+
+    /// <summary>
     /// 生成短房间号（6 位大写字母/数字）。
     /// </summary>
     private static string GenerateRoomId()
     {
-        Random random = new();
+        _threadRandom ??= new Random();
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        return new string(Enumerable.Repeat(chars, 6).Select(s => s[random.Next(s.Length)]).ToArray());
+        return new string(Enumerable.Repeat(chars, 6).Select(s => s[_threadRandom.Next(s.Length)]).ToArray());
     }
 
     #endregion

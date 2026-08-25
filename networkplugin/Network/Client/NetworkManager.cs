@@ -709,7 +709,8 @@ public class NetworkManager : INetworkManager
             // 某些旧版本消息仍通过字符串形式传递 JSON，需要手动解析
             if (payload is string s)
             {
-                root = JsonDocument.Parse(s).RootElement;
+                using JsonDocument doc = JsonDocument.Parse(s);
+                root = doc.RootElement.Clone();
                 return true;
             }
         }

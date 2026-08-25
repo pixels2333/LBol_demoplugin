@@ -17,7 +17,7 @@ namespace NetworkPlugin.UI.Factories;
 internal static class TradePanelRuntimeFactory
 {
     private const string RuntimeRootName = "NetworkPlugin_TradePanel";
-    private const string RuntimeUiVersion = "2026-04-26-ui-v22";
+    private const string RuntimeUiVersion = "2026-08-25-ui-v27";
 
     internal static TradePanel GetOrCreate(Transform preferredParent)
     {

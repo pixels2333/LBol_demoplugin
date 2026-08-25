@@ -67,7 +67,7 @@ public interface ISynchronizationManager
 
     /// <summary>
     /// 处理网络连接丢失事件
-    /// 当网络连接断开时，切换到离线模式并通知其他玩家
+    /// 当网络连接断开时，切换到离线模式
     /// </summary>
     void OnConnectionLost();
 

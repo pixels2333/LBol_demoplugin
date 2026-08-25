@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -277,6 +277,8 @@ private void EnsureCardPickerOverlay()
     {
         if (_offerPreviewRoot is not null)
         {
+            _offerPreviewRoot.SetActive(true);
+            _offerPreviewRoot.transform.SetAsLastSibling();
             return;
         }
 
@@ -296,7 +298,7 @@ private void EnsureCardPickerOverlay()
             _offerPreviewRoot.transform.SetParent(GetTradePanelContentParent(), false);
 
             RectTransform rootRect = _offerPreviewRoot.AddComponent<RectTransform>();
-            SetRect(rootRect, 0.02f, 0.40f, 0.98f, 0.74f);
+            SetRect(rootRect, 0.02f, 0.36f, 0.98f, 0.82f);
 
             _localOfferPreviewPanel = CreateOfferPreviewPanel(_offerPreviewRoot.transform, "LocalOfferPreview", 0.00f, 0.00f, 0.48f, 1.00f);
             _remoteOfferPreviewPanel = CreateOfferPreviewPanel(_offerPreviewRoot.transform, "RemoteOfferPreview", 0.52f, 0.00f, 1.00f, 1.00f);

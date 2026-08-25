@@ -527,7 +527,8 @@ public class RoomSyncManager
         try
         {
             string json = JsonCompat.Serialize(payload);
-            root = JsonDocument.Parse(json).RootElement;
+            using JsonDocument doc = JsonDocument.Parse(json);
+            root = doc.RootElement.Clone();
             return true;
         }
         catch

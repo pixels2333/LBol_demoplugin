@@ -197,14 +197,23 @@ public static partial class RemoteCardUsePatch
                 }
 
                 Plugin.Logger?.LogInfo($"[RemoteCardUse] 准备执行: caster={(caster == null ? "null" : caster.GetType().Name)}, target={(targetUnit == null ? "null" : targetUnit.GetType().Name)}, actions={actions.Count}, card={(actionSourceCard == null ? "null" : actionSourceCard.Id)}");
-                InvokeBattleReact(battle, actions, actionSourceCard);
-                TryBroadcastResolvedState(root, battle);
+                InvokeBattleReact(battle, actions, actionSourceCard, () =>
+                {
+                    TryBroadcastResolvedState(root, battle);
+                });
             }
         }
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[RemoteCardUse] Execute failed: {ex.Message}");
         }
+    }
+
+    private sealed class CallbackAction : LBoL.Core.Battle.SimpleAction
+    {
+        private readonly Action _callback;
+        public CallbackAction(Action callback) => _callback = callback;
+        protected override void ResolvePhase() => _callback?.Invoke();
     }
 
     // 根据载荷中 TargetUnitKind 选择效果目标。
@@ -248,7 +257,7 @@ public static partial class RemoteCardUsePatch
         return battle.Player;
     }
 
-    private static void InvokeBattleReact(BattleController battle, List<BattleAction> actions, Card actionSourceCard)
+    private static void InvokeBattleReact(BattleController battle, List<BattleAction> actions, Card actionSourceCard, Action onComplete = null)
     {
         if (battle == null || actions == null || actions.Count == 0)
         {
@@ -278,6 +287,11 @@ public static partial class RemoteCardUsePatch
                 string recordName = $"{recordPrefix}:{action.GetType().Name}:{i}";
                 battle.RequestDebugAction(action, recordName);
                 i++;
+            }
+
+            if (onComplete != null)
+            {
+                battle.RequestDebugAction(new CallbackAction(onComplete), $"{recordPrefix}:ResolvedCallback");
             }
 
             Plugin.Logger?.LogInfo($"[RemoteCardUse] 已入队 {i} 个 debug action 等待战斗协程执行");
@@ -1014,8 +1028,136 @@ public static partial class RemoteCardUsePatch
         return null;
     }
 
+    // Helper to resolve a UnitView from Unit or serialized JSON representation, supporting remote player UnitViews
+    private static UnitView ResolveUnitView(Unit unit, JsonElement elem, BattleController battle, string defaultPlayerId = null)
+    {
+        try
+        {
+            // 1. 如果有 Unit 实例
+            if (unit != null)
+            {
+                if (Singleton<GameDirector>.Instance?.PlayerUnitView != null && unit == Singleton<GameDirector>.Instance.PlayerUnitView.Unit)
+                {
+                    return Singleton<GameDirector>.Instance.PlayerUnitView;
+                }
+
+                if (unit is EnemyUnit eu)
+                {
+                    UnitView ev = GameDirector.GetEnemy(eu);
+                    if (ev != null) return ev;
+                }
+
+                foreach (UnitView remote in OtherPlayersOverlayPatch.SnapshotRemoteCharacterUnitViews())
+                {
+                    if (remote != null && remote.Unit == unit)
+                    {
+                        return remote;
+                    }
+                }
+            }
+
+            // 2. 从 JSON 载荷解析
+            if (elem.ValueKind == JsonValueKind.Object)
+            {
+                string kind = GetString(elem, "Kind");
+                if (kind == "Player")
+                {
+                    string playerId = GetString(elem, "PlayerId");
+                    if (string.IsNullOrWhiteSpace(playerId))
+                    {
+                        playerId = defaultPlayerId;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(playerId))
+                    {
+                        string selfId;
+                        lock (_syncLock)
+                        {
+                            selfId = _selfPlayerId;
+                        }
+                        if (string.Equals(playerId, selfId, StringComparison.Ordinal) || playerId == "__local__")
+                        {
+                            return Singleton<GameDirector>.Instance?.PlayerUnitView;
+                        }
+
+                        if (OtherPlayersOverlayPatch.TryGetRemoteCharacterUnitView(playerId, out UnitView remoteView) && remoteView != null)
+                        {
+                            return remoteView;
+                        }
+                    }
+                }
+                else if (kind == "Enemy")
+                {
+                    string enemyId = GetString(elem, "EnemyId");
+                    int? rootIndex = GetInt(elem, "RootIndex");
+                    if (rootIndex != null)
+                    {
+                        UnitView ev = GameDirector.GetEnemyByRootIndex(rootIndex.Value);
+                        if (ev != null) return ev;
+                    }
+                    if (battle?.EnemyGroup != null && !string.IsNullOrWhiteSpace(enemyId))
+                    {
+                        foreach (EnemyUnit e in battle.EnemyGroup)
+                        {
+                            if (e != null && e.Id == enemyId)
+                            {
+                                UnitView ev = GameDirector.GetEnemy(e);
+                                if (ev != null) return ev;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 3. Fallback: 使用 defaultPlayerId 查找远程玩家
+            if (!string.IsNullOrWhiteSpace(defaultPlayerId))
+            {
+                if (OtherPlayersOverlayPatch.TryGetRemoteCharacterUnitView(defaultPlayerId, out UnitView remoteView) && remoteView != null)
+                {
+                    return remoteView;
+                }
+            }
+
+            return Singleton<GameDirector>.Instance?.PlayerUnitView;
+        }
+        catch
+        {
+            return Singleton<GameDirector>.Instance?.PlayerUnitView;
+        }
+    }
+
+    private static UnitView ResolveTargetUnitView(Unit targetUnit, JsonElement targetElem, BattleController battle, UnitView sourceView)
+    {
+        try
+        {
+            UnitView tv = ResolveUnitView(targetUnit, targetElem, battle, null);
+            if (tv != null && tv != sourceView)
+            {
+                return tv;
+            }
+
+            // 智能敌方目标兜底：如果本地战斗有敌方单位，选择第一个存活的敌人
+            if (GameDirector.Enemies != null)
+            {
+                foreach (UnitView enemyView in GameDirector.Enemies)
+                {
+                    if (enemyView != null && enemyView.Unit != null && enemyView.Unit.IsAlive && enemyView.gameObject.activeInHierarchy)
+                    {
+                        return enemyView;
+                    }
+                }
+            }
+
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     // Play visuals sequentially on non-executing client via a coroutine
-    public static System.Collections.IEnumerator PlayVisualsCoroutine(JsonElement actionsEl, BattleController battle, bool skipStateVisuals)
+    public static System.Collections.IEnumerator PlayVisualsCoroutine(JsonElement actionsEl, BattleController battle, bool skipStateVisuals, string defaultSenderPlayerId = null)
     {
         if (actionsEl.ValueKind != JsonValueKind.Array)
         {
@@ -1033,24 +1175,24 @@ public static partial class RemoteCardUsePatch
             if (kind == "PerformAction")
             {
                 string type = GetString(actionEl, "Type");
-                yield return PlayPerformActionVisual(type, actionEl, battle);
+                yield return PlayPerformActionVisual(type, actionEl, battle, defaultSenderPlayerId);
             }
             else if (kind == "Damage" && !skipStateVisuals)
             {
-                yield return PlayDamageVisual(actionEl, battle);
+                yield return PlayDamageVisual(actionEl, battle, defaultSenderPlayerId);
             }
             else if (kind == "Heal" && !skipStateVisuals)
             {
-                yield return PlayHealVisual(actionEl, battle);
+                yield return PlayHealVisual(actionEl, battle, defaultSenderPlayerId);
             }
             else if (kind == "ApplyStatusEffect" && !skipStateVisuals)
             {
-                yield return PlayStatusEffectVisual(actionEl, battle);
+                yield return PlayStatusEffectVisual(actionEl, battle, defaultSenderPlayerId);
             }
         }
     }
 
-    private static System.Collections.IEnumerator PlayPerformActionVisual(string type, JsonElement elem, BattleController battle)
+    private static System.Collections.IEnumerator PlayPerformActionVisual(string type, JsonElement elem, BattleController battle, string defaultSenderPlayerId = null)
     {
         switch (type)
         {
@@ -1067,18 +1209,21 @@ public static partial class RemoteCardUsePatch
                 }
             case "Gun":
                 {
-                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
-                    Unit target = ResolveUnit(elem.GetProperty("Target"), battle);
+                    Unit source = elem.TryGetProperty("Source", out JsonElement sEl) ? ResolveUnit(sEl, battle) : null;
+                    Unit target = elem.TryGetProperty("Target", out JsonElement tEl) ? ResolveUnit(tEl, battle) : null;
                     string gunId = GetString(elem, "GunId");
                     float waitTime = GetFloat(elem, "WaitTime") ?? 0f;
-                    UnitView sourceView = GameDirector.GetUnit(source);
-                    UnitView targetView = GameDirector.GetUnit(target);
-                    if (sourceView != null && targetView != null && !string.IsNullOrEmpty(gunId) && gunId != "Empty")
+                    UnitView sourceView = ResolveUnitView(source, sEl, battle, defaultSenderPlayerId);
+                    UnitView targetView = ResolveTargetUnitView(target, tEl, battle, sourceView);
+                    if (sourceView != null && !string.IsNullOrEmpty(gunId) && gunId != "Empty")
                     {
-                        sourceView.Target = targetView;
-                        sourceView.Targets.Clear();
-                        sourceView.Targets.Add(targetView);
-                        targetView.ComingDamage = DamageInfo.Attack(0f, false);
+                        if (targetView != null)
+                        {
+                            sourceView.Target = targetView;
+                            sourceView.Targets.Clear();
+                            sourceView.Targets.Add(targetView);
+                            targetView.ComingDamage = DamageInfo.Attack(0f, false);
+                        }
                         sourceView.PerformShoot(gunId);
                         yield return new UnityEngine.WaitForSeconds(waitTime);
                     }
@@ -1092,7 +1237,7 @@ public static partial class RemoteCardUsePatch
                 }
             case "Animation":
                 {
-                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    Unit source = elem.TryGetProperty("Source", out JsonElement sEl) ? ResolveUnit(sEl, battle) : null;
                     string animationName = GetString(elem, "AnimationName");
                     float waitTime = GetFloat(elem, "WaitTime") ?? 0f;
                     string sfxId = GetString(elem, "SfxId");
@@ -1107,10 +1252,17 @@ public static partial class RemoteCardUsePatch
                     {
                         GameDirector.Shake(shakeLevel, true);
                     }
-                    UnitView sourceView = GameDirector.GetUnit(source);
+                    UnitView sourceView = ResolveUnitView(source, sEl, battle, defaultSenderPlayerId);
                     if (sourceView != null && !string.IsNullOrEmpty(animationName))
                     {
-                        sourceView.PlayAnimation(animationName);
+                        try
+                        {
+                            sourceView.PlayAnimation(animationName);
+                        }
+                        catch
+                        {
+                            try { sourceView.PlayAnimation("spell"); } catch { }
+                        }
                         yield return new UnityEngine.WaitForSeconds(waitTime);
                     }
                     break;
@@ -1136,14 +1288,14 @@ public static partial class RemoteCardUsePatch
                 }
             case "Chat":
                 {
-                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    Unit source = elem.TryGetProperty("Source", out JsonElement sEl) ? ResolveUnit(sEl, battle) : null;
                     string content = GetString(elem, "Content");
                     float chatTime = GetFloat(elem, "ChatTime") ?? 2f;
                     float delay = GetFloat(elem, "Delay") ?? 0f;
                     float waitTime = GetFloat(elem, "WaitTime") ?? 0f;
                     bool talk = GetBool(elem, "Talk") ?? true;
-                    UnitView sourceView = GameDirector.GetUnit(source);
-                    if (sourceView != null && sourceView.Unit.IsAlive && !sourceView.IsHidden)
+                    UnitView sourceView = ResolveUnitView(source, sEl, battle, defaultSenderPlayerId);
+                    if (sourceView != null && sourceView.Unit != null && sourceView.Unit.IsAlive && !sourceView.IsHidden)
                     {
                         sourceView.Chat(content, chatTime, talk ? ((sourceView == GameDirector.Player) ? LBoL.Presentation.UI.Widgets.ChatWidget.CloudType.LeftTalk : LBoL.Presentation.UI.Widgets.ChatWidget.CloudType.RightTalk) : ((sourceView == GameDirector.Player) ? LBoL.Presentation.UI.Widgets.ChatWidget.CloudType.LeftThink : LBoL.Presentation.UI.Widgets.ChatWidget.CloudType.RightThink), delay);
                         yield return new UnityEngine.WaitForSecondsRealtime(waitTime);
@@ -1152,9 +1304,9 @@ public static partial class RemoteCardUsePatch
                 }
             case "Spell":
                 {
-                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    Unit source = elem.TryGetProperty("Source", out JsonElement sEl) ? ResolveUnit(sEl, battle) : null;
                     string spellName = GetString(elem, "SpellName");
-                    UnitView sourceView = GameDirector.GetUnit(source);
+                    UnitView sourceView = ResolveUnitView(source, sEl, battle, defaultSenderPlayerId);
                     if (sourceView != null && !string.IsNullOrEmpty(spellName))
                     {
                         yield return sourceView.SpellDeclare(spellName);
@@ -1163,14 +1315,14 @@ public static partial class RemoteCardUsePatch
                 }
             case "Effect":
                 {
-                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    Unit source = elem.TryGetProperty("Source", out JsonElement sEl) ? ResolveUnit(sEl, battle) : null;
                     string effectName = GetString(elem, "EffectName");
                     float delay = GetFloat(elem, "Delay") ?? 0f;
                     float waitTime = GetFloat(elem, "WaitTime") ?? 0f;
                     string sfxId = GetString(elem, "SfxId");
                     float sfxDelay = GetFloat(elem, "SfxDelay") ?? 0f;
                     string effectTypeStr = GetString(elem, "EffectType");
-                    UnitView sourceView = GameDirector.GetUnit(source);
+                    UnitView sourceView = ResolveUnitView(source, sEl, battle, defaultSenderPlayerId);
                     if (sourceView != null && !string.IsNullOrEmpty(effectName))
                     {
                         if (Enum.TryParse(effectTypeStr, out PerformAction.EffectBehavior effectType))
@@ -1201,10 +1353,10 @@ public static partial class RemoteCardUsePatch
                 }
             case "EffectMessage":
                 {
-                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    Unit source = elem.TryGetProperty("Source", out JsonElement sEl) ? ResolveUnit(sEl, battle) : null;
                     string effectName = GetString(elem, "EffectName");
                     string message = GetString(elem, "Message");
-                    UnitView sourceView = GameDirector.GetUnit(source);
+                    UnitView sourceView = ResolveUnitView(source, sEl, battle, defaultSenderPlayerId);
                     if (sourceView != null && !string.IsNullOrEmpty(effectName))
                     {
                         sourceView.SendEffectMessage(effectName, message, null);
@@ -1213,10 +1365,10 @@ public static partial class RemoteCardUsePatch
                 }
             case "SePop":
                 {
-                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    Unit source = elem.TryGetProperty("Source", out JsonElement sEl) ? ResolveUnit(sEl, battle) : null;
                     string popContent = GetString(elem, "PopContent");
-                    UnitView sourceView = GameDirector.GetUnit(source);
-                    if (sourceView != null && sourceView.Unit.IsAlive && !string.IsNullOrEmpty(popContent))
+                    UnitView sourceView = ResolveUnitView(source, sEl, battle, defaultSenderPlayerId);
+                    if (sourceView != null && sourceView.Unit != null && sourceView.Unit.IsAlive && !string.IsNullOrEmpty(popContent))
                     {
                         sourceView.ShowSePopup(popContent, StatusEffectType.Positive, 0, LBoL.Presentation.UI.Widgets.UnitInfoWidget.SePopType.Amulet);
                     }
@@ -1235,9 +1387,9 @@ public static partial class RemoteCardUsePatch
                 }
             case "TransformModel":
                 {
-                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
+                    Unit source = elem.TryGetProperty("Source", out JsonElement sEl) ? ResolveUnit(sEl, battle) : null;
                     string modelName = GetString(elem, "ModelName");
-                    UnitView sourceView = GameDirector.GetUnit(source);
+                    UnitView sourceView = ResolveUnitView(source, sEl, battle, defaultSenderPlayerId);
                     if (sourceView != null && !string.IsNullOrEmpty(modelName))
                     {
                         yield return sourceView.LoadUnitModelAsync(modelName, false, null);
@@ -1246,8 +1398,8 @@ public static partial class RemoteCardUsePatch
                 }
             case "DeathAnimation":
                 {
-                    Unit source = ResolveUnit(elem.GetProperty("Source"), battle);
-                    UnitView sourceView = GameDirector.GetUnit(source);
+                    Unit source = elem.TryGetProperty("Source", out JsonElement sEl) ? ResolveUnit(sEl, battle) : null;
+                    UnitView sourceView = ResolveUnitView(source, sEl, battle, defaultSenderPlayerId);
                     if (sourceView != null)
                     {
                         sourceView.DeathAnimation();
@@ -1271,10 +1423,11 @@ public static partial class RemoteCardUsePatch
         }
     }
 
-    private static System.Collections.IEnumerator PlayDamageVisual(JsonElement actionEl, BattleController battle)
+    private static System.Collections.IEnumerator PlayDamageVisual(JsonElement actionEl, BattleController battle, string defaultSenderPlayerId = null)
     {
-        Unit source = ResolveUnit(actionEl.GetProperty("Caster"), battle);
-        if (source == null)
+        Unit source = actionEl.TryGetProperty("Caster", out JsonElement cEl) ? ResolveUnit(cEl, battle) : null;
+        UnitView sourceView = ResolveUnitView(source, cEl, battle, defaultSenderPlayerId);
+        if (sourceView == null)
         {
             yield break;
         }
@@ -1289,27 +1442,30 @@ public static partial class RemoteCardUsePatch
             }
         }
 
-        if (targets.Count == 0)
-        {
-            yield break;
-        }
-
         string gunName = GetString(actionEl, "GunName") ?? "Instant";
         string gunTypeStr = GetString(actionEl, "GunType");
         GunType gunType = Enum.TryParse(gunTypeStr, out GunType parsed) ? parsed : GunType.Single;
 
-        UnitView sourceView = GameDirector.GetUnit(source);
         var targetViews = new List<UnitView>();
-        foreach (var t in targets)
+        foreach (Unit t in targets)
         {
-            UnitView tv = GameDirector.GetUnit(t);
+            UnitView tv = ResolveUnitView(t, default, battle, null);
             if (tv != null) targetViews.Add(tv);
         }
 
-        if (sourceView != null && targetViews.Count > 0 && !string.IsNullOrEmpty(gunName) && gunName != "Empty" && gunName != "Instant")
+        if (targetViews.Count == 0)
+        {
+            UnitView fallbackTarget = ResolveTargetUnitView(null, default, battle, sourceView);
+            if (fallbackTarget != null)
+            {
+                targetViews.Add(fallbackTarget);
+            }
+        }
+
+        if (targetViews.Count > 0 && !string.IsNullOrEmpty(gunName) && gunName != "Empty" && gunName != "Instant")
         {
             var pairs = new List<ValueTuple<UnitView, DamageInfo>>();
-            foreach (var tv in targetViews)
+            foreach (UnitView tv in targetViews)
             {
                 pairs.Add(new ValueTuple<UnitView, DamageInfo>(tv, DamageInfo.Attack(0f, false)));
             }
@@ -1319,25 +1475,28 @@ public static partial class RemoteCardUsePatch
             {
                 yield return (System.Collections.IEnumerator)method.GetValue();
             }
+            else
+            {
+                sourceView.PerformShoot(gunName);
+            }
+        }
+        else if (!string.IsNullOrEmpty(gunName) && gunName != "Empty" && gunName != "Instant")
+        {
+            sourceView.PerformShoot(gunName);
         }
         else
         {
-            foreach (var tv in targetViews)
+            foreach (UnitView tv in targetViews)
             {
-                tv.PlayAnimation("hit");
+                tv?.PlayAnimation("hit");
             }
         }
     }
 
-    private static System.Collections.IEnumerator PlayHealVisual(JsonElement actionEl, BattleController battle)
+    private static System.Collections.IEnumerator PlayHealVisual(JsonElement actionEl, BattleController battle, string defaultSenderPlayerId = null)
     {
-        Unit target = ResolveUnit(actionEl.GetProperty("Target"), battle);
-        if (target == null)
-        {
-            yield break;
-        }
-
-        UnitView targetView = GameDirector.GetUnit(target);
+        Unit target = actionEl.TryGetProperty("Target", out JsonElement tEl) ? ResolveUnit(tEl, battle) : null;
+        UnitView targetView = ResolveUnitView(target, tEl, battle, defaultSenderPlayerId);
         if (targetView == null)
         {
             yield break;
@@ -1346,20 +1505,22 @@ public static partial class RemoteCardUsePatch
         int amount = GetInt(actionEl, "Amount") ?? 0;
         bool large = amount > 12;
 
-        LBoL.Presentation.Effect.EffectManager.CreateEffect(large ? "UnitHealLarge" : "UnitHeal", targetView.EffectRoot, true);
-        LBoL.Presentation.AudioManager.PlayUi(large ? "HealLarge" : "Heal", false);
+        try
+        {
+            LBoL.Presentation.Effect.EffectManager.CreateEffect(large ? "UnitHealLarge" : "UnitHeal", targetView.EffectRoot, true);
+            LBoL.Presentation.AudioManager.PlayUi(large ? "HealLarge" : "Heal", false);
+        }
+        catch
+        {
+            // ignored
+        }
         yield return new UnityEngine.WaitForSeconds(0.2f);
     }
 
-    private static System.Collections.IEnumerator PlayStatusEffectVisual(JsonElement actionEl, BattleController battle)
+    private static System.Collections.IEnumerator PlayStatusEffectVisual(JsonElement actionEl, BattleController battle, string defaultSenderPlayerId = null)
     {
-        Unit target = ResolveUnit(actionEl.GetProperty("Target"), battle);
-        if (target == null)
-        {
-            yield break;
-        }
-
-        UnitView targetView = GameDirector.GetUnit(target);
+        Unit target = actionEl.TryGetProperty("Target", out JsonElement tEl) ? ResolveUnit(tEl, battle) : null;
+        UnitView targetView = ResolveUnitView(target, tEl, battle, defaultSenderPlayerId);
         if (targetView == null)
         {
             yield break;
@@ -1384,28 +1545,35 @@ public static partial class RemoteCardUsePatch
         if (effect.HasLevel) num = level;
         else if (effect.HasDuration) num = duration;
 
-        targetView.ShowSePopup(effect.Name, effect.Type, num, LBoL.Presentation.UI.Widgets.UnitInfoWidget.SePopType.Add);
-
-        if (string.IsNullOrEmpty(effect.Config.SFX) || effect.Config.SFX == "Default")
+        try
         {
-            switch (effect.Config.Type)
+            targetView.ShowSePopup(effect.Name, effect.Type, num, LBoL.Presentation.UI.Widgets.UnitInfoWidget.SePopType.Add);
+
+            if (string.IsNullOrEmpty(effect.Config.SFX) || effect.Config.SFX == "Default")
             {
-                case StatusEffectType.Positive:
-                    LBoL.Presentation.AudioManager.PlaySfx("Buff", -1f);
-                    break;
-                case StatusEffectType.Negative:
-                    LBoL.Presentation.AudioManager.PlaySfx("Debuff", -1f);
-                    break;
+                switch (effect.Config.Type)
+                {
+                    case StatusEffectType.Positive:
+                        LBoL.Presentation.AudioManager.PlaySfx("Buff", -1f);
+                        break;
+                    case StatusEffectType.Negative:
+                        LBoL.Presentation.AudioManager.PlaySfx("Debuff", -1f);
+                        break;
+                }
+            }
+            else
+            {
+                LBoL.Presentation.AudioManager.PlaySfx(effect.Config.SFX, -1f);
+            }
+
+            if (!string.IsNullOrEmpty(effect.Config.VFX) && effect.Config.VFX != "Default")
+            {
+                LBoL.Presentation.Effect.EffectManager.CreateEffect(effect.Config.VFX, targetView.EffectRoot, 0f, null, false, true);
             }
         }
-        else
+        catch
         {
-            LBoL.Presentation.AudioManager.PlaySfx(effect.Config.SFX, -1f);
-        }
-
-        if (!string.IsNullOrEmpty(effect.Config.VFX) && effect.Config.VFX != "Default")
-        {
-            LBoL.Presentation.Effect.EffectManager.CreateEffect(effect.Config.VFX, targetView.EffectRoot, 0f, null, false, true);
+            // ignored
         }
 
         yield return new UnityEngine.WaitForSeconds(0.2f);

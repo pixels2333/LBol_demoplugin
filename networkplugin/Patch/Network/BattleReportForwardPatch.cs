@@ -221,6 +221,8 @@ public static class BattleReportForwardPatch
 			NetworkMessageTypes.BattlePlayerHealReport => NetworkMessageTypes.BattlePlayerHealBroadcast,
 			NetworkMessageTypes.BattlePlayerStatusEffectsDeltaReport => NetworkMessageTypes.BattlePlayerStatusEffectsDeltaBroadcast,
 			NetworkMessageTypes.BattlePlayerStatusEffectsFullReport => NetworkMessageTypes.BattlePlayerStatusEffectsFullBroadcast,
+			NetworkMessageTypes.BattlePlayerUsUsedReport => NetworkMessageTypes.BattlePlayerUsUsedBroadcast,
+			NetworkMessageTypes.BattlePlayerCardUsedReport => NetworkMessageTypes.BattlePlayerCardUsedBroadcast,
 			_ => null,
 		};
 	}

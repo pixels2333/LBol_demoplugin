@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -656,6 +656,12 @@ public sealed partial class TradePanel
                 string loc = IsShopLikeLocation(selfLocName) ? selfLocName : "Trade";
                 players.Add(("aidefault2", "AI Default 2", true, false, selfStage, selfX, selfY, loc, null));
             }
+
+            if (players.All(p => !string.Equals(p.PlayerId, "aidefault3", StringComparison.Ordinal)))
+            {
+                string loc = IsShopLikeLocation(selfLocName) ? selfLocName : "Trade";
+                players.Add(("aidefault3", "AI Default 3", true, false, selfStage, selfX, selfY, loc, null));
+            }
         }
 
             List<(string PlayerId, string PlayerName, bool IsConnected, bool IsHost, int Stage, int LocationX, int LocationY, string LocationName, string CharacterId)> connectedOthers = players
@@ -761,7 +767,7 @@ public sealed partial class TradePanel
         HidePartnerPickerOverlay();
 
         // 已连接：进行实际的 host 驱动会话。离线/本地调试：保持本地 UI（不发送网络请求）。
-        if (IsLocalDebugTradeAllowed() && (string.Equals(partnerPlayerId, "aidefault", StringComparison.Ordinal) || string.Equals(partnerPlayerId, "aidefault2", StringComparison.Ordinal)))
+        if (IsLocalDebugTradeAllowed() && (!string.IsNullOrWhiteSpace(partnerPlayerId) && partnerPlayerId.StartsWith("aidefault", StringComparison.OrdinalIgnoreCase)))
         {
             // 即使已连接，选择本地调试虚拟玩家也允许启动纯本地 UI 测试会话。
             _localDebugTradeMode = true;
@@ -777,17 +783,6 @@ public sealed partial class TradePanel
             return;
         }
 
-        // 网络交易优先使用基于 dialog 的编辑器。
-        if (TryShowTradeDetailDialog(partnerPlayerId, partnerPlayerName))
-        {
-            Plugin.Logger?.LogInfo($"[TradePanel] OnPartnerSelected: handed off to TradeDetailDialog, tradeId={_tradeId}");
-            _handoffToDetailDialog = true;
-            Hide(false);
-            return;
-        }
-
-        // Dialog 失败：回退到面板内编辑器，保证交易仍可用。
-        UpdateUIStatus("交易详情界面不可用，已回退到面板模式");
         EnsureOfferEditorOverlay();
         EnsureCardPickerOverlay();
         EnsureOfferPreviewOverlay();
@@ -851,6 +846,27 @@ public sealed partial class TradePanel
         }
 
         return OtherPlayersOverlayPatch.ResolveDisplayName(id, payload?.Player2Name, isLocal: false);
+    }
+
+    private List<(string PlayerId, string PlayerName)> GetConnectedCandidatePartners()
+    {
+        string selfId = _selfPlayerId ?? NetworkIdentityTracker.GetSelfPlayerId();
+        var players = OtherPlayersOverlayPatch.SnapshotPlayersDetailed();
+
+        var connectedOthers = players
+            .Where(p => !string.IsNullOrWhiteSpace(p.PlayerId))
+            .Where(p => !string.Equals(p.PlayerId, selfId, StringComparison.Ordinal))
+            .Where(p => p.IsConnected)
+            .ToList();
+
+        if (connectedOthers.Count == 0 && IsLocalDebugTradeAllowed())
+        {
+            return new List<(string, string)> { ("aidefault", "AI Default") };
+        }
+
+        return connectedOthers
+            .Select(p => (p.PlayerId, string.IsNullOrWhiteSpace(p.PlayerName) ? p.PlayerId : p.PlayerName))
+            .ToList();
     }
 
     private static bool IsShopLikeLocation(string locationName)

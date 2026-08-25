@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using HarmonyLib;
 using LBoL.Core;
 using LBoL.Core.Battle;
 using LBoL.Core.Battle.BattleActions;
+using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Panels;
@@ -13,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
+using NetworkPlugin.Network.Snapshot;
 using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
@@ -33,6 +36,21 @@ public static class EnemyStateReceivePatch
 
     private static readonly object _lock = new();
     private static readonly Dictionary<string, PendingState> _pendingByEnemyKey = new(StringComparer.Ordinal);
+    private static readonly HashSet<EnemyUnit> _killedEnemiesInBattle = new();
+
+    [HarmonyPatch(typeof(BattleController), "StartBattle")]
+    private static class BattleController_StartBattle_ClearKilled
+    {
+        [HarmonyPostfix]
+        public static void Postfix()
+        {
+            lock (_lock)
+            {
+                _killedEnemiesInBattle.Clear();
+                _pendingByEnemyKey.Clear();
+            }
+        }
+    }
 
     private static INetworkClient TryGetNetworkClient()
         => NetworkEventHelper.TryGetNetworkClient();
@@ -52,6 +70,7 @@ public static class EnemyStateReceivePatch
         public int Shield;
         public bool IsAlive;
         public bool IsDying;
+        public List<RemoteStatusEffectInfo> StatusEffects;
     }
 
     [HarmonyPatch(typeof(GameDirector), "Update")]
@@ -171,6 +190,20 @@ public static class EnemyStateReceivePatch
             return;
         }
 
+        List<RemoteStatusEffectInfo> parsedEffects = null;
+        if (root.TryGetProperty("UpdateData", out JsonElement updateDataElem) && updateDataElem.ValueKind == JsonValueKind.Object)
+        {
+            if ((updateDataElem.TryGetProperty("StatusEffects", out JsonElement seElem) || updateDataElem.TryGetProperty("statusEffects", out seElem)) && seElem.ValueKind == JsonValueKind.Array)
+            {
+                parsedEffects = ParseStatusEffects(seElem);
+            }
+        }
+        
+        if (parsedEffects == null && (enemyElem.TryGetProperty("StatusEffects", out JsonElement seElemDirect) || enemyElem.TryGetProperty("statusEffects", out seElemDirect)) && seElemDirect.ValueKind == JsonValueKind.Array)
+        {
+            parsedEffects = ParseStatusEffects(seElemDirect);
+        }
+
         PendingState pending = new()
         {
             Timestamp = ts,
@@ -183,6 +216,7 @@ public static class EnemyStateReceivePatch
             Shield = TryGetInt(enemyElem, "Shield", out int shield) ? shield : 0,
             IsAlive = GetBool(enemyElem, "IsAlive"),
             IsDying = GetBool(enemyElem, "IsDying"),
+            StatusEffects = parsedEffects,
         };
 
         string spawnKey = BuildSpawnKey(battleId, spawnId, rootIndex, enemyId);
@@ -202,24 +236,31 @@ public static class EnemyStateReceivePatch
 
     private static void TryApplyPendingToBattle(string battleId)
     {
-        BattleController battle = TryGetCurrentBattle();
-        if (battle?.EnemyGroup == null)
+        Plugin.RunOnMainThread(() =>
         {
-            return;
-        }
-
-        // 不校验 battleId：host 与 client 的 BattleController 实例不同，
-        // GetHashCode().ToString() 必然不同，校验会导致跨端 pending 永远不应用。
-        // 每端同一时刻只有一个活跃战斗，直接尝试应用到所有敌人。
-        foreach (EnemyUnit enemy in battle.EnemyGroup)
-        {
-            if (enemy == null)
+            try
             {
-                continue;
-            }
+                BattleController battle = TryGetCurrentBattle();
+                if (battle?.EnemyGroup == null)
+                {
+                    return;
+                }
 
-            TryApplyPendingToEnemy(enemy);
-        }
+                foreach (EnemyUnit enemy in battle.EnemyGroup)
+                {
+                    if (enemy == null)
+                    {
+                        continue;
+                    }
+
+                    TryApplyPendingToEnemy(enemy);
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogError($"[EnemyStateReceivePatch] TryApplyPendingToBattle 异常: {ex.Message}");
+            }
+        });
     }
 
     private static void TryApplyPendingToEnemy(EnemyUnit enemy)
@@ -244,7 +285,7 @@ public static class EnemyStateReceivePatch
 
     private static void ApplyState(EnemyUnit enemy, PendingState pending)
     {
-        if (enemy == null || !enemy.IsAlive)
+        if (enemy == null || !enemy.IsAlive || enemy.IsDying || enemy.Hp <= 0)
         {
             return;
         }
@@ -272,13 +313,20 @@ public static class EnemyStateReceivePatch
             TrySetEnemyProperty(enemy, "Shield", newShield);
         }
 
-        // 若 HP 变为 0，则触发死亡流
+        // 若 HP 变为 0，则触发死亡流（通过 _killedEnemiesInBattle 保障单场战斗仅触发一次斩杀，防止多网络包重复击杀）
         if (newHp == 0)
         {
             var battle = enemy.Battle;
             if (battle != null)
             {
-                battle.RequestDebugAction(new ForceKillAction(battle.Player, enemy), "RemoteForceKill");
+                lock (_lock)
+                {
+                    if (_killedEnemiesInBattle.Add(enemy))
+                    {
+                        Plugin.Logger?.LogInfo($"[EnemyStateReceive] 触发远程斩杀 ForceKillAction: {enemy.Name}");
+                        battle.RequestDebugAction(new ForceKillAction(battle.Player, enemy), "RemoteForceKill");
+                    }
+                }
             }
             return;
         }
@@ -337,6 +385,153 @@ public static class EnemyStateReceivePatch
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[EnemyStateReceivePatch] ApplyState presentation logic failed: {ex}");
+        }
+
+        if (pending.StatusEffects != null)
+        {
+            ApplyRemoteStatusEffectsToEnemy(enemy, pending.StatusEffects);
+        }
+    }
+
+    private static List<RemoteStatusEffectInfo> ParseStatusEffects(JsonElement seArrayElem)
+    {
+        List<RemoteStatusEffectInfo> list = new();
+        foreach (JsonElement elem in seArrayElem.EnumerateArray())
+        {
+            if (elem.ValueKind != JsonValueKind.Object) continue;
+            list.Add(new RemoteStatusEffectInfo
+            {
+                Id = GetString(elem, "Id"),
+                Type = GetString(elem, "Type"),
+                Level = TryGetInt(elem, "Level", out int lvl) ? lvl : 0,
+                Duration = TryGetInt(elem, "Duration", out int dur) ? dur : 0,
+            });
+        }
+        return list;
+    }
+
+    private static void ApplyRemoteStatusEffectsToEnemy(EnemyUnit enemy, List<RemoteStatusEffectInfo> remoteEffects)
+    {
+        try
+        {
+            if (enemy == null || enemy.Battle == null || !enemy.IsAlive)
+            {
+                return;
+            }
+
+            using (EnemySyncPatch.EnterApplyRemoteStateScope())
+            {
+                var currentEffects = Traverse.Create(enemy).Field("_statusEffects")?.GetValue<OrderedList<StatusEffect>>();
+                if (currentEffects == null)
+                {
+                    return;
+                }
+
+                var view = GameDirector.GetEnemy(enemy);
+
+                HashSet<string> remoteIds = new(StringComparer.Ordinal);
+                foreach (var rInfo in remoteEffects)
+                {
+                    if (string.IsNullOrWhiteSpace(rInfo.Id) && string.IsNullOrWhiteSpace(rInfo.Type))
+                    {
+                        continue;
+                    }
+
+                    string effectId = !string.IsNullOrWhiteSpace(rInfo.Id) ? rInfo.Id : rInfo.Type;
+                    remoteIds.Add(effectId);
+
+                    StatusEffect existing = currentEffects.FirstOrDefault(se => 
+                        string.Equals(se.Id, effectId, StringComparison.Ordinal) || 
+                        string.Equals(se.GetType().Name, effectId, StringComparison.Ordinal));
+
+                    if (existing != null)
+                    {
+                        if (existing.HasLevel)
+                        {
+                            existing.Level = rInfo.Level;
+                        }
+                        else if (existing.HasCount)
+                        {
+                            existing.Count = rInfo.Level;
+                        }
+
+                        if (existing.HasDuration)
+                        {
+                            existing.Duration = rInfo.Duration;
+                        }
+
+                        if (view != null && !string.IsNullOrEmpty(existing.UnitEffectName))
+                        {
+                            view.SendEffectMessage(existing.UnitEffectName, "OnPropertyChanged", existing);
+                        }
+                    }
+                    else
+                    {
+                        StatusEffect newEffect = Library.TryCreateStatusEffect(effectId);
+                        if (newEffect == null && !string.IsNullOrWhiteSpace(rInfo.Type))
+                        {
+                            newEffect = Library.TryCreateStatusEffect(rInfo.Type);
+                        }
+
+                        if (newEffect != null)
+                        {
+                            Traverse.Create(newEffect).Property("GameRun").SetValue(enemy.GameRun ?? enemy.Battle?.GameRun);
+
+                            if (newEffect.HasLevel && rInfo.Level > 0)
+                            {
+                                newEffect.Level = rInfo.Level;
+                            }
+                            else if (newEffect.HasCount && rInfo.Level > 0)
+                            {
+                                newEffect.Count = rInfo.Level;
+                            }
+
+                            if (newEffect.HasDuration && rInfo.Duration > 0)
+                            {
+                                newEffect.Duration = rInfo.Duration;
+                            }
+
+                            if (enemy.Battle != null)
+                            {
+                                Traverse.Create(enemy.Battle).Method("TryAddStatusEffect", enemy, newEffect).GetValue();
+                            }
+
+                            if (!string.IsNullOrEmpty(newEffect.UnitEffectName) && view != null)
+                            {
+                                view.TryPlayEffectLoop(newEffect.UnitEffectName);
+                                view.SendEffectMessage(newEffect.UnitEffectName, "OnPropertyChanged", newEffect);
+                            }
+                        }
+                    }
+                }
+
+                List<StatusEffect> toRemove = currentEffects.Where(se => !remoteIds.Contains(se.Id) && !remoteIds.Contains(se.GetType().Name)).ToList();
+                foreach (var se in toRemove)
+                {
+                    if (!string.IsNullOrEmpty(se.UnitEffectName) && view != null)
+                    {
+                        view.EndEffectLoop(se.UnitEffectName, true);
+                    }
+
+                    if (enemy.Battle != null)
+                    {
+                        Traverse.Create(enemy.Battle).Method("RemoveStatusEffect", enemy, se).GetValue();
+                    }
+                }
+
+                if (view != null)
+                {
+                    var widget = Traverse.Create(view).Field("_statusWidget").GetValue();
+                    if (widget != null)
+                    {
+                        Traverse.Create(widget).Method("SetStatusEffects").GetValue();
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogWarning($"[EnemyStateReceivePatch] ApplyRemoteStatusEffectsToEnemy 异常: {ex.Message}");
         }
     }
 

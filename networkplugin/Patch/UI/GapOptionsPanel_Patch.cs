@@ -565,6 +565,7 @@ public class GapOptionsPanel_Patch
         {
             AddOrUpdateCandidate("aidefault", "AI Default", true, false);
             AddOrUpdateCandidate("aidefault2", "AI Default 2", true, false);
+            AddOrUpdateCandidate("aidefault3", "AI Default 3", true, false);
         }
 
         foreach (string knownPlayerId in candidatePlayers.Keys.ToList())
@@ -751,6 +752,11 @@ public class GapOptionsPanel_Patch
         if (string.IsNullOrWhiteSpace(playerId))
         {
             return "AI Default";
+        }
+
+        if (string.Equals(playerId, "aidefault3", StringComparison.OrdinalIgnoreCase))
+        {
+            return "AI Default 3";
         }
 
         if (string.Equals(playerId, "aidefault2", StringComparison.OrdinalIgnoreCase))

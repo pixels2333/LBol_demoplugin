@@ -386,6 +386,12 @@ public class Plugin : BaseUnityPlugin
 
             _lastCatchUpPumpAtRealtime = now;
             _serviceProvider.GetService<MapCatchUpOrchestrator>()?.PumpMainThread();
+
+            // 3) 主菜单 UI 入口强制保底校验（防 Hook 漏挂）
+            if (Time.frameCount % 30 == 0)
+            {
+                NetworkPlugin.Patch.UI.MainMenuMultiplayerEntryPatch.ForceEnsureButtonInCurrentScene();
+            }
         }
         catch
         {

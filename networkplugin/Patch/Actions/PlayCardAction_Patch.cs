@@ -13,6 +13,7 @@ using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Event;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.NetworkPlayer;
+using NetworkPlugin.Patch.Network;
 using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Actions;
@@ -81,6 +82,11 @@ public class PlayCardAction_Patch
     {
         try
         {
+            if (RemoteCardUsePatch.IsInRemoteCardPipeline)
+            {
+                return;
+            }
+
             // 解析同步管理器。
             var syncManager = GetSyncManager();
             if (syncManager == null)
@@ -98,6 +104,11 @@ public class PlayCardAction_Patch
             // 获取本地玩家与战斗上下文。
             INetworkPlayer player = networkManager.GetSelf();
             BattleController battle = card.Battle;
+
+            if (player == null || battle == null)
+            {
+                return;
+            }
 
             // 构建“出牌开始”同步数据（尽量包含可复现所需的上下文）。
             Dictionary<string, object> cardData = new()
@@ -155,6 +166,11 @@ public class PlayCardAction_Patch
     {
         try
         {
+            if (RemoteCardUsePatch.IsInRemoteCardPipeline)
+            {
+                return;
+            }
+
             // 解析同步管理器。
             var syncManager = GetSyncManager();
             if (syncManager == null)
@@ -234,6 +250,10 @@ public class PlayCardAction_Patch
     {
         try
         {
+            if (RemoteCardUsePatch.IsInRemoteCardPipeline)
+            {
+                return;
+            }
             // 解析同步管理器。
             var syncManager = GetSyncManager();
             if (syncManager == null)

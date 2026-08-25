@@ -96,7 +96,7 @@ public class ApprovedJoin
     /// <returns>如果已过期返回true，否则返回false</returns>
     public bool IsExpired()
     {
-        long currentTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        long currentTime = DateTime.UtcNow.Ticks;
         return currentTime > ExpiresAt;
     }
     
@@ -106,8 +106,9 @@ public class ApprovedJoin
     /// <returns>剩余有效时间，如果已过期则返回负数</returns>
     public long GetRemainingTime()
     {
-        long currentTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        return ExpiresAt - currentTime;
+        long currentTime = DateTime.UtcNow.Ticks;
+        long remainingTicks = ExpiresAt - currentTime;
+        return remainingTicks / TimeSpan.TicksPerMillisecond;
     }
     
     #endregion

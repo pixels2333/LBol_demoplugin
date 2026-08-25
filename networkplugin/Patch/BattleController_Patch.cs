@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using HarmonyLib;
 using LBoL.Core;
 using LBoL.Core.Battle;
+using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
 using LBoL.Presentation;
@@ -14,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
+using NetworkPlugin.Patch.Network;
 using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch;
@@ -433,17 +435,21 @@ public class BattleController_Patch
 
     private static HashSet<string> SnapshotStatusEffects(Unit unit)
     {
-        if (unit == null)
+        if (unit?.StatusEffects == null)
         {
             return new HashSet<string>(StringComparer.Ordinal);
         }
 
         try
         {
-            // 用 DebugName+TypeName 组合降低冲突风险；DebugName 更适合诊断。
             return unit.StatusEffects
                 .Where(se => se != null)
-                .Select(se => $"{se.DebugName}|{se.GetType().Name}")
+                .Select(se =>
+                {
+                    int level = se.HasLevel ? se.Level : (se.HasCount ? se.Count : 0);
+                    int duration = se.HasDuration ? se.Duration : 0;
+                    return $"{se.GetType().Name}:{level}:{duration}";
+                })
                 .ToHashSet(StringComparer.Ordinal);
         }
         catch
@@ -656,6 +662,36 @@ public class BattleController_Patch
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[BattlePlayerStatusEffects] Error in RemoveStatusEffect_Postfix: {ex.Message}\n{ex.StackTrace}");
+        }
+    }
+
+    [HarmonyPatch(typeof(StatusEffect), "Level", MethodType.Setter)]
+    [HarmonyPatch(typeof(StatusEffect), "Count", MethodType.Setter)]
+    [HarmonyPatch(typeof(StatusEffect), "Duration", MethodType.Setter)]
+    internal static class StatusEffect_PropertyChanged_Sync
+    {
+        [HarmonyPostfix]
+        public static void Postfix(StatusEffect __instance)
+        {
+            try
+            {
+                if (__instance?.Owner == null || __instance.Owner.Battle == null)
+                {
+                    return;
+                }
+
+                if (__instance.Owner is EnemyUnit enemy)
+                {
+                    EnemySyncPatch.SyncEnemyStatusEffectChanged(enemy);
+                }
+                else if (__instance.Owner is PlayerUnit player)
+                {
+                    SyncStatusEffectsIfNeeded(player.Battle, player, __instance, true, "PropertyChanged");
+                }
+            }
+            catch
+            {
+            }
         }
     }
 

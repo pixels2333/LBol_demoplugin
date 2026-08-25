@@ -23,6 +23,7 @@ using NetworkPlugin.Network.NetworkPlayer;
 using NetworkPlugin.Utils;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace NetworkPlugin.Patch.UI;
@@ -37,9 +38,34 @@ namespace NetworkPlugin.Patch.UI;
 ///   - 确认：启动本机服务器并连接（Host）
 ///   - 取消：连接到配置的服务器（Join）
 /// </remarks>
-[HarmonyPatch]
 public static class MainMenuMultiplayerEntryPatch
 {
+    public static void ForceEnsureButtonInCurrentScene()
+    {
+        try
+        {
+            if (_multiplayerButton != null)
+            {
+                return;
+            }
+
+            MainMenuPanel panel = _lastMainMenuPanel;
+            if (panel == null || !panel.gameObject.activeInHierarchy)
+            {
+                panel = UnityEngine.Object.FindObjectOfType<MainMenuPanel>(true);
+            }
+
+            if (panel != null && panel.gameObject.activeInHierarchy)
+            {
+                EnsureMultiplayerButton(panel);
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
     #region 常量与字段
 
     private const string MultiplayerButtonName = "NetworkPlugin_MultiplayerButton";
@@ -117,142 +143,190 @@ public static class MainMenuMultiplayerEntryPatch
 
     #endregion
 
-    #region Harmony 补丁入口
+    #region Harmony 嵌套补丁类
 
-    /// <summary>
-    /// 主菜单 Awake 后置：确保多人游戏按钮存在，并尝试重命名单人按钮文案。
-    /// </summary>
-    /// <param name="__instance">主菜单面板实例。</param>
     [HarmonyPatch(typeof(MainMenuPanel), "Awake")]
-    [HarmonyPostfix]
-    public static void MainMenuPanel_Awake_Postfix(MainMenuPanel __instance)
+    public static class MainMenuPanel_Awake_Patch
     {
-        try
+        [HarmonyPostfix]
+        public static void Postfix(MainMenuPanel __instance)
         {
-            _lastMainMenuPanel = __instance;
-
-            // 主界面入口放到左侧主列表（设定/收集总览/历史详细）中。
-            EnsureMultiplayerButton(__instance);
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] 添加按钮失败: {ex.Message}");
+            try
+            {
+                _lastMainMenuPanel = __instance;
+                EnsureMultiplayerButton(__instance);
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] 添加按钮失败: {ex.Message}");
+            }
         }
     }
 
-    /// <summary>
-    /// 主菜单刷新档案后置：确保按钮存在并重新显示。
-    /// </summary>
-    /// <param name="__instance">主菜单面板实例。</param>
+    [HarmonyPatch(typeof(MainMenuPanel), "OnShowing")]
+    public static class MainMenuPanel_OnShowing_Patch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(MainMenuPanel __instance)
+        {
+            try
+            {
+                _lastMainMenuPanel = __instance;
+                EnsureMultiplayerButton(__instance);
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] OnShowing 失败: {ex.Message}");
+            }
+        }
+    }
+
     [HarmonyPatch(typeof(MainMenuPanel), "RefreshProfile")]
-    [HarmonyPostfix]
-    public static void MainMenuPanel_RefreshProfile_Postfix(MainMenuPanel __instance)
+    public static class MainMenuPanel_RefreshProfile_Patch
     {
-        try
+        [HarmonyPostfix]
+        public static void Postfix(MainMenuPanel __instance)
         {
-            _lastMainMenuPanel = __instance;
-            EnsureMultiplayerButton(__instance);
-            _multiplayerButton?.gameObject.SetActive(true);
-        }
-        catch
-        {
-            // TODO: 应记录异常详情，避免静默失败。
-            // 忽略：刷新过程中失败不影响主菜单可用性。
+            try
+            {
+                _lastMainMenuPanel = __instance;
+                EnsureMultiplayerButton(__instance);
+                _multiplayerButton?.gameObject.SetActive(true);
+            }
+            catch
+            {
+                // ignored
+            }
         }
     }
 
-    /// <summary>
-    /// 主菜单语言切换后置：部分按钮文案由本地化组件刷新，这里确保“多人游戏”文案不会被覆盖。
-    /// </summary>
+    [HarmonyPatch(typeof(MainMenuPanel), "OnShown")]
+    public static class MainMenuPanel_OnShown_Patch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(MainMenuPanel __instance)
+        {
+            try
+            {
+                _lastMainMenuPanel = __instance;
+                EnsureMultiplayerButton(__instance);
+                _multiplayerButton?.gameObject.SetActive(true);
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] OnShown 失败: {ex.Message}");
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(MainMenuPanel), "StartMenuButtonAnim")]
+    public static class MainMenuPanel_StartMenuButtonAnim_Patch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(MainMenuPanel __instance, float delay, int menuType)
+        {
+            try
+            {
+                _lastMainMenuPanel = __instance;
+                EnsureMultiplayerButton(__instance);
+                _multiplayerButton?.gameObject.SetActive(true);
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] StartMenuButtonAnim 失败: {ex.Message}");
+            }
+        }
+    }
+
     [HarmonyPatch(typeof(MainMenuPanel), "OnLocaleChanged")]
-    [HarmonyPostfix]
-    public static void MainMenuPanel_OnLocaleChanged_Postfix(MainMenuPanel __instance)
+    public static class MainMenuPanel_OnLocaleChanged_Patch
     {
-        try
+        [HarmonyPostfix]
+        public static void Postfix(MainMenuPanel __instance)
         {
-            _lastMainMenuPanel = __instance;
-            EnsureMultiplayerButton(__instance);
-            _multiplayerButton?.gameObject.SetActive(true);
-        }
-        catch
-        {
-            // TODO: 应记录异常详情，避免静默失败。
-            // ignored
+            try
+            {
+                _lastMainMenuPanel = __instance;
+                EnsureMultiplayerButton(__instance);
+                _multiplayerButton?.gameObject.SetActive(true);
+            }
+            catch
+            {
+                // ignored
+            }
         }
     }
 
-    /// <summary>
-    /// StartGamePanel Awake 后置：在“新游戏/角色选择”面板上追加“多人游戏”入口。
-    /// </summary>
     [HarmonyPatch(typeof(StartGamePanel), "Awake")]
-    [HarmonyPostfix]
-    public static void StartGamePanel_Awake_Postfix(StartGamePanel __instance)
+    public static class StartGamePanel_Awake_Patch
     {
-        try
+        [HarmonyPostfix]
+        public static void Postfix(StartGamePanel __instance)
         {
-            _lastStartGamePanel = __instance;
-            EnsureStartGameMultiplayerButton(__instance);
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] StartGamePanel_Awake_Postfix 失败: {ex.Message}");
+            try
+            {
+                _lastStartGamePanel = __instance;
+                EnsureStartGameMultiplayerButton(__instance);
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] StartGamePanel_Awake_Postfix 失败: {ex.Message}");
+            }
         }
     }
 
-    /// <summary>
-    /// StartGamePanel 显示后置：确保多人入口按钮存在并可见。
-    /// </summary>
     [HarmonyPatch(typeof(StartGamePanel), "OnShowing")]
-    [HarmonyPostfix]
-    public static void StartGamePanel_OnShowing_Postfix(StartGamePanel __instance, StartGameData data)
+    public static class StartGamePanel_OnShowing_Patch
     {
-        try
+        [HarmonyPostfix]
+        public static void Postfix(StartGamePanel __instance, StartGameData data)
         {
-            _lastStartGamePanel = __instance;
-            EnsureStartGameMultiplayerButton(__instance);
-            _startGameMultiplayerButton?.gameObject.SetActive(true);
-        }
-        catch
-        {
-            // TODO: 应记录异常详情，避免静默失败。
-            // ignored
+            try
+            {
+                _lastStartGamePanel = __instance;
+                EnsureStartGameMultiplayerButton(__instance);
+                _startGameMultiplayerButton?.gameObject.SetActive(true);
+            }
+            catch
+            {
+                // ignored
+            }
         }
     }
 
-    /// <summary>
-    /// StartGamePanel 隐藏后置：若仍在主菜单且处于联机状态，自动断开连接。
-    /// 避免用户从选角页面返回主菜单后仍保持房主/加入状态。
-    /// </summary>
     [HarmonyPatch(typeof(StartGamePanel), "OnHiding")]
-    [HarmonyPostfix]
-    public static void StartGamePanel_OnHiding_Postfix()
+    public static class StartGamePanel_OnHiding_Patch
     {
-        try
+        [HarmonyPostfix]
+        public static void Postfix()
         {
-            if (_isSilentStarting)
+            try
             {
-                Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 正在静默启动中，忽略 OnHiding 断开连接逻辑。");
-                return;
-            }
+                if (_isSilentStarting)
+                {
+                    Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 正在静默启动中，忽略 OnHiding 断开连接逻辑。");
+                    return;
+                }
 
-            if (GameMaster.Status != GameMaster.GameMasterStatus.MainMenu)
+                if (GameMaster.Status != GameMaster.GameMasterStatus.MainMenu)
+                {
+                    return;
+                }
+
+                INetworkClient client = TryGetNetworkClient();
+                if (client?.IsConnected != true)
+                {
+                    return;
+                }
+
+                Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 选角面板关闭且仍在主菜单，自动断开联机连接。");
+                HideRoomListOverlay();
+                Disconnect(client);
+            }
+            catch (Exception ex)
             {
-                return;
+                Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] StartGamePanel_OnHiding_Postfix 失败: {ex.Message}");
             }
-
-            INetworkClient client = TryGetNetworkClient();
-            if (client?.IsConnected != true)
-            {
-                return;
-            }
-
-            Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 选角面板关闭且仍在主菜单，自动断开联机连接。");
-            HideRoomListOverlay();
-            Disconnect(client);
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] StartGamePanel_OnHiding_Postfix 失败: {ex.Message}");
         }
     }
 
@@ -275,17 +349,14 @@ public static class MainMenuMultiplayerEntryPatch
         // 旧版本误把按钮插到 subMenuButtonGroup，这里清掉我们自己创建的那个，避免用户找不到入口还看到“幽灵按钮”。
         CleanupLegacySubMenuMultiplayerButton(panel);
 
-        // 如果上次缓存的按钮已被销毁（UnityEngine.Object 特殊 null 语义），则清理引用并重新创建。
-        if (_multiplayerButton == null)
+        // 如果按钮已存在且有效，确保可见与文案正确，直接返回（不要重复调整位置，避免破坏原生动画与排版）。
+        if (_multiplayerButton != null)
         {
-            // 继续向下执行，尝试重新创建按钮。
-        }
-        else
-        {
-            // 按钮还活着：确保可见、文案正确，并尽量保持在期望的位置。
-            _multiplayerButton.gameObject.SetActive(true);
+            if (!_multiplayerButton.gameObject.activeSelf)
+            {
+                _multiplayerButton.gameObject.SetActive(true);
+            }
             TrySetButtonText(_multiplayerButton, "多人游戏");
-            EnsureMultiplayerButtonOrder(panel, _multiplayerButton);
             return;
         }
 
@@ -312,6 +383,7 @@ public static class MainMenuMultiplayerEntryPatch
         // 克隆模板按钮并替换点击回调。
         _multiplayerButton = CreateButtonFromTemplate(template, parent, MultiplayerButtonName, "多人游戏");
         _multiplayerButton.name = MultiplayerButtonName;
+        _multiplayerButton.interactable = true;
 
         // 仅套用样式，不套用行为：重置 UnityEvent，避免把模板按钮(如“设定”)的持久化回调一并带过来。
         _multiplayerButton.onClick = new Button.ButtonClickedEvent();
@@ -324,38 +396,22 @@ public static class MainMenuMultiplayerEntryPatch
         // 设置按钮文案。
         TrySetButtonText(_multiplayerButton, "多人游戏");
 
-        // 把“多人游戏”插入到“设定”和“收集总览”之间。
+        // 插入排版：把“多人游戏”插入到“设定”和“收集总览”之间。
         Button museumButton = TryFindButtonByPersistentMethodName(parent, "UI_ShowMuseum");
-        if (museumButton != null && museumButton.transform.parent == parent)
+        Button settingsButton = TryFindButtonByPersistentMethodName(parent, "UI_Settings");
+        if (museumButton != null && settingsButton != null && museumButton.transform.parent == parent && settingsButton.transform.parent == parent)
         {
-            // 对于没有 LayoutGroup 的主菜单列表，光改 siblingIndex 不会改变绝对坐标，按钮会重叠。
-            // 我们把“收集总览”及其后续按钮整体下移一个步长，把新按钮放到原本“收集总览”的位置。
-            Button settingsButton = TryFindButtonByPersistentMethodName(parent, "UI_Settings");
-            if (settingsButton != null && settingsButton.transform.parent == parent)
-            {
-                if (!TryInsertButtonByShiftingAbsoluteLayout(parent, settingsButton, museumButton, _multiplayerButton))
-                {
-                    _multiplayerButton.transform.SetSiblingIndex(museumButton.transform.GetSiblingIndex());
-                }
-            }
-            else
-            {
-                _multiplayerButton.transform.SetSiblingIndex(museumButton.transform.GetSiblingIndex());
-            }
+            TryInsertButtonByShiftingAbsoluteLayout(parent, settingsButton, museumButton, _multiplayerButton);
         }
         else
         {
-            // 兜底：插入到“设定”之后；再兜底到模板按钮之后。
-            Button settingsButton = TryFindButtonByPersistentMethodName(parent, "UI_Settings");
-            if (settingsButton != null && settingsButton.transform.parent == parent)
+            int sibling = template.transform.GetSiblingIndex();
+            _multiplayerButton.transform.SetSiblingIndex(Mathf.Min(sibling + 1, parent.childCount - 1));
+            var tRt = template.GetComponent<RectTransform>();
+            var mRt = _multiplayerButton.GetComponent<RectTransform>();
+            if (tRt != null && mRt != null)
             {
-                int idx = settingsButton.transform.GetSiblingIndex();
-                _multiplayerButton.transform.SetSiblingIndex(Mathf.Min(idx + 1, parent.childCount - 1));
-            }
-            else
-            {
-                int sibling = template.transform.GetSiblingIndex();
-                _multiplayerButton.transform.SetSiblingIndex(Mathf.Min(sibling + 1, parent.childCount - 1));
+                mRt.anchoredPosition = new Vector2(tRt.anchoredPosition.x, tRt.anchoredPosition.y - 70f);
             }
         }
 
@@ -366,7 +422,7 @@ public static class MainMenuMultiplayerEntryPatch
     {
         try
         {
-            if (parent == null || settingsButton == null || museumButton == null || newButton == null)
+            if (parent == null || settingsButton == null || newButton == null)
             {
                 return false;
             }
@@ -375,60 +431,54 @@ public static class MainMenuMultiplayerEntryPatch
             bool hasLayout = parent.GetComponent<HorizontalLayoutGroup>() != null || parent.GetComponent<VerticalLayoutGroup>() != null;
             if (hasLayout)
             {
-                newButton.transform.SetSiblingIndex(museumButton.transform.GetSiblingIndex());
+                newButton.transform.SetSiblingIndex(settingsButton.transform.GetSiblingIndex());
                 return true;
             }
 
             var settingsRect = settingsButton.GetComponent<RectTransform>();
-            var museumRect = museumButton.GetComponent<RectTransform>();
             var newRect = newButton.GetComponent<RectTransform>();
-            if (settingsRect == null || museumRect == null || newRect == null)
+            if (settingsRect == null || newRect == null)
             {
                 return false;
             }
 
-            // 计算“每一行”的位移步长（通常是固定的）。
-            Vector2 settingsPosOld = settingsRect.anchoredPosition;
-            Vector2 museumPos = museumRect.anchoredPosition;
-            Vector2 step = museumPos - settingsPosOld;
-            if (step.sqrMagnitude < 0.001f)
+            // 计算相邻两行的垂直位移步长（主菜单中 Y 轴向下为负方向）
+            float stepY = -120f;
+            if (museumButton != null)
             {
-                return false;
+                var museumRect = museumButton.GetComponent<RectTransform>();
+                if (museumRect != null)
+                {
+                    float diff = -Mathf.Abs(museumRect.anchoredPosition.y - settingsRect.anchoredPosition.y);
+                    if (Mathf.Abs(diff) >= 30f)
+                    {
+                        stepY = diff;
+                    }
+                }
             }
+            Vector2 step = new Vector2(0f, stepY);
 
-            // 稳定方案：把“收集总览”及其后续按钮整体下移一格，把新按钮放到原“收集总览”的位置。
-            // 这样不会改动上方按钮（避免你反馈的“位置偏了”），并且能真正挤出一行。
-            Vector2 museumPosOld = museumRect.anchoredPosition;
-            int museumIndexOld = museumButton.transform.GetSiblingIndex();
+            // 将“多人游戏”按钮放置在“设定”之前（即原本“设定”的位置，紧随“新游戏/继续游戏”）
+            Vector2 insertPos = settingsRect.anchoredPosition;
+            int insertIndex = settingsButton.transform.GetSiblingIndex();
 
-            // 先把新按钮插到“收集总览”前面（层级顺序）。
-            newButton.transform.SetSiblingIndex(museumIndexOld);
+            newButton.transform.SetSiblingIndex(insertIndex);
+            newRect.anchoredPosition = insertPos;
 
-            // 把新按钮摆到“收集总览”原本的位置。
-            newRect.anchoredPosition = museumPosOld;
-
-            // 将“收集总览”以及其后所有按钮下移一个步长，腾出一行。
-            int newIndex = newButton.transform.GetSiblingIndex();
-            for (int i = newIndex + 1; i < parent.childCount; i++)
+            // 将原本“设定”以及其后所有按钮整体下移一个步长，腾出一行
+            for (int i = insertIndex + 1; i < parent.childCount; i++)
             {
                 var child = parent.GetChild(i);
-                if (child == null)
-                {
-                    continue;
-                }
-
-                if (child == newButton.transform)
+                if (child == null || child == newButton.transform)
                 {
                     continue;
                 }
 
                 var rt = child.GetComponent<RectTransform>();
-                if (rt == null)
+                if (rt != null)
                 {
-                    continue;
+                    rt.anchoredPosition += step;
                 }
-
-                rt.anchoredPosition += step;
             }
 
             return true;
@@ -514,45 +564,6 @@ public static class MainMenuMultiplayerEntryPatch
             }
 
             _subMenuMultiplayerButton = null;
-        }
-        catch
-        {
-            // ignored
-        }
-    }
-
-    private static void EnsureMultiplayerButtonOrder(MainMenuPanel panel, Button multiplayerButton)
-    {
-        try
-        {
-            if (panel == null || multiplayerButton == null)
-            {
-                return;
-            }
-
-            Transform parent = TryGetMainMenuButtonGroup(panel) ?? multiplayerButton.transform.parent;
-            if (parent == null)
-            {
-                return;
-            }
-
-            // 优先把按钮放到“其他选项(子菜单)”按钮之前，这样视觉上位于“新游戏”和“其他选项”之间。
-            Button subMenuButton = TryFindButtonByPersistentMethodName(parent, "UI_ShowSubMenu");
-            if (subMenuButton != null && subMenuButton.transform.parent == parent)
-            {
-                multiplayerButton.transform.SetSiblingIndex(subMenuButton.transform.GetSiblingIndex());
-                return;
-            }
-
-            // 兜底：放到 newGameButton 后面。
-            if (TryFindTemplateButton(panel, out Button template, out _))
-            {
-                if (template != null && template.transform.parent == parent)
-                {
-                    int sibling = template.transform.GetSiblingIndex();
-                    multiplayerButton.transform.SetSiblingIndex(Mathf.Min(sibling + 1, parent.childCount - 1));
-                }
-            }
         }
         catch
         {
@@ -961,6 +972,33 @@ public static class MainMenuMultiplayerEntryPatch
 
     private static Button CreateButtonFromTemplate(Button template, Transform parent, string name, string labelText)
     {
+        if (template != null)
+        {
+            try
+            {
+                GameObject cloned = UnityEngine.Object.Instantiate(template.gameObject, parent, false);
+                cloned.name = name;
+                cloned.transform.localScale = Vector3.one;
+
+                // 彻底剥离本地化刷新组件，防止覆盖为“设定”或原按键文案
+                TryStripLocalizationComponents(cloned);
+
+                Button btn = cloned.GetComponent<Button>();
+                if (btn == null)
+                {
+                    btn = cloned.AddComponent<Button>();
+                }
+
+                btn.onClick = new Button.ButtonClickedEvent();
+                TrySetButtonText(btn, labelText);
+                return btn;
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogWarning($"[MainMenuMultiplayerEntry] Instantiate 克隆模板失败，退回手动建构: {ex.Message}");
+            }
+        }
+
         GameObject go = new GameObject(name);
         go.transform.SetParent(parent, false);
         go.transform.localScale = Vector3.one;
@@ -977,15 +1015,14 @@ public static class MainMenuMultiplayerEntryPatch
             img.color = new Color(0.15f, 0.15f, 0.15f, 0.8f);
         }
 
-        Button btn = go.AddComponent<Button>();
-        btn.targetGraphic = img;
+        Button fallbackBtn = go.AddComponent<Button>();
+        fallbackBtn.targetGraphic = img;
         if (template != null)
         {
-            btn.transition = template.transition;
-            btn.colors = template.colors;
+            fallbackBtn.transition = template.transition;
+            fallbackBtn.colors = template.colors;
         }
 
-        // 创建文本子对象
         GameObject textGo = new GameObject("Label");
         textGo.transform.SetParent(go.transform, false);
         textGo.transform.localScale = Vector3.one;
@@ -1004,7 +1041,7 @@ public static class MainMenuMultiplayerEntryPatch
             tmp.font = _defaultFont;
         }
 
-        return btn;
+        return fallbackBtn;
     }
 
     #endregion
@@ -1013,6 +1050,7 @@ public static class MainMenuMultiplayerEntryPatch
 
     /// <summary>
     /// 打开“多人游戏”入口弹窗。
+    /// 打开“多人游戏”入口弹窗（从主菜单点击时：先拉起原版选角界面，再弹出多人联机入口）。
     /// </summary>
     private static void OpenMultiplayerEntry()
     {
@@ -1022,17 +1060,39 @@ public static class MainMenuMultiplayerEntryPatch
         }
 
         Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 打开多人入口面板（MainMenu）。");
+        Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 打开多人入口面板（MainMenu -> StartGame）。");
 
         // 若已连接，则提示是否断开。
+        // 若已连接，则重新打开房间列表大厅
         INetworkClient client = TryGetNetworkClient();
         if (client?.IsConnected == true)
         {
             ShowConnectedDialog(client);
+            ShowRoomPlayerListOverlay();
             return;
         }
 
         // 未连接：打开自定义“面板 UI”（非 MessageDialog）。
         ShowMultiplayerEntryOverlayFromMainMenu();
+        // 打开原版选角界面 StartGamePanel，并将联机入口挂载在其上
+        try
+        {
+            StartGameData defaultMode = Traverse.Create(typeof(MainMenuPanel)).Property<StartGameData>("DefaultMode").Value;
+            if (defaultMode != null)
+            {
+                UiManager.GetPanel<StartGamePanel>().Show(defaultMode);
+            }
+            else
+            {
+                UiManager.GetPanel<StartGamePanel>().Show(new StartGameData());
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogWarning($"[MainMenuMultiplayerEntry] 打开 StartGamePanel 异常: {ex.Message}");
+        }
+
+        OpenMultiplayerEntryFromStartGame();
     }
 
     private static void OpenMultiplayerEntryFromStartGame()
@@ -1048,6 +1108,7 @@ public static class MainMenuMultiplayerEntryPatch
         if (client?.IsConnected == true)
         {
             ShowConnectedDialog(client);
+            ShowRoomPlayerListOverlay();
             return;
         }
 
@@ -1063,7 +1124,8 @@ public static class MainMenuMultiplayerEntryPatch
             return;
         }
 
-        if (!TryFindTemplateButton(panel, out Button template, out string whyTemplateFailed))
+        Button template = _multiplayerButton;
+        if (template == null && !TryFindTemplateButton(panel, out template, out string whyTemplateFailed))
         {
             Plugin.Logger?.LogWarning($"[MainMenuMultiplayerEntry] 无法创建多人入口面板（模板按钮不可用）：{whyTemplateFailed}");
             return;
@@ -1129,8 +1191,12 @@ public static class MainMenuMultiplayerEntryPatch
                 return;
             }
 
+            Transform rootParent = TryGetRootCanvasRectTransform(UiManager.Instance?.transform)
+                ?? UiManager.Instance?.transform
+                ?? panelTransform;
+
             GameObject root = new GameObject(OverlayRootName);
-            root.transform.SetParent(panelTransform, false);
+            root.transform.SetParent(rootParent, false);
             root.transform.SetAsLastSibling();
             _overlayRoot = root;
 
@@ -1778,7 +1844,7 @@ public static class MainMenuMultiplayerEntryPatch
             // 确保容器不超过画布
             try
             {
-                var canvasRect = TryGetRootCanvasRectTransform(panelTransform);
+                var canvasRect = TryGetRootCanvasRectTransform(rootParent);
                 if (canvasRect != null)
                 {
                     ClampToContainer(frameRect, canvasRect, paddingWorld: 0f);
@@ -2554,65 +2620,37 @@ public static class MainMenuMultiplayerEntryPatch
             scrollRect.content = contentRt;
             _roomListContainer = contentRt;
 
-            // 底部按钮区。
+            // 底部按钮区：四等分居中排布，使用纯文字按钮与悬浮/点击缩放
             GameObject buttonsGo = new GameObject("Buttons");
             buttonsGo.transform.SetParent(frame.transform, false);
             var buttonsRt = buttonsGo.AddComponent<RectTransform>();
-            buttonsRt.anchorMin = new Vector2(0.5f, 0f);
-            buttonsRt.anchorMax = new Vector2(0.5f, 0f);
+            buttonsRt.anchorMin = new Vector2(0.04f, 0f);
+            buttonsRt.anchorMax = new Vector2(0.96f, 0f);
             buttonsRt.pivot = new Vector2(0.5f, 0f);
-            buttonsRt.sizeDelta = new Vector2(740f * panelScale, 50f * panelScale);
-            buttonsRt.anchoredPosition = new Vector2(0f, 10f * panelScale);
+            buttonsRt.sizeDelta = new Vector2(0f, 50f * panelScale);
+            buttonsRt.anchoredPosition = new Vector2(0f, 15f * panelScale);
 
             var hlg = buttonsGo.AddComponent<HorizontalLayoutGroup>();
             hlg.childAlignment = TextAnchor.MiddleCenter;
             hlg.childControlWidth = true;
             hlg.childControlHeight = true;
             hlg.childForceExpandWidth = true;
-            hlg.childForceExpandHeight = false;
-            hlg.spacing = 10f * panelScale;
+            hlg.childForceExpandHeight = true;
+            hlg.spacing = 16f * panelScale;
 
-            if (template != null)
+            var refreshBtn = CreateTextActionButton(buttonsGo.transform, RoomListRootName + "_RefreshBtn", "刷新", panelScale, RefreshRoomList);
+
+            var closeBtn = CreateTextActionButton(buttonsGo.transform, RoomListRootName + "_CloseBtn", "更换角色", panelScale, HideRoomListOverlay);
+
+            var disconnectBtn = CreateTextActionButton(buttonsGo.transform, RoomListRootName + "_DisconnectBtn", "断开联机", panelScale, () =>
             {
-                var refreshBtn = CreateDialogButton(template, buttonsGo.transform, RoomListRootName + "_RefreshBtn", "刷新", panelScale);
-                refreshBtn.onClick.AddListener(RefreshRoomList);
+                INetworkClient c = TryGetNetworkClient();
+                Disconnect(c);
+                HideRoomListOverlay();
+            });
 
-                var closeBtn = CreateDialogButton(template, buttonsGo.transform, RoomListRootName + "_CloseBtn", "关闭", panelScale);
-                closeBtn.onClick.AddListener(HideRoomListOverlay);
-
-                var disconnectBtn = CreateDialogButton(template, buttonsGo.transform, RoomListRootName + "_DisconnectBtn", "断开联机", panelScale);
-                disconnectBtn.onClick.AddListener(() =>
-                {
-                    INetworkClient c = TryGetNetworkClient();
-                    Disconnect(c);
-                    HideRoomListOverlay();
-                });
-
-                // 就绪/开始按钮
-                _readyOrStartButton = CreateDialogButton(template, buttonsGo.transform, RoomListRootName + "_ReadyStartBtn", "准备就绪", panelScale);
-                _readyOrStartButton.onClick.AddListener(OnActionBtnClicked);
-
-                foreach (var b in new[] { refreshBtn, closeBtn, disconnectBtn, _readyOrStartButton })
-                {
-                    if (b == null) continue;
-                    var r = b.GetComponent<RectTransform>();
-                    if (r != null) r.sizeDelta = new Vector2(r.sizeDelta.x, 50f * panelScale);
-                }
-            }
-            else
-            {
-                // 无模板按钮时，用纯文字 + Image 兜底构建按钮。
-                CreateSimpleTextButton(buttonsGo.transform, RoomListRootName + "_RefreshBtn", "刷新", panelScale, RefreshRoomList);
-                CreateSimpleTextButton(buttonsGo.transform, RoomListRootName + "_CloseBtn", "关闭", panelScale, HideRoomListOverlay);
-                CreateSimpleTextButton(buttonsGo.transform, RoomListRootName + "_DisconnectBtn", "断开联机", panelScale, () =>
-                {
-                    INetworkClient c = TryGetNetworkClient();
-                    Disconnect(c);
-                    HideRoomListOverlay();
-                });
-                CreateSimpleTextButton(buttonsGo.transform, RoomListRootName + "_ReadyStartBtn", "准备就绪", panelScale, OnActionBtnClicked);
-                _readyOrStartButton = buttonsGo.transform.Find(RoomListRootName + "_ReadyStartBtn")?.GetComponent<Button>();
-            }
+            // 就绪/开始按钮
+            _readyOrStartButton = CreateTextActionButton(buttonsGo.transform, RoomListRootName + "_ReadyStartBtn", "准备就绪", panelScale, OnActionBtnClicked);
 
             // 入场动画。
             try
@@ -2634,41 +2672,148 @@ public static class MainMenuMultiplayerEntryPatch
     }
 
     /// <summary>
-    /// 无模板按钮时构建的简易文字按钮兜底。
+    /// 构建纯文本动作按钮（带悬浮放大与点击反馈动画，类似 TradePanel 可点击文本风格，无多余特效背景）
     /// </summary>
-    private static void CreateSimpleTextButton(Transform parent, string name, string label, float panelScale, Action onClick)
+    private static Button CreateTextActionButton(Transform parent, string name, string labelText, float panelScale, Action onClick)
     {
         GameObject go = new GameObject(name);
         go.transform.SetParent(parent, false);
-        var img = go.AddComponent<Image>();
-        img.color = new Color(0.2f, 0.2f, 0.24f, 0.9f);
-        var btn = go.AddComponent<Button>();
-        btn.targetGraphic = img;
+
+        var rt = go.AddComponent<RectTransform>();
+        rt.sizeDelta = new Vector2(150f * panelScale, 46f * panelScale);
+
         var le = go.AddComponent<LayoutElement>();
-        le.preferredHeight = 50f * panelScale;
+        le.preferredHeight = 46f * panelScale;
+        le.preferredWidth = 140f * panelScale;
         le.flexibleWidth = 1f;
+        le.flexibleHeight = 1f;
 
-        GameObject textGo = new GameObject("Label");
-        textGo.transform.SetParent(go.transform, false);
-        var rt = textGo.AddComponent<RectTransform>();
-        rt.anchorMin = Vector2.zero;
-        rt.anchorMax = Vector2.one;
-        rt.offsetMin = new Vector2(10f, 0f);
-        rt.offsetMax = new Vector2(-10f, 0f);
-
-        var tmp = textGo.AddComponent<TextMeshProUGUI>();
-        tmp.text = label;
-        tmp.alignment = TextAlignmentOptions.Midline;
-        tmp.raycastTarget = false;
-        tmp.fontSize = Mathf.Clamp(16f * panelScale, 14f, 54f);
-        tmp.color = Color.white;
+        var tmp = go.AddComponent<TextMeshProUGUI>();
+        tmp.text = labelText;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.fontSize = Mathf.Clamp(18f * panelScale, 15f, 44f);
+        tmp.color = new Color(0.96f, 0.90f, 0.74f, 1f); // 游戏经典暖金/米白高亮
+        tmp.raycastTarget = true;
         tmp.enableWordWrapping = false;
-        tmp.enableAutoSizing = true;
-        tmp.fontSizeMin = 10f * panelScale;
-        tmp.fontSizeMax = Mathf.Clamp(16f * panelScale, 14f, 54f);
-        if (_roomListFont != null) tmp.font = _roomListFont;
+        if (_roomListFont != null)
+        {
+            tmp.font = _roomListFont;
+        }
+        else if (_defaultFont != null)
+        {
+            tmp.font = _defaultFont;
+        }
 
-        btn.onClick.AddListener(() => onClick?.Invoke());
+        var btn = go.AddComponent<Button>();
+        btn.targetGraphic = tmp;
+        btn.transition = Selectable.Transition.ColorTint;
+
+        var colors = btn.colors;
+        colors.normalColor = new Color(0.96f, 0.90f, 0.74f, 1f);
+        colors.highlightedColor = new Color(1f, 1f, 1f, 1f); // 悬浮高亮纯白
+        colors.pressedColor = new Color(0.85f, 0.78f, 0.55f, 1f);
+        colors.disabledColor = new Color(0.5f, 0.5f, 0.5f, 0.5f);
+        colors.fadeDuration = 0.08f;
+        btn.colors = colors;
+
+        var nav = btn.navigation;
+        nav.mode = Navigation.Mode.None;
+        btn.navigation = nav;
+
+        go.AddComponent<TextButtonHover>();
+
+        if (onClick != null)
+        {
+            btn.onClick.AddListener(() => onClick());
+        }
+
+        return btn;
+    }
+
+    private sealed class TextButtonHover : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
+    {
+        public float HoverScale = 1.10f;
+        public float PressedScale = 1.18f;
+        public float AnimationSpeed = 12f;
+
+        private RectTransform _rt;
+        private Button _btn;
+        private bool _hovering;
+        private bool _pressed;
+        private float _targetScale = 1f;
+
+        private void Awake()
+        {
+            _rt = transform as RectTransform;
+            _btn = GetComponent<Button>();
+            ResetScale();
+        }
+
+        private void OnEnable()
+        {
+            ResetScale();
+        }
+
+        private void OnDisable()
+        {
+            _hovering = false;
+            _pressed = false;
+            ResetScale();
+        }
+
+        private void ResetScale()
+        {
+            _targetScale = 1f;
+            if (_rt != null) _rt.localScale = Vector3.one;
+        }
+
+        private void Update()
+        {
+            if (_rt == null) return;
+            float cur = _rt.localScale.x;
+            if (Mathf.Approximately(cur, _targetScale))
+                return;
+            float next = Mathf.Lerp(cur, _targetScale, Time.unscaledDeltaTime * AnimationSpeed);
+            _rt.localScale = new Vector3(next, next, 1f);
+        }
+
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+            if (_btn != null && !_btn.interactable) return;
+            _hovering = true;
+            ApplyScale();
+        }
+
+        public void OnPointerExit(PointerEventData eventData)
+        {
+            _hovering = false;
+            _pressed = false;
+            ApplyScale();
+        }
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            if (_btn != null && !_btn.interactable) return;
+            _pressed = true;
+            ApplyScale();
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            _pressed = false;
+            ApplyScale();
+        }
+
+        private void ApplyScale()
+        {
+            if (_rt == null) return;
+            if (_btn != null && !_btn.interactable)
+            {
+                _targetScale = 1f;
+                return;
+            }
+            _targetScale = _pressed ? PressedScale : _hovering ? HoverScale : 1f;
+        }
     }
 
     /// <summary>
@@ -3684,11 +3829,19 @@ public static class MainMenuMultiplayerEntryPatch
 
         if (!ok)
         {
-            Plugin.Logger?.LogWarning("[MainMenuMultiplayerEntry] 等待联机连接超时，房间玩家列表未弹出。");
+            string reason = client?.LastDisconnectReason;
+            bool isRejected = string.Equals(reason, "ConnectionRejected", StringComparison.OrdinalIgnoreCase);
+
+            Plugin.Logger?.LogWarning($"[MainMenuMultiplayerEntry] 等待联机连接未成功(Reason: {reason})，房间玩家列表未弹出。");
+
+            string errorText = isRejected
+                ? "连接被服务器拒绝！\n\n请检查联机密钥（Secret Key）是否与房主/服务器一致，或 MOD 版本是否统一。"
+                : "连接服务器超时。\n\n请检查网络连接、服务器地址和端口是否正确。";
+
             UiManager.GetDialog<MessageDialog>().Show(
                 new MessageContent
                 {
-                    Text = "连接服务器超时。\n\n请检查网络连接、服务器地址和端口是否正确。",
+                    Text = errorText,
                     Icon = MessageIcon.Error,
                     Buttons = DialogButtons.Confirm,
                 }

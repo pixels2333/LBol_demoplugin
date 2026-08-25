@@ -7,6 +7,7 @@ using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Utils;
 using NetworkPlugin.Network.Messages;
+using NetworkPlugin.Patch.UI;
 
 namespace NetworkPlugin.Patch.Network;
 
@@ -436,6 +437,8 @@ public static class TradeSyncPatch
                     TradeId = tradeId,
                     PlayerAId = a,
                     PlayerBId = b,
+                    PlayerAName = OtherPlayersOverlayPatch.ResolveDisplayName(a, null, isLocal: false),
+                    PlayerBName = OtherPlayersOverlayPatch.ResolveDisplayName(b, null, isLocal: false),
                     MaxTradeSlots = maxSlots,
                     Status = TradeStatus.Open,
                     Timestamp = DateTime.UtcNow.Ticks,
@@ -446,6 +449,14 @@ public static class TradeSyncPatch
             {
                 state.MaxTradeSlots = maxSlots;
                 state.Timestamp = DateTime.UtcNow.Ticks;
+                if (string.IsNullOrWhiteSpace(state.PlayerAName))
+                {
+                    state.PlayerAName = OtherPlayersOverlayPatch.ResolveDisplayName(state.PlayerAId, null, isLocal: false);
+                }
+                if (string.IsNullOrWhiteSpace(state.PlayerBName))
+                {
+                    state.PlayerBName = OtherPlayersOverlayPatch.ResolveDisplayName(state.PlayerBId, null, isLocal: false);
+                }
             }
 
             // 确保打开交易时确认状态复位。
@@ -599,6 +610,7 @@ public static class TradeSyncPatch
             return;
         }
 
+        bool shouldBroadcast = false;
         lock (SyncLock)
         {
             state = GetHostSession(tradeId);
@@ -631,15 +643,20 @@ public static class TradeSyncPatch
                 state.APrepared = false;
                 state.BPrepared = false;
                 state.Reason = string.IsNullOrWhiteSpace(reason) ? "PrepareFailed" : reason;
+                shouldBroadcast = true;
             }
             else if (state.APrepared && state.BPrepared)
             {
                 state.Status = TradeStatus.Completed;
                 state.Reason = null;
+                shouldBroadcast = true;
             }
         }
 
-        BroadcastState(GetHostSession(tradeId));
+        if (shouldBroadcast)
+        {
+            BroadcastState(GetHostSession(tradeId));
+        }
     }
 
     private static void HandleCancel(string tradeId, JsonElement root)
@@ -763,7 +780,65 @@ public static class TradeSyncPatch
             _lastKnown[state.TradeId] = state;
         }
 
+        TryPopIncomingTradeConfirmDialog(state);
+
         OnTradeStateUpdated?.Invoke(state);
+    }
+
+    private static void TryPopIncomingTradeConfirmDialog(TradeSessionState state)
+    {
+        try
+        {
+            if (state == null || state.Status != TradeStatus.Open)
+            {
+                return;
+            }
+
+            string selfId = NetworkIdentityTracker.GetSelfPlayerId();
+            if (string.IsNullOrWhiteSpace(selfId))
+            {
+                return;
+            }
+
+            // 只有当前玩家是被邀请者 (PlayerB) 时，才触发确认弹窗
+            if (!string.Equals(state.PlayerBId, selfId, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            Plugin.RunOnMainThread(() =>
+            {
+                try
+                {
+                    var confirmDialog = UnityEngine.Object.FindAnyObjectByType<NetworkPlugin.UI.Dialogs.TradeRequestConfirmDialog>();
+                    if (confirmDialog != null && confirmDialog.IsVisible)
+                    {
+                        return;
+                    }
+
+                    var tradePanel = UnityEngine.Object.FindAnyObjectByType<NetworkPlugin.UI.Panels.TradePanel>();
+                    if (tradePanel != null && tradePanel.IsVisible)
+                    {
+                        return;
+                    }
+
+                    var confirm = NetworkPlugin.UI.Factories.TradeRequestConfirmDialogRuntimeFactory.GetOrCreate();
+                    if (confirm != null)
+                    {
+                        Plugin.Logger?.LogInfo($"[TradeSyncPatch] Popping TradeRequestConfirmDialog for incoming trade from {state.PlayerAName} ({state.PlayerAId}): tradeId={state.TradeId}");
+                        confirm.Show(state);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Logger?.LogError($"[TradeSyncPatch] TryPopIncomingTradeConfirmDialog failed: {ex.Message}");
+                }
+            });
+        }
+        catch
+        {
+            // ignored
+        }
     }
 
     private static void HandleStateUpdateFromObject(object payload)
@@ -771,7 +846,8 @@ public static class TradeSyncPatch
         try
         {
             string json = JsonCompat.Serialize(payload);
-            JsonElement root = JsonDocument.Parse(json).RootElement;
+            using JsonDocument doc = JsonDocument.Parse(json);
+            JsonElement root = doc.RootElement;
             HandleStateUpdate(root);
         }
         catch

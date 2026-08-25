@@ -63,7 +63,10 @@ public partial class NetworkServer
     /// <returns>房主会话；无房主或房主未连接时返回 null。</returns>
     private PlayerSession GetConnectedHostSession()
     {
-        return SessionsByPeer.Values.FirstOrDefault(session => session.IsHost && session.IsConnected);
+        lock (SyncRoot)
+        {
+            return SessionsByPeer.Values.FirstOrDefault(session => session.IsHost && session.IsConnected);
+        }
     }
 
     /// <summary>
@@ -335,7 +338,7 @@ public partial class NetworkServer
     /// <param name="fromPeer">发送心跳的网络对等体</param>
     private void HandleHeartbeat(NetPeer fromPeer)
     {
-        if (SessionsByPeer.TryGetValue(fromPeer, out var session))
+        if (TryGetSession(fromPeer, out var session))
         {
             session.UpdateHeartbeat();
 

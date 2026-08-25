@@ -53,7 +53,19 @@ public static partial class OtherPlayersOverlayPatch
 
         if (!hasSnapshot && !hasRuntime)
         {
-            return false;
+            int defaultMaxHp = GetDefaultMaxHpForCharacter(playerSummary.CharacterId);
+            state = new RemoteBattleState
+            {
+                Health = defaultMaxHp,
+                MaxHealth = defaultMaxHp,
+                Shield = 0,
+                Block = 0,
+                CurrentPower = 0,
+                PowerPerLevel = 1,
+                MaxPowerLevel = 3,
+                HasFreshBattleState = false,
+            };
+            return true;
         }
 
         bool useRuntime = networkPlayer != null && networkPlayer.maxHP > 0;
@@ -66,15 +78,16 @@ public static partial class OtherPlayersOverlayPatch
         int powerPerLevel = networkPlayer?.GetPowerPerLevelSafe() ?? 0;
         int maxPowerLevel = networkPlayer?.GetMaxPowerLevelSafe() ?? 0;
 
-        if (maxHealth <= 0 && health > 0)
+        if (maxHealth <= 0)
         {
-            maxHealth = health;
+            maxHealth = GetDefaultMaxHpForCharacter(playerSummary.CharacterId);
+            if (health <= 0) health = maxHealth;
         }
 
         state = new RemoteBattleState
         {
             Health = Math.Max(0, health),
-            MaxHealth = Math.Max(0, maxHealth),
+            MaxHealth = Math.Max(1, maxHealth),
             Shield = Math.Max(0, shield),
             Block = Math.Max(0, block),
             CurrentPower = Math.Max(0, currentPower),
@@ -84,6 +97,20 @@ public static partial class OtherPlayersOverlayPatch
         };
 
         return true;
+    }
+
+    private static int GetDefaultMaxHpForCharacter(string characterId)
+    {
+        if (string.IsNullOrWhiteSpace(characterId)) return 80;
+        return characterId switch
+        {
+            "Reimu" => 80,
+            "Marisa" => 75,
+            "Sakuya" => 80,
+            "Cirno" => 70,
+            "Koishi" => 75,
+            _ => 80,
+        };
     }
 
     private static bool TryGetVirtualAiDebugBattleState(string playerId, out RemoteBattleState state)
@@ -103,7 +130,7 @@ public static partial class OtherPlayersOverlayPatch
         float now = Time.unscaledTime;
         if (now >= entry.NextRefreshTime)
         {
-            int variant = string.Equals(playerId, "aidefault2", StringComparison.Ordinal) ? 1 : 0;
+            int variant = string.Equals(playerId, "aidefault3", StringComparison.Ordinal) ? 2 : (string.Equals(playerId, "aidefault2", StringComparison.Ordinal) ? 1 : 0);
             int maxHealth = UnityEngine.Random.Range(48 + variant * 10, 91 + variant * 10);
             int healthMin = Mathf.Max(8, maxHealth / 3);
             int health = UnityEngine.Random.Range(healthMin, maxHealth + 1);

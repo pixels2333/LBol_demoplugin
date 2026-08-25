@@ -35,6 +35,8 @@ public sealed partial class TradePanel
 
     private void EnsureExhibitPreviewContainers()
     {
+        player1TradeArea ??= _localOfferPreviewPanel?.transform as RectTransform;
+        player2TradeArea ??= _remoteOfferPreviewPanel?.transform as RectTransform;
         if (_localExhibitContainer != null) return;
         if (player1TradeArea == null || player2TradeArea == null) return;
 
@@ -108,15 +110,24 @@ public sealed partial class TradePanel
             {
                 bool localIsA = IsPlayerA(state);
                 var remoteExhibitRefs = localIsA ? state.ExhibitsB : state.ExhibitsA;
-                if (remoteExhibitRefs != null && run?.Player?.Exhibits != null)
+                if (remoteExhibitRefs != null)
                 {
-                    var remoteIds = new HashSet<string>(
-                        remoteExhibitRefs.Where(ex => ex != null && !string.IsNullOrWhiteSpace(ex.ExhibitId))
-                                         .Select(ex => ex.ExhibitId),
-                        StringComparer.Ordinal);
-                    exhibits = run.Player.Exhibits
-                        .Where(e => e != null && remoteIds.Contains(e.Id))
-                        .ToList();
+                    foreach (var exRef in remoteExhibitRefs)
+                    {
+                        if (exRef != null && !string.IsNullOrWhiteSpace(exRef.ExhibitId))
+                        {
+                            Exhibit ex = null;
+                            if (run?.Player?.Exhibits != null)
+                            {
+                                ex = run.Player.Exhibits.FirstOrDefault(e => e != null && string.Equals(e.Id, exRef.ExhibitId, StringComparison.Ordinal));
+                            }
+                            ex ??= Library.TryCreateExhibit(exRef.ExhibitId);
+                            if (ex != null)
+                            {
+                                exhibits.Add(ex);
+                            }
+                        }
+                    }
                 }
             }
         }

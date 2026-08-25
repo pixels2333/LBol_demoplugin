@@ -1354,6 +1354,9 @@ public sealed class MidGameJoinManager
     private static bool ShouldReplayEventType(string eventType)
     {
         if (string.IsNullOrWhiteSpace(eventType))
+        {
+            return false;
+        }
 
         if (string.Equals(eventType, NetworkMessageTypes.FullStateSyncRequest, StringComparison.Ordinal) ||
             string.Equals(eventType, NetworkMessageTypes.FullStateSyncResponse, StringComparison.Ordinal) ||

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -95,17 +95,48 @@ private void TrySubscribeTradeEvents()
 
     private void ApplyStateToUi(TradeSyncPatch.TradeSessionState state)
     {
+        bool localIsA = IsPlayerA(state);
+
         // 以 Host 广播状态为准刷新 UI。
         using (new ApplyingStateScope(this))
         {
-            bool localIsA = IsPlayerA(state);
 
-            // 清空现有 UI
-            ResetTradeData();
+            // 清空现有报价卡牌列表与槽位显示
+            _player1OfferedCards.Clear();
+            _player2OfferedCards.Clear();
+            player1Slots?.ToList().ForEach(s => s?.ClearSlot());
+            player2Slots?.ToList().ForEach(s => s?.ClearSlot());
+            ClearOfferPreviewPanel(_localOfferPreviewPanel);
+            ClearOfferPreviewPanel(_remoteOfferPreviewPanel);
+
             _tradeId = state.TradeId;
             _selfPlayerId = NetworkIdentityTracker.GetSelfPlayerId();
             _playerAId = state.PlayerAId;
             _playerBId = state.PlayerBId;
+
+            // 确保运行时 overlay 存在并保持可见
+            EnsureOfferEditorOverlay();
+            EnsureCardPickerOverlay();
+            EnsureOfferPreviewOverlay();
+            EnsureExhibitPickerOverlay();
+            SetTradeDetailsVisible(true);
+
+            // 确保玩家姓名显示：左边永远是本地玩家（我），右边永远是对方（Partner）
+            if (player1NameText is not null)
+            {
+                string selfName = localIsA ? state.PlayerAName : state.PlayerBName;
+                player1NameText.text = ResolveLocalPlayerDisplayName(_payload);
+                if (string.IsNullOrWhiteSpace(player1NameText.text))
+                {
+                    player1NameText.text = OtherPlayersOverlayPatch.ResolveDisplayName(_selfPlayerId, selfName, isLocal: true);
+                }
+            }
+            if (player2NameText is not null)
+            {
+                string partnerId = localIsA ? state.PlayerBId : state.PlayerAId;
+                string partnerName = localIsA ? state.PlayerBName : state.PlayerAName;
+                player2NameText.text = OtherPlayersOverlayPatch.ResolveDisplayName(partnerId, partnerName, isLocal: false);
+            }
 
             // 从 host 状态拉取本地金币/展品报价，保持 UI 一致。
             _localMoneyOffer = localIsA ? state.MoneyA : state.MoneyB;
@@ -115,7 +146,6 @@ private void TrySubscribeTradeEvents()
                 .Select(ex => ex.ExhibitId)
                 .ToList()
                 .ForEach(id => _localExhibitOfferIds.Add(id));
-            RefreshOfferEditorTexts();
 
             // 本地报价：显示在 player1
             (localIsA ? state.OfferA : state.OfferB)
@@ -136,6 +166,13 @@ private void TrySubscribeTradeEvents()
                 .ToList()
                 .ForEach(temp => AddCardToTrade(temp, false));
 
+            // 刷新展品预览栏（左侧我方，右侧对方）
+            RebuildExhibitPreviews();
+
+            // 刷新报价编辑器文本与卡牌预览
+            RefreshOfferEditorTexts();
+            RefreshOfferPreview();
+
             // 锁住远端槽位，避免误删
             player2Slots?.ToList().ForEach(s => s?.SetLocked(true));
         }
@@ -146,19 +183,40 @@ private void TrySubscribeTradeEvents()
             confirmButton.button.interactable = true;
         }
 
+        bool localConfirmed = localIsA ? state.AConfirmed : state.BConfirmed;
+        bool remoteConfirmed = localIsA ? state.BConfirmed : state.AConfirmed;
+        bool hasAnyOffer = (state.OfferA?.Count ?? 0) > 0 || (state.OfferB?.Count ?? 0) > 0 || state.MoneyA > 0 || state.MoneyB > 0 || (state.ExhibitsA?.Count ?? 0) > 0 || (state.ExhibitsB?.Count ?? 0) > 0;
+
         if (state.Status == TradeSyncPatch.TradeStatus.Open)
         {
-            UpdateUIStatus((state.OfferA?.Count ?? 0) > 0 && (state.OfferB?.Count ?? 0) > 0
-                ? TryLocalize("Trade.ReadyToConfirm", "可以确认交易")
-                : TryLocalize("Trade.WaitingForItems", "等待放入物品..."));
-        }
-        else if (state.Status == TradeSyncPatch.TradeStatus.Completed)
-        {
-            UpdateUIStatus("Trade.Completed".Localize());
+            if (localConfirmed && remoteConfirmed)
+            {
+                UpdateUIStatus(TryLocalize("Trade.BothConfirmed", "双方已确认，准备交换..."));
+            }
+            else if (localConfirmed)
+            {
+                UpdateUIStatus(TryLocalize("Trade.WaitingForPartner", "已确认交易，等待对方确认..."));
+            }
+            else if (remoteConfirmed)
+            {
+                UpdateUIStatus(TryLocalize("Trade.PartnerConfirmed", "对方已确认交易，请点击确定开始交换"));
+            }
+            else if (hasAnyOffer)
+            {
+                UpdateUIStatus(TryLocalize("Trade.ReadyToConfirm", "可以确认交易"));
+            }
+            else
+            {
+                UpdateUIStatus(TryLocalize("Trade.WaitingForItems", "等待放入物品..."));
+            }
         }
         else if (state.Status == TradeSyncPatch.TradeStatus.Preparing)
         {
-            UpdateUIStatus("Preparing...");
+            UpdateUIStatus(TryLocalize("Trade.Preparing", "双方已确认，正在准备交易..."));
+        }
+        else if (state.Status == TradeSyncPatch.TradeStatus.Completed)
+        {
+            UpdateUIStatus(TryLocalize("Trade.Completed", "交易完成"));
         }
     }
 
@@ -413,14 +471,24 @@ private void TrySubscribeTradeEvents()
         int myMoney = localIsA ? state.MoneyA : state.MoneyB;
         List<TradeSyncPatch.ExhibitRef> myExhibits = localIsA ? state.ExhibitsA : state.ExhibitsB;
 
+        bool hasAnyOffer = HasOffer(state, true) || HasOffer(state, false);
+        if (!hasAnyOffer)
+        {
+            Plugin.Logger?.LogWarning($"[TradePanel] TryHandlePreparing: EmptyTrade, tradeId={_tradeId}");
+            TradeSyncPatch.RequestPrepareResult(_tradeId, _selfPlayerId, false, "EmptyTrade");
+            return;
+        }
+
+        // 本地报价为空（单向接受赠予）：无需扣除本地资产，本地预检直接通过。
         if ((mine?.Count ?? 0) == 0 && myMoney <= 0 && (myExhibits?.Count ?? 0) == 0)
         {
-            TradeSyncPatch.RequestPrepareResult(_tradeId, _selfPlayerId, false, "EmptyOffer");
+            Plugin.Logger?.LogInfo($"[TradePanel] TryHandlePreparing: local offer is empty (receiving items), passing check for self={_selfPlayerId}, tradeId={_tradeId}");
+            TradeSyncPatch.RequestPrepareResult(_tradeId, _selfPlayerId, true, null);
             return;
         }
 
         // 卡牌必须已存在（按实例 ID 核查）。
-        if (mine is not null)
+        if (mine is not null && mine.Count > 0)
         {
             foreach (var c in mine)
             {
@@ -431,12 +499,14 @@ private void TrySubscribeTradeEvents()
 
                 if (c.InstanceId < 0)
                 {
+                    Plugin.Logger?.LogWarning($"[TradePanel] TryHandlePreparing InvalidInstanceId: {c.CardId}");
                     TradeSyncPatch.RequestPrepareResult(_tradeId, _selfPlayerId, false, "InvalidInstanceId");
                     return;
                 }
 
                 if (TryFindDeckCard(c) is null)
                 {
+                    Plugin.Logger?.LogWarning($"[TradePanel] TryHandlePreparing MissingCard: {c.CardId} (instanceId={c.InstanceId})");
                     TradeSyncPatch.RequestPrepareResult(_tradeId, _selfPlayerId, false, "MissingCard");
                     return;
                 }
@@ -444,23 +514,27 @@ private void TrySubscribeTradeEvents()
         }
 
         // 金币必须足够支付。
-        try
+        if (myMoney > 0)
         {
-            int current = run?.Money ?? 0;
-            if (myMoney < 0 || myMoney > current)
+            try
             {
-                TradeSyncPatch.RequestPrepareResult(_tradeId, _selfPlayerId, false, "InsufficientMoney");
+                int current = run?.Money ?? 0;
+                if (myMoney > current)
+                {
+                    Plugin.Logger?.LogWarning($"[TradePanel] TryHandlePreparing InsufficientMoney: need={myMoney}, have={current}");
+                    TradeSyncPatch.RequestPrepareResult(_tradeId, _selfPlayerId, false, "InsufficientMoney");
+                    return;
+                }
+            }
+            catch
+            {
+                TradeSyncPatch.RequestPrepareResult(_tradeId, _selfPlayerId, false, "MoneyCheckFailed");
                 return;
             }
         }
-        catch
-        {
-            TradeSyncPatch.RequestPrepareResult(_tradeId, _selfPlayerId, false, "MoneyCheckFailed");
-            return;
-        }
 
         // 展品必须存在且可交易。
-        if (myExhibits is not null)
+        if (myExhibits is not null && myExhibits.Count > 0)
         {
             foreach (var ex in myExhibits)
             {
@@ -483,18 +557,21 @@ private void TrySubscribeTradeEvents()
 
                 if (owned is null)
                 {
+                    Plugin.Logger?.LogWarning($"[TradePanel] TryHandlePreparing MissingExhibit: {id}");
                     TradeSyncPatch.RequestPrepareResult(_tradeId, _selfPlayerId, false, "MissingExhibit");
                     return;
                 }
 
                 if (!TradeExhibitRules.IsTradable(owned))
                 {
+                    Plugin.Logger?.LogWarning($"[TradePanel] TryHandlePreparing ExhibitNotTradable: {id}");
                     TradeSyncPatch.RequestPrepareResult(_tradeId, _selfPlayerId, false, "ExhibitNotTradable");
                     return;
                 }
             }
         }
 
+        Plugin.Logger?.LogInfo($"[TradePanel] TryHandlePreparing SUCCESS for self={_selfPlayerId}, tradeId={_tradeId}");
         TradeSyncPatch.RequestPrepareResult(_tradeId, _selfPlayerId, true, null);
     }
 }

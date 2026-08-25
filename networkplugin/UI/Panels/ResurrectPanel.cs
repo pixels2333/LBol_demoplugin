@@ -504,8 +504,8 @@ public class ResurrectPanel : UiPanel<ResurrectPayload>, IInputActionHandler
 			_selectedPlayer = capturedPlayer;
 
 			if ((ModService.ServiceProvider?.GetService<ConfigManager>())?.DebugVirtualPlayerAiDefault?.Value == true
-				&& (string.Equals(capturedPlayer.PlayerId, "aidefault", StringComparison.Ordinal)
-					|| string.Equals(capturedPlayer.PlayerId, "aidefault2", StringComparison.Ordinal)))
+				&& !string.IsNullOrWhiteSpace(capturedPlayer.PlayerId)
+				&& capturedPlayer.PlayerId.StartsWith("aidefault", StringComparison.OrdinalIgnoreCase))
 			{
 				_pendingRequestId = Guid.NewGuid().ToString("N");
 				OnResurrectResult(_pendingRequestId, true, null);

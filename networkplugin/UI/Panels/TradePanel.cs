@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -104,9 +104,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private string _playerBId;
     private bool _isApplyingState;
     private bool _subscribedToTrade;
-
-    // 当 true 时，TradePanel 已将控制权交给 TradeDetailDialog，不应再发起网络请求或初始化面板内编辑器。
-    private bool _handoffToDetailDialog;
 
     private TradePayload _payload;
     private int _maxTradeSlots = DefaultMaxTradeSlots;
@@ -285,12 +282,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         // 初始化交易参与者（联机：会触发 partner picker；本地调试：也需要 partner picker）。
         SetupTradeSession(payload);
 
-        // 已移交给 dialog，不创建面板内编辑器或执行更多 UI 操作。
-        if (_handoffToDetailDialog)
-        {
-            return;
-        }
-
         // 若正在选择交易对象，或已经进入“阻塞提示”状态，则不需要提前初始化报价编辑/卡牌选择等 overlay。
         if (_partnerPickerActive || _blockingCenterMessageActive)
         {
@@ -302,6 +293,8 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         EnsureCardPickerOverlay();
         EnsureOfferPreviewOverlay();
 
+        SetTradeDetailsVisible(true);
+
         // 设置玩家名称显示（不使用 Player 1/2 之类的占位文本）
         if (player1NameText is not null) player1NameText.text = ResolveLocalPlayerDisplayName(payload);
         if (player2NameText is not null) player2NameText.text = ResolvePartnerDisplayName(payload);
@@ -311,6 +304,9 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
         // 刷新本地化文案
         UpdateUIStrings();
+
+        RefreshOfferEditorTexts();
+        RefreshOfferPreview();
     }
 
     protected override void OnShown()
@@ -423,7 +419,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         _isApplyingState = false;
 
         _localDebugTradeMode = false;
-        _handoffToDetailDialog = false;
 
         _localMoneyOffer = 0;
         _localExhibitOfferIds.Clear();
@@ -574,7 +569,7 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         // v2：允许交易任意资产（卡牌/道具/金币/展品）。
         bool localHasOffer = (_player1OfferedCards?.Count ?? 0) > 0 || _localMoneyOffer > 0 || _localExhibitOfferIds.Count > 0;
         bool remoteHasOffer = (_player2OfferedCards?.Count ?? 0) > 0;
-        bool bothPlayersReady = localHasOffer && remoteHasOffer;
+        bool hasAnyOffer = localHasOffer || remoteHasOffer;
 
         // 用户需求：确认按钮永不置灰，点击服务端未就绪时会显示状态提示但不发送确认。
         if (confirmButton?.button is not null)
@@ -583,7 +578,7 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
 
         // 更新提示文本
-        if (bothPlayersReady)
+        if (hasAnyOffer)
         {
             UpdateUIStatus(TryLocalize("Trade.ReadyToConfirm", "可以确认交易"));
         }
@@ -606,8 +601,7 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     {
         if (TryIsNetworkTrade(out _))
         {
-            // v2：双方都提供了任意资产（卡牌/道具/金币/展品）即可确认。
-            // 远端报价来自 host 状态，不一定来自 _player2OfferedCards。
+            // v2：只要交易中包含任意资产（卡牌/道具/金币/展品）即可确认，支持单向赠送与双向交换。
             TradeSyncPatch.TradeSessionState state = TradeSyncPatch.GetLastKnown(_tradeId);
             if (state is null)
             {
@@ -617,18 +611,30 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             bool localIsA = IsPlayerA(state);
             bool localHasOffer = HasOffer(state, localIsA);
             bool remoteHasOffer = HasOffer(state, !localIsA);
+            bool localConfirmed = localIsA ? state.AConfirmed : state.BConfirmed;
+            bool remoteConfirmed = localIsA ? state.BConfirmed : state.AConfirmed;
 
-            if (!localHasOffer || !remoteHasOffer)
+            if (!localHasOffer && !remoteHasOffer)
             {
                 UpdateUIStatus(TryLocalize("Trade.WaitingForItems", "等待放入物品..."));
                 return;
             }
 
-            UpdateUIStatus("Trade.Confirmed".Localize());
-            if (TryIsNetworkTrade(out _))
+            if (localConfirmed)
             {
-                TradeSyncPatch.RequestConfirm(_tradeId, _selfPlayerId);
+                // 本地已经确认过，等待对方
+                UpdateUIStatus(remoteConfirmed
+                    ? TryLocalize("Trade.BothConfirmed", "双方已确认，准备交换...")
+                    : TryLocalize("Trade.WaitingForPartner", "已确认交易，等待对方确认..."));
+                return;
             }
+
+            // 首次点击确认
+            UpdateUIStatus(remoteConfirmed
+                ? TryLocalize("Trade.BothConfirmed", "双方已确认，准备交换...")
+                : TryLocalize("Trade.WaitingForPartner", "已确认交易，等待对方确认..."));
+
+            TradeSyncPatch.RequestConfirm(_tradeId, _selfPlayerId);
             return;
         }
 
@@ -759,28 +765,49 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             _playerAId = payload?.Player1Id ?? _selfPlayerId;
             _playerBId = payload?.Player2Id;
 
-            // 需求：无法明确确定 partner 时必须显示 partner picker UI.
+            // 需求：如果未显式指定 partner，先检查在线玩家列表。
+            // 若房间中恰好只有 1 位其他在线玩家，直接自动选定该玩家并进入报价编辑模式，无需多余弹窗。
             if (string.IsNullOrWhiteSpace(_playerBId) || string.Equals(_playerBId, _selfPlayerId, StringComparison.Ordinal))
             {
-                Plugin.Logger?.LogInfo($"[TradePanel] SetupTradeSession: partner unresolved, showing picker. self={_selfPlayerId ?? "<null>"}, playerB={_playerBId ?? "<null>"}");
-                ShowPartnerPickerOverlay();
-                return;
+                var candidates = GetConnectedCandidatePartners();
+                if (candidates.Count == 1)
+                {
+                    _playerBId = candidates[0].PlayerId;
+                    if (payload != null)
+                    {
+                        payload.Player2Id = _playerBId;
+                        payload.Player2Name = candidates[0].PlayerName;
+                    }
+                    if (player2NameText != null)
+                    {
+                        player2NameText.text = OtherPlayersOverlayPatch.ResolveDisplayName(_playerBId, candidates[0].PlayerName, isLocal: false);
+                    }
+                    Plugin.Logger?.LogInfo($"[TradePanel] SetupTradeSession: exactly one candidate partner ({candidates[0].PlayerName} / {_playerBId}) auto-selected.");
+                }
+                else
+                {
+                    Plugin.Logger?.LogInfo($"[TradePanel] SetupTradeSession: partner unresolved (candidates={candidates.Count}), showing picker. self={_selfPlayerId ?? "<null>"}, playerB={_playerBId ?? "<null>"}");
+                    ShowPartnerPickerOverlay();
+                    return;
+                }
             }
 
             // 已连接：请求 host 驱动的交易会话。离线/本地调试：跳过网络。
             if (connected)
             {
-                if (TryShowTradeDetailDialog(_playerBId, payload?.Player2Name))
-                {
-                    Plugin.Logger?.LogInfo($"[TradePanel] SetupTradeSession: handed off to TradeDetailDialog, tradeId={_tradeId}");
-                    _handoffToDetailDialog = true;
-                    Hide(false);
-                    return;
-                }
-
-                Plugin.Logger?.LogInfo($"[TradePanel] SetupTradeSession: dialog unavailable, fallback to panel. tradeId={_tradeId}");
+                Plugin.Logger?.LogInfo($"[TradePanel] SetupTradeSession: start network trade session, tradeId={_tradeId}");
                 TrySubscribeTradeEvents();
-                TradeSyncPatch.RequestStartTrade(_tradeId, _playerAId, _playerBId, _maxTradeSlots);
+                EnsureOfferEditorOverlay();
+                EnsureCardPickerOverlay();
+                EnsureExhibitPickerOverlay();
+                EnsureOfferPreviewOverlay();
+                SetTradeDetailsVisible(true);
+                cancelButton?.gameObject.SetActive(_canCancel);
+
+                if (string.IsNullOrWhiteSpace(payload?.TradeId))
+                {
+                    TradeSyncPatch.RequestStartTrade(_tradeId, _playerAId, _playerBId, _maxTradeSlots);
+                }
                 TradeSyncPatch.RequestSnapshot(_tradeId, _selfPlayerId);
             }
             else
@@ -788,6 +815,7 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 EnsureOfferEditorOverlay();
                 EnsureCardPickerOverlay();
                 EnsureExhibitPickerOverlay();
+                EnsureOfferPreviewOverlay();
                 SetTradeDetailsVisible(true);
                 cancelButton?.gameObject.SetActive(_canCancel);
                 UpdateUIStatus("本地调试交易：未连接服务器");
@@ -796,46 +824,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         catch (Exception ex)
         {
             Plugin.Logger?.LogError($"[TradePanel] SetupTradeSession 失败: {ex.Message}\n{ex.StackTrace}");
-        }
-    }
-
-    private bool TryShowTradeDetailDialog(string partnerPlayerId, string partnerPreferredName)
-    {
-        try
-        {
-            // 仅在已连接时移交控制权；本地调试模式保持在面板内。
-            if (!TryIsNetworkTrade(out _))
-            {
-                return false;
-            }
-
-            var dialog = TradeDetailDialogRuntimeFactory.GetOrCreate();
-            if (dialog is null)
-            {
-                return false;
-            }
-
-            _tradeId ??= Guid.NewGuid().ToString("N");
-
-            GameRunController activeRun = ActiveGameRun;
-            Plugin.Logger?.LogInfo($"[TradePanel] TryShowTradeDetailDialog: tradeId={_tradeId}, self={_selfPlayerId}, partner={partnerPlayerId}");
-
-            dialog.Show(new TradeDetailPayload
-            {
-                TradeId = _tradeId,
-                SelfPlayerId = _selfPlayerId,
-                PartnerPlayerId = partnerPlayerId,
-                PartnerPlayerName = OtherPlayersOverlayPatch.ResolveDisplayName(partnerPlayerId, partnerPreferredName, isLocal: false),
-                MaxTradeSlots = _maxTradeSlots,
-                InitialDeckCards = activeRun?.BaseDeck?.Where(c => c is not null).ToList() ?? new List<Card>()
-            });
-
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogWarning($"[TradePanel] TryShowTradeDetailDialog 失败: {ex.Message}");
-            return false;
         }
     }
 

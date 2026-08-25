@@ -31,10 +31,14 @@ namespace NetworkPlugin.UI.Panels;
 // 报价编辑与文本按钮
 public sealed partial class TradePanel
 {
-private void EnsureOfferEditorOverlay()
+    private void EnsureOfferEditorOverlay()
     {
         if (_offerEditorRoot is not null)
         {
+            _offerEditorRoot.SetActive(true);
+            _offerEditorRoot.transform.SetAsLastSibling();
+            _offerActionsRoot?.SetActive(true);
+            _offerActionsRoot?.transform.SetAsLastSibling();
             Plugin.Logger?.LogInfo($"[TradePanel] EnsureOfferEditorOverlay skipped: existing root name={_offerEditorRoot.name}, activeSelf={_offerEditorRoot.activeSelf}");
             return;
         }
@@ -46,8 +50,8 @@ private void EnsureOfferEditorOverlay()
             _offerEditorRoot.transform.SetParent(GetTradePanelContentParent(), false);
 
             RectTransform rootRect = _offerEditorRoot.AddComponent<RectTransform>();
-            rootRect.anchorMin = new Vector2(0.00f, -0.35f);
-            rootRect.anchorMax = new Vector2(0.26f, -0.06f);
+            rootRect.anchorMin = new Vector2(0.00f, 0.00f);
+            rootRect.anchorMax = new Vector2(0.35f, 0.32f);
             rootRect.offsetMin = Vector2.zero;
             rootRect.offsetMax = Vector2.zero;
 
@@ -308,6 +312,8 @@ private void EnsureOfferEditorOverlay()
     {
         if (_offerActionsRoot is not null)
         {
+            _offerActionsRoot.SetActive(true);
+            _offerActionsRoot.transform.SetAsLastSibling();
             return;
         }
 
@@ -319,8 +325,8 @@ private void EnsureOfferEditorOverlay()
             var rt = _offerActionsRoot.AddComponent<RectTransform>();
 
             // 右下区域（绿色框区域），与详情列对齐，保持与报价编辑器的间距一致。
-            rt.anchorMin = new Vector2(0.74f, -0.35f);
-            rt.anchorMax = new Vector2(1.00f, -0.06f);
+            rt.anchorMin = new Vector2(0.65f, 0.00f);
+            rt.anchorMax = new Vector2(1.00f, 0.32f);
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
 

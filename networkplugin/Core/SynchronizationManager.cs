@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using BepInEx.Logging;
@@ -31,14 +32,14 @@ public class SynchronizationManager : ISynchronizationManager
     private readonly NetworkAvailabilityTracker _netAvailTracker;
 
     /// <summary>
-    /// 网络不可用时的事件队列
+    /// 网络不可用时的事件队列（并发安全）
     /// </summary>
-    private readonly Queue<GameEvent> _eventQueue = new();
+    private readonly ConcurrentQueue<GameEvent> _eventQueue = new();
 
     /// <summary>
     /// 同步配置对象
     /// </summary>
-    private readonly SyncConfiguration _config = new();
+    private readonly SyncConfiguration _config;
 
     #endregion
 
@@ -58,6 +59,7 @@ public class SynchronizationManager : ISynchronizationManager
         _networkClient = networkClient ?? throw new ArgumentNullException(nameof(networkClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
+        _config = _configManager.GetSyncConfiguration();
         _eventBufferManager = new NetworkEventBufferManager();
         _stateCacheManager = new StateCacheManager(_config);
         _netAvailTracker = netAvailTracker ?? throw new ArgumentNullException(nameof(netAvailTracker));
@@ -107,8 +109,15 @@ public class SynchronizationManager : ISynchronizationManager
         {
             if (!IsNetworkAvailable())
             {
-                _logger?.LogDebug("[SyncManager] 网络不可用，事件加入队列");
-                _eventQueue.Enqueue(gameEvent);
+                if (_eventQueue.Count < _config.MaxQueueSize)
+                {
+                    _logger?.LogDebug("[SyncManager] 网络不可用，事件加入队列");
+                    _eventQueue.Enqueue(gameEvent);
+                }
+                else
+                {
+                    _logger?.LogWarning($"[SyncManager] 事件队列已满 (MaxQueueSize={_config.MaxQueueSize})，丢弃事件: {gameEvent.EventType}");
+                }
                 return;
             }
 
@@ -261,9 +270,8 @@ public class SynchronizationManager : ISynchronizationManager
             _netAvailTracker.SetAvailable();
             _logger?.LogInfo("[SyncManager] 网络连接已恢复，开始处理队列事件");
 
-            while (_eventQueue.Count > 0 && IsNetworkAvailable())
+            while (IsNetworkAvailable() && _eventQueue.TryDequeue(out var gameEvent))
             {
-                var gameEvent = _eventQueue.Dequeue();
                 SyncGameEventToNetwork(gameEvent);
             }
 
@@ -291,10 +299,6 @@ public class SynchronizationManager : ISynchronizationManager
         {
             _netAvailTracker.SetUnavailable();
             _logger?.LogWarning("[SyncManager] 网络连接丢失，切换到离线模式");
-
-            string playerId = GameStateUtils.GetCurrentPlayerId();
-            var eventData = new Dictionary<string, object> { ["QueuedEvents"] = _eventQueue.Count };
-            SendGameEvent(new GameEvent("ConnectionLost", playerId, eventData));
         }
         catch (Exception ex)
         {
@@ -343,7 +347,7 @@ public class SynchronizationManager : ISynchronizationManager
             }
 
             if (_networkClient is NetworkClient liteNetClient)
-                _networkClient.SendGameEventData(gameEvent.EventType.ToString(), gameEvent.Data);
+                liteNetClient.SendGameEventData(gameEvent.EventType.ToString(), gameEvent.Data);
             else
                 _networkClient.SendRequest(gameEvent.EventType.ToString(), gameEvent.Data);
 

@@ -112,7 +112,10 @@ public partial class NetworkServer : BaseGameServer
     /// <returns>玩家会话集合</returns>
     public IReadOnlyCollection<PlayerSession> GetPlayerSessions()
     {
-        return SessionsByPeer.Values;
+        lock (SyncRoot)
+        {
+            return SessionsByPeer.Values.ToList();
+        }
     }
 
     /// <summary>
@@ -122,13 +125,29 @@ public partial class NetworkServer : BaseGameServer
     /// <returns>玩家会话，如果不存在则返回null</returns>
     public PlayerSession GetPlayerSession(int peerId)
     {
-        return SessionsByPeer.Values.FirstOrDefault(s => s.Peer.Id == peerId);
+        lock (SyncRoot)
+        {
+            if (_playerSessions.TryGetValue(peerId, out var session))
+            {
+                return session;
+            }
+            return SessionsByPeer.Values.FirstOrDefault(s => s.Peer != null && s.Peer.Id == peerId);
+        }
     }
 
     /// <summary>
     /// 获取当前连接的玩家数量
     /// </summary>
-    public int PlayerCount => SessionsByPeer.Count;
+    public int PlayerCount
+    {
+        get
+        {
+            lock (SyncRoot)
+            {
+                return SessionsByPeer.Count;
+            }
+        }
+    }
 
     /// <summary>
     /// 系统消息总入口。根据 messageType 路由到对应的处理器，或转发给受控消息路由。
@@ -397,57 +416,61 @@ public partial class NetworkServer : BaseGameServer
                 return;
             }
 
-            if (!_sessionsByPlayerId.TryGetValue(request.PlayerId, out var targetSession))
+            PlayerSession targetSession;
+            lock (SyncRoot)
             {
-                SendMessage(fromPeer, NetworkMessageTypes.Reconnect_RESPONSE, new { Success = false, Error = "Unknown playerId" });
-                return;
-            }
-
-            if (targetSession.IsConnected)
-            {
-                SendMessage(fromPeer, NetworkMessageTypes.Reconnect_RESPONSE, new { Success = false, Error = "Already connected" });
-                return;
-            }
-
-            string expectedToken = TryGetMetadataString(targetSession.Metadata, "ReconnectToken");
-            if (!string.Equals(expectedToken, request.ReconnectToken, StringComparison.Ordinal))
-            {
-                SendMessage(fromPeer, NetworkMessageTypes.Reconnect_RESPONSE, new { Success = false, Error = "Invalid token" });
-                return;
-            }
-
-            if (_disconnectedAtByPlayerId.TryGetValue(request.PlayerId, out var disconnectedAt))
-            {
-                if (DateTime.UtcNow - disconnectedAt > _reconnectGracePeriod)
+                if (!_sessionsByPlayerId.TryGetValue(request.PlayerId, out targetSession!))
                 {
-                    SendMessage(fromPeer, NetworkMessageTypes.Reconnect_RESPONSE, new { Success = false, Error = "Reconnect window expired" });
+                    SendMessage(fromPeer, NetworkMessageTypes.Reconnect_RESPONSE, new { Success = false, Error = "Unknown playerId" });
                     return;
                 }
+
+                if (targetSession.IsConnected)
+                {
+                    SendMessage(fromPeer, NetworkMessageTypes.Reconnect_RESPONSE, new { Success = false, Error = "Already connected" });
+                    return;
+                }
+
+                string expectedToken = TryGetMetadataString(targetSession.Metadata, "ReconnectToken");
+                if (!string.Equals(expectedToken, request.ReconnectToken, StringComparison.Ordinal))
+                {
+                    SendMessage(fromPeer, NetworkMessageTypes.Reconnect_RESPONSE, new { Success = false, Error = "Invalid token" });
+                    return;
+                }
+
+                if (_disconnectedAtByPlayerId.TryGetValue(request.PlayerId, out var disconnectedAt))
+                {
+                    if (DateTime.UtcNow - disconnectedAt > _reconnectGracePeriod)
+                    {
+                        SendMessage(fromPeer, NetworkMessageTypes.Reconnect_RESPONSE, new { Success = false, Error = "Reconnect window expired" });
+                        return;
+                    }
+                }
+
+                // 移除当前 peer 可能已经被分配的临时会话，避免同一个物理连接对应多个 PlayerId
+                if (_playerIdByPeerId.TryGetValue(fromPeer.Id, out var currentPlayerId) &&
+                    !string.Equals(currentPlayerId, request.PlayerId, StringComparison.Ordinal))
+                {
+                    _playerIdByPeerId.Remove(fromPeer.Id);
+                    _playerSessions.Remove(fromPeer.Id);
+
+                    _sessionsByPlayerId.Remove(currentPlayerId);
+                    _disconnectedAtByPlayerId.Remove(currentPlayerId);
+                    SessionsByPeer.Remove(fromPeer);
+                }
+
+                targetSession.Peer = fromPeer;
+                targetSession.IsConnected = true;
+                targetSession.UpdateHeartbeat();
+                targetSession.UpdateMessageTime();
+
+                _playerIdByPeerId[fromPeer.Id] = targetSession.PlayerId;
+                _playerSessions[fromPeer.Id] = targetSession;
+                _disconnectedAtByPlayerId.Remove(targetSession.PlayerId);
+
+                // 关键：更新 BaseGameServer 的 peer→session 映射，否则后续收包无法找到 session
+                SessionsByPeer[fromPeer] = targetSession;
             }
-
-            // 移除当前 peer 可能已经被分配的临时会话，避免同一个物理连接对应多个 PlayerId
-            if (_playerIdByPeerId.TryGetValue(fromPeer.Id, out var currentPlayerId) &&
-                !string.Equals(currentPlayerId, request.PlayerId, StringComparison.Ordinal))
-            {
-                _playerIdByPeerId.Remove(fromPeer.Id);
-                _playerSessions.Remove(fromPeer.Id);
-
-                _sessionsByPlayerId.Remove(currentPlayerId);
-                _disconnectedAtByPlayerId.Remove(currentPlayerId);
-                SessionsByPeer.Remove(fromPeer);
-            }
-
-            targetSession.Peer = fromPeer;
-            targetSession.IsConnected = true;
-            targetSession.UpdateHeartbeat();
-            targetSession.UpdateMessageTime();
-
-            _playerIdByPeerId[fromPeer.Id] = targetSession.PlayerId;
-            _playerSessions[fromPeer.Id] = targetSession;
-            _disconnectedAtByPlayerId.Remove(targetSession.PlayerId);
-
-            // 关键：更新 BaseGameServer 的 peer→session 映射，否则后续收包无法找到 session
-            SessionsByPeer[fromPeer] = targetSession;
 
             SendMessage(fromPeer, NetworkMessageTypes.Reconnect_RESPONSE, new
             {
@@ -554,10 +577,15 @@ public partial class NetworkServer : BaseGameServer
     public override void Stop()
     {
         _core.Stop();
-        _playerSessions.Clear();
-        _playerIdByPeerId.Clear();
-        _sessionsByPlayerId.Clear();
-        _disconnectedAtByPlayerId.Clear();
+        lock (SyncRoot)
+        {
+            _playerSessions.Clear();
+            _playerIdByPeerId.Clear();
+            _sessionsByPlayerId.Clear();
+            _disconnectedAtByPlayerId.Clear();
+            SessionsByPeer.Clear();
+            SessionsByPlayerId.Clear();
+        }
         Plugin.Logger?.LogInfo("[服务器] 已停止。");
         _logger?.LogInfo("[服务器] 已停止。");
     }
@@ -570,7 +598,7 @@ public partial class NetworkServer : BaseGameServer
                 Port = port,
                 MaxConnections = maxConnections,
                 ConnectionKey = connectionKey,
-                DisconnectTimeoutMs = 30_000,
+                DisconnectTimeoutMs = ServerConstants.DisconnectTimeoutSeconds * 1000,
                 PingIntervalMs = 1_000,
                 UseBackgroundThread = false,
             },

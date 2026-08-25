@@ -16,6 +16,7 @@ public static partial class OtherPlayersOverlayPatch
     {
         ("aidefault", "AI Default"),
         ("aidefault2", "AI Default 2"),
+        ("aidefault3", "AI Default 3"),
     };
 
     internal static string ResolveDisplayName(string playerId, string preferredName = null, bool isLocal = false)
@@ -217,8 +218,14 @@ public static partial class OtherPlayersOverlayPatch
             return fallback;
         }
 
-        string[] candidates = { "Reimu", "Marisa", "Sakuya", "Koishi", fallback };
-        return candidates.FirstOrDefault(candidate => !string.IsNullOrWhiteSpace(candidate) && !string.Equals(candidate, fallback, StringComparison.OrdinalIgnoreCase)) ?? fallback;
+        string[] candidates = { "Reimu", "Marisa", "Sakuya", "Koishi" };
+        var validCandidates = candidates.Where(c => !string.Equals(c, fallback, StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (validCandidates.Length == 0)
+        {
+            return fallback;
+        }
+
+        return validCandidates[(index - 1) % validCandidates.Length];
     }
 
     private static void InjectTradeDebugPlayersDetailed(List<(string PlayerId, string PlayerName, bool IsConnected, bool IsHost, int Stage, int LocationX, int LocationY, string LocationName, string CharacterId)> list)

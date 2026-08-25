@@ -16,9 +16,6 @@ internal sealed class NetworkEventBufferManager
     private readonly SortedList<long, NetworkEventBuffer> _remoteEventBuffer = [];
     private readonly object _remoteEventBufferLock = new();
 
-    // 小于该阈值时直接取 Max，降低 key 冲突概率；推荐值：最近 5 秒的 tick 窗口
-    private const long KeyWindowTicks = TimeSpan.TicksPerSecond * 5;
-
     private static readonly TimeSpan EventBufferTimeout = TimeSpan.FromSeconds(30);
 
     /// <summary>
@@ -40,8 +37,16 @@ internal sealed class NetworkEventBufferManager
         long key = timestamp;
         lock (_remoteEventBufferLock)
         {
+            int attempts = 0;
+            const int maxAttempts = 1000;
             while (_remoteEventBuffer.ContainsKey(key))
             {
+                if (++attempts >= maxAttempts)
+                {
+                    Plugin.Logger?.LogError($"[EventBufferManager] 解决 key 冲突达到最大尝试次数 ({maxAttempts})，丢弃事件");
+                    return;
+                }
+
                 if (key == long.MaxValue)
                 {
                     key = DateTime.Now.Ticks;
