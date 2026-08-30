@@ -153,6 +153,43 @@ public partial class NetworkServer
     }
 
     /// <summary>
+    /// 判断消息类型是否为针对 Host 仲裁的请求消息，并定向投递给已连接的房主客户端。
+    /// </summary>
+    /// <param name="senderSession">发送者会话（可为客机或房主自身）。</param>
+    /// <param name="messageType">消息类型标识。</param>
+    /// <param name="jsonPayload">JSON 负载。</param>
+    /// <returns>若是 Host 请求且已被路由消费返回 true，否则 false。</returns>
+    private bool TryRouteHostRequest(PlayerSession senderSession, string messageType, string jsonPayload)
+    {
+        if (!NetworkMessageTypes.IsHostRequest(messageType))
+        {
+            return false;
+        }
+
+        try
+        {
+            PlayerSession hostSession = GetConnectedHostSession();
+            if (hostSession == null)
+            {
+                Plugin.Logger?.LogWarning($"[服务器] 收到 Host 请求 {messageType}，但未找到已连接的 Host 会话（来自 {senderSession?.PlayerId}）");
+                return true; // 即使没有 host 也已消费，避免错误广播给客机
+            }
+
+            LogRouteProbeOnce($"HostRequest/{messageType}",
+                $"sender={senderSession?.PlayerId}, host={hostSession.PlayerId}");
+
+            // 定向发送给房主客户端（即使 sender 是房主自己，也会投递给房主的 Peer 接收通道）
+            SendRawJsonToPeer(hostSession.Peer, messageType, jsonPayload);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError($"[服务器] 路由 Host 请求异常: type={messageType}, err={ex.Message}");
+            return true;
+        }
+    }
+
+    /// <summary>
     /// Host/直连模式下的 RoomStateRequest 路由：请求定向转发给房主（主机作为房间状态中枢）。
     /// </summary>
     private void RouteRoomStateRequest(PlayerSession senderSession, string jsonPayload)

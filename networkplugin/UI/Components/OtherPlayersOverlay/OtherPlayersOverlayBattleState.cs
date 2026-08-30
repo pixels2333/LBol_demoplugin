@@ -10,7 +10,7 @@ namespace NetworkPlugin.Patch.UI;
 
 public static partial class OtherPlayersOverlayPatch
 {
-    private static readonly Dictionary<string, VirtualAiBattleStateEntry> _virtualAiBattleStates = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, VirtualAiBattleStateEntry> _virtualAiBattleStates;
 
     private struct RemoteBattleState
     {

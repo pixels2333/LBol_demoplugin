@@ -58,7 +58,11 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         => GameRun ?? GameStateUtils.GetCurrentGameRun();
 
     private bool IsPlayerA(TradeSyncPatch.TradeSessionState state)
-        => state != null && string.Equals(state.PlayerAId, _selfPlayerId, StringComparison.Ordinal);
+    {
+        if (state == null) return false;
+        string self = _selfPlayerId ?? NetworkIdentityTracker.GetSelfPlayerId();
+        return string.Equals(state.PlayerAId, self, StringComparison.OrdinalIgnoreCase);
+    }
 
     #endregion
 
@@ -751,8 +755,12 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 _selfPlayerId = NetworkIdentityTracker.GetSelfPlayerId();
                 if (string.IsNullOrWhiteSpace(_selfPlayerId))
                 {
-                    Plugin.Logger?.LogWarning("[TradePanel] SetupTradeSession aborted: self player id empty.");
-                    return;
+                    var netMgr = ModService.ServiceProvider?.GetService<INetworkManager>();
+                    _selfPlayerId = netMgr?.GetSelf()?.playerId;
+                }
+                if (string.IsNullOrWhiteSpace(_selfPlayerId))
+                {
+                    _selfPlayerId = "self";
                 }
             }
             else
@@ -765,34 +773,16 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             _playerAId = payload?.Player1Id ?? _selfPlayerId;
             _playerBId = payload?.Player2Id;
 
-            // 需求：如果未显式指定 partner，先检查在线玩家列表。
-            // 若房间中恰好只有 1 位其他在线玩家，直接自动选定该玩家并进入报价编辑模式，无需多余弹窗。
+            // 如果未显式指定交易对象（主动发起交易），展示选择玩家界面供玩家点选。
             if (string.IsNullOrWhiteSpace(_playerBId) || string.Equals(_playerBId, _selfPlayerId, StringComparison.Ordinal))
             {
-                var candidates = GetConnectedCandidatePartners();
-                if (candidates.Count == 1)
-                {
-                    _playerBId = candidates[0].PlayerId;
-                    if (payload != null)
-                    {
-                        payload.Player2Id = _playerBId;
-                        payload.Player2Name = candidates[0].PlayerName;
-                    }
-                    if (player2NameText != null)
-                    {
-                        player2NameText.text = OtherPlayersOverlayPatch.ResolveDisplayName(_playerBId, candidates[0].PlayerName, isLocal: false);
-                    }
-                    Plugin.Logger?.LogInfo($"[TradePanel] SetupTradeSession: exactly one candidate partner ({candidates[0].PlayerName} / {_playerBId}) auto-selected.");
-                }
-                else
-                {
-                    Plugin.Logger?.LogInfo($"[TradePanel] SetupTradeSession: partner unresolved (candidates={candidates.Count}), showing picker. self={_selfPlayerId ?? "<null>"}, playerB={_playerBId ?? "<null>"}");
-                    ShowPartnerPickerOverlay();
-                    return;
-                }
+                Plugin.Logger?.LogInfo($"[TradePanel] SetupTradeSession: partner unresolved, showing picker overlay. self={_selfPlayerId ?? "<null>"}, playerB={_playerBId ?? "<null>"}");
+                ShowPartnerPickerOverlay();
+                return;
             }
 
             // 已连接：请求 host 驱动的交易会话。离线/本地调试：跳过网络。
+            transform.Find("NetworkPlugin_TradePanel_Frame")?.gameObject.SetActive(true);
             if (connected)
             {
                 Plugin.Logger?.LogInfo($"[TradePanel] SetupTradeSession: start network trade session, tradeId={_tradeId}");

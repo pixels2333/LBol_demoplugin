@@ -300,6 +300,11 @@ public partial class NetworkServer : BaseGameServer
                 return;
             }
 
+            if (TryRouteHostRequest(session, eventType, jsonPayload))
+            {
+                return;
+            }
+
             BroadcastGameEvent(eventType, jsonPayload, session.Peer.Id);
         }
         catch (Exception ex)

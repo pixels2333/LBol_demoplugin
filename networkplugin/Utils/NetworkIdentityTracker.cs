@@ -98,7 +98,12 @@ public static class NetworkIdentityTracker
     {
         lock (SyncLock)
         {
-            return new HashSet<string>(_playerIds, StringComparer.Ordinal);
+            var snapshot = new HashSet<string>(_playerIds, StringComparer.Ordinal);
+            if (!string.IsNullOrWhiteSpace(_selfPlayerId))
+            {
+                snapshot.Add(_selfPlayerId);
+            }
+            return snapshot;
         }
     }
 

@@ -1,6 +1,8 @@
 using System;
 using System.Text.Json;
 using HarmonyLib;
+using LBoL.Core;
+using LBoL.Presentation;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
@@ -200,7 +202,7 @@ public static class ResurrectSyncPatch
                 return;
             }
 
-            client.SendGameEventData(NetworkMessageTypes.OnGapPlayerHealed, new
+            var payload = new
             {
                 RequestId = requestId,
                 RequesterPlayerId = requesterPlayerId,
@@ -209,12 +211,14 @@ public static class ResurrectSyncPatch
                 ResultHp = finalHp,
                 MaxHp = maxHp,
                 Timestamp = DateTime.UtcNow.Ticks,
-            });
+            };
 
-            UpdateKnownPlayerVitals(targetPlayerId, finalHp, maxHp);
+            Plugin.Logger?.LogInfo($"[ResurrectSyncPatch] Broadcasting OnGapPlayerHealed: target={targetPlayerId}, healAmount={healAmount}, resultHp={finalHp}/{maxHp}");
+            client.BroadcastState(NetworkMessageTypes.OnGapPlayerHealed, payload);
         }
-        catch
+        catch (Exception ex)
         {
+            Plugin.Logger?.LogError($"[ResurrectSyncPatch] HandleGapHealRequest broadcast failed: {ex.Message}");
             BroadcastHealFailed(requestId, requesterPlayerId, "BroadcastFailed");
         }
     }
@@ -227,30 +231,33 @@ public static class ResurrectSyncPatch
         int resultHp = GetInt(root, "ResultHp", GetInt(root, "ResurrectionHp", 1));
         int maxHp = GetInt(root, "MaxHp", 0);
 
-        if (!string.IsNullOrWhiteSpace(targetPlayerId))
+        Plugin.RunOnMainThread(() =>
         {
-            UpdateKnownPlayerVitals(targetPlayerId, resultHp, maxHp);
-        }
-
-        string selfId = NetworkIdentityTracker.GetSelfPlayerId();
-
-        // 目标本人：执行治疗落地。
-        if (!string.IsNullOrWhiteSpace(selfId) && string.Equals(selfId, targetPlayerId, StringComparison.Ordinal))
-        {
-            try
+            if (!string.IsNullOrWhiteSpace(targetPlayerId))
             {
-                ApplyHealToLocalPlayer(resultHp, maxHp);
+                UpdateKnownPlayerVitals(targetPlayerId, resultHp, maxHp);
             }
-            catch
-            {
-                // ignored
-            }
-        }
 
-        if (!string.IsNullOrWhiteSpace(selfId) && string.Equals(selfId, requesterPlayerId, StringComparison.Ordinal))
-        {
-            OnResurrectResult?.Invoke(requestId, true, null);
-        }
+            string selfId = NetworkIdentityTracker.GetSelfPlayerId();
+
+            // 目标本人：执行治疗落地。
+            if (!string.IsNullOrWhiteSpace(selfId) && string.Equals(selfId, targetPlayerId, StringComparison.Ordinal))
+            {
+                try
+                {
+                    ApplyHealToLocalPlayer(resultHp, maxHp);
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Logger?.LogError($"[ResurrectSyncPatch] ApplyHealToLocalPlayer failed: {ex.Message}");
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(selfId) && string.Equals(selfId, requesterPlayerId, StringComparison.Ordinal))
+            {
+                OnResurrectResult?.Invoke(requestId, true, null);
+            }
+        });
     }
 
     private static void HandleGapHealFailed(JsonElement root)
@@ -259,11 +266,14 @@ public static class ResurrectSyncPatch
         string requesterPlayerId = GetString(root, "RequesterPlayerId");
         string reason = GetString(root, "Reason") ?? "Failed";
 
-        string selfId = NetworkIdentityTracker.GetSelfPlayerId();
-        if (!string.IsNullOrWhiteSpace(selfId) && string.Equals(selfId, requesterPlayerId, StringComparison.Ordinal))
+        Plugin.RunOnMainThread(() =>
         {
-            OnResurrectResult?.Invoke(requestId, false, reason);
-        }
+            string selfId = NetworkIdentityTracker.GetSelfPlayerId();
+            if (!string.IsNullOrWhiteSpace(selfId) && string.Equals(selfId, requesterPlayerId, StringComparison.Ordinal))
+            {
+                OnResurrectResult?.Invoke(requestId, false, reason);
+            }
+        });
     }
 
     private static void BroadcastHealFailed(string requestId, string requesterPlayerId, string reason)
@@ -276,13 +286,16 @@ public static class ResurrectSyncPatch
                 return;
             }
 
-            client.SendGameEventData(NetworkMessageTypes.OnGapHealFailed, new
+            var payload = new
             {
                 RequestId = requestId,
                 RequesterPlayerId = requesterPlayerId,
                 Reason = reason,
                 Timestamp = DateTime.UtcNow.Ticks,
-            });
+            };
+
+            Plugin.Logger?.LogWarning($"[ResurrectSyncPatch] Broadcasting OnGapHealFailed: requester={requesterPlayerId}, reason={reason}");
+            client.BroadcastState(NetworkMessageTypes.OnGapHealFailed, payload);
         }
         catch
         {
@@ -324,12 +337,28 @@ public static class ResurrectSyncPatch
             networkPlayer = networkManager.GetSelf();
             if (networkPlayer == null || !string.Equals(networkPlayer.playerId, playerId, StringComparison.Ordinal))
             {
+                // 虚拟AI模拟玩家支持
+                if (GapOptionsPanel_Patch.IsVirtualAiSimulatedPlayer(playerId))
+                {
+                    var localPlayer = GameStateUtils.GetCurrentPlayer();
+                    maxHp = Math.Max(1, localPlayer?.MaxHp ?? 100);
+                    currentHp = Math.Max(0, (int)Math.Ceiling(maxHp * 0.7f));
+                    return true;
+                }
                 return false;
             }
         }
 
         currentHp = Math.Max(0, networkPlayer.HP);
         maxHp = Math.Max(0, networkPlayer.maxHP);
+
+        // 如果 maxHp 尚未同步过，尝试用本地玩家 MaxHp 兜底
+        if (maxHp <= 0)
+        {
+            var localPlayer = GameStateUtils.GetCurrentPlayer();
+            maxHp = Math.Max(1, localPlayer?.MaxHp ?? 100);
+        }
+
         return maxHp > 0;
     }
 
@@ -381,7 +410,30 @@ public static class ResurrectSyncPatch
             return;
         }
 
-        Traverse.Create(localPlayer).Method("Heal", healDelta).GetValue();
+        Plugin.Logger?.LogInfo($"[ResurrectSyncPatch] ApplyHealToLocalPlayer: healDelta={healDelta}, newHp={finalHp}/{finalMaxHp}");
+
+        try
+        {
+            var gameRun = GameMaster.Instance?.CurrentGameRun;
+            if (gameRun != null)
+            {
+                gameRun.Heal(healDelta, true, null);
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogWarning($"[ResurrectSyncPatch] gameRun.Heal failed: {ex.Message}, falling back to player.Heal");
+        }
+
+        try
+        {
+            Traverse.Create(localPlayer).Method("Heal", healDelta).GetValue();
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[ResurrectSyncPatch] localPlayer.Heal failed: {ex.Message}");
+        }
     }
 
     private static int CalculateHealingAmount(int maxHp)

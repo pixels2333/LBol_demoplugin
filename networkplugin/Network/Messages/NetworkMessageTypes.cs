@@ -900,6 +900,33 @@ namespace NetworkPlugin.Network.Messages
         };
 
         /// <summary>
+        /// 针对主机（Host）权威仲裁的请求消息集合。<br/>
+        /// 这些消息由客户端或房主自身发起，服务端负责精准单播投递给当前已连接的 Host 客户端进行裁决。
+        /// </summary>
+        private static readonly HashSet<string> HostRequestEvents = new(StringComparer.Ordinal)
+        {
+            OnTradeStartRequest,
+            OnTradeOfferUpdateRequest,
+            OnTradeConfirmRequest,
+            OnTradeCancelRequest,
+            OnTradeSnapshotRequest,
+            OnTradePrepareResultRequest,
+            OnResurrectRequest,
+            OnGapHealRequest,
+            OnMapNodeVoteCast,
+            OnEventVoteCast,
+            MidGameJoinRequest,
+        };
+
+        /// <summary>
+        /// 判定消息类型是否为针对 Host 仲裁的请求消息。
+        /// </summary>
+        public static bool IsHostRequest(string messageType)
+        {
+            return !string.IsNullOrWhiteSpace(messageType) && HostRequestEvents.Contains(messageType);
+        }
+
+        /// <summary>
         /// 统一判定消息是否应进入 GameEvent 通道。<br/>
         /// 判定优先级：<br/>
         /// 1) 显式声明的游戏事件集合（ExplicitGameEvents）→ 是；<br/>

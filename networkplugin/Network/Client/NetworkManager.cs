@@ -75,7 +75,7 @@ public class NetworkManager : INetworkManager
     /// <remarks>
     /// 构造时即订阅客户端事件，确保玩家状态同步不遗漏早期消息。
     /// </remarks>
-    public NetworkManager(INetworkClient networkClient, LocalNetworkPlayer selfPlayer)
+    public NetworkManager(INetworkClient networkClient, LocalNetworkPlayer selfPlayer = null)
     {
         _networkClient = networkClient;
         _selfPlayer = selfPlayer ?? new LocalNetworkPlayer(networkClient);
@@ -94,6 +94,9 @@ public class NetworkManager : INetworkManager
 
             // GapOptions 同步补丁：监听 GapOptions 相关事件
             GapOptionsSyncPatch.EnsureSubscribed(_networkClient);
+
+            // 交易同步补丁：监听所有对等端与房主的交易请求与状态广播
+            TradeSyncPatch.EnsureSubscribed(_networkClient);
 
             _networkClient.OnGameEventReceived += OnGameEventReceived;
             _networkClient.OnConnectionStateChanged += OnConnectionStateChanged;
@@ -389,6 +392,7 @@ public class NetworkManager : INetworkManager
         {
             // 确保已订阅身份追踪器，以接收服务器身份变更通知
             NetworkIdentityTracker.EnsureSubscribed(_networkClient);
+            TradeSyncPatch.EnsureSubscribed(_networkClient);
             // 获取身份追踪器中当前所有已知玩家 ID 的快照（不可变集合）
             HashSet<string> ids = NetworkIdentityTracker.GetPlayerIdsSnapshot();
             // 快照为空时无需更新，直接返回

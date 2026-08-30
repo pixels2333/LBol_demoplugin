@@ -685,7 +685,7 @@ public class GapOptionsPanel_Patch
         return maxHp > 0;
     }
 
-    private static bool IsVirtualAiSimulatedPlayer(string playerId)
+    internal static bool IsVirtualAiSimulatedPlayer(string playerId)
     {
         if (string.IsNullOrWhiteSpace(playerId))
         {

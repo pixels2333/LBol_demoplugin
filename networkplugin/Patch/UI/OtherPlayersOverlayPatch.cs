@@ -44,24 +44,24 @@ public static partial class OtherPlayersOverlayPatch
     private const float OverlayRootBottomPadding = 12f;
     private const float AvatarPanelScale = 0.7f;
     private const float AvatarPanelOffsetY = -30f;
-    private static readonly Vector3 HealthBarLocalPosition = new(350f, -500f, 0f);
-    private static readonly Vector3 HealthBarLocalScale = new(0.7f, 0.7f, 1f);
-    private static readonly Vector3 PlayerNameLocalPosition = new(180f, -410f, 0f);
-    private static readonly Vector3 PlayerNameLocalScale = new(1f, 1f, 1f);
-    private static readonly Vector2 PlayerNameSize = new(400f, 65f);
+    private static readonly Vector3 HealthBarLocalPosition;
+    private static readonly Vector3 HealthBarLocalScale;
+    private static readonly Vector3 PlayerNameLocalPosition;
+    private static readonly Vector3 PlayerNameLocalScale;
+    private static readonly Vector2 PlayerNameSize;
     private const float PlayerNameFontSize = 48f;
     private const float RuntimeLayoutEpsilon = 0.01f;
     private const float OverlayDebugLogInterval = 0.5f;
-    private static readonly Vector3 OverlayRootLocalPosition = new(1360f, 900f, 0f);
+    private static readonly Vector3 OverlayRootLocalPosition;
 
     /// <summary>获取依赖注入容器</summary>
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
     /// <summary>用于同步访问玩家列表的锁</summary>
-    private static readonly object _syncLock = new();
+    private static readonly object _syncLock;
 
     /// <summary>存储所有玩家信息的字典，key为PlayerId</summary>
-    private static readonly Dictionary<string, PlayerSummary> _players = new();
+    private static readonly Dictionary<string, PlayerSummary> _players;
 
     /// <summary>overlay UI实例</summary>
     private static OverlayUi _ui;
@@ -85,19 +85,19 @@ public static partial class OtherPlayersOverlayPatch
     private static Transform _remoteCharactersRoot;
 
     /// <summary>战斗场景中远程玩家角色视图缓存（PlayerId -> View）</summary>
-    private static readonly Dictionary<string, RemoteCharacterView> _remoteCharacters = new();
+    private static readonly Dictionary<string, RemoteCharacterView> _remoteCharacters;
 
     /// <summary>地图面板中远程玩家图标根节点</summary>
     private static RectTransform _mapIconsRoot;
 
     /// <summary>地图面板中远程玩家图标缓存（PlayerId -> Icon）</summary>
-    private static readonly Dictionary<string, MapIconUi> _mapIcons = new();
+    private static readonly Dictionary<string, MapIconUi> _mapIcons;
 
     /// <summary>地图节点级图标容器缓存（MapNodeWidget -> Root）</summary>
-    private static readonly Dictionary<MapNodeWidget, RectTransform> _mapNodeIconsRoots = new();
+    private static readonly Dictionary<MapNodeWidget, RectTransform> _mapNodeIconsRoots;
 
     /// <summary>角色头像缓存（CharacterId -> Sprite）</summary>
-    private static readonly Dictionary<string, Sprite> _avatarCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, Sprite> _avatarCache;
 
     /// <summary>缓存的圆形遮罩Sprite</summary>
     private static Sprite _circleMaskSprite;
@@ -105,11 +105,49 @@ public static partial class OtherPlayersOverlayPatch
     /// <summary>缓存的圆形遮罩纹理</summary>
     private static Texture2D _circleMaskTexture;
 
-    /// <summary>游戏事件接收委托（用于事件订阅）</summary>
-    private static readonly Action<string, object> _onGameEventReceived = OnGameEventReceived;
+    private static readonly Action<string, object> _onGameEventReceived;
+    private static readonly Action<bool> _onConnectionStateChanged;
 
-    /// <summary>连接状态变化委托（用于事件订阅）</summary>
-    private static readonly Action<bool> _onConnectionStateChanged = OnConnectionStateChanged;
+    static OtherPlayersOverlayPatch()
+    {
+        try
+        {
+            _syncLock = new object();
+            _players = new Dictionary<string, PlayerSummary>(StringComparer.Ordinal);
+            _remoteCharacters = new Dictionary<string, RemoteCharacterView>(StringComparer.Ordinal);
+            _mapIcons = new Dictionary<string, MapIconUi>(StringComparer.Ordinal);
+            _avatarCache = new Dictionary<string, Sprite>(StringComparer.OrdinalIgnoreCase);
+            _virtualAiBattleStates = new Dictionary<string, VirtualAiBattleStateEntry>(StringComparer.Ordinal);
+            VirtualAiDebugPlayers = new (string, string)[]
+            {
+                ("aidefault", "AI Default"),
+                ("aidefault2", "AI Default 2"),
+                ("aidefault3", "AI Default 3"),
+            };
+
+            try
+            {
+                _mapNodeIconsRoots = new Dictionary<MapNodeWidget, RectTransform>();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[cctor _mapNodeIconsRoots EXCEPTION] {ex}");
+            }
+
+            HealthBarLocalPosition = new Vector3(350f, -500f, 0f);
+            HealthBarLocalScale = new Vector3(0.7f, 0.7f, 1f);
+            PlayerNameLocalPosition = new Vector3(180f, -410f, 0f);
+            PlayerNameLocalScale = new Vector3(1f, 1f, 1f);
+            PlayerNameSize = new Vector2(400f, 65f);
+            OverlayRootLocalPosition = new Vector3(1360f, 900f, 0f);
+            _onGameEventReceived = OnGameEventReceived;
+            _onConnectionStateChanged = OnConnectionStateChanged;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[OtherPlayersOverlayPatch cctor EXCEPTION] {ex}");
+        }
+    }
 
     /// <summary>Overlay 调试日志节流时间</summary>
     private static float _nextOverlayDebugLogTime;

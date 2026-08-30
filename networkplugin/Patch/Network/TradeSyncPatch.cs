@@ -90,8 +90,8 @@ public static class TradeSyncPatch
 
         public bool IsParticipant(string playerId)
             => !string.IsNullOrWhiteSpace(playerId)
-               && (string.Equals(PlayerAId, playerId, StringComparison.Ordinal) ||
-                   string.Equals(PlayerBId, playerId, StringComparison.Ordinal));
+               && (string.Equals(PlayerAId, playerId, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(PlayerBId, playerId, StringComparison.OrdinalIgnoreCase));
 
         public TradeSessionState Clone()
             => new TradeSessionState
@@ -271,25 +271,23 @@ public static class TradeSyncPatch
         try
         {
             INetworkClient client = TryGetClient();
-            if (client == null || !client.IsConnected)
+            if (client != null && client.IsConnected)
             {
+                NetworkIdentityTracker.EnsureSubscribed(client);
+                EnsureSubscribed(client);
+                client.BroadcastState(eventType, payload);
                 return;
             }
 
-            NetworkIdentityTracker.EnsureSubscribed(client);
-            EnsureSubscribed(client);
-
-            client.SendGameEventData(eventType, payload);
-
-            // Host 发起请求时不会收到服务器转发，直接在本地走一次处理。
-            if (NetworkIdentityTracker.GetSelfIsHost())
+            // 仅在未连接网络时的离线单机降级
+            if (TryGetJsonElement(payload, out JsonElement root))
             {
-                OnGameEventReceived(eventType, payload);
+                HandleRequest(eventType, root);
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // ignored
+            Plugin.Logger?.LogWarning($"[TradeSyncPatch] SendToHost error: {ex.Message}");
         }
     }
 
@@ -372,49 +370,33 @@ public static class TradeSyncPatch
         }
     }
 
+    private static string ResolvePlayerDisplayNameSafe(string playerId)
+    {
+        if (string.IsNullOrWhiteSpace(playerId))
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            return OtherPlayersOverlayPatch.ResolveDisplayName(playerId, null, isLocal: false);
+        }
+        catch
+        {
+            return playerId;
+        }
+    }
+
     private static void HandleStart(string tradeId, JsonElement root)
     {
         string a = GetString(root, "PlayerAId");
         string b = GetString(root, "PlayerBId");
         int maxSlots = GetInt(root, "MaxTradeSlots", 5);
 
-        // 参与者必须在房间内（以当前 Host 侧已知玩家列表为准；为空时仅做基础校验）。
-        HashSet<string> knownIds = NetworkIdentityTracker.GetPlayerIdsSnapshot();
-        if (knownIds != null && knownIds.Count > 0)
+        // 基础参数校验
+        if (string.IsNullOrWhiteSpace(a) || string.IsNullOrWhiteSpace(b) || string.Equals(a, b, StringComparison.OrdinalIgnoreCase))
         {
-            if (!string.IsNullOrWhiteSpace(a) && !knownIds.Contains(a))
-            {
-                BroadcastState(new TradeSessionState
-                {
-                    TradeId = tradeId,
-                    PlayerAId = a,
-                    PlayerBId = b,
-                    MaxTradeSlots = maxSlots,
-                    Status = TradeStatus.Failed,
-                    Reason = "PlayerANotInRoom",
-                    Timestamp = DateTime.UtcNow.Ticks,
-                });
-                return;
-            }
-
-            if (!string.IsNullOrWhiteSpace(b) && !knownIds.Contains(b))
-            {
-                BroadcastState(new TradeSessionState
-                {
-                    TradeId = tradeId,
-                    PlayerAId = a,
-                    PlayerBId = b,
-                    MaxTradeSlots = maxSlots,
-                    Status = TradeStatus.Failed,
-                    Reason = "PlayerBNotInRoom",
-                    Timestamp = DateTime.UtcNow.Ticks,
-                });
-                return;
-            }
-        }
-
-        if (string.IsNullOrWhiteSpace(a) || string.IsNullOrWhiteSpace(b) || string.Equals(a, b, StringComparison.Ordinal))
-        {
+            Plugin.Logger?.LogWarning($"[TradeSyncPatch] HandleStart rejected: invalid participants (a='{a}', b='{b}')");
             BroadcastState(new TradeSessionState
             {
                 TradeId = tradeId,
@@ -437,8 +419,8 @@ public static class TradeSyncPatch
                     TradeId = tradeId,
                     PlayerAId = a,
                     PlayerBId = b,
-                    PlayerAName = OtherPlayersOverlayPatch.ResolveDisplayName(a, null, isLocal: false),
-                    PlayerBName = OtherPlayersOverlayPatch.ResolveDisplayName(b, null, isLocal: false),
+                    PlayerAName = ResolvePlayerDisplayNameSafe(a),
+                    PlayerBName = ResolvePlayerDisplayNameSafe(b),
                     MaxTradeSlots = maxSlots,
                     Status = TradeStatus.Open,
                     Timestamp = DateTime.UtcNow.Ticks,
@@ -451,11 +433,11 @@ public static class TradeSyncPatch
                 state.Timestamp = DateTime.UtcNow.Ticks;
                 if (string.IsNullOrWhiteSpace(state.PlayerAName))
                 {
-                    state.PlayerAName = OtherPlayersOverlayPatch.ResolveDisplayName(state.PlayerAId, null, isLocal: false);
+                    state.PlayerAName = ResolvePlayerDisplayNameSafe(state.PlayerAId);
                 }
                 if (string.IsNullOrWhiteSpace(state.PlayerBName))
                 {
-                    state.PlayerBName = OtherPlayersOverlayPatch.ResolveDisplayName(state.PlayerBId, null, isLocal: false);
+                    state.PlayerBName = ResolvePlayerDisplayNameSafe(state.PlayerBId);
                 }
             }
 
@@ -510,13 +492,13 @@ public static class TradeSyncPatch
             state.APrepared = false;
             state.BPrepared = false;
 
-            if (string.Equals(state.PlayerAId, requester, StringComparison.Ordinal))
+            if (string.Equals(state.PlayerAId, requester, StringComparison.OrdinalIgnoreCase))
             {
                 state.OfferA = offer;
                 state.MoneyA = money;
                 state.ExhibitsA = exhibits;
             }
-            else if (string.Equals(state.PlayerBId, requester, StringComparison.Ordinal))
+            else if (string.Equals(state.PlayerBId, requester, StringComparison.OrdinalIgnoreCase))
             {
                 state.OfferB = offer;
                 state.MoneyB = money;
@@ -560,11 +542,11 @@ public static class TradeSyncPatch
                 return;
             }
 
-            if (string.Equals(state.PlayerAId, requester, StringComparison.Ordinal))
+            if (string.Equals(state.PlayerAId, requester, StringComparison.OrdinalIgnoreCase))
             {
                 state.AConfirmed = true;
             }
-            else if (string.Equals(state.PlayerBId, requester, StringComparison.Ordinal))
+            else if (string.Equals(state.PlayerBId, requester, StringComparison.OrdinalIgnoreCase))
             {
                 state.BConfirmed = true;
             }
@@ -619,11 +601,11 @@ public static class TradeSyncPatch
                 return;
             }
 
-            if (string.Equals(state.PlayerAId, requester, StringComparison.Ordinal))
+            if (string.Equals(state.PlayerAId, requester, StringComparison.OrdinalIgnoreCase))
             {
                 state.APrepared = ok;
             }
-            else if (string.Equals(state.PlayerBId, requester, StringComparison.Ordinal))
+            else if (string.Equals(state.PlayerBId, requester, StringComparison.OrdinalIgnoreCase))
             {
                 state.BPrepared = ok;
             }
@@ -712,6 +694,42 @@ public static class TradeSyncPatch
         BroadcastState(state);
     }
 
+    private static void ApplyStateLocal(TradeSessionState state)
+    {
+        if (state == null || string.IsNullOrWhiteSpace(state.TradeId))
+        {
+            return;
+        }
+
+        TradeSessionState cloned = state.Clone();
+
+        lock (SyncLock)
+        {
+            _lastKnown[cloned.TradeId] = cloned;
+        }
+
+        TryPopIncomingTradeConfirmDialog(cloned);
+
+        try
+        {
+            Plugin.RunOnMainThread(() =>
+            {
+                try
+                {
+                    OnTradeStateUpdated?.Invoke(cloned);
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Logger?.LogError($"[TradeSyncPatch] OnTradeStateUpdated invoke error: {ex.Message}");
+                }
+            });
+        }
+        catch
+        {
+            OnTradeStateUpdated?.Invoke(cloned);
+        }
+    }
+
     private static void BroadcastState(TradeSessionState state)
     {
         if (state == null)
@@ -719,6 +737,10 @@ public static class TradeSyncPatch
             return;
         }
 
+        // 1. 本地立即应用最新状态，完成 Host 侧权威状态更新闭环
+        ApplyStateLocal(state);
+
+        // 2. 广播给房间内其他客户端
         try
         {
             INetworkClient client = TryGetClient();
@@ -753,17 +775,11 @@ public static class TradeSyncPatch
                 Reason = state.Reason,
             };
 
-            client.SendGameEventData(NetworkMessageTypes.OnTradeStateUpdate, payload);
-
-            // Host 不会收到自己的广播，补一次本地处理。
-            if (NetworkIdentityTracker.GetSelfIsHost())
-            {
-                HandleStateUpdateFromObject(payload);
-            }
+            client.BroadcastState(NetworkMessageTypes.OnTradeStateUpdate, payload);
         }
-        catch
+        catch (Exception ex)
         {
-            // ignored
+            Plugin.Logger?.LogWarning($"[TradeSyncPatch] BroadcastState failed: {ex.Message}");
         }
     }
 
@@ -775,14 +791,7 @@ public static class TradeSyncPatch
             return;
         }
 
-        lock (SyncLock)
-        {
-            _lastKnown[state.TradeId] = state;
-        }
-
-        TryPopIncomingTradeConfirmDialog(state);
-
-        OnTradeStateUpdated?.Invoke(state);
+        ApplyStateLocal(state);
     }
 
     private static void TryPopIncomingTradeConfirmDialog(TradeSessionState state)
@@ -797,11 +806,17 @@ public static class TradeSyncPatch
             string selfId = NetworkIdentityTracker.GetSelfPlayerId();
             if (string.IsNullOrWhiteSpace(selfId))
             {
+                INetworkManager netMgr = ServiceProvider?.GetService<INetworkManager>();
+                selfId = netMgr?.GetSelf()?.userName;
+            }
+
+            if (string.IsNullOrWhiteSpace(selfId))
+            {
                 return;
             }
 
             // 只有当前玩家是被邀请者 (PlayerB) 时，才触发确认弹窗
-            if (!string.Equals(state.PlayerBId, selfId, StringComparison.Ordinal))
+            if (!string.Equals(state.PlayerBId, selfId, StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
@@ -841,20 +856,7 @@ public static class TradeSyncPatch
         }
     }
 
-    private static void HandleStateUpdateFromObject(object payload)
-    {
-        try
-        {
-            string json = JsonCompat.Serialize(payload);
-            using JsonDocument doc = JsonDocument.Parse(json);
-            JsonElement root = doc.RootElement;
-            HandleStateUpdate(root);
-        }
-        catch
-        {
-            // ignored
-        }
-    }
+
 
     public static TradeSessionState GetLastKnown(string tradeId)
     {
@@ -870,7 +872,7 @@ public static class TradeSyncPatch
         }
     }
 
-    private static TradeSessionState GetHostSession(string tradeId)
+    internal static TradeSessionState GetHostSession(string tradeId)
     {
         if (string.IsNullOrWhiteSpace(tradeId))
         {

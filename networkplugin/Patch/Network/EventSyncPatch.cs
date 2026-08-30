@@ -363,7 +363,7 @@ public class EventSyncPatch
             }
 
             // 1) 重发 OnEventStart（最小上下文）
-            client.SendGameEventData(NetworkMessageTypes.OnEventStart, new
+            client.BroadcastState(NetworkMessageTypes.OnEventStart, new
             {
                 Timestamp = DateTime.Now.Ticks,
                 EventId = eventId,
@@ -557,7 +557,7 @@ public class EventSyncPatch
                 };
 
                 // 发送到服务器。
-                networkClient.SendGameEventData(NetworkMessageTypes.OnEventStart, eventData);
+                networkClient.BroadcastState(NetworkMessageTypes.OnEventStart, eventData);
 
                 Plugin.Logger?.LogInfo($"[EventSync] 事件开始: {eventName} (ID: {eventId})");
             }
@@ -612,7 +612,7 @@ public class EventSyncPatch
                     PlayerId = GetCurrentPlayerId(),
                 };
 
-                networkClient.SendGameEventData(NetworkMessageTypes.OnEventSelection, selectionData);
+                networkClient.BroadcastState(NetworkMessageTypes.OnEventSelection, selectionData);
 
                 Plugin.Logger?.LogInfo($"[EventSync] 事件选项选择: {optionText} -> {optionResult}");
             }
@@ -648,7 +648,7 @@ public class EventSyncPatch
                     Effects = effects,
                 };
 
-                networkClient.SendGameEventData(NetworkMessageTypes.OnEventResult, resultData);
+                networkClient.BroadcastState(NetworkMessageTypes.OnEventResult, resultData);
 
                 Plugin.Logger?.LogInfo($"[EventSync] 事件结果已同步: {eventId}");
             }
@@ -701,7 +701,7 @@ public class EventSyncPatch
                     DialogIndex = dialogIndex,
                 };
 
-                networkClient.SendGameEventData(NetworkMessageTypes.OnDialogText, dialogData);
+                networkClient.BroadcastState(NetworkMessageTypes.OnDialogText, dialogData);
 
                 Plugin.Logger?.LogDebug($"[EventSync] 对话[{dialogIndex}] {speaker}: {text}");
             }
@@ -737,7 +737,7 @@ public class EventSyncPatch
                     Options = options,
                 };
 
-                networkClient.SendGameEventData(NetworkMessageTypes.OnDialogOptions, optionsData);
+                networkClient.BroadcastState(NetworkMessageTypes.OnDialogOptions, optionsData);
 
                 Plugin.Logger?.LogInfo($"[EventSync] 对话选项已同步: {options.Count} 项");
             }
@@ -806,7 +806,7 @@ public class EventSyncPatch
                     PlayerId = GetCurrentPlayerId(),
                 };
 
-                networkClient.SendGameEventData(NetworkMessageTypes.OnBossRewardSelection, rewardData);
+                networkClient.BroadcastState(NetworkMessageTypes.OnBossRewardSelection, rewardData);
 
                 Plugin.Logger?.LogInfo($"[EventSync] Boss 奖励选择: {rewardType} - {rewardId}");
             }
@@ -841,7 +841,7 @@ public class EventSyncPatch
                     EventType = eventType,
                 };
 
-                networkClient.SendGameEventData(NetworkMessageTypes.OnShopEvent, shopData);
+                networkClient.BroadcastState(NetworkMessageTypes.OnShopEvent, shopData);
             }
             catch (Exception ex)
             {
@@ -874,7 +874,7 @@ public class EventSyncPatch
                     Rewards = rewards,
                 };
 
-                networkClient.SendGameEventData(NetworkMessageTypes.OnTreasureEvent, treasureData);
+                networkClient.BroadcastState(NetworkMessageTypes.OnTreasureEvent, treasureData);
             }
             catch (Exception ex)
             {
@@ -1141,7 +1141,7 @@ public class EventSyncPatch
                     TotalVotes = totalVotes,
                 };
 
-                networkClient.SendGameEventData(NetworkMessageTypes.OnEventVotingResult, resultData);
+                networkClient.BroadcastState(NetworkMessageTypes.OnEventVotingResult, resultData);
 
                 Plugin.Logger?.LogInfo($"[EventVoting] 投票已结算: Event {eventId}, Winning {winningOption}, Total {totalVotes}");
             }
@@ -1675,13 +1675,7 @@ public class EventSyncPatch
                 int optionIndex = i;
                 string optionText = phase.Options[i].GetLocalizedText(runner);
 
-                // 本地先记录（Host 自己的投票也计入）。
-                if (NetworkIdentityTracker.GetSelfIsHost())
-                {
-                    EventVotingSystem.RecordVote(playerId, eventId, optionIndex);
-                }
-
-                client.SendGameEventData(NetworkMessageTypes.OnEventVoteCast, new
+                client.BroadcastState(NetworkMessageTypes.OnEventVoteCast, new
                 {
                     Timestamp = DateTime.Now.Ticks,
                     EventId = eventId,
@@ -1772,12 +1766,8 @@ public class EventSyncPatch
                 string optionText = currentOptions[optionIndex]?.GetLocalizedText(runner) ?? string.Empty;
 
                 string playerId = GetCurrentPlayerId();
-                if (NetworkIdentityTracker.GetSelfIsHost())
-                {
-                    EventVotingSystem.RecordVote(playerId, eventId, optionIndex);
-                }
 
-                client.SendGameEventData(NetworkMessageTypes.OnEventVoteCast, new
+                client.BroadcastState(NetworkMessageTypes.OnEventVoteCast, new
                 {
                     Timestamp = DateTime.Now.Ticks,
                     EventId = eventId,

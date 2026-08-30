@@ -837,7 +837,7 @@ public static class EndTurnSyncPatch
 
                     try
                     {
-                        client.SendGameEventData("EndTurnCancel", new
+                        client.BroadcastState("EndTurnCancel", new
                         {
                             Timestamp = DateTime.Now.Ticks,
                             PlayerId = selfPlayerId,
@@ -870,7 +870,7 @@ public static class EndTurnSyncPatch
 
                 try
                 {
-                    client.SendGameEventData(NetworkMessageTypes.EndTurnRequest, new
+                    client.BroadcastState(NetworkMessageTypes.EndTurnRequest, new
                     {
                         Timestamp = DateTime.Now.Ticks,
                         PlayerId = selfPlayerId,

@@ -215,7 +215,7 @@ public static class GameSeedSyncPatch
             JadeBoxIds = jadeBoxIds,
         };
 
-        client.SendGameEventData(NetworkMessageTypes.OnGameStart, payload);
+        client.BroadcastState(NetworkMessageTypes.OnGameStart, payload);
         Plugin.Logger?.LogInfo($"[GameSeedSync] 广播房主种子: RootSeed={run.RootSeed}, Difficulty={run.Difficulty}, Mode={run.Mode}");
     }
 

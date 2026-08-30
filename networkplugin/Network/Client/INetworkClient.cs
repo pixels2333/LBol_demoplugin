@@ -1,5 +1,6 @@
 using System;
 using System.Net;
+using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.NetworkPlayer;
 
 namespace NetworkPlugin.Network.Client;
@@ -77,12 +78,44 @@ public interface INetworkClient
     #region 数据传输方法
 
     /// <summary>
-    /// 发送游戏同步事件（JSON格式）
-    /// 用于游戏状态同步的事件传输
+    /// 发送游戏同步事件（JSON格式），默认不进行本地回环（<c>IncludeSelf = false</c>）。
     /// </summary>
     /// <param name="eventType">事件类型</param>
     /// <param name="eventData">事件数据</param>
     void SendGameEventData(string eventType, object eventData);
+
+    /// <summary>
+    /// 带有选项配置的游戏同步事件发送方法。
+    /// </summary>
+    /// <param name="eventType">事件类型</param>
+    /// <param name="eventData">事件数据</param>
+    /// <param name="options">发送选项（控制是否本地回环、是否点对点发送等）</param>
+    void SendGameEventData(string eventType, object eventData, NetworkEventOptions options);
+
+    /// <summary>
+    /// 广播权威状态/结算结果给所有玩家（包含本地主线程安全回环派发）。
+    /// 适用于：交易结算、加血复活、回合切换、敌人意图、地图事件、种子同步等。
+    /// </summary>
+    /// <param name="eventType">事件类型</param>
+    /// <param name="eventData">事件数据</param>
+    void BroadcastState(string eventType, object eventData);
+
+    /// <summary>
+    /// 广播单机操作/输入动作给其他玩家（排除发送者自身回环，防回声）。
+    /// 适用于：单机玩家发起的出牌、卡牌交互等（本地已先执行）。
+    /// </summary>
+    /// <param name="eventType">事件类型</param>
+    /// <param name="eventData">事件数据</param>
+    void BroadcastAction(string eventType, object eventData);
+
+    /// <summary>
+    /// 向指定玩家点对点定向发送消息。
+    /// 若目标玩家是本地玩家自身，将智能转为本地主线程安全回环，不发送网络数据包。
+    /// </summary>
+    /// <param name="targetPlayerId">目标玩家 ID</param>
+    /// <param name="eventType">事件类型</param>
+    /// <param name="eventData">事件数据</param>
+    void SendDirect(string targetPlayerId, string eventType, object eventData);
 
     /// <summary>
     /// 发送通用请求到服务器

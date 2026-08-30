@@ -431,6 +431,43 @@ public class NetworkClient : INetworkClient
     // 的 FullStateSyncResponse，可在此处补齐通用落地逻辑。
 
     /// <summary>
+    /// 在本地派发游戏事件（用于本地回环与本地注入），触发 OnGameEventReceived 并传递给同步引擎。
+    /// </summary>
+    /// <param name="eventType">事件类型标识。</param>
+    /// <param name="jsonPayload">JSON 格式事件数据。</param>
+    public void DispatchGameEventLocally(string eventType, string jsonPayload)
+    {
+        if (string.IsNullOrWhiteSpace(eventType))
+        {
+            return;
+        }
+
+        try
+        {
+            LogPayloadPreviewOnce(eventType, jsonPayload);
+
+            if (_configManager?.ShouldLog(2) == true)
+            {
+                Plugin.Logger?.LogInfo($"[客户端] (本地回环) 收到游戏事件: {eventType}");
+            }
+            Plugin.Logger?.LogDebug($"[客户端] (本地回环) 收到游戏事件: {eventType}");
+
+            OnGameEventReceived?.Invoke(eventType, jsonPayload);
+
+            _synchronizationManager?.ProcessEventFromNetwork(new
+            {
+                EventType = eventType,
+                Payload = (object)jsonPayload,
+                Timestamp = DateTime.Now.Ticks
+            });
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[客户端] 本地回环分发游戏事件失败: type={eventType}, err={ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// 向本地注入一条“伪接收”的 GameEvent（用于回放/追赶/调试）。
     /// 注意：不会向服务器发送任何数据，仅触发本地订阅者（Patch/Manager 等）。
     /// </summary>
@@ -449,7 +486,8 @@ public class NetworkClient : INetworkClient
 
         try
         {
-            OnGameEventReceived?.Invoke(eventType, payload);
+            string json = payload is string s ? s : JsonCompat.Serialize(payload);
+            DispatchGameEventLocally(eventType, json);
         }
         catch (Exception ex)
         {
@@ -820,34 +858,126 @@ public class NetworkClient : INetworkClient
     #region 数据发送与响应处理
 
     /// <summary>
-    /// 发送游戏同步事件到服务器，数据使用 JSON 格式序列化。
+    /// 发送游戏同步事件（默认动作广播：不包含本地回环，防回声）。
     /// </summary>
-    /// <param name="eventType">事件类型标识符，如 <c>PlayerJoined</c>、<c>StateSync</c>。</param>
-    /// <param name="eventData">要发送的事件数据对象；可为匿名对象或 DTO。</param>
-    /// <remarks>
-    /// 使用 <see cref="DeliveryMethod.ReliableOrdered"/> 保证消息按序到达，适用于游戏状态同步。
-    /// 未连接时直接返回并打印警告，避免 NullReferenceException。
-    /// </remarks>
+    /// <param name="eventType">事件类型标识符。</param>
+    /// <param name="eventData">要发送的事件数据对象。</param>
     public void SendGameEventData(string eventType, object eventData)
     {
-        // 未连接时直接返回，避免向 null _serverPeer 发送导致 NullReferenceException
-        if (!IsConnected)
+        SendGameEventData(eventType, eventData, NetworkEventOptions.ActionBroadcast);
+    }
+
+    /// <summary>
+    /// 广播权威状态/结算结果给所有玩家（包含本地主线程安全回环派发）。
+    /// 适用于：交易结算、加血复活、回合切换、敌人意图、地图事件、种子同步等。
+    /// </summary>
+    /// <param name="eventType">事件类型标识符。</param>
+    /// <param name="eventData">要发送的状态数据对象。</param>
+    public void BroadcastState(string eventType, object eventData)
+    {
+        SendGameEventData(eventType, eventData, NetworkEventOptions.StateBroadcast);
+    }
+
+    /// <summary>
+    /// 广播单机操作/输入动作给其他玩家（排除发送者自身回环，防回声）。
+    /// 适用于：单机玩家发起的出牌、卡牌交互等（本地已先执行）。
+    /// </summary>
+    /// <param name="eventType">事件类型标识符。</param>
+    /// <param name="eventData">要发送的动作数据对象。</param>
+    public void BroadcastAction(string eventType, object eventData)
+    {
+        SendGameEventData(eventType, eventData, NetworkEventOptions.ActionBroadcast);
+    }
+
+    /// <summary>
+    /// 向指定玩家点对点定向发送消息。
+    /// 若目标玩家是本地玩家自身，将智能转为本地主线程安全回环，不发送网络数据包。
+    /// </summary>
+    /// <param name="targetPlayerId">目标玩家 ID。</param>
+    /// <param name="eventType">事件类型标识符。</param>
+    /// <param name="eventData">要发送的消息数据对象。</param>
+    public void SendDirect(string targetPlayerId, string eventType, object eventData)
+    {
+        SendGameEventData(eventType, eventData, NetworkEventOptions.Targeted(targetPlayerId));
+    }
+
+    /// <summary>
+    /// 带有选项配置的游戏同步事件发送方法。
+    /// </summary>
+    /// <param name="eventType">事件类型标识符。</param>
+    /// <param name="eventData">要发送的事件数据对象。</param>
+    /// <param name="options">发送选项（控制是否本地回环、是否点对点发送等）。</param>
+    public void SendGameEventData(string eventType, object eventData, NetworkEventOptions options)
+    {
+        if (string.IsNullOrWhiteSpace(eventType))
         {
-            Plugin.Logger?.LogWarning($"[客户端] 未连接到服务器，无法发送事件: {eventType}");
             return;
         }
 
         try
         {
-            // 统一使用 JsonCompat 序列化，确保与服务器端反序列化兼容
-            // JsonCompat 内部处理循环引用和自定义转换器，避免 Newtonsoft.Json 默认行为不一致
             string json = JsonCompat.Serialize(eventData);
+
+            // 1. 点对点定向发送分支
+            if (!string.IsNullOrWhiteSpace(options.TargetPlayerId))
+            {
+                string selfPlayerId = GetSelf()?.playerId ?? NetworkIdentityTracker.GetSelfPlayerId();
+                bool isTargetSelf = !string.IsNullOrWhiteSpace(selfPlayerId) &&
+                                    string.Equals(options.TargetPlayerId, selfPlayerId, StringComparison.Ordinal);
+
+                if (isTargetSelf)
+                {
+                    // 目标为自身：智能转为本地主线程回环派发，不走网络
+                    Plugin.RunOnMainThread(() => DispatchGameEventLocally(eventType, json));
+                    return;
+                }
+
+                // 目标为远端玩家：封装为 DirectMessage 发送给服务端
+                if (!IsConnected)
+                {
+                    Plugin.Logger?.LogWarning($"[客户端] 未连接到服务器，无法向 {options.TargetPlayerId} 发送定向事件: {eventType}");
+                    return;
+                }
+
+                var directEnvelope = new
+                {
+                    TargetPlayerId = options.TargetPlayerId,
+                    Type = eventType,
+                    Payload = eventData
+                };
+
+                string directJson = JsonCompat.Serialize(directEnvelope);
+                NetDataWriter directWriter = new();
+                directWriter.Put(NetworkMessageTypes.DirectMessage);
+                directWriter.Put(directJson);
+                _serverPeer.Send(directWriter, options.DeliveryMethod);
+
+                string directSummary = NetLogHelper.BuildSummary(eventType, json);
+                Plugin.Logger?.LogDebug($"[客户端] 已向 {options.TargetPlayerId} 发送定向事件: {eventType} ({directSummary})");
+                return;
+            }
+
+            // 2. 状态广播/普通广播：若开启 IncludeSelf，投递到主线程调度队列执行本地回环
+            if (options.IncludeSelf)
+            {
+                Plugin.RunOnMainThread(() => DispatchGameEventLocally(eventType, json));
+            }
+
+            // 3. 网络发送给服务器（由服务端广播给其他 Peer）
+            if (!IsConnected)
+            {
+                if (!options.IncludeSelf)
+                {
+                    Plugin.Logger?.LogWarning($"[客户端] 未连接到服务器，无法发送事件: {eventType}");
+                }
+                return;
+            }
+
             NetDataWriter writer = new();
             writer.Put(eventType);
             writer.Put(json);
+            _serverPeer.Send(writer, options.DeliveryMethod);
 
-            // ReliableOrdered：游戏事件必须按序到达，否则会导致状态错乱（如先收到伤害再收到回血）
-            _serverPeer.Send(writer, DeliveryMethod.ReliableOrdered);
             string summary = NetLogHelper.BuildSummary(eventType, json);
             Plugin.Logger?.LogDebug($"[客户端] 已发送游戏事件: {eventType} ({summary})");
         }

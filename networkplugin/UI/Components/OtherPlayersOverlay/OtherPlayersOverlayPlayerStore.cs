@@ -12,12 +12,7 @@ public static partial class OtherPlayersOverlayPatch
 {
     #region 玩家缓存与位置快照
 
-    private static readonly (string PlayerId, string PlayerName)[] VirtualAiDebugPlayers =
-    {
-        ("aidefault", "AI Default"),
-        ("aidefault2", "AI Default 2"),
-        ("aidefault3", "AI Default 3"),
-    };
+    private static readonly (string PlayerId, string PlayerName)[] VirtualAiDebugPlayers;
 
     internal static string ResolveDisplayName(string playerId, string preferredName = null, bool isLocal = false)
     {

@@ -1,8 +1,12 @@
 using System;
 using System.Linq;
 using HarmonyLib;
+using Microsoft.Extensions.DependencyInjection;
 using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.Units;
+using NetworkPlugin.Network.Client;
+using NetworkPlugin.Network.Services;
+using NetworkPlugin.Patch.Network;
 using NetworkPlugin.UI.Factories;
 using NetworkPlugin.UI.Payloads;
 using NetworkPlugin.UI.Panels;
@@ -66,6 +70,12 @@ public static class ShopTradeIconPatch
     {
         try
         {
+            var client = ModService.ServiceProvider?.GetService<INetworkClient>();
+            if (client != null && client.IsConnected)
+            {
+                TradeSyncPatch.EnsureSubscribed(client);
+            }
+
             _cachedShopPanel = __instance;
             _hasLastState = false;
             LogStateThrottled(TradeUiUpdateState.Visible, "[ShopTradeIcon] ShopPanel 已显示：开始刷新交易按钮", 0.0f);
@@ -719,6 +729,12 @@ public static class ShopTradeIconPatch
     {
         try
         {
+            var client = ModService.ServiceProvider?.GetService<INetworkClient>();
+            if (client != null && client.IsConnected)
+            {
+                TradeSyncPatch.EnsureSubscribed(client);
+            }
+
             if (!TradeUiMessages.IsTradeEnabledAndConnected(out string reason))
             {
                 TradeUiMessages.ShowTopMessage(reason ?? "交易不可用。");

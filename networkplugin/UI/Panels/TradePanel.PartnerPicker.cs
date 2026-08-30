@@ -428,7 +428,7 @@ public sealed partial class TradePanel
 
                 var scrollImg = scrollGo.AddComponent<Image>();
                 scrollImg.color = new Color(0f, 0f, 0f, 0f);
-                scrollImg.raycastTarget = true;
+                scrollImg.raycastTarget = false;
 
                 var scrollRect = scrollGo.AddComponent<ScrollRect>();
                 scrollRect.horizontal = false;
@@ -697,6 +697,7 @@ public sealed partial class TradePanel
                 if (tag.EmptyText is not null)
                 {
                     tag.EmptyText.gameObject.SetActive(true);
+                    tag.EmptyText.raycastTarget = true;
                     tag.EmptyText.text = hasSelfLoc
                         ? "暂无同节点玩家"
                         : "无法获取自身位置，暂不显示可交易玩家";
@@ -711,9 +712,8 @@ public sealed partial class TradePanel
             if (tag.EmptyText is not null)
             {
                 tag.EmptyText.text = string.Empty;
-                var c = tag.EmptyText.color;
-                c.a = 0f;
-                tag.EmptyText.color = c;
+                tag.EmptyText.raycastTarget = false;
+                tag.EmptyText.gameObject.SetActive(false);
             }
             tag.ScrollRect?.gameObject.SetActive(true);
 
@@ -736,7 +736,7 @@ public sealed partial class TradePanel
                 Button btn = CreateTextButton(tag.TextTemplate, container, $"Player_{p.PlayerId}", label, tag.TextTemplate.fontSize * 0.5f);
 
                 var le = btn.gameObject.AddComponent<LayoutElement>();
-                le.preferredHeight = 28f;
+                le.preferredHeight = 36f;
                 le.flexibleWidth = 1f;
 
                 var cand = btn.gameObject.AddComponent<PartnerCandidateTag>();
@@ -746,12 +746,22 @@ public sealed partial class TradePanel
                 string pid = p.PlayerId;
                 string pname = displayName;
                 btn.onClick.RemoveAllListeners();
-                btn.onClick.AddListener(() => OnPartnerSelected(pid, pname));
+                btn.onClick.AddListener(() =>
+                {
+                    Plugin.Logger?.LogInfo($"[TradePanel] Candidate button clicked: pid={pid}, pname={pname}");
+                    OnPartnerSelected(pid, pname);
+                });
             }
     }
 
     private void OnPartnerSelected(string partnerPlayerId, string partnerPlayerName)
     {
+        string realSelfId = NetworkIdentityTracker.GetSelfPlayerId();
+        if (!string.IsNullOrWhiteSpace(realSelfId))
+        {
+            _selfPlayerId = realSelfId;
+        }
+
         Plugin.Logger?.LogInfo($"[TradePanel] OnPartnerSelected: tradeId={_tradeId ?? "<null>"}, self={_selfPlayerId ?? "<null>"}, partner={partnerPlayerId ?? "<null>"}, partnerName={partnerPlayerName ?? "<null>"}");
         _playerAId = _selfPlayerId;
         _playerBId = partnerPlayerId;
@@ -765,6 +775,7 @@ public sealed partial class TradePanel
         if (player2NameText is not null) player2NameText.text = OtherPlayersOverlayPatch.ResolveDisplayName(partnerPlayerId, partnerPlayerName, isLocal: false);
 
         HidePartnerPickerOverlay();
+        transform.Find("NetworkPlugin_TradePanel_Frame")?.gameObject.SetActive(true);
 
         // 已连接：进行实际的 host 驱动会话。离线/本地调试：保持本地 UI（不发送网络请求）。
         if (IsLocalDebugTradeAllowed() && (!string.IsNullOrWhiteSpace(partnerPlayerId) && partnerPlayerId.StartsWith("aidefault", StringComparison.OrdinalIgnoreCase)))
@@ -846,27 +857,6 @@ public sealed partial class TradePanel
         }
 
         return OtherPlayersOverlayPatch.ResolveDisplayName(id, payload?.Player2Name, isLocal: false);
-    }
-
-    private List<(string PlayerId, string PlayerName)> GetConnectedCandidatePartners()
-    {
-        string selfId = _selfPlayerId ?? NetworkIdentityTracker.GetSelfPlayerId();
-        var players = OtherPlayersOverlayPatch.SnapshotPlayersDetailed();
-
-        var connectedOthers = players
-            .Where(p => !string.IsNullOrWhiteSpace(p.PlayerId))
-            .Where(p => !string.Equals(p.PlayerId, selfId, StringComparison.Ordinal))
-            .Where(p => p.IsConnected)
-            .ToList();
-
-        if (connectedOthers.Count == 0 && IsLocalDebugTradeAllowed())
-        {
-            return new List<(string, string)> { ("aidefault", "AI Default") };
-        }
-
-        return connectedOthers
-            .Select(p => (p.PlayerId, string.IsNullOrWhiteSpace(p.PlayerName) ? p.PlayerId : p.PlayerName))
-            .ToList();
     }
 
     private static bool IsShopLikeLocation(string locationName)
@@ -1152,6 +1142,7 @@ public sealed partial class TradePanel
                     if (RectTransformUtility.RectangleContainsScreenPoint(rt, eventData.position, cam)
                         || RectTransformUtility.RectangleContainsScreenPoint(rt, eventData.position, null))
                     {
+                        Plugin.Logger?.LogInfo($"[TradePanel] ClickCatcher hit candidate: pid={cand.PlayerId}, pname={cand.PlayerName}");
                         Panel.OnPartnerSelected(cand.PlayerId, cand.PlayerName);
                         return;
                     }
@@ -1173,6 +1164,7 @@ public sealed partial class TradePanel
                         if (RectTransformUtility.RectangleContainsScreenPoint(grt, eventData.position, cam)
                             || RectTransformUtility.RectangleContainsScreenPoint(grt, eventData.position, null))
                         {
+                            Plugin.Logger?.LogInfo($"[TradePanel] ClickCatcher hit candidate graphic: pid={cand.PlayerId}, pname={cand.PlayerName}");
                             Panel.OnPartnerSelected(cand.PlayerId, cand.PlayerName);
                             return;
                         }

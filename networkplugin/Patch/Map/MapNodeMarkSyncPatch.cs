@@ -335,7 +335,7 @@ public static class MapNodeMarkSyncPatch
         {
             try
             {
-                client.SendGameEventData(
+                client.BroadcastState(
                     NetworkMessageTypes.OnMapNodeVoteResult,
                     new
                     {
@@ -637,7 +637,7 @@ public static class MapNodeMarkSyncPatch
         {
             try
             {
-                client.SendGameEventData(
+                client.BroadcastState(
                     NetworkMessageTypes.OnMapNodeVoteCast,
                     new
                     {

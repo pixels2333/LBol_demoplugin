@@ -223,7 +223,7 @@ public class TurnAction_Patch
                 BattleState = battleState,
             };
 
-            networkClient.SendGameEventData(NetworkMessageTypes.OnBattleStart, payload);
+            networkClient.BroadcastState(NetworkMessageTypes.OnBattleStart, payload);
             Plugin.Logger?.LogInfo($"[TurnSync] 战斗开始已同步: {battleId}");
         }
         catch (Exception ex)
@@ -313,7 +313,7 @@ public class TurnAction_Patch
                 // ignored
             }
 
-            networkClient.SendGameEventData(NetworkMessageTypes.OnBattleEnd, payload);
+            networkClient.BroadcastState(NetworkMessageTypes.OnBattleEnd, payload);
             Plugin.Logger?.LogInfo($"[TurnSync] 战斗结束已同步: {battleId}");
         }
         catch (Exception ex)

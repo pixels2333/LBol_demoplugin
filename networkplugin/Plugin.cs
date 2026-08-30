@@ -58,6 +58,21 @@ public class Plugin : BaseUnityPlugin
         _mainThreadActions.Enqueue(action);
     }
 
+    internal static void FlushMainThreadActionsForTest()
+    {
+        while (_mainThreadActions.TryDequeue(out Action a))
+        {
+            try
+            {
+                a?.Invoke();
+            }
+            catch
+            {
+                // 测试清空异常静默忽略
+            }
+        }
+    }
+
     /// <summary>
     /// 配置管理器实例，管理插件的所有配置项
     /// 使用BepInEx原生的配置系统，自动加载和保存配置
