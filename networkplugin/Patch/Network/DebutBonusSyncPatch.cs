@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text.Json;
 using HarmonyLib;
 using LBoL.Core.Dialogs;
@@ -12,18 +12,6 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// Eirin(Erin) 开局奖励(= Debut Adventure bonus)同步补丁。
-/// 参考 Together in Spire 的 NeowBlessingPatches：在联机时强制多人一致的“开局奖励随机结果”。
-///
-/// LBoL 对应逻辑：LBoL.EntityLib.Adventures.Debut.RollBonus()
-/// - 使用 GameRun.DebutRng 随机抽取 2 个 bonus 选项（0..5）。
-/// - 结果写入 Yarn DialogStorage：$bonusNo1/2, $bonusOption1/2, $bonusTarget1/2, $tip*
-///
-/// 当前实现策略：
-/// - 主机：RollBonus 结束后广播 OnDebutBonusRolled（包含 bonusNo1/2）
-/// - 客户端：收到广播后，若当前仍在 Debut 流程中，则覆盖本地 Storage 变量，保证最终一致
-/// </summary>
 public static class DebutBonusSyncPatch
 {
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
@@ -83,7 +71,7 @@ public static class DebutBonusSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
         try
@@ -151,7 +139,7 @@ public static class DebutBonusSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -171,7 +159,7 @@ public static class DebutBonusSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -200,7 +188,7 @@ public static class DebutBonusSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -223,7 +211,7 @@ public static class DebutBonusSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
         root = default;
@@ -338,7 +326,6 @@ public static class DebutBonusSyncPatch
 
         int[] bonusNos = new[] { bonusNo1, bonusNo2 };
 
-        // mirror Debut.RollBonus() variable writes
         debut.Storage.SetValue("$bonusNo1", bonusNos[0]);
         debut.Storage.SetValue("$bonusNo2", bonusNos[1]);
 

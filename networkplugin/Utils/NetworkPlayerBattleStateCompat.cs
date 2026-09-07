@@ -1,12 +1,8 @@
-using System;
+﻿using System;
 using NetworkPlugin.Network.NetworkPlayer;
 
 namespace NetworkPlugin.Utils;
 
-/// <summary>
-/// INetworkPlayer 的战斗资源兼容工具：
-/// 当前字段可能不存在，因此统一使用反射做安全读取。
-/// </summary>
 public static class NetworkPlayerBattleStateCompat
 {
     public static int GetCurrentPowerSafe(this INetworkPlayer player)
@@ -51,7 +47,7 @@ public static class NetworkPlayerBattleStateCompat
         }
         catch
         {
-            // ignored
+
         }
 
         return 0;

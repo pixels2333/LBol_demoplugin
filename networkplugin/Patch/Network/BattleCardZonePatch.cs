@@ -11,44 +11,26 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// 战斗中玩家卡牌区域同步补丁：
-/// 参考 Together in Spire 的 PlayerPatches.java（CardGroup 增删/移动同步）实现 LBoL 的 CardZone 变更同步。
-/// 通过 Patch BattleController 的 Move/Add/Remove 入口，覆盖绝大多数卡牌区域变化（抽牌、弃牌、放逐、回牌库等）。
-/// </summary>
 public static class BattleCardZoneSyncPatch
 {
-    /// <summary>
-    /// DI 容器引用，通过 <see cref="ModService"/> 获取，用于解析网络客户端等服务。
-    /// </summary>
-    private static IServiceProvider ServiceProvider => ModService.ServiceProvider; // 游戏启动时初始化，整局对战内保持稳定
+        private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
-    /// <summary>
-    /// 获取网络客户端。
-    /// </summary>
-    /// <returns>解析成功返回网络客户端，否则返回 null。</returns>
-    private static INetworkClient TryGetNetworkClient()
+        private static INetworkClient TryGetNetworkClient()
         => ServiceProvider?.GetService<INetworkClient>();
 
-    /// <summary>
-    /// 发送一条战斗相关的游戏事件到网络层。
-    /// </summary>
-    /// <param name="eventType">事件类型标识，通常来自 <see cref="NetworkMessageTypes"/>。</param>
-    /// <param name="eventData">具体的事件数据负载，序列化后通过网络发送。</param>
-    private static void SendGameEvent(string eventType, object eventData)
+        private static void SendGameEvent(string eventType, object eventData)
     {
         try
         {
-            // 从 ServiceProvider 中解析出网络客户端
+
             INetworkClient networkClient = TryGetNetworkClient();
             if (networkClient == null || !networkClient.IsConnected)
             {
-                // 没有客户端或未连接时，不做任何同步
+
                 return;
             }
 
-            // 交给网络层实现实际的发送逻辑
-            networkClient.SendGameEventData(eventType, eventData); // 序列化并通过底层传输协议发送
+            networkClient.SendGameEventData(eventType, eventData);
         }
         catch (Exception ex)
         {
@@ -56,16 +38,9 @@ public static class BattleCardZoneSyncPatch
         }
     }
 
-    /// <summary>
-    /// 构造单张卡牌的快照对象，用于网络序列化传输。
-    /// 只挑选对远端还原卡牌状态有用的字段。
-    /// </summary>
-    /// <param name="card">需要拍快照的卡牌实例。</param>
-    /// <returns>匿名对象，包含卡牌标识、实例 ID、基础信息以及所在区域等。</returns>
-    private static object BuildCardSnapshot(Card card)
+        private static object BuildCardSnapshot(Card card)
     {
-        // 注意：不要把 ManaGroup/Cost 直接塞进网络 payload。
-        // ManaGroup 内部存在自引用（Corrected 等），Newtonsoft 默认会抛 Self referencing loop。
+
         string costText = null;
         try
         {
@@ -78,80 +53,51 @@ public static class BattleCardZoneSyncPatch
 
         return new
         {
-            CardId = card?.Id ?? "null",               // 卡牌配置 ID（静态配置表中的 Id）
-            InstanceId = card?.InstanceId ?? -1,        // 实例 ID，用于区分同名不同实例
-            CardName = card?.Name ?? "null",           // 当前显示名称（含语言与增幅等变更）
-            CardType = card?.GetType().Name ?? "null", // 运行时派生类型，用于远端做类型映射
-            IsUpgraded = card?.IsUpgraded ?? false,     // 是否为强化版
-            CostText = costText,                        // 仅用于调试/显示，避免自引用对象图
-            Zone = card?.Zone.ToString() ?? "Unknown", // 当前所在区域（手牌/牌库/弃牌等）
-            IsEthereal = card?.IsEthereal ?? false,     // 是否回合结束自动消失
-            IsAutoExile = card?.IsAutoExile ?? false,   // 使用后是否自动放逐
+            CardId = card?.Id ?? "null",
+            InstanceId = card?.InstanceId ?? -1,
+            CardName = card?.Name ?? "null",
+            CardType = card?.GetType().Name ?? "null",
+            IsUpgraded = card?.IsUpgraded ?? false,
+            CostText = costText,
+            Zone = card?.Zone.ToString() ?? "Unknown",
+            IsEthereal = card?.IsEthereal ?? false,
+            IsAutoExile = card?.IsAutoExile ?? false,
         };
     }
 
-    /// <summary>
-    /// 判断当前战斗是否需要进行网络同步。
-    /// 只同步本地玩家控制的战斗，避免远端回放再次广播事件导致循环。
-    /// </summary>
-    /// <param name="battle">当前战斗控制器实例。</param>
-    /// <returns>如果需要同步则为 true，否则为 false。</returns>
-    private static bool ShouldSync(BattleController battle)
+        private static bool ShouldSync(BattleController battle)
         => SendSyncHelper.ShouldSyncBattle(battle);
 
     #region MoveCard 补丁
 
-    /// <summary>
-    /// Patch <see cref="BattleController.MoveCard"/>，用于同步卡牌在不同 CardZone 之间的移动。
-    /// </summary>
-    [HarmonyPatch(typeof(BattleController), "MoveCard")]
+        [HarmonyPatch(typeof(BattleController), "MoveCard")]
     private static class MoveCardPatch
     {
-        /// <summary>
-        /// 用于在 Prefix / Postfix 之间传递一次 MoveCard 调用的状态。
-        /// </summary>
-        private struct MoveState
+                private struct MoveState
         {
-            /// <summary>
-            /// 卡牌移动前所在的区域。
-            /// </summary>
-            public CardZone FromZone; // 调用前 card.Zone
+                        public CardZone FromZone;
 
-            /// <summary>
-            /// 卡牌目标区域（Move 调用目的地）。
-            /// </summary>
-            public CardZone ToZone;   // 调用时传入的 dstZone
+                        public CardZone ToZone;
 
-            /// <summary>
-            /// 卡牌移动前的快照，用于和移动后的状态做差异。
-            /// </summary>
-            public object CardSnapshotBefore; // 便于远端进行状态对比/补偿
+                        public object CardSnapshotBefore;
         }
 
-        /// <summary>
-        /// MoveCard 调用前记录卡牌的起始区域及快照。
-        /// </summary>
-        /// <param name="__instance">被补丁的 <see cref="BattleController"/> 实例。</param>
-        /// <param name="card">被移动的卡牌。</param>
-        /// <param name="dstZone">目标区域。</param>
-        /// <param name="__state">在 Prefix 与 Postfix 之间传递的状态。</param>
-        [HarmonyPrefix]
+                [HarmonyPrefix]
         private static void Prefix(BattleController __instance, Card card, CardZone dstZone, out MoveState __state)
         {
-            __state = default; // 若后续 ShouldSync 为 false，Postfix 中 FromZone/快照可能为空
+            __state = default;
             try
             {
                 if (!ShouldSync(__instance))
                 {
-                    return; // 非本地玩家控制的战斗，直接跳过记录
+                    return;
                 }
 
-                // 记录移动前的区域和快照
                 __state = new MoveState
                 {
-                    FromZone = card.Zone,             // 源区域
-                    ToZone = dstZone,                 // 目标区域
-                    CardSnapshotBefore = BuildCardSnapshot(card) // 记录移动前状态
+                    FromZone = card.Zone,
+                    ToZone = dstZone,
+                    CardSnapshotBefore = BuildCardSnapshot(card)
                 };
             }
             catch (Exception ex)
@@ -160,39 +106,31 @@ public static class BattleCardZoneSyncPatch
             }
         }
 
-        /// <summary>
-        /// MoveCard 调用后，根据结果发送区域变更事件。
-        /// </summary>
-        /// <param name="__instance">被补丁的 <see cref="BattleController"/> 实例。</param>
-        /// <param name="card">被移动的卡牌。</param>
-        /// <param name="dstZone">目标区域。</param>
-        /// <param name="__result">MoveCard 的取消原因，成功为 <see cref="CancelCause.None"/>。</param>
-        /// <param name="__state">在 Prefix 记录的状态。</param>
-        [HarmonyPostfix]
+                [HarmonyPostfix]
         private static void Postfix(BattleController __instance, Card card, CardZone dstZone, CancelCause __result, MoveState __state)
         {
             try
             {
-                // 只在需要同步且操作未被取消时发送网络事件
+
                 if (!ShouldSync(__instance) || __result != CancelCause.None)
                 {
-                    return; // Move 失败/被取消不广播
+                    return;
                 }
 
                 var payload = new
                 {
-                    Timestamp = DateTime.Now.Ticks,                  // 用时间戳帮助远端按顺序处理
+                    Timestamp = DateTime.Now.Ticks,
                     EventType = NetworkMessageTypes.CardStateChanged,
-                    PlayerId = GameStateUtils.GetCurrentPlayerId(), // 绑定到当前玩家
-                    ChangeType = "ZoneChanged",                     // 标记为区域改变事件
-                    FromZone = __state.FromZone.ToString(),         // 源区域字符串，便于跨语言解析
-                    ToZone = dstZone.ToString(),                    // 目标区域字符串
-                    CancelCause = __result.ToString(),              // 一般为 None，仅用于调试
-                    CardBefore = __state.CardSnapshotBefore,        // 移动前快照
-                    CardAfter = BuildCardSnapshot(card)             // 移动后快照
+                    PlayerId = GameStateUtils.GetCurrentPlayerId(),
+                    ChangeType = "ZoneChanged",
+                    FromZone = __state.FromZone.ToString(),
+                    ToZone = dstZone.ToString(),
+                    CancelCause = __result.ToString(),
+                    CardBefore = __state.CardSnapshotBefore,
+                    CardAfter = BuildCardSnapshot(card)
                 };
 
-                SendGameEvent(NetworkMessageTypes.CardStateChanged, payload); // 通知远端同步一次移动
+                SendGameEvent(NetworkMessageTypes.CardStateChanged, payload);
             }
             catch (Exception ex)
             {
@@ -205,48 +143,29 @@ public static class BattleCardZoneSyncPatch
 
     #region MoveCardToDrawZone 补丁
 
-    /// <summary>
-    /// Patch <see cref="BattleController.MoveCardToDrawZone"/>，用于同步卡牌进入抽牌堆（洗回牌库等）。
-    /// </summary>
-    [HarmonyPatch(typeof(BattleController), "MoveCardToDrawZone")]
+        [HarmonyPatch(typeof(BattleController), "MoveCardToDrawZone")]
     private static class MoveCardToDrawZonePatch
     {
-        /// <summary>
-        /// 在移动到抽牌堆前记录卡牌原区域、目标位置和快照。
-        /// </summary>
-        private struct MoveToDrawState
+                private struct MoveToDrawState
         {
-            /// <summary>
-            /// 卡牌原始区域。
-            /// </summary>
-            public CardZone FromZone; // 原始 Zone，例如 Hand/Discard
+                        public CardZone FromZone;
 
-            /// <summary>
-            /// 抽牌堆目标位置（顶/底等）。
-            /// </summary>
-            public DrawZoneTarget Target; // 放到牌库顶、底或随机位置
+                        public DrawZoneTarget Target;
 
-            /// <summary>
-            /// 移动前的卡牌快照。
-            /// </summary>
-            public object CardSnapshotBefore; // 便于远端做顺序重建
+                        public object CardSnapshotBefore;
         }
 
-        /// <summary>
-        /// MoveCardToDrawZone 调用前记录状态。
-        /// </summary>
-        [HarmonyPrefix]
+                [HarmonyPrefix]
         private static void Prefix(BattleController __instance, Card card, DrawZoneTarget target, out MoveToDrawState __state)
         {
-            __state = default; // 默认清空，防止未同步时 Postfix 误读
+            __state = default;
             try
             {
                 if (!ShouldSync(__instance))
                 {
-                    return; // 非本地战斗不做记录
+                    return;
                 }
 
-                // 记录原始区域和目标抽牌堆位置
                 __state = new MoveToDrawState
                 {
                     FromZone = card.Zone,
@@ -260,17 +179,14 @@ public static class BattleCardZoneSyncPatch
             }
         }
 
-        /// <summary>
-        /// MoveCardToDrawZone 调用后，发送卡牌进入抽牌堆的同步事件。
-        /// </summary>
-        [HarmonyPostfix]
+                [HarmonyPostfix]
         private static void Postfix(BattleController __instance, Card card, DrawZoneTarget target, CancelCause __result, MoveToDrawState __state)
         {
             try
             {
                 if (!ShouldSync(__instance) || __result != CancelCause.None)
                 {
-                    return; // 被取消或不是本地玩家战斗不广播
+                    return;
                 }
 
                 var payload = new
@@ -278,10 +194,10 @@ public static class BattleCardZoneSyncPatch
                     Timestamp = DateTime.Now.Ticks,
                     EventType = NetworkMessageTypes.CardStateChanged,
                     PlayerId = GameStateUtils.GetCurrentPlayerId(),
-                    ChangeType = "ZoneChanged",                    // 仍视为区域变更
-                    FromZone = __state.FromZone.ToString(),        // 从哪个 Zone 送回牌库
-                    ToZone = CardZone.Draw.ToString(),             // 目标固定为 Draw
-                    DrawTarget = __state.Target.ToString(),        // 抽牌堆放置位置
+                    ChangeType = "ZoneChanged",
+                    FromZone = __state.FromZone.ToString(),
+                    ToZone = CardZone.Draw.ToString(),
+                    DrawTarget = __state.Target.ToString(),
                     CancelCause = __result.ToString(),
                     CardBefore = __state.CardSnapshotBefore,
                     CardAfter = BuildCardSnapshot(card)
@@ -300,23 +216,17 @@ public static class BattleCardZoneSyncPatch
 
     #region AddCardToDrawZone 补丁
 
-    /// <summary>
-    /// Patch <see cref="BattleController.AddCardToDrawZone"/>，用于同步新卡牌被直接加入抽牌堆的情况。
-    /// </summary>
-    [HarmonyPatch(typeof(BattleController), "AddCardToDrawZone")]
+        [HarmonyPatch(typeof(BattleController), "AddCardToDrawZone")]
     private static class AddCardToDrawZonePatch
     {
-        /// <summary>
-        /// 在卡牌加入抽牌堆之后，向远端广播 CardAdded 事件。
-        /// </summary>
-        [HarmonyPostfix]
+                [HarmonyPostfix]
         private static void Postfix(BattleController __instance, Card card, DrawZoneTarget target, CancelCause __result)
         {
             try
             {
                 if (!ShouldSync(__instance) || __result != CancelCause.None)
                 {
-                    return; // 失败或非本地战斗都不广播
+                    return;
                 }
 
                 var payload = new
@@ -324,11 +234,11 @@ public static class BattleCardZoneSyncPatch
                     Timestamp = DateTime.Now.Ticks,
                     EventType = NetworkMessageTypes.CardStateChanged,
                     PlayerId = GameStateUtils.GetCurrentPlayerId(),
-                    ChangeType = "CardAdded",                     // 表示有新卡进入某个区域
-                    ToZone = CardZone.Draw.ToString(),             // 新卡被加到牌库
-                    DrawTarget = target.ToString(),                // 放到牌库的具体位置
+                    ChangeType = "CardAdded",
+                    ToZone = CardZone.Draw.ToString(),
+                    DrawTarget = target.ToString(),
                     CancelCause = __result.ToString(),
-                    CardAfter = BuildCardSnapshot(card)            // 新生成/加入的卡快照
+                    CardAfter = BuildCardSnapshot(card)
                 };
 
                 SendGameEvent(NetworkMessageTypes.CardStateChanged, payload);
@@ -344,23 +254,17 @@ public static class BattleCardZoneSyncPatch
 
     #region AddCardToHand 补丁
 
-    /// <summary>
-    /// Patch <see cref="BattleController.AddCardToHand"/>，同步卡牌进入手牌的事件（抽牌/生成卡牌等）。
-    /// </summary>
-    [HarmonyPatch(typeof(BattleController), "AddCardToHand")]
+        [HarmonyPatch(typeof(BattleController), "AddCardToHand")]
     private static class AddCardToHandPatch
     {
-        /// <summary>
-        /// 在卡牌成功加入手牌后发送 CardAdded 同步事件。
-        /// </summary>
-        [HarmonyPostfix]
+                [HarmonyPostfix]
         private static void Postfix(BattleController __instance, Card card, CancelCause __result)
         {
             try
             {
                 if (!ShouldSync(__instance) || __result != CancelCause.None)
                 {
-                    return; // 抽牌被 Cancel 等情况不需要同步
+                    return;
                 }
 
                 var payload = new
@@ -368,8 +272,8 @@ public static class BattleCardZoneSyncPatch
                     Timestamp = DateTime.Now.Ticks,
                     EventType = NetworkMessageTypes.CardStateChanged,
                     PlayerId = GameStateUtils.GetCurrentPlayerId(),
-                    ChangeType = "CardAdded",                     // 新卡进入手牌
-                    ToZone = CardZone.Hand.ToString(),             // 目标区域为 Hand
+                    ChangeType = "CardAdded",
+                    ToZone = CardZone.Hand.ToString(),
                     CancelCause = __result.ToString(),
                     CardAfter = BuildCardSnapshot(card)
                 };
@@ -387,23 +291,17 @@ public static class BattleCardZoneSyncPatch
 
     #region AddCardToDiscard 补丁
 
-    /// <summary>
-    /// Patch <see cref="BattleController.AddCardToDiscard"/>，同步卡牌进入弃牌堆的事件。
-    /// </summary>
-    [HarmonyPatch(typeof(BattleController), "AddCardToDiscard")]
+        [HarmonyPatch(typeof(BattleController), "AddCardToDiscard")]
     private static class AddCardToDiscardPatch
     {
-        /// <summary>
-        /// 在卡牌被加入弃牌堆后发送 CardAdded 事件。
-        /// </summary>
-        [HarmonyPostfix]
+                [HarmonyPostfix]
         private static void Postfix(BattleController __instance, Card card, CancelCause __result)
         {
             try
             {
                 if (!ShouldSync(__instance) || __result != CancelCause.None)
                 {
-                    return; // 例如卡牌被抵消，没有真正进入弃牌堆
+                    return;
                 }
 
                 var payload = new
@@ -411,8 +309,8 @@ public static class BattleCardZoneSyncPatch
                     Timestamp = DateTime.Now.Ticks,
                     EventType = NetworkMessageTypes.CardStateChanged,
                     PlayerId = GameStateUtils.GetCurrentPlayerId(),
-                    ChangeType = "CardAdded",                     // 有牌进入 Discard
-                    ToZone = CardZone.Discard.ToString(),          // 目标区域为 Discard
+                    ChangeType = "CardAdded",
+                    ToZone = CardZone.Discard.ToString(),
                     CancelCause = __result.ToString(),
                     CardAfter = BuildCardSnapshot(card)
                 };
@@ -430,23 +328,17 @@ public static class BattleCardZoneSyncPatch
 
     #region AddCardToExile 补丁
 
-    /// <summary>
-    /// Patch <see cref="BattleController.AddCardToExile"/>，同步卡牌被放逐的事件。
-    /// </summary>
-    [HarmonyPatch(typeof(BattleController), "AddCardToExile")]
+        [HarmonyPatch(typeof(BattleController), "AddCardToExile")]
     private static class AddCardToExilePatch
     {
-        /// <summary>
-        /// 在卡牌被加入放逐区后发送 CardAdded 事件（ToZone 为 Exile）。
-        /// </summary>
-        [HarmonyPostfix]
+                [HarmonyPostfix]
         private static void Postfix(BattleController __instance, Card card, CancelCause __result)
         {
             try
             {
                 if (!ShouldSync(__instance) || __result != CancelCause.None)
                 {
-                    return; // 放逐被取消则不广播
+                    return;
                 }
 
                 var payload = new
@@ -454,8 +346,8 @@ public static class BattleCardZoneSyncPatch
                     Timestamp = DateTime.Now.Ticks,
                     EventType = NetworkMessageTypes.CardStateChanged,
                     PlayerId = GameStateUtils.GetCurrentPlayerId(),
-                    ChangeType = "CardAdded",                     // 卡牌进入放逐区
-                    ToZone = CardZone.Exile.ToString(),            // 目标区域为 Exile
+                    ChangeType = "CardAdded",
+                    ToZone = CardZone.Exile.ToString(),
                     CancelCause = __result.ToString(),
                     CardAfter = BuildCardSnapshot(card)
                 };
@@ -473,43 +365,27 @@ public static class BattleCardZoneSyncPatch
 
     #region RemoveCard 补丁
 
-    /// <summary>
-    /// Patch <see cref="BattleController.RemoveCard"/>，用于同步卡牌彻底离开当前战斗（死亡/离场等）。
-    /// </summary>
-    [HarmonyPatch(typeof(BattleController), "RemoveCard")]
+        [HarmonyPatch(typeof(BattleController), "RemoveCard")]
     private static class RemoveCardPatch
     {
-        /// <summary>
-        /// RemoveCard 调用前的状态：记录卡牌来源区域及快照。
-        /// </summary>
-        private struct RemoveState
+                private struct RemoveState
         {
-            /// <summary>
-            /// 卡牌被移除前所在的区域。
-            /// </summary>
-            public CardZone FromZone; // 从哪个 Zone 被彻底移除
+                        public CardZone FromZone;
 
-            /// <summary>
-            /// 移除前的卡牌快照。
-            /// </summary>
-            public object CardSnapshotBefore; // 记录最后一次在场内的状态
+                        public object CardSnapshotBefore;
         }
 
-        /// <summary>
-        /// RemoveCard 调用前记录当前卡牌区域和快照，便于 Postfix 构造事件。
-        /// </summary>
-        [HarmonyPrefix]
+                [HarmonyPrefix]
         private static void Prefix(BattleController __instance, Card card, out RemoveState __state)
         {
-            __state = default; // 初始化，防止未同步时 Postfix 访问未定义数据
+            __state = default;
             try
             {
                 if (!ShouldSync(__instance))
                 {
-                    return; // 非本地战斗不记录
+                    return;
                 }
 
-                // 记录卡牌从哪个区域被移除，以及移除前的状态
                 __state = new RemoveState
                 {
                     FromZone = card.Zone,
@@ -522,17 +398,14 @@ public static class BattleCardZoneSyncPatch
             }
         }
 
-        /// <summary>
-        /// RemoveCard 调用后，发送卡牌离开战斗的同步事件。
-        /// </summary>
-        [HarmonyPostfix]
+                [HarmonyPostfix]
         private static void Postfix(BattleController __instance, Card card, RemoveState __state)
         {
             try
             {
                 if (!ShouldSync(__instance))
                 {
-                    return; // 远端回放调用时不应广播
+                    return;
                 }
 
                 var payload = new
@@ -540,11 +413,11 @@ public static class BattleCardZoneSyncPatch
                     Timestamp = DateTime.Now.Ticks,
                     EventType = NetworkMessageTypes.CardStateChanged,
                     PlayerId = GameStateUtils.GetCurrentPlayerId(),
-                    ChangeType = "CardRemovedFromBattle",      // 标记为战斗中彻底移除
-                    FromZone = __state.FromZone.ToString(),      // 最后所在区域
-                    ToZone = CardZone.None.ToString(),           // None 表示不再属于任何战斗区域
-                    CardBefore = __state.CardSnapshotBefore,     // 移除前快照
-                    CardAfter = BuildCardSnapshot(card)          // 移除后快照（通常状态变化不大，仅作补充）
+                    ChangeType = "CardRemovedFromBattle",
+                    FromZone = __state.FromZone.ToString(),
+                    ToZone = CardZone.None.ToString(),
+                    CardBefore = __state.CardSnapshotBefore,
+                    CardAfter = BuildCardSnapshot(card)
                 };
 
                 SendGameEvent(NetworkMessageTypes.CardStateChanged, payload);

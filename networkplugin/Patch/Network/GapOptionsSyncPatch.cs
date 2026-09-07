@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,9 +10,6 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// GapOptions 同步补丁。
-/// </summary>
 public static class GapOptionsSyncPatch
 {
 	private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
@@ -30,11 +27,7 @@ public static class GapOptionsSyncPatch
 	private static readonly Dictionary<string, Queue<GapOptionsEventSnapshot>> RoomEventsByRoomKey = new(StringComparer.Ordinal);
 	private const int MaxRoomEventsPerRoom = 8;
 
-    /// <summary>
-    /// 确保已订阅网络客户端事件（去重）
-    /// </summary>
-    /// <param name="client">网络客户端实例</param>
-    public static void EnsureSubscribed(INetworkClient client)
+        public static void EnsureSubscribed(INetworkClient client)
 	{
 		if (client == null)
 		{
@@ -56,7 +49,7 @@ public static class GapOptionsSyncPatch
 		}
 		catch
 		{
-			// ignored
+
 		}
 
 		try
@@ -78,13 +71,7 @@ public static class GapOptionsSyncPatch
 		}
 	}
 
-    /// <summary>
-    /// 广播 GapOptions 事件到网络（附带当前房间/卡牌上下文）
-    /// </summary>
-    /// <param name="eventType">事件类型</param>
-    /// <param name="cardId">关联的卡牌 ID</param>
-    /// <param name="cardName">关联的卡牌名称</param>
-    public static void BroadcastGapOptionsEvent(string eventType, string cardId = null, string cardName = null)
+        public static void BroadcastGapOptionsEvent(string eventType, string cardId = null, string cardName = null)
 	{
 		if (!IsGapOptionsEvent(eventType))
 		{
@@ -170,10 +157,7 @@ public static class GapOptionsSyncPatch
 		Plugin.Logger?.LogInfo($"[GapOptionsSync] recv {eventType}: player={playerId}, card={cardName}/{cardId}, actionId={actionId}");
 	}
 
-	/// <summary>
-	/// 获取指定房间最近 GapOptions 事件（默认最多 8 条）。
-	/// </summary>
-	public static List<GapOptionsEventSnapshot> GetRecentGapOptionsEvents(string roomKey, int maxCount = MaxRoomEventsPerRoom)
+		public static List<GapOptionsEventSnapshot> GetRecentGapOptionsEvents(string roomKey, int maxCount = MaxRoomEventsPerRoom)
 	{
 		if (string.IsNullOrWhiteSpace(roomKey))
 		{
@@ -207,10 +191,7 @@ public static class GapOptionsSyncPatch
 		}
 	}
 
-	/// <summary>
-	/// 合并中途加入追赶下发的 GapOptions 事件：仅缓存并按 ActionId 去重标记，不执行游戏动作。
-	/// </summary>
-	public static void MergeCatchupGapOptionsEvents(string roomKey, IReadOnlyList<GapOptionsEventSnapshot> events)
+		public static void MergeCatchupGapOptionsEvents(string roomKey, IReadOnlyList<GapOptionsEventSnapshot> events)
 	{
 		if (string.IsNullOrWhiteSpace(roomKey) || events == null || events.Count == 0)
 		{

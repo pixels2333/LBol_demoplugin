@@ -1,19 +1,11 @@
-using System;
+﻿using System;
 using NetworkPlugin.Network.NetworkPlayer;
 
 namespace NetworkPlugin.Utils;
 
-/// <summary>
-/// INetworkPlayer 的历史兼容工具：
-/// - 一些代码路径希望访问实现类上的 lowerCamelCase 属性（例如 mana），但接口未声明；
-/// - 这里用反射读取/写入，避免扩展接口导致的破坏性修改。
-/// </summary>
 public static class NetworkPlayerManaCompat
 {
-    /// <summary>
-    /// 获取玩家法力数组，保证返回长度为 4 的数组（不足补 0，超过截断）。
-    /// </summary>
-    public static int[] GetManaArraySafe(this INetworkPlayer player)
+        public static int[] GetManaArraySafe(this INetworkPlayer player)
     {
         try
         {
@@ -54,10 +46,7 @@ public static class NetworkPlayerManaCompat
         }
     }
 
-    /// <summary>
-    /// 尝试写入玩家法力数组（若实现类暴露 mana/Mana 属性）。
-    /// </summary>
-    public static void SetManaArraySafe(this INetworkPlayer player, int[] mana)
+        public static void SetManaArraySafe(this INetworkPlayer player, int[] mana)
     {
         try
         {
@@ -86,7 +75,7 @@ public static class NetworkPlayerManaCompat
         }
         catch
         {
-            // 兼容写入失败时静默忽略。
+
         }
     }
 }

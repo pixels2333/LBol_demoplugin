@@ -1,86 +1,27 @@
-// ============================================================================
-// 服务器内核会话类
-// ============================================================================
-// 说明：仅包含网络层的连接与活跃信息，避免把游戏层状态耦合进内核。
-// 职责：管理网络对等连接的基本信息，包括连接时间、最后活动时间和心跳检测。
-// ============================================================================
-
-// ============================================================================
-// 依赖与命名空间
-// ============================================================================
-
-using System;
+﻿using System;
 using LiteNetLib;
 
 namespace NetworkPlugin.Network.Server.Core;
 
-/// <summary>
-/// 核心对等会话类
-/// </summary>
-/// <remarks>
-/// 该类封装了网络对等连接的基本信息，用于服务器内核管理网络连接。
-/// 设计原则：保持轻量级，仅包含网络层状态，避免业务逻辑耦合。
-/// </remarks>
 public sealed class CorePeerSession
 {
-    // ============================================================================
-    // 属性定义
-    // ============================================================================
-    // 说明：该区域仅维护网络连接相关的“元数据”，不承载任何游戏/业务状态。
-    
-    /// <summary>
-    /// 网络对等连接实例
-    /// </summary>
-    public NetPeer Peer { get; set; } // 当前会话关联的底层对等连接对象（发送/断开等操作依赖它）
-    
-    /// <summary>
-    /// 连接建立时间（UTC）
-    /// </summary>
-    public DateTime ConnectedAt { get; set; } // 由上层在连接确认/握手完成时写入，用于统计与审计
-    
-    /// <summary>
-    /// 最后活动时间（UTC）
-    /// </summary>
-    public DateTime LastSeenAt { get; private set; } // 通过 MarkSeen 更新，用于超时判定（心跳/收包等）
-    
-    /// <summary>
-    /// 当前网络延迟（毫秒）
-    /// </summary>
-    public int Ping { get; internal set; } // 由网络层刷新，表示当前往返时延（RTT）
 
-    // ============================================================================
-    // 公共方法
-    // ============================================================================
-    
-    /// <summary>
-    /// 标记会话为活动状态
-    /// </summary>
-    /// <param name="nowUtc">当前UTC时间</param>
-    /// <remarks>
-    /// 典型调用时机：连接建立成功时、收到任意有效数据包时、心跳包到达时。
-    /// 该时间戳将参与 <see cref="IsTimeout"/> 的超时判断。
-    /// </remarks>
-    public void MarkSeen(DateTime nowUtc)
+        public NetPeer Peer { get; set; }
+
+        public DateTime ConnectedAt { get; set; }
+
+        public DateTime LastSeenAt { get; private set; }
+
+        public int Ping { get; internal set; }
+
+        public void MarkSeen(DateTime nowUtc)
     {
-        LastSeenAt = nowUtc; // 更新最后活动时间（UTC）
+        LastSeenAt = nowUtc;
     }
 
-    /// <summary>
-    /// 检查会话是否超时
-    /// </summary>
-    /// <param name="timeoutSeconds">超时时间（秒）</param>
-    /// <param name="nowUtc">当前UTC时间</param>
-    /// <returns>如果超时返回true，否则返回false</returns>
-    /// <remarks>
-    /// 仅依据 <see cref="LastSeenAt"/> 与 <paramref name="nowUtc"/> 的时间差进行判断，
-    /// 不检查底层连接状态（例如是否已断开），由上层在不同维度综合处理。
-    /// </remarks>
-    public bool IsTimeout(int timeoutSeconds, DateTime nowUtc)
+        public bool IsTimeout(int timeoutSeconds, DateTime nowUtc)
     {
-        return (nowUtc - LastSeenAt).TotalSeconds > timeoutSeconds; // 与最后活动时间差超过阈值则视为超时
+        return (nowUtc - LastSeenAt).TotalSeconds > timeoutSeconds;
     }
-    
-    // ============================================================================
-    // 私有方法（如有需要可在此区域添加）
-    // ============================================================================
+
 }

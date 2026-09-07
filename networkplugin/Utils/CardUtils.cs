@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using LBoL.Core;
@@ -7,10 +7,7 @@ using LBoL.Core.Units;
 
 namespace NetworkPlugin.Utils
 {
-    /// <summary>
-    /// LBoL 卡牌工具类：为网络同步提供稳定的卡牌信息提取与简单统计。
-    /// </summary>
-    public static class CardUtils
+        public static class CardUtils
     {
         public static object GetCardInfo(Card card)
         {

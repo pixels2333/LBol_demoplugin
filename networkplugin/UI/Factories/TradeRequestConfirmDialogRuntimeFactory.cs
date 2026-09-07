@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using HarmonyLib;
 using LBoL.Presentation.UI;
@@ -11,9 +11,6 @@ using UnityEngine.UI;
 
 namespace NetworkPlugin.UI.Factories;
 
-/// <summary>
-/// 被动交易确认弹窗运行时工厂：在运行时从原生 MessageDialog 提取组件并构建 TradeRequestConfirmDialog 实例
-/// </summary>
 internal static class TradeRequestConfirmDialogRuntimeFactory
 {
     internal static TradeRequestConfirmDialog GetOrCreate()
@@ -81,7 +78,6 @@ internal static class TradeRequestConfirmDialogRuntimeFactory
                         frameRt.offsetMax = new Vector2(0.0f, 410.0f);
                     }
 
-                    // 调整背景与金边铺满 840px 高度
                     var bgTransform = frame.transform.Find("Bg") as RectTransform;
                     if (bgTransform != null)
                     {
@@ -117,7 +113,6 @@ internal static class TradeRequestConfirmDialogRuntimeFactory
                         }
                     }
 
-                    // 隐藏原预制体中的占位与冗余组件
                     frame.transform.Find("Panel")?.gameObject.SetActive(false);
                     frame.transform.Find("Title")?.gameObject.SetActive(false);
                     frame.transform.Find("SingleConfirm")?.gameObject.SetActive(false);

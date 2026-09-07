@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Reflection;
 using LBoL.Presentation.UI;
@@ -23,12 +23,12 @@ internal static class TradePanelRuntimeFactory
     {
         try
         {
-            // 复用现有的TradePanel实例（仅保留一个激活实例，避免界面堆叠）。
+
             TradePanel[] existingPanels = UnityEngine.Object.FindObjectsByType<TradePanel>(FindObjectsInactive.Include, FindObjectsSortMode.None);
 
             if (existingPanels.Length > 0)
             {
-                // 如果存在非运行时创建（prefab已绑定）的TradePanel，则优先复用它。
+
                 TradePanel prefabPanel = null;
                 foreach (var p in existingPanels)
                 {
@@ -39,7 +39,6 @@ internal static class TradePanelRuntimeFactory
                     }
                 }
 
-                // 否则仅复用当前版本的运行时TradePanel。
                 TradePanel currentRuntime = null;
                 foreach (var p in existingPanels)
                 {
@@ -89,8 +88,6 @@ internal static class TradePanelRuntimeFactory
                     return currentRuntime;
                 }
 
-                // 旧版本运行时面板可能仍留在内存中，并保留旧的“矩形”外观。
-                // 先销毁它们，确保下一次创建时使用最新的UI代码。
                 foreach (var p in existingPanels)
                 {
                     if (!IsRuntimeCreatedPanel(p))
@@ -176,7 +173,6 @@ internal static class TradePanelRuntimeFactory
             return true;
         }
 
-        // 向后兼容：旧版运行时面板使用固定的根节点名称。
         return string.Equals(panel.gameObject.name, RuntimeRootName, StringComparison.Ordinal);
     }
 
@@ -274,7 +270,7 @@ internal static class TradePanelRuntimeFactory
     {
         try
         {
-            // 1) 强烈优先：从已知的原生UI prefab中提取。
+
             var dialogPrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
             if (dialogPrefab != null)
             {
@@ -321,7 +317,6 @@ internal static class TradePanelRuntimeFactory
                     continue;
                 }
 
-                // 避免选中我们自己运行时生成的按钮。
                 if (IsUnderRuntimeTradePanel(c.transform))
                 {
                     continue;
@@ -330,13 +325,11 @@ internal static class TradePanelRuntimeFactory
                 int buttons = c.GetComponentsInChildren<Button>(true).Length;
                 int nodes = c.GetComponentsInChildren<Transform>(true).Length;
 
-                // 优先选择真正的单按钮组件模板，避免克隆整条按钮栏或整块面板。
                 if (buttons == 0)
                 {
                     continue;
                 }
 
-                // 选择确认按钮样式时，优先避开名称中带cancel的组件。
                 if (preferConfirm
                     && !string.IsNullOrWhiteSpace(c.name)
                     && c.name.IndexOf("cancel", StringComparison.OrdinalIgnoreCase) >= 0)
@@ -367,7 +360,6 @@ internal static class TradePanelRuntimeFactory
             return null;
         }
 
-        // 优先选择最近且显式引用该 Button 的组件。
         var widgets = target.GetComponentsInParent<CommonButtonWidget>(true);
         foreach (var w in widgets)
         {
@@ -384,7 +376,7 @@ internal static class TradePanelRuntimeFactory
     {
         try
         {
-            // 优先使用原生对话框prefab里的TMP，让克隆标签沿用游戏字体与材质。
+
             var dialogPrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
             if (dialogPrefab != null)
             {
@@ -429,8 +421,7 @@ internal static class TradePanelRuntimeFactory
         TradeSlotWidget[] slots = new TradeSlotWidget[count];
         for (int i = 0; i < count; i++)
         {
-            // 克隆游戏内制作好的按钮组件，让槽位外观保持原生UI风格。
-            // 然后再挂上TradeSlotWidget（继承自CommonButtonWidget），补上卡牌Tooltip与移除逻辑。
+
             var slotWidget = UnityEngine.Object.Instantiate(buttonTemplate, area, false);
             slotWidget.name = $"{prefix}_Slot_{i + 1}";
             if (slotWidget != null)
@@ -462,8 +453,6 @@ internal static class TradePanelRuntimeFactory
                 }
             }
 
-            // 槽位组件不能继承模板里的子按钮和图标，否则可能堆出一串X标记。
-            // 这里只保留主按钮对象。
             var keepBtn = slotWidget.button;
             var buttons = slotWidget.GetComponentsInChildren<Button>(true);
             foreach (var b in buttons)
@@ -476,7 +465,6 @@ internal static class TradePanelRuntimeFactory
                 UnityEngine.Object.Destroy(b.gameObject);
             }
 
-            // 同时移除模板下多余的图像和图标（例如 cancel / close 图标）。
             var keepGraphic = keepBtn?.targetGraphic;
             Image keepImage = keepGraphic as Image;
             var images = slotWidget.GetComponentsInChildren<Image>(true);
@@ -487,7 +475,6 @@ internal static class TradePanelRuntimeFactory
                     continue;
                 }
 
-                // 保留主背景图（通常是targetGraphic）以及选中边框。
                 if (keepImage != null && ReferenceEquals(img, keepImage))
                 {
                     continue;
@@ -499,18 +486,14 @@ internal static class TradePanelRuntimeFactory
                     continue;
                 }
 
-                // 如果它和保留图像共用同一个对象，也一并保留。
                 if (keepImage != null && ReferenceEquals(img.gameObject, keepImage.gameObject))
                 {
                     continue;
                 }
 
-                // 其他图像全部移除；槽位内容（卡牌图像/文本）由运行时子节点提供。
                 UnityEngine.Object.Destroy(img);
             }
 
-            // 某些按钮模板自带“取消”或“确认”等默认文案。
-            // 槽位不应继承这些文案；名称文本由我们自己的Name标签提供。
             var tmps = slotWidget.GetComponentsInChildren<TextMeshProUGUI>(true);
             foreach (var t in tmps)
             {
@@ -526,13 +509,11 @@ internal static class TradePanelRuntimeFactory
                 t.color = c;
             }
 
-            // 禁用原始CommonButtonWidget，避免出现双重指针处理。
             slotWidget.enabled = false;
 
             var slotGo = slotWidget.gameObject;
             var rt = slotGo.GetComponent<RectTransform>();
 
-            // 手动做垂直定位，避免依赖LayoutGroup。
             float height = 1f / count;
             float top = 1f - i * height;
             float bottom = top - height;
@@ -542,10 +523,9 @@ internal static class TradePanelRuntimeFactory
             rt.offsetMax = new Vector2(0f, -4f);
 
             var slot = slotGo.AddComponent<TradeSlotWidget>();
-            // 连接克隆模板中的底层UnityEngine.UI.Button。
+
             slot.button = slotGo.GetComponentInChildren<Button>(true);
 
-            // 可选的卡牌图像承载层（RawImage），用于显示原生卡牌纹理。
             GameObject imgGo = new GameObject("CardImage");
             imgGo.transform.SetParent(slotGo.transform, false);
             var raw = imgGo.AddComponent<RawImage>();
@@ -558,7 +538,6 @@ internal static class TradePanelRuntimeFactory
             }
             ConfigureAnchors(rawRt, new Vector2(0.02f, 0.12f), new Vector2(0.20f, 0.88f));
 
-            // 优先复用模板里的标签；没有的话再克隆或创建一个。
             TextMeshProUGUI label;
             if (textTemplate != null)
             {
@@ -572,7 +551,7 @@ internal static class TradePanelRuntimeFactory
             }
             _ = label.rectTransform;
             label.name = "Name";
-            // 给卡牌图像预留显示空间。
+
             ConfigureAnchors(label.rectTransform, new Vector2(0.22f, 0f), new Vector2(1f, 1f));
             label.alignment = TextAlignmentOptions.Center;
             label.raycastTarget = false;

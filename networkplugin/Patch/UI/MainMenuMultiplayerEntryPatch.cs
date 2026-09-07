@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,16 +28,6 @@ using UnityEngine.UI;
 
 namespace NetworkPlugin.Patch.UI;
 
-/// <summary>
-/// 在主菜单增加“多人游戏”入口（参考 Together in Spire: MainMenuButtonsPatch / MainMenuPanelPatch）。
-/// </summary>
-/// <remarks>
-/// 实现方式：
-/// - 在 <see cref="MainMenuPanel"/> 中克隆一个模板按钮作为“多人游戏”按钮。
-/// - 点击后提供 Host / Join 两条快捷路径：
-///   - 确认：启动本机服务器并连接（Host）
-///   - 取消：连接到配置的服务器（Join）
-/// </remarks>
 public static class MainMenuMultiplayerEntryPatch
 {
     public static void ForceEnsureButtonInCurrentScene()
@@ -62,7 +52,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -84,7 +74,6 @@ public static class MainMenuMultiplayerEntryPatch
     private static PanelAnimator _rootAnimator;
     private static TMP_FontAsset _defaultFont;
 
-    // 房间玩家列表（独立界面，非 MessageDialog 弹窗）相关字段。
     private const string RoomListRootName = "NetworkPlugin_RoomPlayerListPanel";
     private static GameObject _roomListRoot;
     private static PanelAnimator _roomListAnimator;
@@ -99,13 +88,10 @@ public static class MainMenuMultiplayerEntryPatch
     private static readonly Action<string, object> _onRoomListGameEvent = OnRoomListGameEventReceived;
     private static readonly Action<bool> _onRoomListConnStateChanged = OnRoomListConnectionStateChanged;
 
-    /// <summary>玩家准备状态缓存（PlayerId -> Ready）</summary>
-    private static readonly Dictionary<string, bool> _playerReadyStates = new(StringComparer.Ordinal);
+        private static readonly Dictionary<string, bool> _playerReadyStates = new(StringComparer.Ordinal);
 
-    /// <summary>底部就绪/开始按钮</summary>
-    private static Button _readyOrStartButton;
+        private static Button _readyOrStartButton;
 
-    // 连接状态浮层相关字段。
     private const string ConnStatusRootName = "NetworkPlugin_ConnectionStatusPanel";
     private static GameObject _connStatusRoot;
     private static TextMeshProUGUI _connStatusText;
@@ -122,23 +108,12 @@ public static class MainMenuMultiplayerEntryPatch
 
     #region 依赖注入获取
 
-    /// <summary>
-    /// 依赖注入服务提供者。
-    /// </summary>
-    private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
+        private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
-    /// <summary>
-    /// 尝试从依赖注入解析网络客户端。
-    /// </summary>
-    /// <returns>解析成功返回 <see cref="INetworkClient"/>，失败返回 null。</returns>
-    private static INetworkClient TryGetNetworkClient()
+        private static INetworkClient TryGetNetworkClient()
         => ServiceProvider?.GetService<INetworkClient>();
 
-    /// <summary>
-    /// 获取配置管理器（优先从依赖注入解析，失败则回落到插件静态实例）。
-    /// </summary>
-    /// <returns>配置管理器实例。</returns>
-    private static ConfigManager TryGetConfig()
+        private static ConfigManager TryGetConfig()
         => ServiceProvider?.GetService<ConfigManager>() ?? Plugin.ConfigManager;
 
     #endregion
@@ -195,7 +170,7 @@ public static class MainMenuMultiplayerEntryPatch
             }
             catch
             {
-                // ignored
+
             }
         }
     }
@@ -252,7 +227,7 @@ public static class MainMenuMultiplayerEntryPatch
             }
             catch
             {
-                // ignored
+
             }
         }
     }
@@ -289,7 +264,7 @@ public static class MainMenuMultiplayerEntryPatch
             }
             catch
             {
-                // ignored
+
             }
         }
     }
@@ -334,22 +309,16 @@ public static class MainMenuMultiplayerEntryPatch
 
     #region 按钮构建与文案
 
-    /// <summary>
-    /// 确保“多人游戏”按钮被创建并挂载到主菜单按钮组。
-    /// </summary>
-    /// <param name="panel">主菜单面板。</param>
-    private static void EnsureMultiplayerButton(MainMenuPanel panel)
+        private static void EnsureMultiplayerButton(MainMenuPanel panel)
     {
-        // 面板为空时直接返回。
+
         if (panel == null)
         {
             return;
         }
 
-        // 旧版本误把按钮插到 subMenuButtonGroup，这里清掉我们自己创建的那个，避免用户找不到入口还看到“幽灵按钮”。
         CleanupLegacySubMenuMultiplayerButton(panel);
 
-        // 如果按钮已存在且有效，确保可见与文案正确，直接返回（不要重复调整位置，避免破坏原生动画与排版）。
         if (_multiplayerButton != null)
         {
             if (!_multiplayerButton.gameObject.activeSelf)
@@ -367,7 +336,6 @@ public static class MainMenuMultiplayerEntryPatch
             return;
         }
 
-        // 主列表模板按钮：优先用“设定(UI_Settings)”，否则退回 newGameButton / 扫描。
         Button template = TryFindButtonByPersistentMethodName(parent, "UI_Settings");
         if (template == null)
         {
@@ -380,23 +348,17 @@ public static class MainMenuMultiplayerEntryPatch
 
         _defaultFont ??= FindDefaultFont(parent);
 
-        // 克隆模板按钮并替换点击回调。
         _multiplayerButton = CreateButtonFromTemplate(template, parent, MultiplayerButtonName, "多人游戏");
         _multiplayerButton.name = MultiplayerButtonName;
         _multiplayerButton.interactable = true;
 
-        // 仅套用样式，不套用行为：重置 UnityEvent，避免把模板按钮(如“设定”)的持久化回调一并带过来。
         _multiplayerButton.onClick = new Button.ButtonClickedEvent();
         _multiplayerButton.onClick.AddListener(OpenMultiplayerEntry);
 
-        // 部分菜单按钮会挂本地化脚本，刷新时会把文案改回模板(例如“设定”)。
-        // 只移除本地化相关组件，保留 MainMenuButtonWidget 等动画/交互样式组件。
         TryStripLocalizationComponents(_multiplayerButton.gameObject);
 
-        // 设置按钮文案。
         TrySetButtonText(_multiplayerButton, "多人游戏");
 
-        // 插入排版：把“多人游戏”插入到“设定”和“收集总览”之间。
         Button museumButton = TryFindButtonByPersistentMethodName(parent, "UI_ShowMuseum");
         Button settingsButton = TryFindButtonByPersistentMethodName(parent, "UI_Settings");
         if (museumButton != null && settingsButton != null && museumButton.transform.parent == parent && settingsButton.transform.parent == parent)
@@ -427,7 +389,6 @@ public static class MainMenuMultiplayerEntryPatch
                 return false;
             }
 
-            // 如果有 LayoutGroup，Unity 会根据 sibling 顺序自动排版，不需要手动改坐标。
             bool hasLayout = parent.GetComponent<HorizontalLayoutGroup>() != null || parent.GetComponent<VerticalLayoutGroup>() != null;
             if (hasLayout)
             {
@@ -442,7 +403,6 @@ public static class MainMenuMultiplayerEntryPatch
                 return false;
             }
 
-            // 计算相邻两行的垂直位移步长（主菜单中 Y 轴向下为负方向）
             float stepY = -120f;
             if (museumButton != null)
             {
@@ -458,14 +418,12 @@ public static class MainMenuMultiplayerEntryPatch
             }
             Vector2 step = new Vector2(0f, stepY);
 
-            // 将“多人游戏”按钮放置在“设定”之前（即原本“设定”的位置，紧随“新游戏/继续游戏”）
             Vector2 insertPos = settingsRect.anchoredPosition;
             int insertIndex = settingsButton.transform.GetSiblingIndex();
 
             newButton.transform.SetSiblingIndex(insertIndex);
             newRect.anchoredPosition = insertPos;
 
-            // 将原本“设定”以及其后所有按钮整体下移一个步长，腾出一行
             for (int i = insertIndex + 1; i < parent.childCount; i++)
             {
                 var child = parent.GetChild(i);
@@ -498,8 +456,6 @@ public static class MainMenuMultiplayerEntryPatch
                 return;
             }
 
-            // 只根据类型名做弱匹配，避免引入对游戏内部组件的硬依赖。
-            // 保留按钮动画/交互组件（CommonButtonWidget/MainMenuButtonWidget 等）。
             var behaviours = root.GetComponentsInChildren<MonoBehaviour>(true);
             foreach (var b in behaviours)
             {
@@ -514,11 +470,10 @@ public static class MainMenuMultiplayerEntryPatch
                     continue;
                 }
 
-                // 常见的本地化脚本命名：Localized/Localization/Locale/Localize。
                 if (n.IndexOf("localiz", StringComparison.OrdinalIgnoreCase) >= 0 ||
                     n.IndexOf("locale", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    // 不动主要交互/动画组件。
+
                     if (n.Equals("CommonButtonWidget", StringComparison.OrdinalIgnoreCase) ||
                         n.Equals("MainMenuButtonWidget", StringComparison.OrdinalIgnoreCase))
                     {
@@ -531,8 +486,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // TODO: 应记录异常详情，避免静默失败。
-            // ignored
+
         }
     }
 
@@ -540,10 +494,10 @@ public static class MainMenuMultiplayerEntryPatch
     {
         try
         {
-            // 只有旧版确实创建过才会有缓存引用；并且只删我们自己命名的那个。
+
             if (_subMenuMultiplayerButton == null)
             {
-                // 仍然尝试按名字兜底清理一次，避免热更新/重启后残留。
+
                 Transform subGroup = TryGetSubMenuButtonGroup(panel);
                 if (subGroup == null)
                 {
@@ -567,7 +521,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -602,22 +556,19 @@ public static class MainMenuMultiplayerEntryPatch
                 }
                 catch
                 {
-                    // ignored
+
                 }
             }
         }
         catch
         {
-            // ignored
+
         }
 
         return null;
     }
 
-    /// <summary>
-    /// 确保在 StartGamePanel 上存在“多人游戏”按钮。
-    /// </summary>
-    private static void EnsureStartGameMultiplayerButton(StartGamePanel panel)
+        private static void EnsureStartGameMultiplayerButton(StartGamePanel panel)
     {
         if (panel == null)
         {
@@ -627,7 +578,7 @@ public static class MainMenuMultiplayerEntryPatch
         if (_startGameMultiplayerButton != null)
         {
             _startGameMultiplayerButton.gameObject.SetActive(true);
-            // 文案可能会被模板按钮携带的本地化/刷新脚本覆盖，这里每次都强制写回。
+
             TryStripLocalizationComponents(_startGameMultiplayerButton.gameObject);
             TrySetButtonText(_startGameMultiplayerButton, "多人游戏");
             return;
@@ -663,13 +614,11 @@ public static class MainMenuMultiplayerEntryPatch
         _startGameMultiplayerButton.onClick.RemoveAllListeners();
         _startGameMultiplayerButton.onClick.AddListener(OpenMultiplayerEntryFromStartGame);
 
-        // StartGamePanel 的确认按钮通常带有本地化/刷新组件，克隆后需要剥离，否则会把文案改回“确认”。
         TryStripLocalizationComponents(_startGameMultiplayerButton.gameObject);
         TrySetButtonText(_startGameMultiplayerButton, "多人游戏");
         _startGameMultiplayerButton.interactable = true;
         _startGameMultiplayerButton.gameObject.SetActive(true);
 
-        // 尽量把按钮排到模板按钮右侧/下方（取决于布局组件）。
         try
         {
             int sibling = template.transform.GetSiblingIndex();
@@ -682,11 +631,6 @@ public static class MainMenuMultiplayerEntryPatch
                 var dstRect = _startGameMultiplayerButton.GetComponent<RectTransform>();
                 if (srcRect != null && dstRect != null)
                 {
-                    // 规则(按用户最新确认):
-                    // - 默认放在“确认”按钮右侧。
-                    // - 如果右侧会越出游戏窗口，则放到左侧。
-                    // - 间距优先按屏幕宽度/20，同时保证至少 30px。
-                    // - 最终钳制在画布范围内，避免任何分辨率下越界。
 
                     var canvasRect = TryGetRootCanvasRectTransform(parent);
                     float scale = 1f;
@@ -700,7 +644,7 @@ public static class MainMenuMultiplayerEntryPatch
                     }
                     catch
                     {
-                        // ignored
+
                     }
 
                     float desiredSpacingPx = Mathf.Max(30f, Screen.width / 20f);
@@ -710,14 +654,12 @@ public static class MainMenuMultiplayerEntryPatch
                     Vector2 rightPos = srcRect.anchoredPosition + new Vector2(dx, 0f);
                     Vector2 leftPos = srcRect.anchoredPosition + new Vector2(-dx, 0f);
 
-                    // 先尝试右侧；若会越界则改为左侧。
                     dstRect.anchoredPosition = rightPos;
                     if (canvasRect != null && !IsFullyInside(dstRect, canvasRect, paddingWorld: 0f))
                     {
                         dstRect.anchoredPosition = leftPos;
                     }
 
-                    // 最后兜底：无论选了哪边，都钳制在画布范围内。
                     if (canvasRect != null)
                     {
                         ClampToContainer(dstRect, canvasRect, paddingWorld: 0f);
@@ -727,7 +669,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -812,7 +754,7 @@ public static class MainMenuMultiplayerEntryPatch
 
         if (delta != Vector3.zero)
         {
-            // UI 元素在 Screen Space 下位置就是屏幕/世界坐标，直接修正即可。
+
             target.position += delta;
         }
     }
@@ -821,7 +763,7 @@ public static class MainMenuMultiplayerEntryPatch
     {
         try
         {
-            // 对应游戏源码字段名 mainMenuButtonGroup（private + SerializeField）。
+
             return Traverse.Create(panel).Field("mainMenuButtonGroup").GetValue<Transform>();
         }
         catch
@@ -834,7 +776,7 @@ public static class MainMenuMultiplayerEntryPatch
     {
         try
         {
-            // 对应游戏源码字段名 subMenuButtonGroup（private + SerializeField）。
+
             return Traverse.Create(panel).Field("subMenuButtonGroup").GetValue<Transform>();
         }
         catch
@@ -848,7 +790,6 @@ public static class MainMenuMultiplayerEntryPatch
         template = null;
         why = null;
 
-        // 1) 强依赖字段（兼容当前仓库里的 LBoL 源码）。
         try
         {
             template = Traverse.Create(panel).Field("newGameButton").GetValue<Button>();
@@ -859,10 +800,9 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+
         }
 
-        // 2) 反射扫描所有 Button 字段（字段名可能变）。
         try
         {
             List<FieldInfo> fields = AccessTools.GetDeclaredFields(panel.GetType())
@@ -881,16 +821,15 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+
         }
 
-        // 3) 兜底：从面板子节点找按钮（最弱保证：至少能克隆出同风格按钮）。
         try
         {
             var buttons = panel.GetComponentsInChildren<Button>(true);
             if (buttons != null && buttons.Length > 0)
             {
-                // 过滤掉我们自己的按钮，避免自我复制。
+
                 List<Button> candidates = buttons
                     .Where(b => b != null && b.name != MultiplayerButtonName)
                     .Where(b => b.GetComponentInChildren<TextMeshProUGUI>(true) != null)
@@ -916,12 +855,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
     }
 
-    /// <summary>
-    /// 尝试设置按钮上的 TextMeshPro 文本。
-    /// </summary>
-    /// <param name="button">目标按钮。</param>
-    /// <param name="text">设置的文本。</param>
-    private static void TrySetButtonText(Button button, string text)
+        private static void TrySetButtonText(Button button, string text)
     {
         try
         {
@@ -930,7 +864,6 @@ public static class MainMenuMultiplayerEntryPatch
                 return;
             }
 
-            // 兼容 TextMeshProUGUI / TextMeshPro：不同版本/Prefab 的按钮文案组件类型可能不同。
             var labels = button.GetComponentsInChildren<TMP_Text>(true);
             if (labels != null)
             {
@@ -949,7 +882,6 @@ public static class MainMenuMultiplayerEntryPatch
                 }
             }
 
-            // 兼容旧式 UI.Text（部分主菜单文案可能不是 TMP）。
             var legacyTexts = button.GetComponentsInChildren<Text>(true);
             if (legacyTexts != null)
             {
@@ -966,7 +898,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // 忽略：设置 UI 文案失败不影响整体流程。
+
         }
     }
 
@@ -980,7 +912,6 @@ public static class MainMenuMultiplayerEntryPatch
                 cloned.name = name;
                 cloned.transform.localScale = Vector3.one;
 
-                // 彻底剥离本地化刷新组件，防止覆盖为“设定”或原按键文案
                 TryStripLocalizationComponents(cloned);
 
                 Button btn = cloned.GetComponent<Button>();
@@ -1048,11 +979,7 @@ public static class MainMenuMultiplayerEntryPatch
 
     #region 入口面板（非弹窗）
 
-    /// <summary>
-    /// 打开“多人游戏”入口弹窗。
-    /// 打开“多人游戏”入口弹窗（从主菜单点击时：先拉起原版选角界面，再弹出多人联机入口）。
-    /// </summary>
-    private static void OpenMultiplayerEntry()
+        private static void OpenMultiplayerEntry()
     {
         if (!UiManager.IsInitialized)
         {
@@ -1062,8 +989,6 @@ public static class MainMenuMultiplayerEntryPatch
         Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 打开多人入口面板（MainMenu）。");
         Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 打开多人入口面板（MainMenu -> StartGame）。");
 
-        // 若已连接，则提示是否断开。
-        // 若已连接，则重新打开房间列表大厅
         INetworkClient client = TryGetNetworkClient();
         if (client?.IsConnected == true)
         {
@@ -1072,9 +997,8 @@ public static class MainMenuMultiplayerEntryPatch
             return;
         }
 
-        // 未连接：打开自定义“面板 UI”（非 MessageDialog）。
         ShowMultiplayerEntryOverlayFromMainMenu();
-        // 打开原版选角界面 StartGamePanel，并将联机入口挂载在其上
+
         try
         {
             StartGameData defaultMode = Traverse.Create(typeof(MainMenuPanel)).Property<StartGameData>("DefaultMode").Value;
@@ -1183,7 +1107,6 @@ public static class MainMenuMultiplayerEntryPatch
 
             _defaultFont ??= FindDefaultFont(panelTransform);
 
-            // 加载游戏内置的 MessageDialog 预制体
             GameObject dialogPrefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
             if (dialogPrefab == null)
             {
@@ -1206,7 +1129,6 @@ public static class MainMenuMultiplayerEntryPatch
             rootRect.offsetMin = Vector2.zero;
             rootRect.offsetMax = Vector2.zero;
 
-            // 半透明背景，拦截点击
             var bg = root.AddComponent<Image>();
             bg.color = new Color(0f, 0f, 0f, 0.62f);
             bg.raycastTarget = true;
@@ -1238,7 +1160,6 @@ public static class MainMenuMultiplayerEntryPatch
                 panelScale = 2.2f;
             }
 
-            // 实例化原生弹窗框体作为中央容器
             GameObject frame = UnityEngine.Object.Instantiate(dialogPrefab, root.transform, false);
             frame.name = OverlayRootName + "_Frame";
             frame.SetActive(true);
@@ -1253,23 +1174,20 @@ public static class MainMenuMultiplayerEntryPatch
                 frameRect.anchoredPosition = Vector2.zero;
             }
 
-            // 获取原生 MessageDialog 组件并禁用它以防干扰
             MessageDialog dialog = frame.GetComponentInChildren<MessageDialog>(true);
             if (dialog != null)
             {
                 dialog.enabled = false;
             }
 
-            // 获取原生各个字段组件
             TextMeshProUGUI mainText = GetDialogField<TextMeshProUGUI>(dialog, "mainText");
             TextMeshProUGUI subText = GetDialogField<TextMeshProUGUI>(dialog, "subText");
             Button singleConfirm = GetDialogField<Button>(dialog, "singleConfirmButton");
             Button confirm = GetDialogField<Button>(dialog, "confirmButton");
             Button cancel = GetDialogField<Button>(dialog, "cancelButton");
-            // 确定内容父容器：跟原版 SelectionPanelScaffold 查找逻辑对齐，使用 mainText 的 parent 作为面板根容器
+
             RectTransform panelRect = mainText?.rectTransform.parent as RectTransform ?? frameRect;
 
-            // 只清除 frame 根节点上的布局与自适应组件，避免干扰子节点（如按钮内部）的对齐
             if (frame != null)
             {
                 var rootFitters = frame.GetComponents<ContentSizeFitter>();
@@ -1281,7 +1199,7 @@ public static class MainMenuMultiplayerEntryPatch
 
             if (panelRect != null)
             {
-                // 递归将 panelRect 及其所有父级（直到 frame）强制设置为拉伸填满，并只清除其自身的布局组件，保留按钮等子物体的内部排版
+
                 Transform current = panelRect;
                 while (current != null && current != frame.transform)
                 {
@@ -1304,7 +1222,6 @@ public static class MainMenuMultiplayerEntryPatch
                     current = current.parent;
                 }
 
-                // 强制 panelRect 锚定并拉伸填满父框体，保证子容器坐标系统对齐
                 panelRect.anchorMin = Vector2.zero;
                 panelRect.anchorMax = Vector2.one;
                 panelRect.offsetMin = Vector2.zero;
@@ -1312,7 +1229,6 @@ public static class MainMenuMultiplayerEntryPatch
                 panelRect.pivot = new Vector2(0.5f, 0.5f);
             }
 
-            // 隐藏原生 MessageDialog 预制体自带的所有背景 Image 和黄线，只保留其作为纯净容器（保护三个按钮及它们内部的 Image 不被隐藏）
             if (frame != null)
             {
                 var nativeImages = frame.GetComponentsInChildren<Image>(true);
@@ -1322,22 +1238,18 @@ public static class MainMenuMultiplayerEntryPatch
                     if (singleConfirm != null && (img.transform == singleConfirm.transform || IsDescendantOf(img.transform, singleConfirm.transform))) continue;
                     if (confirm != null && (img.transform == confirm.transform || IsDescendantOf(img.transform, confirm.transform))) continue;
                     if (cancel != null && (img.transform == cancel.transform || IsDescendantOf(img.transform, cancel.transform))) continue;
-                    
-                    // 禁用 Image 组件本身使其不渲染，而不直接隐藏其所在的 GameObject（防止误杀 root 节点导致整个弹窗消失）
+
                     img.enabled = false;
                 }
             }
 
-            // 隐藏原生多余的字段和底部按钮
             if (subText != null) subText.gameObject.SetActive(false);
             if (singleConfirm != null) singleConfirm.gameObject.SetActive(false);
             if (confirm != null) confirm.gameObject.SetActive(false);
             if (cancel != null) cancel.gameObject.SetActive(false);
 
-            // 确定按钮模板
             Button buttonTemplate = confirm ?? singleConfirm ?? cancel ?? template;
 
-            // 绑定入场缩放与渐显动画
             try
             {
                 _rootAnimator = root.AddComponent<PanelAnimator>();
@@ -1346,10 +1258,9 @@ public static class MainMenuMultiplayerEntryPatch
             }
             catch
             {
-                // ignored
+
             }
 
-            // ================== 主大厅面板 Area ==================
             GameObject mainArea = new GameObject("MainArea");
             mainArea.transform.SetParent(panelRect, false);
             var mainAreaRt = mainArea.AddComponent<RectTransform>();
@@ -1362,7 +1273,6 @@ public static class MainMenuMultiplayerEntryPatch
             var mainAnim = mainArea.AddComponent<PanelAnimator>();
             mainAnim.Init(mainGroup, mainAreaRt);
 
-            // 设置标题并在去除布局后重新手动排版，避免重叠
             if (mainText != null)
             {
                 mainText.text = "多人游戏";
@@ -1382,7 +1292,6 @@ public static class MainMenuMultiplayerEntryPatch
                 mainText.gameObject.SetActive(true);
             }
 
-            // 说明文字
             GameObject descGo = new GameObject("Description");
             descGo.transform.SetParent(mainArea.transform, false);
             var descRect = descGo.AddComponent<RectTransform>();
@@ -1403,7 +1312,6 @@ public static class MainMenuMultiplayerEntryPatch
                 desc.font = _defaultFont;
             }
 
-            // 按钮区域
             GameObject buttonsGo = new GameObject("Buttons");
             buttonsGo.transform.SetParent(mainArea.transform, false);
             var buttonsRect = buttonsGo.AddComponent<RectTransform>();
@@ -1417,7 +1325,7 @@ public static class MainMenuMultiplayerEntryPatch
             }
             catch
             {
-                // ignored
+
             }
             buttonsRect.sizeDelta = new Vector2(buttonsWidth, 196f * panelScale);
             buttonsRect.anchoredPosition = new Vector2(0f, 10f * panelScale);
@@ -1431,7 +1339,6 @@ public static class MainMenuMultiplayerEntryPatch
             layout.spacing = 12f * panelScale;
             layout.padding = new RectOffset(0, 0, 0, 0);
 
-            // 房主（切换到子面板）
             GameObject hostArea = new GameObject("HostArea");
             PanelAnimator hostAnim = null;
             var hostBtn = CreateDialogButton(buttonTemplate, buttonsGo.transform, "NetworkPlugin_HostButton", "做房主", panelScale);
@@ -1453,7 +1360,6 @@ public static class MainMenuMultiplayerEntryPatch
                 }
             });
 
-            // 加入（切换到子面板）
             GameObject joinArea = new GameObject("JoinArea");
             PanelAnimator joinAnim = null;
             var joinBtn = CreateDialogButton(buttonTemplate, buttonsGo.transform, "NetworkPlugin_JoinButton", "加入房主", panelScale);
@@ -1475,11 +1381,9 @@ public static class MainMenuMultiplayerEntryPatch
                 }
             });
 
-            // 返回
             var backBtn = CreateDialogButton(buttonTemplate, buttonsGo.transform, "NetworkPlugin_BackButton", "返回", panelScale);
             backBtn.onClick.AddListener(HideOverlay);
 
-            // 统一尺寸大小
             foreach (var b in new[] { hostBtn, joinBtn, backBtn })
             {
                 if (b == null) continue;
@@ -1487,7 +1391,6 @@ public static class MainMenuMultiplayerEntryPatch
                 if (r != null) r.sizeDelta = new Vector2(r.sizeDelta.x, 58f * panelScale);
             }
 
-            // ================== 加入客户端子面板 Area ==================
             joinArea.transform.SetParent(panelRect, false);
             var joinAreaRt = joinArea.AddComponent<RectTransform>();
             joinAreaRt.anchorMin = Vector2.zero;
@@ -1500,7 +1403,6 @@ public static class MainMenuMultiplayerEntryPatch
             joinAnim.Init(joinGroup, joinAreaRt);
             joinArea.SetActive(false);
 
-            // 表单输入区容器
             GameObject formGo = new GameObject("Form");
             formGo.transform.SetParent(joinArea.transform, false);
             var formRt = formGo.AddComponent<RectTransform>();
@@ -1518,7 +1420,6 @@ public static class MainMenuMultiplayerEntryPatch
             formLayout.childForceExpandHeight = false;
             formLayout.spacing = 6f * panelScale;
 
-            // 获取配置默认数据
             ConfigManager config = TryGetConfig();
             string curIp = config?.ServerIP?.Value ?? "127.0.0.1";
             string curPort = config?.ServerPort?.Value.ToString() ?? "7777";
@@ -1546,7 +1447,6 @@ public static class MainMenuMultiplayerEntryPatch
             CreateInputRow(formGo.transform, buttonTemplate, "连接密钥:", "请输入连接密钥...", curKey, panelScale, out keyInput);
             CreateInputRow(formGo.transform, buttonTemplate, "玩家昵称:", "请输入昵称...", curName, panelScale, out nameInput);
 
-            // 子面板底部按钮
             GameObject joinButtonsGo = new GameObject("JoinButtons");
             joinButtonsGo.transform.SetParent(joinArea.transform, false);
             var joinButtonsRt = joinButtonsGo.AddComponent<RectTransform>();
@@ -1564,7 +1464,6 @@ public static class MainMenuMultiplayerEntryPatch
             joinButtonsLayout.childForceExpandHeight = false;
             joinButtonsLayout.spacing = 20f * panelScale;
 
-            // 开始连接
             var connectBtn = CreateDialogButton(buttonTemplate, joinButtonsGo.transform, "NetworkPlugin_ConnectBtn", "开始连接", panelScale);
             connectBtn.onClick.AddListener(() =>
             {
@@ -1633,7 +1532,6 @@ public static class MainMenuMultiplayerEntryPatch
                 }
             });
 
-            // 返回大厅按钮
             var cancelBtn = CreateDialogButton(buttonTemplate, joinButtonsGo.transform, "NetworkPlugin_CancelBtn", "返回", panelScale);
             cancelBtn.onClick.AddListener(() =>
             {
@@ -1660,7 +1558,6 @@ public static class MainMenuMultiplayerEntryPatch
                 if (r != null) r.sizeDelta = new Vector2(r.sizeDelta.x, 58f * panelScale);
             }
 
-            // ================== 做房主服务端子面板 Area ==================
             hostArea.transform.SetParent(panelRect, false);
             var hostAreaRt = hostArea.AddComponent<RectTransform>();
             hostAreaRt.anchorMin = Vector2.zero;
@@ -1673,7 +1570,6 @@ public static class MainMenuMultiplayerEntryPatch
             hostAnim.Init(hostGroup, hostAreaRt);
             hostArea.SetActive(false);
 
-            // 表单输入区容器
             GameObject hostFormGo = new GameObject("HostForm");
             hostFormGo.transform.SetParent(hostArea.transform, false);
             var hostFormRt = hostFormGo.AddComponent<RectTransform>();
@@ -1691,7 +1587,6 @@ public static class MainMenuMultiplayerEntryPatch
             hostFormLayout.childForceExpandHeight = false;
             hostFormLayout.spacing = 6f * panelScale;
 
-            // 获取默认配置
             string hostPort = config?.HostServerPort?.Value.ToString() ?? "7777";
             string hostMaxConn = config?.HostMaxConnections?.Value.ToString() ?? "4";
             string hostKey = config?.HostConnectionKey?.Value ?? "LBoL_Network_Plugin";
@@ -1718,7 +1613,6 @@ public static class MainMenuMultiplayerEntryPatch
             CreateInputRow(hostFormGo.transform, buttonTemplate, "连接密钥:", "请输入连接密钥...", hostKey, panelScale, out hostKeyInput);
             CreateInputRow(hostFormGo.transform, buttonTemplate, "玩家昵称:", "请输入昵称...", hostName, panelScale, out hostNameInput);
 
-            // 子面板底部按钮
             GameObject hostButtonsGo = new GameObject("HostButtons");
             hostButtonsGo.transform.SetParent(hostArea.transform, false);
             var hostButtonsRt = hostButtonsGo.AddComponent<RectTransform>();
@@ -1736,7 +1630,6 @@ public static class MainMenuMultiplayerEntryPatch
             hostButtonsLayout.childForceExpandHeight = false;
             hostButtonsLayout.spacing = 20f * panelScale;
 
-            // 开始连接（房主）
             var startHostBtn = CreateDialogButton(buttonTemplate, hostButtonsGo.transform, "NetworkPlugin_StartHostBtn", "开始做房主", panelScale);
             startHostBtn.onClick.AddListener(() =>
             {
@@ -1785,7 +1678,6 @@ public static class MainMenuMultiplayerEntryPatch
 
                 HideOverlay();
 
-                // 检查是否有存档
                 GameRunSaveData save = null;
                 try
                 {
@@ -1814,7 +1706,6 @@ public static class MainMenuMultiplayerEntryPatch
                 TryHostLocalServerAndConnectAndShowRoomList();
             });
 
-            // 返回大厅按钮
             var hostCancelBtn = CreateDialogButton(buttonTemplate, hostButtonsGo.transform, "NetworkPlugin_HostCancelBtn", "返回", panelScale);
             hostCancelBtn.onClick.AddListener(() =>
             {
@@ -1841,7 +1732,6 @@ public static class MainMenuMultiplayerEntryPatch
                 if (r != null) r.sizeDelta = new Vector2(r.sizeDelta.x, 58f * panelScale);
             }
 
-            // 确保容器不超过画布
             try
             {
                 var canvasRect = TryGetRootCanvasRectTransform(rootParent);
@@ -1852,7 +1742,7 @@ public static class MainMenuMultiplayerEntryPatch
             }
             catch
             {
-                // ignored
+
             }
         }
         catch (Exception ex)
@@ -1949,7 +1839,7 @@ public static class MainMenuMultiplayerEntryPatch
 
             _group.alpha = targetAlpha;
             if (_container != null) _container.localScale = new Vector3(targetScale, targetScale, 1f);
-            
+
             _group.interactable = isOpen;
             _group.blocksRaycasts = isOpen;
 
@@ -1973,19 +1863,18 @@ public static class MainMenuMultiplayerEntryPatch
         rule.transform.SetParent(parent, false);
 
         var rect = rule.AddComponent<RectTransform>();
-        // 分隔线铺满全宽，更接近游戏内 MessageDialog 的边界线观感。
+
         rect.anchorMin = new Vector2(0f, anchorY);
         rect.anchorMax = new Vector2(1f, anchorY);
         rect.pivot = new Vector2(0.5f, anchorY);
         rect.anchoredPosition = new Vector2(0f, y);
-        // 分隔线按全宽绘制，更接近游戏内 MessageDialog 的边界线。
+
         rect.sizeDelta = new Vector2(0f, height);
 
         var img = rule.AddComponent<Image>();
         img.color = color;
         img.raycastTarget = false;
 
-        // 轻微发光/描边效果，增强“弹窗分隔线”的观感。
         try
         {
             var shadow = rule.AddComponent<Shadow>();
@@ -1996,7 +1885,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -2009,7 +1898,6 @@ public static class MainMenuMultiplayerEntryPatch
                 return;
             }
 
-            // TMP 文本组件
             var labels = button.GetComponentsInChildren<TMP_Text>(true);
             if (labels != null)
             {
@@ -2020,12 +1908,11 @@ public static class MainMenuMultiplayerEntryPatch
                         continue;
                     }
 
-                    // 只放大较小字号的按钮文字；避免把模板里已经很大的标题类文字也放大。
                     if (label.fontSize > 0f && label.fontSize < 40f)
                     {
                         label.fontSize = Mathf.Clamp(label.fontSize * scale, 14f, 72f);
                     }
-                    // 禁用换行并开启自动收缩，防止多字换行
+
                     label.enableWordWrapping = false;
                     label.enableAutoSizing = true;
                     label.fontSizeMin = 10f * scale;
@@ -2033,7 +1920,6 @@ public static class MainMenuMultiplayerEntryPatch
                 }
             }
 
-            // 传统 UI.Text 组件
             var legacyTexts = button.GetComponentsInChildren<Text>(true);
             if (legacyTexts != null)
             {
@@ -2053,7 +1939,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -2095,14 +1981,11 @@ public static class MainMenuMultiplayerEntryPatch
         Button btn = go.GetComponent<Button>();
         btn.onClick.RemoveAllListeners();
 
-        // 仅套用样式，剥离可能会干扰的本地化组件
         TryStripLocalizationComponents(go);
 
-        // 设置文本与大小
         TrySetButtonText(btn, labelText);
         TryScaleButtonText(btn, panelScale);
 
-        // 添加并配置 LayoutElement，这样 LayoutGroup 才能获取正确的缩放后尺寸，防止布局坍塌/重叠
         var le = go.GetComponent<LayoutElement>() ?? go.AddComponent<LayoutElement>();
         le.preferredHeight = 58f * panelScale;
         le.preferredWidth = -1f;
@@ -2134,7 +2017,6 @@ public static class MainMenuMultiplayerEntryPatch
         var rowRt = row.AddComponent<RectTransform>();
         rowRt.sizeDelta = new Vector2(400f * panelScale, 42f * panelScale);
 
-        // 添加 LayoutElement，防止被 parent 的 VerticalLayoutGroup 压扁为 0 像素高度
         var le = row.AddComponent<LayoutElement>();
         le.preferredHeight = 42f * panelScale;
         le.preferredWidth = 400f * panelScale;
@@ -2147,7 +2029,6 @@ public static class MainMenuMultiplayerEntryPatch
         layout.childForceExpandHeight = false;
         layout.spacing = 15f * panelScale;
 
-        // Label
         GameObject labelGo = new GameObject("Label");
         labelGo.transform.SetParent(row.transform, false);
         var labelRt = labelGo.AddComponent<RectTransform>();
@@ -2156,7 +2037,7 @@ public static class MainMenuMultiplayerEntryPatch
         var labelTextComp = labelGo.AddComponent<TextMeshProUGUI>();
         labelTextComp.text = labelText;
         labelTextComp.alignment = TextAlignmentOptions.MidlineRight;
-        labelTextComp.color = new Color(0.86f, 0.73f, 0.34f, 1f); // Gold color for label
+        labelTextComp.color = new Color(0.86f, 0.73f, 0.34f, 1f);
         labelTextComp.fontSize = 18f * panelScale;
         labelTextComp.raycastTarget = false;
         if (_defaultFont != null)
@@ -2164,9 +2045,8 @@ public static class MainMenuMultiplayerEntryPatch
             labelTextComp.font = _defaultFont;
         }
 
-        // Input Field (Pass panelScale to scale font size)
         inputField = CreateInputField(row.transform, templateButton, "InputField", placeholderText, defaultVal, 240f * panelScale, 40f * panelScale, panelScale);
-        
+
         return row;
     }
 
@@ -2177,31 +2057,28 @@ public static class MainMenuMultiplayerEntryPatch
         var rt = go.AddComponent<RectTransform>();
         rt.sizeDelta = new Vector2(width, height);
 
-        // Background image
         var img = go.AddComponent<Image>();
         if (templateButton != null && templateButton.targetGraphic is Image templateImg)
         {
             img.sprite = templateImg.sprite;
             img.type = templateImg.type;
-            img.color = new Color(0.08f, 0.08f, 0.08f, 0.85f); // Make input field darker
+            img.color = new Color(0.08f, 0.08f, 0.08f, 0.85f);
         }
         else
         {
             img.color = new Color(0.08f, 0.08f, 0.08f, 0.85f);
         }
 
-        // TextArea (Viewport)
         GameObject textArea = new GameObject("TextArea");
         textArea.transform.SetParent(go.transform, false);
         var textAreaRt = textArea.AddComponent<RectTransform>();
         textAreaRt.anchorMin = Vector2.zero;
         textAreaRt.anchorMax = Vector2.one;
-        // Adjust padding offset based on scale for correct vertical centering
+
         textAreaRt.offsetMin = new Vector2(14f * panelScale, 2f * panelScale);
         textAreaRt.offsetMax = new Vector2(-14f * panelScale, -2f * panelScale);
         textArea.AddComponent<RectMask2D>();
 
-        // Placeholder Text
         GameObject placeholderGo = new GameObject("Placeholder");
         placeholderGo.transform.SetParent(textArea.transform, false);
         var placeholderRt = placeholderGo.AddComponent<RectTransform>();
@@ -2209,7 +2086,7 @@ public static class MainMenuMultiplayerEntryPatch
         placeholderRt.anchorMax = Vector2.one;
         placeholderRt.offsetMin = Vector2.zero;
         placeholderRt.offsetMax = Vector2.zero;
-        
+
         var placeholderTmp = placeholderGo.AddComponent<TextMeshProUGUI>();
         placeholderTmp.text = placeholderText;
         placeholderTmp.alignment = TextAlignmentOptions.MidlineLeft;
@@ -2221,7 +2098,6 @@ public static class MainMenuMultiplayerEntryPatch
             placeholderTmp.font = _defaultFont;
         }
 
-        // Input Text
         GameObject textGo = new GameObject("Text");
         textGo.transform.SetParent(textArea.transform, false);
         var textRt = textGo.AddComponent<RectTransform>();
@@ -2229,7 +2105,7 @@ public static class MainMenuMultiplayerEntryPatch
         textRt.anchorMax = Vector2.one;
         textRt.offsetMin = Vector2.zero;
         textRt.offsetMax = Vector2.zero;
-        
+
         var textTmp = textGo.AddComponent<TextMeshProUGUI>();
         textTmp.text = defaultText;
         textTmp.alignment = TextAlignmentOptions.MidlineLeft;
@@ -2241,7 +2117,6 @@ public static class MainMenuMultiplayerEntryPatch
             textTmp.font = _defaultFont;
         }
 
-        // Add InputField component
         var inputField = go.AddComponent<TMP_InputField>();
         inputField.textViewport = textAreaRt;
         inputField.textComponent = textTmp;
@@ -2254,7 +2129,6 @@ public static class MainMenuMultiplayerEntryPatch
 
         return inputField;
     }
-
 
     private static TMP_FontAsset FindDefaultFont(Transform any)
     {
@@ -2292,20 +2166,12 @@ public static class MainMenuMultiplayerEntryPatch
         return false;
     }
 
-    /// <summary>
-    /// 已处于联机状态时：直接弹出“房间玩家列表”独立界面（内含断开按钮），
-    /// 列出当前房间内所有玩家（包括房主），不再使用 MessageDialog 弹窗。
-    /// </summary>
-    /// <param name="client">网络客户端。</param>
-    private static void ShowConnectedDialog(INetworkClient client)
+        private static void ShowConnectedDialog(INetworkClient client)
     {
         ShowRoomPlayerListOverlay();
     }
 
-    /// <summary>
-    /// 加入服务器确认弹窗（显示将连接的地址与端口）。
-    /// </summary>
-    private static void ShowJoinConfirmDialog()
+        private static void ShowJoinConfirmDialog()
     {
         ConfigManager config = TryGetConfig();
         string ip = config?.ServerIP?.Value ?? "127.0.0.1";
@@ -2315,10 +2181,6 @@ public static class MainMenuMultiplayerEntryPatch
             port = 7777;
         }
 
-        // 如果存在本地存档，则提供重连继续流程：
-        // 1) 先建立连接
-        // 2) 再恢复本地存档
-        // 3) 向房主请求完整快照并做追赶（mid-game join）
         GameRunSaveData save = null;
         try
         {
@@ -2360,13 +2222,7 @@ public static class MainMenuMultiplayerEntryPatch
 
     #region 房间玩家列表面板（独立界面，非 MessageDialog 弹窗）
 
-    /// <summary>
-    /// 显示“房间玩家列表”独立界面。点击“做房主/加入房主”并连接成功后调用，
-    /// 列出当前房间内所有玩家（包括房主），并在玩家加入/离开时自动刷新。
-    /// 风格与“多人游戏入口”遮罩面板一致：全屏半透明遮罩 + 中央自建面板框 + 标题 + 列表 + 按钮，
-    /// 不使用 MessageDialog 预制体。
-    /// </summary>
-    private static void ShowRoomPlayerListOverlay()
+        private static void ShowRoomPlayerListOverlay()
     {
         if (!UiManager.IsInitialized)
         {
@@ -2400,7 +2256,7 @@ public static class MainMenuMultiplayerEntryPatch
             }
             catch
             {
-                // ignored
+
             }
         }
         catch (Exception ex)
@@ -2409,10 +2265,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
     }
 
-    /// <summary>
-    /// 获取一个可用于克隆样式的按钮模板（优先复用已注入的“多人游戏”按钮，否则从主菜单面板子节点取）。
-    /// </summary>
-    private static Button TryGetButtonTemplate()
+        private static Button TryGetButtonTemplate()
     {
         try
         {
@@ -2438,15 +2291,12 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+
         }
         return null;
     }
 
-    /// <summary>
-    /// 构建（或复用）房间玩家列表面板。完全自建 GameObject，不依赖 MessageDialog 预制体。
-    /// </summary>
-    private static void EnsureRoomListOverlay(Transform parent, Button template)
+        private static void EnsureRoomListOverlay(Transform parent, Button template)
     {
         if (_roomListRoot != null)
         {
@@ -2461,7 +2311,6 @@ public static class MainMenuMultiplayerEntryPatch
         {
             _roomListFont = _defaultFont ?? FindDefaultFont(parent);
 
-            // root：全屏半透明遮罩。
             GameObject root = new GameObject(RoomListRootName);
             root.transform.SetParent(parent, false);
             root.transform.SetAsLastSibling();
@@ -2482,7 +2331,6 @@ public static class MainMenuMultiplayerEntryPatch
             rootGroup.interactable = false;
             rootGroup.blocksRaycasts = true;
 
-            // 自适应缩放，保证面板不超出画布。
             float panelScale = 2.2f;
             try
             {
@@ -2502,7 +2350,6 @@ public static class MainMenuMultiplayerEntryPatch
             }
             _roomListPanelScale = panelScale;
 
-            // frame：中央面板，自建背景框。
             GameObject frame = new GameObject(RoomListRootName + "_Frame");
             frame.transform.SetParent(root.transform, false);
             var frameRect = frame.AddComponent<RectTransform>();
@@ -2517,7 +2364,6 @@ public static class MainMenuMultiplayerEntryPatch
             frameBg.color = new Color(0.10f, 0.09f, 0.14f, 0.96f);
             frameBg.raycastTarget = true;
 
-            // 金色描边，呼应游戏 UI 风格。
             try
             {
                 var outline = frame.AddComponent<Outline>();
@@ -2526,15 +2372,13 @@ public static class MainMenuMultiplayerEntryPatch
             }
             catch
             {
-                // ignored
+
             }
 
-            // 顶部金色分隔线（标题下方）。
             CreateHorizontalRule(frame.transform, RoomListRootName + "_TopRule", 1f, -88f * panelScale, 2f * panelScale, new Color(0.78f, 0.63f, 0.25f, 0.9f));
-            // 底部分隔线（按钮区上方）。
+
             CreateHorizontalRule(frame.transform, RoomListRootName + "_BottomRule", 0f, 70f * panelScale, 2f * panelScale, new Color(0.78f, 0.63f, 0.25f, 0.6f));
 
-            // 标题。
             GameObject titleGo = new GameObject("Title");
             titleGo.transform.SetParent(frame.transform, false);
             var titleRt = titleGo.AddComponent<RectTransform>();
@@ -2551,7 +2395,6 @@ public static class MainMenuMultiplayerEntryPatch
             title.raycastTarget = false;
             if (_roomListFont != null) title.font = _roomListFont;
 
-            // 副标题：显示玩家数量 / 空状态提示。
             GameObject subGo = new GameObject("Subtitle");
             subGo.transform.SetParent(frame.transform, false);
             var subRt = subGo.AddComponent<RectTransform>();
@@ -2567,7 +2410,6 @@ public static class MainMenuMultiplayerEntryPatch
             _roomListEmptyText.raycastTarget = false;
             if (_roomListFont != null) _roomListEmptyText.font = _roomListFont;
 
-            // ScrollRect 列表区。
             GameObject scrollGo = new GameObject("PlayerScroll");
             scrollGo.transform.SetParent(frame.transform, false);
             var scrollRt = scrollGo.AddComponent<RectTransform>();
@@ -2620,7 +2462,6 @@ public static class MainMenuMultiplayerEntryPatch
             scrollRect.content = contentRt;
             _roomListContainer = contentRt;
 
-            // 底部按钮区：四等分居中排布，使用纯文字按钮与悬浮/点击缩放
             GameObject buttonsGo = new GameObject("Buttons");
             buttonsGo.transform.SetParent(frame.transform, false);
             var buttonsRt = buttonsGo.AddComponent<RectTransform>();
@@ -2649,10 +2490,8 @@ public static class MainMenuMultiplayerEntryPatch
                 HideRoomListOverlay();
             });
 
-            // 就绪/开始按钮
             _readyOrStartButton = CreateTextActionButton(buttonsGo.transform, RoomListRootName + "_ReadyStartBtn", "准备就绪", panelScale, OnActionBtnClicked);
 
-            // 入场动画。
             try
             {
                 _roomListAnimator = root.AddComponent<PanelAnimator>();
@@ -2660,7 +2499,7 @@ public static class MainMenuMultiplayerEntryPatch
             }
             catch
             {
-                // ignored
+
             }
         }
         catch (Exception ex)
@@ -2671,10 +2510,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
     }
 
-    /// <summary>
-    /// 构建纯文本动作按钮（带悬浮放大与点击反馈动画，类似 TradePanel 可点击文本风格，无多余特效背景）
-    /// </summary>
-    private static Button CreateTextActionButton(Transform parent, string name, string labelText, float panelScale, Action onClick)
+        private static Button CreateTextActionButton(Transform parent, string name, string labelText, float panelScale, Action onClick)
     {
         GameObject go = new GameObject(name);
         go.transform.SetParent(parent, false);
@@ -2692,7 +2528,7 @@ public static class MainMenuMultiplayerEntryPatch
         tmp.text = labelText;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.fontSize = Mathf.Clamp(18f * panelScale, 15f, 44f);
-        tmp.color = new Color(0.96f, 0.90f, 0.74f, 1f); // 游戏经典暖金/米白高亮
+        tmp.color = new Color(0.96f, 0.90f, 0.74f, 1f);
         tmp.raycastTarget = true;
         tmp.enableWordWrapping = false;
         if (_roomListFont != null)
@@ -2710,7 +2546,7 @@ public static class MainMenuMultiplayerEntryPatch
 
         var colors = btn.colors;
         colors.normalColor = new Color(0.96f, 0.90f, 0.74f, 1f);
-        colors.highlightedColor = new Color(1f, 1f, 1f, 1f); // 悬浮高亮纯白
+        colors.highlightedColor = new Color(1f, 1f, 1f, 1f);
         colors.pressedColor = new Color(0.85f, 0.78f, 0.55f, 1f);
         colors.disabledColor = new Color(0.5f, 0.5f, 0.5f, 0.5f);
         colors.fadeDuration = 0.08f;
@@ -2816,18 +2652,13 @@ public static class MainMenuMultiplayerEntryPatch
         }
     }
 
-    /// <summary>
-    /// 房主开局后，客户端收到 OnGameStart 时自动进入游戏。
-    /// 隐藏联机大厅面板并模拟点击 StartGamePanel 确认按钮。
-    /// </summary>
-    public static void OnLobbyGameStartedReceived()
+        public static void OnLobbyGameStartedReceived()
     {
         try
         {
-            // 隐藏联机大厅面板
+
             HideRoomListOverlay();
 
-            // 在主线程延迟一帧后模拟点击 StartGamePanel 确认按钮
             Singleton<GameMaster>.Instance.StartCoroutine(DelayedStartGame());
         }
         catch (Exception ex)
@@ -2838,7 +2669,7 @@ public static class MainMenuMultiplayerEntryPatch
 
     private static IEnumerator DelayedStartGame()
     {
-        yield return null; // 等待一帧确保面板已隐藏
+        yield return null;
         _isSilentStarting = true;
         try
         {
@@ -2857,7 +2688,7 @@ public static class MainMenuMultiplayerEntryPatch
                     Plugin.Logger?.LogWarning("[MainMenuMultiplayerEntry] 房主未打开 StartGamePanel，无法自动进入游戏");
                     yield break;
                 }
-                // 房主：模拟点击确认角色按钮，走原版的难度与玉匣选择流程
+
                 Button confirmBtn = Traverse.Create(panel).Field("characterConfirmButton").GetValue<Button>();
                 if (confirmBtn != null)
                 {
@@ -2867,7 +2698,7 @@ public static class MainMenuMultiplayerEntryPatch
             }
             else
             {
-                // 客机：直接静默启动游戏，跳过任何难度/玉匣残留面板
+
                 Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 客机直接静默开局中...");
 
                 PlayerUnit playerUnit = null;
@@ -2887,7 +2718,7 @@ public static class MainMenuMultiplayerEntryPatch
                 {
                     var player = traverse.Field("_player").GetValue<PlayerUnit>();
                     var selectedType = traverse.Field("_selectedType").GetValue<int>();
-                    
+
                     exhibit = Traverse.Create(typeCandidate).Field("Exhibit").GetValue<LBoL.Core.Exhibit>();
                     deck = Traverse.Create(typeCandidate).Field("Deck").GetValue<IEnumerable<LBoL.Core.Cards.Card>>();
                     us = Traverse.Create(typeCandidate).Field("Us").GetValue<LBoL.Core.Units.UltimateSkill>();
@@ -2906,10 +2737,9 @@ public static class MainMenuMultiplayerEntryPatch
                 else
                 {
                     Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 未找到 StartGamePanel 或角色尚未就绪，使用网络同步的角色及默认参数启动...");
-                    
-                    // 1. 获取在大厅里同步好的客机本地玩家角色
+
                     string selfId = NetworkIdentityTracker.GetSelfPlayerId();
-                    string charaId = "Reimu"; // 默认 Reimu 兜底
+                    string charaId = "Reimu";
                     INetworkManager netManager = ServiceProvider?.GetService<INetworkManager>();
                     if (netManager != null && !string.IsNullOrEmpty(selfId))
                     {
@@ -2920,11 +2750,9 @@ public static class MainMenuMultiplayerEntryPatch
                         }
                     }
 
-                    // 2. 反射创建对应的 PlayerUnit
                     Type charaType = Type.GetType($"LBoL.Core.Units.{charaId}") ?? typeof(LBoL.EntityLib.PlayerUnits.Reimu);
                     playerUnit = LBoL.Core.Library.CreatePlayerUnit(charaType);
 
-                    // 3. 根据 PlayerUnit 的 Config 数据创建默认的 UltimateSkill, Exhibit 和 Deck
                     var config = playerUnit.Config;
                     if (config != null)
                     {
@@ -2933,7 +2761,6 @@ public static class MainMenuMultiplayerEntryPatch
                         deck = config.DeckA.Select(cardId => LBoL.Core.Library.CreateCard(cardId)).ToArray();
                     }
 
-                    // 4. 补全默认的 stages 与 debutAdventure
                     stages = new LBoL.Core.Stage[]
                     {
                         LBoL.Core.Library.CreateStage<LBoL.EntityLib.Stages.NormalStages.BambooForest>(),
@@ -2944,8 +2771,6 @@ public static class MainMenuMultiplayerEntryPatch
                     debutAdventure = typeof(LBoL.EntityLib.Adventures.Debut);
                 }
 
-                // --- null 补全：if 分支从 panel 反射获取的字段可能为 null（客机未走完整选角流程时）,
-                //     确保传给 StartGame 的关键参数都不为 null，避免 GameRunController..ctor 空引用崩溃 ---
                 if (playerUnit != null)
                 {
                     var config = playerUnit.Config;
@@ -2985,13 +2810,11 @@ public static class MainMenuMultiplayerEntryPatch
                     Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] debutAdventure 为 null，已使用默认 Debut 补全");
                 }
 
-                // 统一为创建的 playerUnit 设置 Us 大招，避免 LBoL 框架空指针崩溃
                 if (playerUnit != null && us != null)
                 {
                     playerUnit.SetUs(us);
                 }
 
-                // ---- 优先同步房主（主机）的游戏启动参数（包括难度、难题、游戏模式、玉匣、关卡及首发事件） ----
                 LBoL.Core.GameDifficulty difficulty = LBoL.Core.GameDifficulty.Normal;
                 LBoL.Core.PuzzleFlag puzzles = LBoL.Core.PuzzleFlag.None;
                 LBoL.Core.GameMode finalGameMode = gameModeIsOn ? LBoL.Core.GameMode.StoryMode : LBoL.Core.GameMode.FreeMode;
@@ -3018,7 +2841,6 @@ public static class MainMenuMultiplayerEntryPatch
                     finalGameMode = hostMode;
                     finalShowRandom = hostShowRandom;
 
-                    // 1. 同步房主的玉匣选择
                     if (hostJadeBoxIds != null && hostJadeBoxIds.Count > 0)
                     {
                         var jbList = new List<LBoL.Core.JadeBox>();
@@ -3040,7 +2862,6 @@ public static class MainMenuMultiplayerEntryPatch
                         jadeBoxes = jbList;
                     }
 
-                    // 2. 同步房主的关卡链，防止地图关卡类型不一致
                     if (hostStageNames != null && hostStageNames.Count > 0)
                     {
                         var stageList = new List<LBoL.Core.Stage>();
@@ -3048,7 +2869,7 @@ public static class MainMenuMultiplayerEntryPatch
                         {
                             try
                             {
-                                Type stageType = Type.GetType($"LBoL.EntityLib.Stages.NormalStages.{name}") 
+                                Type stageType = Type.GetType($"LBoL.EntityLib.Stages.NormalStages.{name}")
                                               ?? Type.GetType($"LBoL.Core.Stages.{name}");
                                 if (stageType != null)
                                 {
@@ -3080,7 +2901,6 @@ public static class MainMenuMultiplayerEntryPatch
                         }
                     }
 
-                    // 3. 同步房主的首发事件
                     if (!string.IsNullOrWhiteSpace(hostDebutName))
                     {
                         try
@@ -3101,23 +2921,21 @@ public static class MainMenuMultiplayerEntryPatch
                     Plugin.Logger?.LogInfo($"[MainMenuMultiplayerEntry] 已成功同步房主开局配置: Difficulty={difficulty}, Puzzles={puzzles}, Mode={finalGameMode}, JadeBoxCount={hostJadeBoxIds?.Count}");
                 }
 
-                // 静默启动游戏
                 GameMaster.StartGame(
-                    difficulty, 
-                    puzzles, 
-                    playerUnit, 
-                    playerType, 
-                    exhibit, 
-                    default(int?), 
-                    deck, 
-                    stages, 
-                    debutAdventure, 
-                    jadeBoxes, 
-                    finalGameMode, 
+                    difficulty,
+                    puzzles,
+                    playerUnit,
+                    playerType,
+                    exhibit,
+                    default(int?),
+                    deck,
+                    stages,
+                    debutAdventure,
+                    jadeBoxes,
+                    finalGameMode,
                     finalShowRandom
                 );
 
-                // 完全关闭 StartGamePanel（如果存在）
                 if (panel != null)
                 {
                     panel.Hide();
@@ -3135,11 +2953,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
     }
 
-    /// <summary>
-    /// 根据 NetworkManager.GetAllPlayers() 刷新房间玩家列表。
-    /// 房主条目带 ★ 标记并置顶，自身条目带（你）标记。
-    /// </summary>
-    internal static void RefreshRoomList()
+        internal static void RefreshRoomList()
     {
         if (_roomListRoot == null || _roomListContainer == null)
         {
@@ -3168,7 +2982,7 @@ public static class MainMenuMultiplayerEntryPatch
 
                     if (!isConnected && !string.Equals(p.playerId, selfId, StringComparison.Ordinal))
                     {
-                        // 过滤掉断开连接的离线玩家，避免大厅列表残留和虚假绿色就绪状态
+
                         continue;
                     }
 
@@ -3179,13 +2993,11 @@ public static class MainMenuMultiplayerEntryPatch
                 }
             }
 
-            // 兜底：NetworkManager 尚未注册玩家，但身份追踪器已有 selfId 时，至少展示自己。
             if (entries.Count == 0 && !string.IsNullOrWhiteSpace(selfId))
             {
                 entries.Add((selfId, ResolveSelfDisplayName(), selfIsHost, null, false));
             }
 
-            // 排序：房主置顶，本人次之，其余按 id 稳定排序。
             entries.Sort((a, b) =>
             {
                 int ha = a.IsHost ? 0 : 1;
@@ -3197,7 +3009,6 @@ public static class MainMenuMultiplayerEntryPatch
                 return string.Compare(a.Id, b.Id, StringComparison.Ordinal);
             });
 
-            // 副标题：玩家数量 / 空状态。
             if (_roomListEmptyText != null)
             {
                 _roomListEmptyText.text = entries.Count == 0
@@ -3220,7 +3031,6 @@ public static class MainMenuMultiplayerEntryPatch
                 }
             }
 
-            // 更新底部就绪/开始按钮
             UpdateActionBtn(selfIsHost, selfId);
         }
         catch (Exception ex)
@@ -3229,10 +3039,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
     }
 
-    /// <summary>
-    /// 更新底部就绪/开始按钮的文案和可交互状态。
-    /// </summary>
-    private static void UpdateActionBtn(bool selfIsHost, string selfId)
+        private static void UpdateActionBtn(bool selfIsHost, string selfId)
     {
         if (_readyOrStartButton == null) return;
 
@@ -3240,7 +3047,7 @@ public static class MainMenuMultiplayerEntryPatch
         {
             if (selfIsHost)
             {
-                // 房主：显示"开始游戏"，全员就绪时可交互
+
                 bool allReady = AreAllClientsReady(selfId);
                 _readyOrStartButton.interactable = allReady;
                 var label = _readyOrStartButton.GetComponentInChildren<TextMeshProUGUI>();
@@ -3248,7 +3055,7 @@ public static class MainMenuMultiplayerEntryPatch
             }
             else
             {
-                // 客机：显示"准备就绪"/"取消准备"
+
                 bool isReady = _playerReadyStates.TryGetValue(selfId ?? "", out var rdy) && rdy;
                 _readyOrStartButton.interactable = true;
                 var label = _readyOrStartButton.GetComponentInChildren<TextMeshProUGUI>();
@@ -3257,14 +3064,11 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
-    /// <summary>
-    /// 判断所有客机（非房主玩家）是否都已准备就绪。
-    /// </summary>
-    private static bool AreAllClientsReady(string selfId)
+        private static bool AreAllClientsReady(string selfId)
     {
         INetworkManager manager = ServiceProvider?.GetService<INetworkManager>();
         if (manager == null) return false;
@@ -3272,17 +3076,14 @@ public static class MainMenuMultiplayerEntryPatch
         foreach (INetworkPlayer p in manager.GetAllPlayers() ?? Enumerable.Empty<INetworkPlayer>())
         {
             if (p == null || string.IsNullOrWhiteSpace(p.playerId)) continue;
-            if (p.IsLobbyOwner()) continue; // 房主不需要准备
+            if (p.IsLobbyOwner()) continue;
             if (!_playerReadyStates.TryGetValue(p.playerId, out var rdy) || !rdy)
                 return false;
         }
         return true;
     }
 
-    /// <summary>
-    /// 底部就绪/开始按钮点击逻辑。
-    /// </summary>
-    private static void OnActionBtnClicked()
+        private static void OnActionBtnClicked()
     {
         try
         {
@@ -3292,7 +3093,7 @@ public static class MainMenuMultiplayerEntryPatch
 
             if (selfIsHost)
             {
-                // 房主：开始游戏
+
                 if (AreAllClientsReady(selfId))
                 {
                     Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 房主开始游戏");
@@ -3306,7 +3107,7 @@ public static class MainMenuMultiplayerEntryPatch
             }
             else
             {
-                // 客机：切换准备状态
+
                 bool isReady = _playerReadyStates.TryGetValue(selfId ?? "", out var rdy) && rdy;
                 bool newReady = !isReady;
                 _playerReadyStates[selfId ?? ""] = newReady;
@@ -3331,26 +3132,23 @@ public static class MainMenuMultiplayerEntryPatch
         GameObject go = new GameObject("RoomPlayer");
         go.transform.SetParent(container, false);
 
-        // 背景：使用深色 Slate，更加高级、透明感
         var img = go.AddComponent<Image>();
         img.color = new Color(0.12f, 0.11f, 0.15f, 0.85f);
         img.raycastTarget = false;
 
-        // 边框描边：根据身份显示不同颜色
         try
         {
             var borderOutline = go.AddComponent<Outline>();
             borderOutline.effectColor = isHost
-                ? new Color(0.95f, 0.78f, 0.25f, 0.5f) // 金色半透明
-                : (isSelf ? new Color(0.25f, 0.65f, 0.95f, 0.5f) : new Color(0.6f, 0.6f, 0.6f, 0.25f)); // 天蓝 / 银灰
+                ? new Color(0.95f, 0.78f, 0.25f, 0.5f)
+                : (isSelf ? new Color(0.25f, 0.65f, 0.95f, 0.5f) : new Color(0.6f, 0.6f, 0.6f, 0.25f));
             borderOutline.effectDistance = new Vector2(1.5f * panelScale, 1.5f * panelScale);
         }
         catch
         {
-            // ignored
+
         }
 
-        // 左侧特色彩色指示条
         GameObject leftStripe = new GameObject("LeftStripe");
         leftStripe.transform.SetParent(go.transform, false);
         var stripeRt = leftStripe.AddComponent<RectTransform>();
@@ -3361,21 +3159,20 @@ public static class MainMenuMultiplayerEntryPatch
         stripeRt.anchoredPosition = Vector2.zero;
         var stripeImg = leftStripe.AddComponent<Image>();
         stripeImg.color = isHost
-            ? new Color(0.95f, 0.78f, 0.25f, 1f) // 金色
-            : (isSelf ? new Color(0.25f, 0.65f, 0.95f, 1f) : new Color(0.75f, 0.75f, 0.75f, 1f)); // 天蓝 / 银灰
+            ? new Color(0.95f, 0.78f, 0.25f, 1f)
+            : (isSelf ? new Color(0.25f, 0.65f, 0.95f, 1f) : new Color(0.75f, 0.75f, 0.75f, 1f));
         stripeImg.raycastTarget = false;
 
         var le = go.AddComponent<LayoutElement>();
         le.preferredHeight = 50f * panelScale;
         le.flexibleWidth = 1f;
 
-        // 角色头像（使用圆形遮罩与金色/白色圆形边框）
         Sprite avatar = null;
         if (!string.IsNullOrWhiteSpace(charaId))
         {
             avatar = OtherPlayersOverlayPatch.TryGetAvatarSprite(charaId);
         }
-        // 如果头像加载失败或为空，尝试 fallback 到 Koishi
+
         if (avatar == null)
         {
             avatar = OtherPlayersOverlayPatch.TryGetAvatarSprite("Koishi");
@@ -3383,7 +3180,7 @@ public static class MainMenuMultiplayerEntryPatch
 
         if (avatar != null)
         {
-            // 头像根容器
+
             GameObject avatarRoot = new GameObject("AvatarRoot");
             avatarRoot.transform.SetParent(go.transform, false);
             var avatarRootRt = avatarRoot.AddComponent<RectTransform>();
@@ -3393,7 +3190,6 @@ public static class MainMenuMultiplayerEntryPatch
             avatarRootRt.sizeDelta = new Vector2(38f * panelScale, 38f * panelScale);
             avatarRootRt.anchoredPosition = new Vector2(35f * panelScale, 0f);
 
-            // 圆形遮罩
             GameObject maskGo = new GameObject("AvatarMask");
             maskGo.transform.SetParent(avatarRoot.transform, false);
             var maskRt = maskGo.AddComponent<RectTransform>();
@@ -3412,7 +3208,6 @@ public static class MainMenuMultiplayerEntryPatch
             var mask = maskGo.AddComponent<Mask>();
             mask.showMaskGraphic = false;
 
-            // 头像 Image
             GameObject avatarGo = new GameObject("AvatarImage");
             avatarGo.transform.SetParent(maskGo.transform, false);
             var avatarRt = avatarGo.AddComponent<RectTransform>();
@@ -3427,7 +3222,6 @@ public static class MainMenuMultiplayerEntryPatch
             avatarImg.raycastTarget = false;
             avatarImg.preserveAspect = true;
 
-            // 圆形边框
             GameObject borderGo = new GameObject("Border");
             borderGo.transform.SetParent(avatarRoot.transform, false);
             var borderRt = borderGo.AddComponent<RectTransform>();
@@ -3440,21 +3234,20 @@ public static class MainMenuMultiplayerEntryPatch
             var borderImg = borderGo.AddComponent<Image>();
             borderImg.sprite = OtherPlayersOverlayPatch.GetCircleBorderSprite();
             borderImg.color = isHost
-                ? new Color(0.95f, 0.78f, 0.25f, 1f) // 金色
-                : (isSelf ? new Color(0.25f, 0.65f, 0.95f, 1f) : Color.white); // 天蓝 / 白色
+                ? new Color(0.95f, 0.78f, 0.25f, 1f)
+                : (isSelf ? new Color(0.25f, 0.65f, 0.95f, 1f) : Color.white);
             borderImg.raycastTarget = false;
             borderImg.preserveAspect = true;
         }
 
-        // 玩家名 + 角色名 Label
         GameObject textGo = new GameObject("Label");
         textGo.transform.SetParent(go.transform, false);
         var rt = textGo.AddComponent<RectTransform>();
         rt.anchorMin = Vector2.zero;
         rt.anchorMax = Vector2.one;
-        // 如果有头像，缩进 65f * panelScale；否则缩进 20f * panelScale
+
         rt.offsetMin = new Vector2((avatar != null ? 65f : 20f) * panelScale, 0f);
-        // 右侧为状态标签预留 140f * panelScale 的宽度
+
         rt.offsetMax = new Vector2(-140f * panelScale, 0f);
 
         var tmp = textGo.AddComponent<TextMeshProUGUI>();
@@ -3477,7 +3270,6 @@ public static class MainMenuMultiplayerEntryPatch
         tmp.richText = true;
         if (_roomListFont != null) tmp.font = _roomListFont;
 
-        // 右侧状态文本 (Status Label)
         GameObject statusGo = new GameObject("StatusLabel");
         statusGo.transform.SetParent(go.transform, false);
         var statusRt = statusGo.AddComponent<RectTransform>();
@@ -3506,10 +3298,7 @@ public static class MainMenuMultiplayerEntryPatch
         if (_roomListFont != null) statusTmp.font = _roomListFont;
     }
 
-    /// <summary>
-    /// 通过 Library.TryCreatePlayerUnit 解析角色中文名。
-    /// </summary>
-    private static string ResolveCharacterDisplayName(string charaId)
+        private static string ResolveCharacterDisplayName(string charaId)
     {
         if (string.IsNullOrWhiteSpace(charaId)) return null;
         try
@@ -3520,7 +3309,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+
         }
         return null;
     }
@@ -3539,7 +3328,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+
         }
         return NetworkIdentityTracker.GetSelfPlayerId() ?? "我";
     }
@@ -3572,7 +3361,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -3589,7 +3378,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+
         }
         _roomListSubscribedClient = null;
         _roomListEventSubscribed = false;
@@ -3603,7 +3392,7 @@ public static class MainMenuMultiplayerEntryPatch
             || eventType == NetworkMessageTypes.PlayerLeft
             || eventType == NetworkMessageTypes.HostChanged)
         {
-            // 从 Welcome / PlayerListUpdate 中解析玩家准备状态
+
             if (eventType == NetworkMessageTypes.Welcome || eventType == NetworkMessageTypes.PlayerListUpdate)
             {
                 ParseReadyStatesFromPayload(payload);
@@ -3612,22 +3401,17 @@ public static class MainMenuMultiplayerEntryPatch
         }
     }
 
-    /// <summary>
-    /// 从 Welcome / PlayerListUpdate 消息负载中解析每个玩家的准备状态。
-    /// </summary>
-    private static void ParseReadyStatesFromPayload(object payload)
+        private static void ParseReadyStatesFromPayload(object payload)
     {
         try
         {
-            // 客端收到的 payload 是 JSON 字符串，直接反序列化即可
+
             string json = payload as string;
             if (string.IsNullOrWhiteSpace(json)) return;
 
             JsonElement root = JsonSerializer.Deserialize<JsonElement>(json);
             if (root.ValueKind != JsonValueKind.Object) return;
 
-            // Welcome 消息：PlayerList 数组
-            // PlayerListUpdate 消息：Players 数组
             JsonElement playersElem = default;
             if (root.TryGetProperty("PlayerList", out var pl) && pl.ValueKind == JsonValueKind.Array)
                 playersElem = pl;
@@ -3649,7 +3433,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -3662,10 +3446,7 @@ public static class MainMenuMultiplayerEntryPatch
 
     #region 连接状态浮层
 
-    /// <summary>
-    /// 显示连接状态浮层（轻量，仅文字提示）。
-    /// </summary>
-    private static void ShowConnectionStatusOverlay(string initialText)
+        private static void ShowConnectionStatusOverlay(string initialText)
     {
         try
         {
@@ -3703,7 +3484,6 @@ public static class MainMenuMultiplayerEntryPatch
             rootGroup.interactable = false;
             rootGroup.blocksRaycasts = true;
 
-            // 小型居中面板。
             GameObject frame = new GameObject(ConnStatusRootName + "_Frame");
             frame.transform.SetParent(root.transform, false);
             var frameRect = frame.AddComponent<RectTransform>();
@@ -3725,10 +3505,9 @@ public static class MainMenuMultiplayerEntryPatch
             }
             catch
             {
-                // ignored
+
             }
 
-            // 状态文字。
             GameObject textGo = new GameObject("StatusText");
             textGo.transform.SetParent(frame.transform, false);
             var textRt = textGo.AddComponent<RectTransform>();
@@ -3753,7 +3532,7 @@ public static class MainMenuMultiplayerEntryPatch
             }
             catch
             {
-                // ignored
+
             }
         }
         catch (Exception ex)
@@ -3762,10 +3541,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
     }
 
-    /// <summary>
-    /// 更新连接状态文字。
-    /// </summary>
-    private static void UpdateConnectionStatusText(string text)
+        private static void UpdateConnectionStatusText(string text)
     {
         if (_connStatusText != null)
         {
@@ -3773,14 +3549,11 @@ public static class MainMenuMultiplayerEntryPatch
         }
     }
 
-    /// <summary>
-    /// 隐藏并销毁连接状态浮层。
-    /// </summary>
-    private static void HideConnectionStatusOverlay()
+        private static void HideConnectionStatusOverlay()
     {
         if (_connStatusRoot != null)
         {
-            try { _connStatusAnimator?.PlayClose(); } catch { /* ignored */ }
+            try { _connStatusAnimator?.PlayClose(); } catch {  }
             UnityEngine.Object.Destroy(_connStatusRoot);
         }
         _connStatusRoot = null;
@@ -3792,10 +3565,7 @@ public static class MainMenuMultiplayerEntryPatch
 
     #region 连接等待与房间列表弹出
 
-    /// <summary>
-    /// 等待联机连接建立后弹出房间玩家列表面板（仅在主菜单停留时使用）。
-    /// </summary>
-    private static IEnumerator CoWaitForConnectedThenShowRoomList(float timeoutSeconds = 8f)
+        private static IEnumerator CoWaitForConnectedThenShowRoomList(float timeoutSeconds = 8f)
     {
         INetworkClient client = TryGetNetworkClient();
         float start = Time.realtimeSinceStartup;
@@ -3852,10 +3622,7 @@ public static class MainMenuMultiplayerEntryPatch
         ShowRoomPlayerListOverlay();
     }
 
-    /// <summary>
-    /// 连接服务器并在连接成功后弹出房间玩家列表面板（仅用于停留主菜单的新游戏流程）。
-    /// </summary>
-    internal static void TryConnectToServerAndShowRoomList(string host, int port)
+        internal static void TryConnectToServerAndShowRoomList(string host, int port)
     {
         ShowConnectionStatusOverlay($"正在连接到 {host}:{port}…");
         bool started = TryConnectToServer(host, port);
@@ -3875,10 +3642,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
     }
 
-    /// <summary>
-    /// 启动本机服务器、连接并在连接成功后弹出房间玩家列表面板（仅用于停留主菜单的新游戏流程）。
-    /// </summary>
-    internal static void TryHostLocalServerAndConnectAndShowRoomList()
+        internal static void TryHostLocalServerAndConnectAndShowRoomList()
     {
         ShowConnectionStatusOverlay("正在启动本机服务器…");
         TryHostLocalServerAndConnect();
@@ -3897,10 +3661,7 @@ public static class MainMenuMultiplayerEntryPatch
 
     #region 连接与断开
 
-    /// <summary>
-    /// 尝试启动本机服务器并连接（Host 流程）。
-    /// </summary>
-    internal static void TryHostLocalServerAndConnect()
+        internal static void TryHostLocalServerAndConnect()
     {
         ConfigManager config = TryGetConfig();
         int port = config?.HostServerPort?.Value ?? 7777;
@@ -3913,7 +3674,7 @@ public static class MainMenuMultiplayerEntryPatch
 
         try
         {
-            // 若本机服务器未运行，则启动并开启轮询线程。
+
             if (!_localServerRunning)
             {
                 _localServer = new NetworkServer(port, maxConn, key, Plugin.Logger);
@@ -3938,7 +3699,6 @@ public static class MainMenuMultiplayerEntryPatch
             return;
         }
 
-        // 启动成功后连接本机。
         TryConnectToServer("127.0.0.1", port);
     }
 
@@ -3959,14 +3719,13 @@ public static class MainMenuMultiplayerEntryPatch
             return;
         }
 
-        // 等待连接建立后再 Restore（避免先进入局内导致联机状态晚于游戏流程）。
         try
         {
             Singleton<GameMaster>.Instance.StartCoroutine(CoWaitForConnectedThenRestore(save));
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -3988,7 +3747,7 @@ public static class MainMenuMultiplayerEntryPatch
             }
             catch
             {
-                // ignored
+
             }
 
             yield return null;
@@ -4037,12 +3796,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
     }
 
-    /// <summary>
-    /// 尝试连接到指定服务器（Join/Host 共用）。
-    /// </summary>
-    /// <param name="host">服务器地址。</param>
-    /// <param name="port">服务器端口。</param>
-    internal static bool TryConnectToServer(string host, int port)
+        internal static bool TryConnectToServer(string host, int port)
     {
         INetworkClient client = TryGetNetworkClient();
         if (client == null)
@@ -4058,17 +3812,15 @@ public static class MainMenuMultiplayerEntryPatch
             return false;
         }
 
-        // 确保客户端已启动（重复启动可能抛异常，因此做容错）。
         try
         {
             client.Start();
         }
         catch
         {
-            // 忽略：可能已启动。
+
         }
 
-        // 发起连接。
         try
         {
             client.ConnectToServer(host, port);
@@ -4105,7 +3857,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -4159,8 +3911,6 @@ public static class MainMenuMultiplayerEntryPatch
             yield break;
         }
 
-        // 等待握手消息（Welcome/PlayerListUpdate）到达，让 MidGameJoin 拿到 selfId/hostId。
-        // 这样可以避免刚连接成功就立刻 RequestJoin 失败。
         NetworkPlugin.Network.MidGameJoin.MidGameJoinManager mgrHandshake = null;
         try
         {
@@ -4184,7 +3934,7 @@ public static class MainMenuMultiplayerEntryPatch
             }
             catch
             {
-                // ignored
+
             }
 
             if (!string.IsNullOrWhiteSpace(selfId) && !string.IsNullOrWhiteSpace(hostId))
@@ -4195,7 +3945,6 @@ public static class MainMenuMultiplayerEntryPatch
             yield return null;
         }
 
-        // 1) 在主线程恢复本地存档
         try
         {
             Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 联机已连接，开始本地恢复存档。");
@@ -4215,7 +3964,6 @@ public static class MainMenuMultiplayerEntryPatch
             yield break;
         }
 
-        // 等到恢复后的 GameRun 真正创建完成，避免追赶流程误弹 StartGamePanel。
         float runStart = Time.realtimeSinceStartup;
         const float runTimeoutSeconds = 8f;
         while (Time.realtimeSinceStartup - runStart < runTimeoutSeconds)
@@ -4238,10 +3986,6 @@ public static class MainMenuMultiplayerEntryPatch
             yield return null;
         }
 
-        // 2) 向房主请求 FullSnapshot 并执行追赶。
-        // RoomId 当前没有暴露到 UI，因此先使用一个确定性的占位字符串。
-        // Host 和 joiner 必须使用同一个字符串。
-        // 另外还要等 hostId 通过 PlayerListUpdate 可用后，再发送 join 请求。
         yield return null;
         yield return null;
 
@@ -4264,7 +4008,7 @@ public static class MainMenuMultiplayerEntryPatch
             }
             catch
             {
-                // ignored
+
             }
 
             if (!string.IsNullOrWhiteSpace(selfId) && !string.IsNullOrWhiteSpace(hostId))
@@ -4285,7 +4029,7 @@ public static class MainMenuMultiplayerEntryPatch
             }
             catch
             {
-                // ignored
+
             }
 
             const string roomId = "default";
@@ -4315,22 +4059,18 @@ public static class MainMenuMultiplayerEntryPatch
                     }
                     catch
                     {
-                        // ignored
+
                     }
                 },
                 timeoutSeconds: 20);
         }
         catch
         {
-            // ignored
+
         }
     }
 
-    /// <summary>
-    /// 断开连接，并停止本机服务器轮询与实例。
-    /// </summary>
-    /// <param name="client">网络客户端。</param>
-    private static void Disconnect(INetworkClient client)
+        private static void Disconnect(INetworkClient client)
     {
         try
         {
@@ -4338,7 +4078,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // 忽略：断开失败不影响后续资源回收。
+
         }
 
         StopLocalServerLoop();
@@ -4352,7 +4092,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // 忽略：停止服务器失败时继续清理引用。
+
         }
         finally
         {
@@ -4365,20 +4105,16 @@ public static class MainMenuMultiplayerEntryPatch
 
     #region 本机服务器轮询线程
 
-    /// <summary>
-    /// 启动本机服务器事件轮询线程。
-    /// </summary>
-    private static void StartLocalServerLoop()
+        private static void StartLocalServerLoop()
     {
         try
         {
-            // 避免重复启动。
+
             StopLocalServerLoop();
 
             _localServerCts = new CancellationTokenSource();
             CancellationToken token = _localServerCts.Token;
 
-            // 轮询线程：周期性调用服务器 PollEvents。
             _localServerThread = new Thread(() =>
             {
                 while (!token.IsCancellationRequested)
@@ -4389,7 +4125,7 @@ public static class MainMenuMultiplayerEntryPatch
                     }
                     catch
                     {
-                        // 忽略：单次轮询失败不应终止线程。
+
                     }
 
                     Thread.Sleep(15);
@@ -4404,14 +4140,11 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // 忽略：启动轮询失败不应导致主菜单不可用。
+
         }
     }
 
-    /// <summary>
-    /// 停止本机服务器事件轮询线程并释放取消令牌。
-    /// </summary>
-    private static void StopLocalServerLoop()
+        private static void StopLocalServerLoop()
     {
         try
         {
@@ -4419,7 +4152,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // 忽略：取消失败继续进行 Join/Dispose。
+
         }
 
         try
@@ -4431,7 +4164,7 @@ public static class MainMenuMultiplayerEntryPatch
         }
         catch
         {
-            // 忽略：Join 失败不阻断清理。
+
         }
         finally
         {

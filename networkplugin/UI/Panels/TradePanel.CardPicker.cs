@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,7 +28,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 namespace NetworkPlugin.UI.Panels;
-// 卡牌选择器与报价预览
+
 public sealed partial class TradePanel
 {
 private void EnsureCardPickerOverlay()
@@ -351,8 +351,6 @@ private void EnsureCardPickerOverlay()
         RebuildOfferPreviewPanel(_remoteOfferPreviewPanel, _player2OfferedCards);
     }
 
-
-
     private void RebuildOfferPreviewPanel(OfferPreviewPanelTag panel, IEnumerable<Card> cards)
     {
         if (panel?.CardLayout is null || _offerPreviewCardTemplate is null)
@@ -451,7 +449,6 @@ private void EnsureCardPickerOverlay()
         GameRunController run = ActiveGameRun;
         Plugin.Logger?.LogInfo($"[TradePanel] RebuildCardPickerList enter: tradeId={_tradeId ?? "<null>"}, activeGameRun={(run is not null)}, deckCount={(run?.BaseDeck?.Count ?? 0)}, offeredLocal={_player1OfferedCards.Count}, maxSlots={_maxTradeSlots}, pickerActive={_cardPickerRoot.activeSelf}, canEdit={CanEditOffer()}");
 
-        // 网络交易下仅允许编辑本地报价。
         if (!CanEditOffer())
         {
             Plugin.Logger?.LogInfo($"[TradePanel] RebuildCardPickerList blocked: cannot edit offer, tradeId={_tradeId ?? "<null>"}");
@@ -477,7 +474,6 @@ private void EnsureCardPickerOverlay()
             deck = new List<Card>();
         }
 
-        // 删除已报价的卡牌。
         HashSet<int> offered;
         try
         {
@@ -682,7 +678,7 @@ private void EnsureCardPickerOverlay()
         }
         catch
         {
-            // 忽略
+
         }
     }
 
@@ -793,13 +789,10 @@ private void EnsureCardPickerOverlay()
         }
     }
 
-    // 标记组件：用于在运行时 overlay 下定位列表容器。
-
     private bool TryIsNetworkTrade(out bool localIsA)
     {
         localIsA = false;
 
-        // 本地调试模式下抑制网络交易语义，以便自由操作 UI。
         if (_localDebugTradeMode)
         {
             return false;

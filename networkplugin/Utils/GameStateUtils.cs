@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Reflection;
 using LBoL.Core;
 using LBoL.Presentation;
@@ -8,10 +8,7 @@ using NetworkPlugin.Network.Services;
 
 namespace NetworkPlugin.Utils
 {
-    /// <summary>
-    /// 获取当前游戏运行状态的工具方法（尽量通过反射保持兼容）。
-    /// </summary>
-    public static class GameStateUtils
+        public static class GameStateUtils
     {
         private static GameMaster _cachedGameMaster;
 
@@ -86,7 +83,7 @@ namespace NetworkPlugin.Utils
 
         public static bool TryGetCurrentGameRun(out GameRunController run, out string source)
         {
-            // 优先走 GameMaster 当前局面。
+
             if (_cachedGameMaster == null)
             {
                 _cachedGameMaster = UnityEngine.Object.FindObjectOfType<GameMaster>();
@@ -99,8 +96,6 @@ namespace NetworkPlugin.Utils
                 return true;
             }
 
-            // 首次打开某些运行时面板时，GameMaster.CurrentGameRun 可能还没稳定可见，
-            // 但原生 UiPanelBase 已经持有 _gameRun 弱引用。此处回退到现有 UI 面板上下文。
             try
             {
                 UiPanelBase[] panels = UnityEngine.Object.FindObjectsOfType<UiPanelBase>(true);
@@ -135,7 +130,7 @@ namespace NetworkPlugin.Utils
             }
             catch
             {
-                // 忽略并回退为 null。
+
             }
 
             source = "Unavailable";

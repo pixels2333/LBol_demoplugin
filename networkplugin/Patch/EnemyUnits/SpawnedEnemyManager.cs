@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using HarmonyLib;
 using LBoL.Base;
 using LBoL.Core.Battle;
@@ -12,11 +12,6 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.EnemyUnits;
 
-/// <summary>
-/// 参照 Together in Spire 的 SpawnedMonsterManager：
-/// - 为“战斗中生成的新敌人/随从”提供确定性的 RNG（避免各端生成物属性/随机行为不一致）
-/// - 在生成完成后广播生成事件，便于其他客户端同步创建/追踪该单位
-/// </summary>
 [HarmonyPatch]
 public static class SpawnedEnemyManager
 {
@@ -28,13 +23,9 @@ public static class SpawnedEnemyManager
 
     internal static int SuppressBroadcastDepth { get; private set; }
 
-    /// <summary>
-    /// 抑制广播作用域：在 using 块内暂时禁止生成事件广播，避免各端重复生成
-    /// </summary>
-    internal readonly struct SuppressBroadcastScope : IDisposable
+        internal readonly struct SuppressBroadcastScope : IDisposable
     {
-        /// <summary>释放抑制广播作用域</summary>
-        public void Dispose()
+                public void Dispose()
         {
             if (SuppressBroadcastDepth > 0)
             {
@@ -43,11 +34,7 @@ public static class SpawnedEnemyManager
         }
     }
 
-    /// <summary>
-    /// 在作用域内抑制敌人生成广播，避免回环
-    /// </summary>
-    /// <returns>释放时恢复广播的 IDisposable 作用域</returns>
-    internal static IDisposable SuppressBroadcast()
+        internal static IDisposable SuppressBroadcast()
     {
         SuppressBroadcastDepth++;
         return new SuppressBroadcastScope();
@@ -124,8 +111,6 @@ public static class SpawnedEnemyManager
                     return;
                 }
 
-                // 仅在“生成敌人”这段窗口内，临时固定 EnemyBattleRng，尽量减少对其它随机行为的影响。
-                // Seed 由 RootSeed + 关键参数 + 计数器组成：只要各端 RootSeed 与生成顺序一致即可确定性复现。
                 ulong seed = gameRun.RootSeed;
                 int spawnerRootIndex = spawner?.RootIndex ?? 0;
                 seed = unchecked(seed + (ulong)(rootIndex + 1));
@@ -204,10 +189,9 @@ public static class SpawnedEnemyManager
 
                 if (SuppressBroadcastDepth <= 0)
                 {
-                    // 主路径：BattleEnemySpawned
+
                     client.SendRequest(NetworkMessageTypes.BattleEnemySpawned, JsonCompat.Serialize(spawnEvent));
 
-                    // 兼容桥（1 个迭代周期）：镜像发送旧事件名，避免旧端断链。
                     client.SendRequest(NetworkMessageTypes.EnemySpawned, JsonCompat.Serialize(spawnEvent));
                     Plugin.Logger?.LogInfo($"[SpawnedEnemyManager] Enemy spawned: {__result.Name} (Type={__result.GetType().Name}, RootIndex={__result.RootIndex})");
                 }

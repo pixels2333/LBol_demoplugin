@@ -107,6 +107,12 @@ public static partial class OtherPlayersOverlayPatch
                 case NetworkMessageTypes.BattlePlayerStatusEffectsFullBroadcast:
                     HandlePlayerStatusEffectsBroadcast(root);
                     break;
+                case NetworkMessageTypes.BattlePlayerDamageBroadcast:
+                case NetworkMessageTypes.BattlePlayerDamageReport:
+                case NetworkMessageTypes.BattlePlayerHealBroadcast:
+                case NetworkMessageTypes.BattlePlayerHealReport:
+                    HandleBattlePlayerDamageOrHealBroadcast(root);
+                    break;
                 case NetworkMessageTypes.OnEnemyAttackPlayerVisual:
                     HandleEnemyAttackPlayerVisual(root);
                     break;
@@ -299,6 +305,15 @@ public static partial class OtherPlayersOverlayPatch
                 }
             }
 
+            lock (_syncLock)
+            {
+                if (_players.TryGetValue(playerId, out PlayerSummary summary))
+                {
+                    if (maxHp > 0) summary.MaxHp = maxHp;
+                    if (hp >= 0) summary.Hp = hp;
+                }
+            }
+
             if (playerElem.TryGetProperty("StatusEffects", out JsonElement seElem) && seElem.ValueKind == JsonValueKind.Array)
             {
                 var statusEffects = ParsePlayerStatusEffectsArray(seElem);
@@ -337,10 +352,18 @@ public static partial class OtherPlayersOverlayPatch
         lock (_syncLock)
         {
             string charId = ResolveCharacterId(root);
-            // 保护本地玩家 CharacterId 不被网络空值覆盖
+
             if (!string.IsNullOrWhiteSpace(_selfPlayerId) && string.Equals(playerId, _selfPlayerId, StringComparison.Ordinal) && string.IsNullOrWhiteSpace(charId))
             {
                 charId = GetFallbackCharacterId();
+            }
+
+            int hp = GetInt(root, "Hp", -1);
+            int maxHp = GetInt(root, "MaxHp", -1);
+            if (maxHp <= 0 && _players.TryGetValue(playerId, out PlayerSummary oldSummary) && oldSummary.MaxHp > 0)
+            {
+                hp = oldSummary.Hp;
+                maxHp = oldSummary.MaxHp;
             }
 
             _players[playerId] = new PlayerSummary
@@ -354,10 +377,23 @@ public static partial class OtherPlayersOverlayPatch
                 LocationY = GetInt(root, "LocationY", -1),
                 Stage = GetInt(root, "Stage", -1),
                 LocationName = GetString(root, "LocationName"),
+                Hp = hp,
+                MaxHp = maxHp,
                 LastUpdateTime = Time.unscaledTime,
             };
+
+            if (maxHp > 0)
+            {
+                INetworkManager manager = TryGetNetworkManager();
+                INetworkPlayer networkPlayer = manager?.GetPlayer(playerId);
+                if (networkPlayer != null)
+                {
+                    if (hp >= 0) networkPlayer.HP = hp;
+                    networkPlayer.maxHP = maxHp;
+                }
+            }
         }
-        
+
         MarkOverlayUiDirty();
         ForceRefreshRemoteCharacters();
     }
@@ -427,10 +463,24 @@ public static partial class OtherPlayersOverlayPatch
             bool hasConnectedField = p.ValueKind == JsonValueKind.Object && p.TryGetProperty("IsConnected", out _);
             string playerName = GetString(p, "PlayerName");
             string charId = ResolveCharacterId(p);
-            // 保护本地玩家 CharacterId 不被网络空值覆盖
+
             if (!string.IsNullOrWhiteSpace(_selfPlayerId) && string.Equals(playerId, _selfPlayerId, StringComparison.Ordinal) && string.IsNullOrWhiteSpace(charId))
             {
                 charId = GetFallbackCharacterId();
+            }
+
+            int hp = GetInt(p, "Hp", -1);
+            int maxHp = GetInt(p, "MaxHp", -1);
+            if (maxHp <= 0)
+            {
+                lock (_syncLock)
+                {
+                    if (_players.TryGetValue(playerId, out PlayerSummary oldSummary) && oldSummary.MaxHp > 0)
+                    {
+                        hp = oldSummary.Hp;
+                        maxHp = oldSummary.MaxHp;
+                    }
+                }
             }
 
             incoming[playerId] = new PlayerSummary
@@ -444,8 +494,21 @@ public static partial class OtherPlayersOverlayPatch
                 LocationY = GetInt(p, "LocationY", -1),
                 Stage = GetInt(p, "Stage", -1),
                 LocationName = GetString(p, "LocationName"),
+                Hp = hp,
+                MaxHp = maxHp,
                 LastUpdateTime = Time.unscaledTime,
             };
+
+            if (maxHp > 0)
+            {
+                INetworkManager manager = TryGetNetworkManager();
+                INetworkPlayer networkPlayer = manager?.GetPlayer(playerId);
+                if (networkPlayer != null)
+                {
+                    if (hp >= 0) networkPlayer.HP = hp;
+                    networkPlayer.maxHP = maxHp;
+                }
+            }
         }
 
         lock (_syncLock)
@@ -459,6 +522,59 @@ public static partial class OtherPlayersOverlayPatch
 
         MarkOverlayUiDirty();
         ForceRefreshRemoteCharacters();
+    }
+
+    private static void HandleBattlePlayerDamageOrHealBroadcast(JsonElement root)
+    {
+        try
+        {
+            string playerId = GetString(root, "PlayerId");
+            if (string.IsNullOrWhiteSpace(playerId))
+            {
+                return;
+            }
+
+            if (!root.TryGetProperty("TargetState", out JsonElement targetStateElem) || targetStateElem.ValueKind != JsonValueKind.Object)
+            {
+                return;
+            }
+
+            int hp = GetInt(targetStateElem, "Hp", 0);
+            int maxHp = GetInt(targetStateElem, "MaxHp", 0);
+            int block = GetInt(targetStateElem, "Block", 0);
+            int shield = GetInt(targetStateElem, "Shield", 0);
+
+            INetworkManager manager = TryGetNetworkManager();
+            if (manager != null)
+            {
+                INetworkPlayer networkPlayer = manager.GetPlayer(playerId);
+                if (networkPlayer != null)
+                {
+                    networkPlayer.HP = hp;
+                    if (maxHp > 0)
+                    {
+                        networkPlayer.maxHP = maxHp;
+                    }
+                    networkPlayer.block = block;
+                    networkPlayer.shield = shield;
+
+                    MarkOverlayUiDirty();
+                }
+            }
+
+            lock (_syncLock)
+            {
+                if (_players.TryGetValue(playerId, out PlayerSummary summary))
+                {
+                    if (maxHp > 0) summary.MaxHp = maxHp;
+                    if (hp >= 0) summary.Hp = hp;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogWarning($"[OtherPlayersOverlayEventBridge] HandleBattlePlayerDamageOrHealBroadcast 异常: {ex.Message}");
+        }
     }
 
     #endregion

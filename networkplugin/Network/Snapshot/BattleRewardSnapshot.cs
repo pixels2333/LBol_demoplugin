@@ -1,34 +1,16 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace NetworkPlugin.Network.Snapshot;
 
-/// <summary>
-/// 战斗奖励快照
-/// </summary>
 public class BattleRewardSnapshot
 {
-    /// <summary>
-    /// 金币奖励
-    /// </summary>
-    public int GoldReward { get; set; } = 0;
+        public int GoldReward { get; set; } = 0;
 
-    /// <summary>
-    /// 卡牌奖励
-    /// </summary>
-    public List<string> CardRewards { get; set; } = [];
+        public List<string> CardRewards { get; set; } = [];
 
-    /// <summary>
-    /// 宝物奖励
-    /// </summary>
-    public List<string> ExhibitRewards { get; set; } = [];
+        public List<string> ExhibitRewards { get; set; } = [];
 
-    /// <summary>
-    /// 工具牌奖励
-    /// </summary>
-    public List<string> ToolCardRewards { get; set; } = [];
+        public List<string> ToolCardRewards { get; set; } = [];
 
-    /// <summary>
-    /// 奖励是否已领取
-    /// </summary>
-    public bool IsRewardClaimed { get; set; } = false;
+        public bool IsRewardClaimed { get; set; } = false;
 }

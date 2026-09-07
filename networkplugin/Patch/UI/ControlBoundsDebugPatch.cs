@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using HarmonyLib;
 using LBoL.Core;
 using LBoL.Presentation.Units;
@@ -7,10 +7,6 @@ using UnityEngine.UI;
 
 namespace NetworkPlugin.Patch.UI;
 
-/// <summary>
-/// 调试补丁：当配置项 ShowControlBounds 为 true 时，
-/// 为场景中所有 UI Graphic 控件添加红色 5px Outline，用于查看控件边界。
-/// </summary>
 [HarmonyPatch(typeof(GameDirector), "Update")]
 public static class ControlBoundsDebugPatch
 {
@@ -63,7 +59,6 @@ public static class ControlBoundsDebugPatch
                 continue;
             }
 
-            // 避免给已有 Outline 的控件重复添加
             if (graphic.gameObject.GetComponent<Outline>() != null)
             {
                 continue;

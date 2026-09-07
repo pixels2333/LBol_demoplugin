@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using HarmonyLib;
@@ -18,11 +18,6 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// 卡牌与符卡动作捕获补丁：
-/// 拦截本地出牌/用符卡时生成的实际 <see cref="BattleAction"/> 序列，
-/// 生成包含所有弹幕、粒子特效、动画和音效的动作蓝图并广播给所有玩家。
-/// </summary>
 [HarmonyPatch]
 public static class CardActionCapturePatch
 {
@@ -73,7 +68,6 @@ public static class CardActionCapturePatch
                 return;
             }
 
-            // 远程卡牌管道或未联网时不进行捕获
             if (RemoteCardUsePatch.IsInRemoteCardPipeline)
             {
                 return;
@@ -84,7 +78,6 @@ public static class CardActionCapturePatch
                 return;
             }
 
-            // 只捕获本地玩家拥有的卡牌
             if (__instance?.Battle?.Player == null)
             {
                 return;
@@ -201,10 +194,9 @@ public static class CardActionCapturePatch
         }
         catch
         {
-            // ignored
+
         }
 
-        // 当动作枚举结束，生成完整动作蓝图并广播
         SendCapturedActionsBroadcast(cardOrUsId, cardOrUsName, isUs, selector, capturedActions);
     }
 

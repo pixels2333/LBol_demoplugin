@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -21,21 +21,11 @@ using UnityEngine;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// 事件/对话同步补丁。
-/// </summary>
-/// <remarks>
-/// 用于同步跑图过程中的“事件节点/对话节点”的关键决策，避免多人联机时进度分叉。
-/// 使用 Harmony 拦截点捕获事件/对话关键选择，并通过网络广播到其他客户端落地。
-/// </remarks>
 public class EventSyncPatch
 {
     #region 依赖注入
 
-    /// <summary>
-    /// 依赖注入服务提供者。
-    /// </summary>
-    private static IServiceProvider serviceProvider => ModService.ServiceProvider;
+        private static IServiceProvider serviceProvider => ModService.ServiceProvider;
 
     #endregion
 
@@ -51,7 +41,6 @@ public class EventSyncPatch
 
     private static readonly Dictionary<string, PendingSelection> _pendingSelectionByEventId = new(StringComparer.Ordinal);
 
-    // Host 侧用于“重连/中途加入追赶”的最小缓存：最新 options + 最终已确认的 selection。
     private static readonly Dictionary<string, List<DialogSync.DialogOptionData>> _cachedDialogOptionsByEventId = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, PendingSelection> _lastConfirmedSelectionByEventId = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, int> _appliedOptionIdByEventId = new(StringComparer.Ordinal);
@@ -121,7 +110,7 @@ public class EventSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
         try
@@ -169,18 +158,17 @@ public class EventSyncPatch
 
     private static void OnGameEventReceived(string eventType, object payload)
     {
-        // 只处理本补丁关心的消息。
+
         if (string.IsNullOrWhiteSpace(eventType))
         {
             return;
         }
 
-        // Host：当有新玩家加入/收到欢迎包时，尝试重发“当前事件/对话最小快照”，用于追赶。
         if (string.Equals(eventType, NetworkMessageTypes.PlayerJoined, StringComparison.Ordinal) ||
             string.Equals(eventType, NetworkMessageTypes.Welcome, StringComparison.Ordinal) ||
             string.Equals(eventType, NetworkMessageTypes.PlayerListUpdate, StringComparison.Ordinal))
         {
-            // 限频：避免 PlayerListUpdate 高频触发导致网络风暴。
+
             if (NetworkIdentityTracker.GetSelfIsHost() && ShouldBroadcastAgain(ref _lastSnapshotBroadcastTicks, TimeSpan.FromSeconds(1)))
             {
                 TryBroadcastActiveDialogSnapshot();
@@ -221,7 +209,7 @@ public class EventSyncPatch
 
             if (string.Equals(eventType, NetworkMessageTypes.OnDialogText, StringComparison.Ordinal))
             {
-                // 目前仅用于诊断日志；真正推进由选项/权威端决定。
+
                 return;
             }
 
@@ -261,7 +249,6 @@ public class EventSyncPatch
                     }
                 }
 
-                // 若先收到了 selection，再进入 options 等待阶段，可在这里尝试落地。
                 TryApplyPendingSelectionNow(eventId);
                 return;
             }
@@ -295,7 +282,6 @@ public class EventSyncPatch
                     _lastConfirmedSelectionByEventId[eventId] = pending;
                 }
 
-                // 远端落地：设置一个短暂的 outgoing 抑制窗口，避免自动 SelectOption 触发回环发送。
                 SuppressOutgoingFor(TimeSpan.FromSeconds(2));
                 TryApplyPendingSelectionNow(eventId);
                 return;
@@ -303,7 +289,7 @@ public class EventSyncPatch
 
             if (string.Equals(eventType, NetworkMessageTypes.OnEventVoteCast, StringComparison.Ordinal))
             {
-                // 只有 Host 需要收集投票。
+
                 if (!NetworkIdentityTracker.GetSelfIsHost())
                 {
                     return;
@@ -324,14 +310,13 @@ public class EventSyncPatch
 
             if (string.Equals(eventType, NetworkMessageTypes.OnEventVotingResult, StringComparison.Ordinal))
             {
-                // 非 Host 收到结算后，等待随后的 OnEventSelection 推进；这里保留最小缓存用于诊断。
-                // （真正推进仍以 OnEventSelection 为准。）
+
                 return;
             }
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -362,7 +347,6 @@ public class EventSyncPatch
                 return;
             }
 
-            // 1) 重发 OnEventStart（最小上下文）
             client.BroadcastState(NetworkMessageTypes.OnEventStart, new
             {
                 Timestamp = DateTime.Now.Ticks,
@@ -372,7 +356,6 @@ public class EventSyncPatch
                 PlayerId = GetCurrentPlayerId(),
             });
 
-            // 2) 重发 options（用于重连追赶）
             List<DialogSync.DialogOptionData> options;
             lock (SyncLock)
             {
@@ -384,7 +367,6 @@ public class EventSyncPatch
                 DialogSync.SyncDialogOptions(eventId, options);
             }
 
-            // 3) 若已有最终选择，重发 selection（幂等：客户端侧会做 apply 去重）
             PendingSelection last;
             lock (SyncLock)
             {
@@ -411,7 +393,7 @@ public class EventSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -482,7 +464,6 @@ public class EventSyncPatch
                 }
             }
 
-            // 尝试直接写入 _selectedOptionId，让 ShowOptions 协程继续。
             var selectedField = AccessTools.Field(typeof(VnPanel), "_selectedOptionId");
             if (selectedField == null)
             {
@@ -500,7 +481,7 @@ public class EventSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -521,21 +502,9 @@ public class EventSyncPatch
 
     #region 事件初始化同步
 
-    /// <summary>
-    /// 事件初始化同步。
-    /// </summary>
-    /// <remarks>
-    /// 当玩家进入事件节点或触发事件时调用。
-    /// </remarks>
-    public class EventInitSync
+        public class EventInitSync
     {
-        /// <summary>
-        /// 同步事件开始。
-        /// </summary>
-        /// <param name="adventure">事件对象（Adventure 基类）。</param>
-        /// <param name="eventId">事件标识。</param>
-        /// <param name="eventName">事件名称。</param>
-        public static void SyncEventStart(Adventure adventure, string eventId, string eventName)
+                public static void SyncEventStart(Adventure adventure, string eventId, string eventName)
         {
             try
             {
@@ -546,7 +515,6 @@ public class EventSyncPatch
 
                 NetworkIdentityTracker.EnsureSubscribed(networkClient);
 
-                // 打包事件启动数据。
                 var eventData = new
                 {
                     Timestamp = DateTime.Now.Ticks,
@@ -556,7 +524,6 @@ public class EventSyncPatch
                     PlayerId = GetCurrentPlayerId(),
                 };
 
-                // 发送到服务器。
                 networkClient.BroadcastState(NetworkMessageTypes.OnEventStart, eventData);
 
                 Plugin.Logger?.LogInfo($"[EventSync] 事件开始: {eventName} (ID: {eventId})");
@@ -572,22 +539,9 @@ public class EventSyncPatch
 
     #region 事件选择同步
 
-    /// <summary>
-    /// 事件选项选择同步。
-    /// </summary>
-    /// <remarks>
-    /// 当玩家在事件中做出选择时触发。
-    /// </remarks>
-    public class EventSelectionSync
+        public class EventSelectionSync
     {
-        /// <summary>
-        /// 同步事件选项选择。
-        /// </summary>
-        /// <param name="eventId">事件标识。</param>
-        /// <param name="optionIndex">选项下标。</param>
-        /// <param name="optionText">选项文本。</param>
-        /// <param name="optionResult">选项结果描述（用于日志/调试）。</param>
-        public static void SyncEventSelection(string eventId, int optionIndex, int optionId, string optionText, string optionResult)
+                public static void SyncEventSelection(string eventId, int optionIndex, int optionId, string optionText, string optionResult)
         {
             try
             {
@@ -600,7 +554,7 @@ public class EventSyncPatch
                 {
                     return;
                 }
-                // 打包选项选择数据。
+
                 var selectionData = new
                 {
                     Timestamp = DateTime.Now.Ticks,
@@ -622,12 +576,7 @@ public class EventSyncPatch
             }
         }
 
-        /// <summary>
-        /// 同步事件结果：用于在选择选项后广播“事件产生的效果”。
-        /// </summary>
-        /// <param name="eventId">事件标识。</param>
-        /// <param name="effects">效果数据（键值对）。</param>
-        public static void SyncEventResult(string eventId, Dictionary<string, object> effects)
+                public static void SyncEventResult(string eventId, Dictionary<string, object> effects)
         {
             try
             {
@@ -640,7 +589,7 @@ public class EventSyncPatch
                 {
                     return;
                 }
-                // 打包结果数据。
+
                 var resultData = new
                 {
                     Timestamp = DateTime.Now.Ticks,
@@ -663,22 +612,9 @@ public class EventSyncPatch
 
     #region 对话同步
 
-    /// <summary>
-    /// 对话同步：同步对话文本/选项等。
-    /// </summary>
-    /// <remarks>
-    /// 由 VnPanel/DialogRunner 等拦截点补齐发送时机与上下文。
-    /// </remarks>
-    public class DialogSync
+        public class DialogSync
     {
-        /// <summary>
-        /// 同步对话文本。
-        /// </summary>
-        /// <param name="eventId">事件标识。</param>
-        /// <param name="speaker">说话人。</param>
-        /// <param name="text">对话文本。</param>
-        /// <param name="dialogIndex">对话序号（用于复现顺序）。</param>
-        public static void SyncDialogText(string eventId, string speaker, string text, int dialogIndex)
+                public static void SyncDialogText(string eventId, string speaker, string text, int dialogIndex)
         {
             try
             {
@@ -691,7 +627,7 @@ public class EventSyncPatch
                 {
                     return;
                 }
-                // 打包对话数据。
+
                 var dialogData = new
                 {
                     Timestamp = DateTime.Now.Ticks,
@@ -711,12 +647,7 @@ public class EventSyncPatch
             }
         }
 
-        /// <summary>
-        /// 同步对话选项列表。
-        /// </summary>
-        /// <param name="eventId">事件标识。</param>
-        /// <param name="options">选项数据列表。</param>
-        public static void SyncDialogOptions(string eventId, List<DialogOptionData> options)
+                public static void SyncDialogOptions(string eventId, List<DialogOptionData> options)
         {
             try
             {
@@ -729,7 +660,7 @@ public class EventSyncPatch
                 {
                     return;
                 }
-                // 打包选项数据。
+
                 var optionsData = new
                 {
                     Timestamp = DateTime.Now.Ticks,
@@ -747,25 +678,17 @@ public class EventSyncPatch
             }
         }
 
-        /// <summary>
-        /// 对话选项数据。
-        /// </summary>
-        public class DialogOptionData
+                public class DialogOptionData
         {
-            /// <summary>选项序号。</summary>
-            public int Index { get; set; }
+                        public int Index { get; set; }
 
-            /// <summary>选项 Id（若可获得）。用于断线重连/追赶时的 OptionIndex -> OptionId 映射。</summary>
-            public int OptionId { get; set; }
+                        public int OptionId { get; set; }
 
-            /// <summary>选项文本。</summary>
-            public string Text { get; set; } = string.Empty;
+                        public string Text { get; set; } = string.Empty;
 
-            /// <summary>该选项是否可选。</summary>
-            public bool IsAvailable { get; set; }
+                        public bool IsAvailable { get; set; }
 
-            /// <summary>提示文本。</summary>
-            public string Tooltip { get; set; } = string.Empty;
+                        public string Tooltip { get; set; } = string.Empty;
         }
     }
 
@@ -773,18 +696,9 @@ public class EventSyncPatch
 
     #region 特殊事件同步
 
-    /// <summary>
-    /// 特殊事件同步：对 boss 奖励/商店/宝箱等进行显式同步。
-    /// </summary>
-    public class SpecialEventSync
+        public class SpecialEventSync
     {
-        /// <summary>
-        /// Boss 战后奖励选择同步。
-        /// </summary>
-        /// <param name="bossId">Boss 标识。</param>
-        /// <param name="rewardType">奖励类型（Exhibit/Card/Relic 等）。</param>
-        /// <param name="rewardId">奖励标识。</param>
-        public static void SyncBossRewardSelection(string bossId, string rewardType, string rewardId)
+                public static void SyncBossRewardSelection(string bossId, string rewardType, string rewardId)
         {
             try
             {
@@ -816,12 +730,7 @@ public class EventSyncPatch
             }
         }
 
-        /// <summary>
-        /// 商店事件同步。
-        /// </summary>
-        /// <param name="shopId">商店标识。</param>
-        /// <param name="eventType">事件类型。</param>
-        public static void SyncShopEvent(string shopId, string eventType)
+                public static void SyncShopEvent(string shopId, string eventType)
         {
             try
             {
@@ -849,12 +758,7 @@ public class EventSyncPatch
             }
         }
 
-        /// <summary>
-        /// 宝箱/宝藏事件同步。
-        /// </summary>
-        /// <param name="treasureId">宝藏标识。</param>
-        /// <param name="rewards">奖励列表。</param>
-        public static void SyncTreasureEvent(string treasureId, List<string> rewards)
+                public static void SyncTreasureEvent(string treasureId, List<string> rewards)
         {
             try
             {
@@ -887,15 +791,11 @@ public class EventSyncPatch
 
     #region 事件投票（预留）
 
-    /// <summary>
-    /// 事件投票机制（预留）：对关键事件允许多人投票。
-    /// </summary>
-    public class EventVotingSystem
+        public class EventVotingSystem
     {
-        // eventId -> (playerId -> optionIndex)
+
         private static readonly Dictionary<string, Dictionary<string, int>> _playerVotes = new(StringComparer.Ordinal);
 
-        // 默认不强制投票；由外部按需注册关键事件 Id。
         private static readonly HashSet<string> _votingEventIds = new(StringComparer.Ordinal);
 
         public static void RegisterVotingEvent(string eventId)
@@ -910,35 +810,22 @@ public class EventSyncPatch
 
         public static void ClearVotingEvents() => _votingEventIds.Clear();
 
-        /// <summary>
-        /// 判断事件是否需要投票。
-        /// </summary>
-        /// <param name="eventId">事件标识。</param>
-        /// <returns>需要投票返回 true，否则 false。</returns>
-        public static bool IsVotingRequired(string eventId)
+                public static bool IsVotingRequired(string eventId)
         {
             if (string.IsNullOrWhiteSpace(eventId))
             {
                 return false;
             }
 
-            // 只有多人房间才有投票意义。
             if (NetworkIdentityTracker.GetPlayerIdsSnapshot().Count <= 1)
             {
                 return false;
             }
 
-            // 默认策略：仅对显式注册的事件启用投票，避免误伤所有事件。
             return _votingEventIds.Contains(eventId);
         }
 
-        /// <summary>
-        /// 记录玩家投票。
-        /// </summary>
-        /// <param name="playerId">玩家标识。</param>
-        /// <param name="eventId">事件标识。</param>
-        /// <param name="optionIndex">投票选项下标。</param>
-        public static void RecordVote(string playerId, string eventId, int optionIndex)
+                public static void RecordVote(string playerId, string eventId, int optionIndex)
         {
             if (string.IsNullOrWhiteSpace(playerId) || string.IsNullOrWhiteSpace(eventId) || optionIndex < 0)
             {
@@ -951,22 +838,15 @@ public class EventSyncPatch
                 _playerVotes[eventId] = votesByPlayer;
             }
 
-            // 同一玩家重复投票：以最后一次为准。
             votesByPlayer[playerId] = optionIndex;
 
-            // 若所有玩家已投票，则立即结算。
             if (AllPlayersVoted(eventId))
             {
                 ResolveVoting(eventId);
             }
         }
 
-        /// <summary>
-        /// 检查是否所有玩家都已投票。
-        /// </summary>
-        /// <param name="eventId">事件标识。</param>
-        /// <returns>全部投票完成返回 true，否则 false。</returns>
-        private static bool AllPlayersVoted(string eventId)
+                private static bool AllPlayersVoted(string eventId)
         {
             if (string.IsNullOrWhiteSpace(eventId))
             {
@@ -984,7 +864,6 @@ public class EventSyncPatch
                 return false;
             }
 
-            // 允许玩家列表存在延迟：只要已知玩家都投了即可。
             foreach (string pid in players)
             {
                 if (!votesByPlayer.ContainsKey(pid))
@@ -996,11 +875,7 @@ public class EventSyncPatch
             return true;
         }
 
-        /// <summary>
-        /// 结算投票结果并广播。
-        /// </summary>
-        /// <param name="eventId">事件标识。</param>
-        private static void ResolveVoting(string eventId)
+                private static void ResolveVoting(string eventId)
         {
             if (!_playerVotes.TryGetValue(eventId, out var votesByPlayer))
             {
@@ -1015,7 +890,6 @@ public class EventSyncPatch
                 optionCounts[optionIndex]++;
             }
 
-            // 多数决定。
             int winningOption = -1;
             int maxVotes = 0;
             foreach (var kvp in optionCounts)
@@ -1027,16 +901,12 @@ public class EventSyncPatch
                 }
             }
 
-            // 广播投票结果。
             BroadcastVotingResult(eventId, winningOption, votesByPlayer.Count);
 
-            // Host 本地落地：根据 winningOption 反查 optionId，并推进协程。
             TryApplyVoteResultLocally(eventId, winningOption);
 
-            // 同步最终选项（用于推进其他客户端）。
             TryBroadcastSelectionFromVoteResult(eventId, winningOption);
 
-            // 清理投票记录。
             _playerVotes.Remove(eventId);
         }
 
@@ -1055,7 +925,6 @@ public class EventSyncPatch
                     return;
                 }
 
-                // 需要确保协程仍在等待选择。
                 DialogOptionsPhase phase = AccessTools.Field(typeof(VnPanel), "_dialogRunner")?.GetValue(vnPanel) is DialogRunner runner
                     ? runner.CurrentPhase as DialogOptionsPhase
                     : null;
@@ -1072,7 +941,7 @@ public class EventSyncPatch
             }
             catch
             {
-                // ignored
+
             }
         }
 
@@ -1110,17 +979,11 @@ public class EventSyncPatch
             }
             catch
             {
-                // ignored
+
             }
         }
 
-        /// <summary>
-        /// 广播投票结果。
-        /// </summary>
-        /// <param name="eventId">事件标识。</param>
-        /// <param name="winningOption">获胜选项。</param>
-        /// <param name="totalVotes">总票数。</param>
-        private static void BroadcastVotingResult(string eventId, int winningOption, int totalVotes)
+                private static void BroadcastVotingResult(string eventId, int winningOption, int totalVotes)
         {
             try
             {
@@ -1156,13 +1019,9 @@ public class EventSyncPatch
 
     #region 快照与辅助方法
 
-    /// <summary>
-    /// 构建事件状态快照（用于断线重连/诊断）。
-    /// </summary>
-    /// <returns>最小可用快照对象。</returns>
-    public static object BuildEventSnapshot()
+        public static object BuildEventSnapshot()
     {
-        // 最小可用快照：用于诊断/同步占位，不承诺覆盖全部事件内部状态。
+
         var player = GameStateUtils.GetCurrentPlayer();
 
         return new
@@ -1175,11 +1034,7 @@ public class EventSyncPatch
         };
     }
 
-    /// <summary>
-    /// 获取当前玩家 ID（优先使用联机身份跟踪器，失败则回落到游戏状态工具）。
-    /// </summary>
-    /// <returns>玩家标识字符串。</returns>
-    private static string GetCurrentPlayerId()
+        private static string GetCurrentPlayerId()
     {
         try
         {
@@ -1197,7 +1052,7 @@ public class EventSyncPatch
         }
         catch
         {
-            // 忽略：获取失败时返回占位。
+
         }
 
         return "unknown_player";
@@ -1227,7 +1082,6 @@ public class EventSyncPatch
             EnsureSubscribed(client);
             NetworkIdentityTracker.EnsureSubscribed(client);
 
-            // 权威模型B：允许非 Host 触发“事件开始”上报，但最终推进仍由 Host 仲裁。
             if (!client.IsConnected)
             {
                 return;
@@ -1243,7 +1097,7 @@ public class EventSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -1267,7 +1121,6 @@ public class EventSyncPatch
                 _activeEventName = !string.IsNullOrWhiteSpace(adventure?.Title) ? adventure.Title : (vnName ?? string.Empty);
             }
 
-            // adventure 可能来自 RestoreAdventure/RunDialog；补一层“Host 才广播”。
             if (adventure != null && client != null && client.IsConnected && NetworkIdentityTracker.GetSelfIsHost())
             {
                 EventInitSync.SyncEventStart(adventure, adventure.Id, adventure.Title);
@@ -1275,7 +1128,7 @@ public class EventSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -1297,7 +1150,7 @@ public class EventSyncPatch
     {
         try
         {
-            // 通过 UI 文本提取 speaker（若无则为空）。
+
             string speaker = string.Empty;
             GameObject leftRoot = AccessTools.Field(typeof(VnPanel), "leftCharacterNameRoot")?.GetValue(__instance) as GameObject;
             GameObject rightRoot = AccessTools.Field(typeof(VnPanel), "rightCharacterNameRoot")?.GetValue(__instance) as GameObject;
@@ -1318,7 +1171,7 @@ public class EventSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -1331,7 +1184,7 @@ public class EventSyncPatch
 
     private static IEnumerator WrapShowOptions(VnPanel panel, DialogOption[] options, IEnumerator original)
     {
-        // 先调用第一个 MoveNext() 让原版完成 UI 初始化。
+
         bool hasNext = false;
         try
         {
@@ -1342,7 +1195,6 @@ public class EventSyncPatch
             Plugin.Logger?.LogError($"[EventSync] WrapShowOptions MoveNext 异常: {ex.Message}");
         }
 
-        // 进入 ShowOptions 时，如果收到了远端选择但本地还没进入等待，可在此处自动落地。
         if (panel != null && options != null)
         {
             TrySendDialogOptions(panel, options);
@@ -1359,13 +1211,11 @@ public class EventSyncPatch
             }
         }
 
-        // options 阶段期间：Host 周期性重发 options，便于断线重连/中途加入追赶。
         if (panel != null && options != null && NetworkIdentityTracker.GetSelfIsHost())
         {
             ShouldBroadcastAgain(ref _lastDialogOptionsBroadcastTicks, TimeSpan.FromSeconds(2));
         }
 
-        // 客机非投票事件：将选项设置为禁用状态，并修改文本提示
         var client = serviceProvider?.GetService<INetworkClient>();
         if (panel != null && client != null && client.IsConnected && !NetworkIdentityTracker.GetSelfIsHost())
         {
@@ -1387,7 +1237,7 @@ public class EventSyncPatch
                             var widget = widgets[i];
                             if (widget != null && widget.gameObject.activeSelf)
                             {
-                                // 禁用按钮交互
+
                                 var btn = widget.GetComponentInChildren<UnityEngine.UI.Button>();
                                 if (btn != null)
                                 {
@@ -1395,7 +1245,6 @@ public class EventSyncPatch
                                 }
                                 widget.enabled = false;
 
-                                // 追加禁用文本
                                 var tmp = widget.GetComponentInChildren<TextMeshProUGUI>();
                                 if (tmp != null)
                                 {
@@ -1422,7 +1271,7 @@ public class EventSyncPatch
 
             while (original != null && original.MoveNext())
             {
-                // 每帧推进时尝试落地 pending selection（直到成功）。
+
                 try
                 {
                     string eventId;
@@ -1443,7 +1292,7 @@ public class EventSyncPatch
                 }
                 catch
                 {
-                    // ignored
+
                 }
 
                 yield return original.Current;
@@ -1506,7 +1355,7 @@ public class EventSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -1535,7 +1384,6 @@ public class EventSyncPatch
                 return;
             }
 
-            // 同一 phase 的本地化文本可能被多次获取：只发送一次。
             lock (_sentDialogLines)
             {
                 if (_sentDialogLines.TryGetValue(__instance, out _))
@@ -1564,7 +1412,7 @@ public class EventSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -1596,7 +1444,6 @@ public class EventSyncPatch
                 return;
             }
 
-            // 尝试在当前 options phase 中反查 index/text。
             DialogOptionsPhase phase = __instance.CurrentPhase as DialogOptionsPhase;
             if (phase == null)
             {
@@ -1620,7 +1467,6 @@ public class EventSyncPatch
                 return;
             }
 
-            // 若该事件启用投票，则最终选项由投票结算广播，这里不重复广播。
             if (EventVotingSystem.IsVotingRequired(eventId))
             {
                 return;
@@ -1630,11 +1476,10 @@ public class EventSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
-    // 投票模式：点击/按键选择仅提交投票，不立即推进；Host 收齐后广播最终选择。
     [HarmonyPatch(typeof(VnPanel), "OnClickOption")]
     [HarmonyPrefix]
     public static bool VnPanel_OnClickOption_Prefix(VnPanel __instance, int i)
@@ -1661,7 +1506,6 @@ public class EventSyncPatch
                 return true;
             }
 
-            // 投票模式：所有玩家点击都只提交投票，不推进；Host 收齐后广播最终选择。
             if (EventVotingSystem.IsVotingRequired(eventId))
             {
                 DialogRunner runner = AccessTools.Field(typeof(VnPanel), "_dialogRunner")?.GetValue(__instance) as DialogRunner;
@@ -1688,7 +1532,6 @@ public class EventSyncPatch
                 return false;
             }
 
-            // 非投票模式：非 Host 不允许本地确认，避免分叉。
             if (!NetworkIdentityTracker.GetSelfIsHost())
             {
                 return false;
@@ -1728,7 +1571,6 @@ public class EventSyncPatch
                 return true;
             }
 
-            // 只有在 optionsRoot 激活时才拦截。
             GameObject optionsRoot = AccessTools.Field(typeof(VnPanel), "optionsRoot")?.GetValue(__instance) as GameObject;
             if (optionsRoot == null || !optionsRoot.activeSelf)
             {
@@ -1737,7 +1579,7 @@ public class EventSyncPatch
 
             if (EventVotingSystem.IsVotingRequired(eventId))
             {
-                // 将 key selection 也视为投票。
+
                 DialogOption[] currentOptions = AccessTools.Field(typeof(VnPanel), "_options")?.GetValue(__instance) as DialogOption[];
                 if (currentOptions == null)
                 {
@@ -1745,7 +1587,6 @@ public class EventSyncPatch
                     return false;
                 }
 
-                // i 是“可用选项列表”的索引，需要映射回原 options 的索引。
                 List<int> availableIndices = new();
                 for (int idx = 0; idx < currentOptions.Length; idx++)
                 {

@@ -30,31 +30,18 @@ using UnityEngine.UI;
 
 namespace NetworkPlugin.Patch.UI;
 
-/// <summary>
-/// GapOptionsPanel补丁类
-/// 在GapStation UI中额外添加交易和治疗选项
-/// </summary>
 [HarmonyPatch]
 public class GapOptionsPanel_Patch
 {
-    /// <summary>
-    /// 服务提供者实例
-    /// </summary>
-    private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
+        private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
-    /// <summary>
-    /// 配置管理器实例
-    /// </summary>
-    private static ConfigManager ConfigManager => ServiceProvider?.GetService<ConfigManager>();
+        private static ConfigManager ConfigManager => ServiceProvider?.GetService<ConfigManager>();
 
     private static bool _pendingDrinkTeaCompletion;
     private static string _pendingDrinkTeaOptionId;
     private static string _pendingDrinkTeaOptionName;
 
-    /// <summary>
-    /// 获取网络管理器
-    /// </summary>
-    private static INetworkManager GetNetworkManager()
+        private static INetworkManager GetNetworkManager()
     {
         try
         {
@@ -66,17 +53,13 @@ public class GapOptionsPanel_Patch
         }
     }
 
-    /// <summary>
-    /// GapOptionsPanel.OnShowing方法补丁
-    /// 在显示Gap选项时添加交易和治疗选项
-    /// </summary>
-    [HarmonyPatch(typeof(GapOptionsPanel), "OnShowing")]
+        [HarmonyPatch(typeof(GapOptionsPanel), "OnShowing")]
     [HarmonyPostfix]
     public static void OnShowing_Postfix(GapOptionsPanel __instance, GapStation gapStation)
     {
         try
         {
-            // 检查是否启用gap功能扩展
+
             if (ConfigManager?.EnableGapStationExtensions?.Value != true)
             {
                 Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 跳过额外按钮注入：EnableGapStationExtensions=false");
@@ -106,7 +89,6 @@ public class GapOptionsPanel_Patch
             int baseOptionCount = gapStation?.GapOptions?.Count() ?? 0;
             int appendIndex = baseOptionCount;
 
-            // 追加顺序：严格放到“最后一个原生选项”之后。
             if (addTrade)
             {
                 AddTradeOption(__instance, baseOptionCount, appendIndex);
@@ -125,52 +107,40 @@ public class GapOptionsPanel_Patch
         }
     }
 
-    /// <summary>
-    /// 添加交易选项
-    /// </summary>
-    private static void AddTradeOption(GapOptionsPanel panel, int baseOptionCount, int optionIndex)
+        private static void AddTradeOption(GapOptionsPanel panel, int baseOptionCount, int optionIndex)
     {
         try
         {
             RuntimeTradeGapOption tradeOption = new();
 
-            // 使用Traverse工具获取GapOptionsPanel的私有字段
             Traverse traverse = Traverse.Create(panel);
-            Transform optionsLayout = traverse.Field("optionsLayout").GetValue<Transform>(); // UI布局容器，用于放置选项widget
-            GapOptionWidget template = traverse.Field("template").GetValue<GapOptionWidget>(); // 选项widget模板，用于实例化新的选项
-            AssociationList<GapOptionType, Sprite> spriteTable = traverse.Field("spriteTable").GetValue<AssociationList<GapOptionType, Sprite>>(); // 选项类型与图标的映射表
-            List<GapOptionWidget> _options = traverse.Field("_options").GetValue<List<GapOptionWidget>>(); // 当前显示的选项widget列表
+            Transform optionsLayout = traverse.Field("optionsLayout").GetValue<Transform>();
+            GapOptionWidget template = traverse.Field("template").GetValue<GapOptionWidget>();
+            AssociationList<GapOptionType, Sprite> spriteTable = traverse.Field("spriteTable").GetValue<AssociationList<GapOptionType, Sprite>>();
+            List<GapOptionWidget> _options = traverse.Field("_options").GetValue<List<GapOptionWidget>>();
 
-            // 验证字段获取成功并提取值
             if (optionsLayout != null &&
                 template != null &&
                 spriteTable != null &&
                 _options != null)
             {
-                // 基于模板创建交易选项widget实例，并将其添加到布局中
-                GapOptionWidget tradeWidget = CreateGapOptionWidget(optionsLayout, "TradeOption", template);
-                tradeWidget.Parent = panel; // 设置父面板引用
 
-                // 使用喝茶按钮同款样式（同款图标 + 同款模板）。
-                // 注意：运行时选项不走 SetOption()，避免触发 GapOption.Name 的强制本地化报错（-1000.Name）。
+                GapOptionWidget tradeWidget = CreateGapOptionWidget(optionsLayout, "TradeOption", template);
+                tradeWidget.Parent = panel;
+
                 InitializeRuntimeGapOptionWidget(tradeWidget, tradeOption, GetTeaStyleSprite(spriteTable));
 
-                // 将新创建的widget添加到选项列表中
                 _options.Add(tradeWidget);
 
-                // 位置与原版 GapOptionsPanel.OnShowing 同步：基于原生选项总数计算。
                 var (optionPos, optionScale) = ComputeAppendedOptionLayout(panel, baseOptionCount, optionIndex);
                 tradeWidget.transform.localScale = optionScale;
 
-                // 创建入场动画：从左侧4000像素处滑入，持续1秒，使用OutCubic缓动曲线
                 tradeWidget.transform.DOLocalMove(optionPos, 1f, false)
                     .From(optionPos - new Vector3(4000f, 0f, 0f), true, false)
                     .SetEase(DG.Tweening.Ease.OutCubic);
 
-                // 将widget设置为同级节点中的第一个，确保正确的渲染顺序
                 tradeWidget.transform.SetAsFirstSibling();
 
-                // 记录添加成功的日志
                 Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 已添加交易选项");
             }
         }
@@ -180,10 +150,7 @@ public class GapOptionsPanel_Patch
         }
     }
 
-    /// <summary>
-    /// 添加治疗选项
-    /// </summary>
-    private static void AddTreatOption(GapOptionsPanel panel, int baseOptionCount, int optionIndex)
+        private static void AddTreatOption(GapOptionsPanel panel, int baseOptionCount, int optionIndex)
     {
         try
         {
@@ -203,8 +170,6 @@ public class GapOptionsPanel_Patch
                 GapOptionWidget treatWidget = CreateGapOptionWidget(optionsLayout, "TreatOption", template);
                 treatWidget.Parent = panel;
 
-                // 使用喝茶按钮同款样式（同款图标 + 同款模板）。
-                // 注意：运行时选项不走 SetOption()，避免触发 GapOption.Name 的强制本地化报错（-1000.Name）。
                 InitializeRuntimeGapOptionWidget(treatWidget, treatOption, GetTeaStyleSprite(spriteTable));
 
                 _options.Add(treatWidget);
@@ -225,16 +190,13 @@ public class GapOptionsPanel_Patch
         }
     }
 
-    /// <summary>
-    /// GapOptionsPanel.OptionClicked方法补丁，处理自定义交易/治疗选项点击
-    /// </summary>
-    [HarmonyPatch(typeof(GapOptionsPanel), "OptionClicked")]
+        [HarmonyPatch(typeof(GapOptionsPanel), "OptionClicked")]
     [HarmonyPrefix]
     public static bool OptionClicked_Prefix(GapOptionsPanel __instance, GapOption option)
     {
         try
         {
-            // 检查是否为自定义交易选项
+
             if (IsCustomTradeOption(option))
             {
                 try
@@ -267,10 +229,9 @@ public class GapOptionsPanel_Patch
                 {
                     Plugin.Logger?.LogError($"[GapOptionsPanel_Patch] 处理交易选项错误: {ex.Message}");
                 }
-                return false; // 阻止原始方法执行
+                return false;
             }
 
-            // 检查是否为自定义治疗选项
             if (IsCustomTreatOption(option))
             {
                 try
@@ -297,6 +258,12 @@ public class GapOptionsPanel_Patch
                         List<DeadPlayerEntry> candidates = BuildTreatmentCandidates();
                         Plugin.Logger?.LogInfo($"[GapOptionsPanel_Patch] 治疗候选构建完成: total={candidates.Count}, ai1={candidates.FirstOrDefault(p => string.Equals(p.PlayerId, "aidefault", StringComparison.OrdinalIgnoreCase))?.PlayerName}, ai2={candidates.FirstOrDefault(p => string.Equals(p.PlayerId, "aidefault2", StringComparison.OrdinalIgnoreCase))?.PlayerName}");
 
+                        if (candidates.Count == 0)
+                        {
+                            TradeUiMessages.ShowTopMessage("当前没有可治疗的队友。");
+                            return false;
+                        }
+
                         ResurrectPayload payload = new ResurrectPayload
                         {
                             Players = candidates,
@@ -315,13 +282,12 @@ public class GapOptionsPanel_Patch
                 {
                     Plugin.Logger?.LogError($"[GapOptionsPanel_Patch] 处理治疗选项错误: {ex.Message}");
                 }
-                return false; // 阻止原始方法执行
+                return false;
             }
 
-            // 内置 GapOptions 选项（升级/移除）走最小同步广播。
             TryBroadcastBuiltInGapOptionsSelection(option);
 
-            return true; // 继续执行原始方法
+            return true;
         }
         catch (Exception ex)
         {
@@ -351,10 +317,7 @@ public class GapOptionsPanel_Patch
 
     #region 辅助方法
 
-    /// <summary>
-    /// 获取与原版喝茶按钮一致的图标。
-    /// </summary>
-    private static Sprite GetTeaStyleSprite(AssociationList<GapOptionType, Sprite> spriteTable)
+        private static Sprite GetTeaStyleSprite(AssociationList<GapOptionType, Sprite> spriteTable)
     {
         if (spriteTable != null && spriteTable.TryGetValue(GapOptionType.DrinkTea, out Sprite teaSprite) && teaSprite != null)
         {
@@ -364,10 +327,7 @@ public class GapOptionsPanel_Patch
         return Resources.Load<Sprite>("UI/Icons/DefaultIcon");
     }
 
-    /// <summary>
-    /// 获取默认选项位置
-    /// </summary>
-    private static Vector3 GetDefaultOptionPos(GapOptionsPanel panel)
+        private static Vector3 GetDefaultOptionPos(GapOptionsPanel panel)
     {
         try
         {
@@ -379,10 +339,7 @@ public class GapOptionsPanel_Patch
         }
     }
 
-    /// <summary>
-    /// 获取选项间距
-    /// </summary>
-    private static Vector3 GetOptionPadding(GapOptionsPanel panel)
+        private static Vector3 GetOptionPadding(GapOptionsPanel panel)
     {
         try
         {
@@ -394,15 +351,11 @@ public class GapOptionsPanel_Patch
         }
     }
 
-    /// <summary>
-    /// 按原版 GapOptionsPanel.OnShowing 公式计算“追加选项”布局，确保与现有选项无缝衔接。
-    /// </summary>
-    private static (Vector3 Position, Vector3 Scale) ComputeAppendedOptionLayout(GapOptionsPanel panel, int baseOptionCount, int optionIndex)
+        private static (Vector3 Position, Vector3 Scale) ComputeAppendedOptionLayout(GapOptionsPanel panel, int baseOptionCount, int optionIndex)
     {
         Vector3 defaultPos = GetDefaultOptionPos(panel);
         Vector3 optionPadding = GetOptionPadding(panel);
 
-        // 原版 spacing：optionPadding.x + (list.Count * 10)
         Vector3 spacing = new Vector3(optionPadding.x + (baseOptionCount * 10f), optionPadding.y, 0f);
         bool useTwoRows = baseOptionCount > 4;
 
@@ -418,18 +371,12 @@ public class GapOptionsPanel_Patch
         return (defaultPos + spacing * optionIndex, Vector3.one);
     }
 
-    /// <summary>
-    /// 检查是否为自定义交易选项
-    /// </summary>
-    private static bool IsCustomTradeOption(GapOption option)
+        private static bool IsCustomTradeOption(GapOption option)
     {
         return option is RuntimeGapOption runtime && string.Equals(runtime.Id, "Trade", StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// 检查是否为自定义治疗选项
-    /// </summary>
-    private static bool IsCustomTreatOption(GapOption option)
+        private static bool IsCustomTreatOption(GapOption option)
     {
         return option is RuntimeGapOption runtime && string.Equals(runtime.Id, "Treat", StringComparison.Ordinal);
     }
@@ -444,7 +391,7 @@ public class GapOptionsPanel_Patch
             if (option is RuntimeGapOption runtime)
             {
                 ApplyRuntimeGapOptionPresentation(__instance, runtime);
-                // 运行时选项跳过原方法，避免再次读取 option.Name 触发 -1000.Name 缺失日志。
+
                 return false;
             }
 
@@ -549,7 +496,7 @@ public class GapOptionsPanel_Patch
             }
             catch
             {
-                // ignored
+
             }
 
             AddOrUpdateCandidate(networkPlayer.playerId, networkPlayer.userName, true, isHost);
@@ -646,43 +593,7 @@ public class GapOptionsPanel_Patch
 
     private static bool TryGetPlayerVitals(string playerId, INetworkPlayer networkPlayer, out int currentHp, out int maxHp)
     {
-        currentHp = 0;
-        maxHp = 0;
-
-        if (networkPlayer != null)
-        {
-            currentHp = Math.Max(0, networkPlayer.HP);
-            maxHp = Math.Max(0, networkPlayer.maxHP);
-        }
-
-        if (string.Equals(playerId, NetworkIdentityTracker.GetSelfPlayerId(), StringComparison.Ordinal))
-        {
-            var localPlayer = GameStateUtils.GetCurrentPlayer();
-            if (localPlayer != null)
-            {
-                currentHp = Math.Max(currentHp, Math.Max(0, localPlayer.Hp));
-                maxHp = Math.Max(maxHp, Math.Max(0, localPlayer.MaxHp));
-            }
-        }
-
-        if (maxHp <= 0 && IsVirtualAiSimulatedPlayer(playerId))
-        {
-            var localPlayer = GameStateUtils.GetCurrentPlayer();
-            int fallbackMaxHp = Math.Max(1, localPlayer?.MaxHp ?? 100);
-            int fallbackCurrentHp = localPlayer != null
-                ? Math.Max(0, localPlayer.Hp)
-                : Mathf.CeilToInt(fallbackMaxHp * 0.7f);
-
-            if (fallbackCurrentHp >= fallbackMaxHp)
-            {
-                fallbackCurrentHp = Math.Max(0, fallbackMaxHp - 1);
-            }
-
-            currentHp = Math.Max(currentHp, fallbackCurrentHp);
-            maxHp = Math.Max(maxHp, fallbackMaxHp);
-        }
-
-        return maxHp > 0;
+        return PlayerVitalsHelper.TryResolveVitals(playerId, networkPlayer, out currentHp, out maxHp);
     }
 
     internal static bool IsVirtualAiSimulatedPlayer(string playerId)
@@ -875,15 +786,12 @@ public class GapOptionsPanel_Patch
         return false;
     }
 
-    /// <summary>
-    /// 获取或创建交易面板
-    /// </summary>
-    private static TradePanel GetOrCreateTradePanel(Transform parent)
+        private static TradePanel GetOrCreateTradePanel(Transform parent)
     {
         try
         {
             Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] 开始获取 TradePanel 实例。");
-            // 尝试从UI管理器获取现有面板
+
             TradePanel panel = null;
             try
             {
@@ -899,10 +807,9 @@ public class GapOptionsPanel_Patch
             catch (InvalidOperationException)
             {
                 Plugin.Logger?.LogInfo("[GapOptionsPanel_Patch] UiManager 尚未注册 TradePanel，继续查找场景实例。");
-                // 面板尚未注册到 UiManager，继续尝试场景实例与运行时工厂。
+
             }
 
-            // 其次：从场景中查找已存在的 TradePanel（例如由 Prefab/其他模块创建）。
             try
             {
                 panel = UnityEngine.Object.FindFirstObjectByType<TradePanel>();
@@ -916,10 +823,9 @@ public class GapOptionsPanel_Patch
             }
             catch
             {
-                // ignored
+
             }
 
-            // 没有 prefab/实例时：用运行时工厂克隆游戏 UI 模板创建（避免 AddComponent 裸创建导致空引用）。
             panel = TradePanelRuntimeFactory.GetOrCreate(parent);
             if (panel != null)
             {
@@ -938,10 +844,7 @@ public class GapOptionsPanel_Patch
         }
     }
 
-    /// <summary>
-    /// 获取或创建治疗面板
-    /// </summary>
-    private static ResurrectPanel GetOrCreateResurrectPanel(Transform parent)
+        private static ResurrectPanel GetOrCreateResurrectPanel(Transform parent)
     {
         try
         {
@@ -963,7 +866,7 @@ public class GapOptionsPanel_Patch
             }
             catch (InvalidOperationException)
             {
-                // 治疗面板尚未由 UiManager 注册时返回 null，让调用方决定后续处理。
+
                 Plugin.Logger?.LogDebug("[GapOptionsPanel_Patch] UiManager 中未找到治疗面板，尝试场景搜索与运行时工厂。");
             }
 
@@ -978,7 +881,7 @@ public class GapOptionsPanel_Patch
             }
             catch
             {
-                // ignored
+
             }
 
             var runtimePanel = ResurrectPanelRuntimeFactory.GetOrCreate(parent);

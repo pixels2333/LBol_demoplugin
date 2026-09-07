@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
@@ -6,21 +6,14 @@ using System.Text.Json;
 
 namespace NetworkPlugin.Utils;
 
-/// <summary>
-/// 网络事件日志辅助：生成稳定的 payload 指纹，并提取少量关键字段用于判重。
-/// 设计目标：
-/// - 不引入敏感信息泄露（Token/Key 等字段默认脱敏）
-/// - 低开销（大 payload 只做指纹+长度，不做深解析）
-/// - 输出中文，便于用户排查“同一事件重复发送/重复处理”
-/// </summary>
 public static class NetLogHelper
 {
     private const int DefaultHeadLimit = 160;
-    private const int MaxParseLength = 20_000; // 大于该长度时跳过 JsonDocument.Parse
+    private const int MaxParseLength = 20_000;
 
     private static readonly string[] InterestingKeys =
     {
-        // 通用
+
         "Timestamp",
         "EventId",
         "SenderPlayerId",
@@ -28,7 +21,6 @@ public static class NetLogHelper
         "PlayerId",
         "PlayerName",
 
-        // 地图/位置
         "LocationX",
         "LocationY",
         "LocationName",
@@ -37,30 +29,23 @@ public static class NetLogHelper
         "X",
         "Y",
 
-        // 战斗/敌人
         "SpawnId",
         "RootIndex",
         "Round",
         "EnemyName",
 
-        // 房间/追赶
         "RoomKey",
         "RoomVersion",
 
-        // 可能包含敏感信息（会脱敏）
         "JoinToken",
         "ReconnectToken",
     };
 
-    /// <summary>
-    /// 生成日志摘要：指纹 + 长度 + 少量关键字段 + 头部预览。
-    /// </summary>
-    public static string BuildSummary(string messageType, string json)
+        public static string BuildSummary(string messageType, string json)
     {
         json ??= string.Empty;
         ulong fp = ComputeFnv1a64(json);
 
-        // 基础信息
         StringBuilder sb = new StringBuilder();
         sb.Append("指纹=0x");
         sb.Append(fp.ToString("x16", CultureInfo.InvariantCulture));
@@ -72,7 +57,6 @@ public static class NetLogHelper
             return sb.ToString();
         }
 
-        // 大 payload：不深解析，避免卡顿
         if (json.Length > MaxParseLength)
         {
             sb.Append(", 预览=");
@@ -80,7 +64,6 @@ public static class NetLogHelper
             return sb.ToString();
         }
 
-        // 尝试解析并提取字段
         if (TryExtractKeyFields(json, out var fields) && fields.Count > 0)
         {
             sb.Append(", 字段=");
@@ -101,7 +84,6 @@ public static class NetLogHelper
             return sb.ToString();
         }
 
-        // 解析失败或没有目标字段：给一段头部预览
         sb.Append(", 预览=");
         sb.Append(Quote(TruncateOneLine(json, DefaultHeadLimit)));
         return sb.ToString();
@@ -166,7 +148,7 @@ public static class NetLogHelper
     {
         if (IsSensitiveKey(key))
         {
-            // 只暴露“存在”而不暴露内容
+
             return "<已脱敏>";
         }
 
@@ -179,7 +161,7 @@ public static class NetLogHelper
                 JsonValueKind.True => "true",
                 JsonValueKind.False => "false",
                 JsonValueKind.Null => "null",
-                // 对象/数组：只显示 kind+长度（避免刷屏）
+
                 JsonValueKind.Object or JsonValueKind.Array => $"<{v.ValueKind.ToString().ToLowerInvariant()}>",
                 _ => TruncateOneLine(v.GetRawText(), 80),
             };

@@ -1,4 +1,4 @@
-namespace NetworkPlugin.Network.Snapshot;
+﻿namespace NetworkPlugin.Network.Snapshot;
 
 public class RemoteStatusEffectInfo
 {

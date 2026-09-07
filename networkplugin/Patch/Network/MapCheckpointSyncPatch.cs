@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using HarmonyLib;
 using Microsoft.Extensions.DependencyInjection;
 using LBoL.Core;
@@ -11,9 +11,6 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// Map checkpoint hooks (host-only): mark key progress points for mid-game join/reconnection.
-/// </summary>
 [HarmonyPatch]
 public static class MapCheckpointSyncPatch
 {
@@ -78,10 +75,7 @@ public static class MapCheckpointSyncPatch
         }
     }
 
-    /// <summary>
-    /// 进入下一阶段时标记检查点
-    /// </summary>
-    [HarmonyPatch(typeof(GameRunController), nameof(GameRunController.EnterNextStage))]
+        [HarmonyPatch(typeof(GameRunController), nameof(GameRunController.EnterNextStage))]
     private static class GameRunController_EnterNextStage_Checkpoint
     {
         [HarmonyPostfix]
@@ -93,15 +87,12 @@ public static class MapCheckpointSyncPatch
             }
             catch
             {
-                // ignored
+
             }
         }
     }
 
-    /// <summary>
-    /// 节点结束时标记检查点（非战斗节点）
-    /// </summary>
-    [HarmonyPatch(typeof(Station), nameof(Station.Finish))]
+        [HarmonyPatch(typeof(Station), nameof(Station.Finish))]
     private static class Station_Finish_Checkpoint
     {
         [HarmonyPostfix]
@@ -111,7 +102,7 @@ public static class MapCheckpointSyncPatch
             {
                 if (__instance is BattleStation)
                 {
-                    // battle_end has its own explicit checkpoint hook.
+
                     return;
                 }
 
@@ -119,15 +110,12 @@ public static class MapCheckpointSyncPatch
             }
             catch
             {
-                // ignored
+
             }
         }
     }
 
-    /// <summary>
-    /// 奖励面板关闭时标记检查点
-    /// </summary>
-    [HarmonyPatch(typeof(RewardPanel), "OnHided")]
+        [HarmonyPatch(typeof(RewardPanel), "OnHided")]
     private static class RewardPanel_OnHided_Checkpoint
     {
         [HarmonyPostfix]
@@ -139,15 +127,12 @@ public static class MapCheckpointSyncPatch
             }
             catch
             {
-                // ignored
+
             }
         }
     }
 
-    /// <summary>
-    /// 商店购买后标记检查点
-    /// </summary>
-    [HarmonyPatch(typeof(ShopPanel), nameof(ShopPanel.SetShopAfterBuying))]
+        [HarmonyPatch(typeof(ShopPanel), nameof(ShopPanel.SetShopAfterBuying))]
     private static class ShopPanel_SetShopAfterBuying_Checkpoint
     {
         [HarmonyPostfix]
@@ -159,15 +144,12 @@ public static class MapCheckpointSyncPatch
             }
             catch
             {
-                // ignored
+
             }
         }
     }
 
-    /// <summary>
-    /// GapOptions 选择后标记检查点
-    /// </summary>
-    [HarmonyPatch(typeof(GapOptionsPanel), nameof(GapOptionsPanel.SelectedAndHide))]
+        [HarmonyPatch(typeof(GapOptionsPanel), nameof(GapOptionsPanel.SelectedAndHide))]
     private static class GapOptionsPanel_SelectedAndHide_Checkpoint
     {
         [HarmonyPostfix]
@@ -179,7 +161,7 @@ public static class MapCheckpointSyncPatch
             }
             catch
             {
-                // ignored
+
             }
         }
     }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text.Json;
 using HarmonyLib;
 using LBoL.Core;
@@ -13,17 +13,6 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// 参照 Together in Spire: VictoryScreenPatch.java
-///
-/// 目标：
-/// - 在多人联机时同步“本局结算结果”（NormalEnd/TrueEnd/Failure 等），避免各端结算时序不一致。
-/// - 使用 SyncOnResult 标记避免回环：收到远端结算事件后，下一次本地结算不再广播。
-///
-/// 说明：
-/// - 目前仅做“广播 + 去重标记”，不强制退出、不强制断开联机；后续可在收到事件时加入 UI/流程控制。
-/// - 事件类型以 "On" 开头以进入 GameEvent 通道（见 NetworkClient/NetworkServer 的 IsGameEvent 判定）。
-/// </summary>
 [HarmonyPatch]
 public static class GameResultSyncPatch
 {
@@ -43,10 +32,7 @@ public static class GameResultSyncPatch
     private static readonly Action<string, object> _onGameEventReceived = OnGameEventReceived;
     private static readonly Action<bool> _onConnectionStateChanged = OnConnectionStateChanged;
 
-    /// <summary>
-    /// 订阅钩子：在 GameDirector.Update 时确保订阅并处理抑制超时
-    /// </summary>
-    [HarmonyPatch(typeof(GameDirector), "Update")]
+        [HarmonyPatch(typeof(GameDirector), "Update")]
     private static class SubscribeHook
     {
         [HarmonyPostfix]
@@ -80,8 +66,6 @@ public static class GameResultSyncPatch
             return;
         }
 
-        // 如果远端胜利导致本地没有走到结算面板（比如直接 LeaveGameRun），
-        // 这里用一个短 TTL 自动恢复标记，避免下一局的胜利同步被永久抑制。
         SyncOnResult = true;
         _suppressUntilTicks = 0;
     }
@@ -103,7 +87,7 @@ public static class GameResultSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
         try
@@ -162,17 +146,15 @@ public static class GameResultSyncPatch
 
         if (!IsVictoryResult(resultType))
         {
-            // 需求：只同步胜利，不同步失败。
+
             return;
         }
 
-        // 收到远端结算：下一次本地结算不再广播，避免回环/风暴。
         SyncOnResult = false;
         _suppressUntilTicks = DateTime.Now.AddSeconds(3).Ticks;
         LastRemoteResult = resultType;
         Plugin.Logger?.LogInfo($"[GameResultSync] Remote game result received: {resultType}");
 
-        // 需求：收到胜利同步后，自动离开本局。
         TryLeaveGameRunFromRemoteResult(resultType);
     }
 
@@ -211,7 +193,7 @@ public static class GameResultSyncPatch
 
         if (!SyncOnResult)
         {
-            // 这一轮结算由远端触发/已同步过：只恢复标记，避免下一局被永久抑制。
+
             SyncOnResult = true;
             _suppressUntilTicks = 0;
             return;
@@ -219,7 +201,7 @@ public static class GameResultSyncPatch
 
         if (!IsVictoryResult(resultType))
         {
-            // 需求：只同步胜利，不同步失败。
+
             return;
         }
 
@@ -234,7 +216,6 @@ public static class GameResultSyncPatch
                 Timestamp = DateTime.Now.Ticks
             };
 
-            // 走 GameEvent 通道（Server 会广播给除发送方之外的所有客户端）。
             client.SendRequest(NetworkMessageTypes.OnGameRunResult, JsonCompat.Serialize(payload));
             Plugin.Logger?.LogInfo($"[GameResultSync] Broadcast game result: {resultType}");
         }
@@ -244,10 +225,7 @@ public static class GameResultSyncPatch
         }
     }
 
-    /// <summary>
-    /// 结算面板显示时后置：处理本地游戏结束结果并广播
-    /// </summary>
-    [HarmonyPatch(typeof(GameResultPanel), "OnShowing")]
+        [HarmonyPatch(typeof(GameResultPanel), "OnShowing")]
     private static class GameResultPanel_OnShowing_Patch
     {
         [HarmonyPostfix]

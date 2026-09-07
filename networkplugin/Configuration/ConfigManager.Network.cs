@@ -1,105 +1,45 @@
-using BepInEx.Configuration;
+﻿using BepInEx.Configuration;
 using NetworkPlugin.Network;
 
 namespace NetworkPlugin.Configuration;
 
 public partial class ConfigManager
 {
-    /// <summary>
-    /// 网络参数配置区域 - 网络连接相关参数
-    /// </summary>
-    #region 网络参数
+        #region 网络参数
 
-    /// <summary>
-    /// 玩家自定义 PlayerId（可选）。
-    /// 说明：优先用于联机层身份标识；为空时将回退到服务器 Welcome 下发的 PlayerId。
-    /// </summary>
-    public ConfigEntry<string> PlayerIdOverride { get; private set; }
+        public ConfigEntry<string> PlayerIdOverride { get; private set; }
 
-    /// <summary>
-    /// 玩家自定义联机昵称（可选）。
-    /// </summary>
-    public ConfigEntry<string> PlayerNameOverride { get; private set; }
+        public ConfigEntry<string> PlayerNameOverride { get; private set; }
 
-    /// <summary>
-    /// 做房主专用监听端口号
-    /// </summary>
-    public ConfigEntry<int> HostServerPort { get; private set; }
+        public ConfigEntry<int> HostServerPort { get; private set; }
 
-    /// <summary>
-    /// 做房主专用玩家昵称（可选）。
-    /// </summary>
-    public ConfigEntry<string> HostPlayerNameOverride { get; private set; }
+        public ConfigEntry<string> HostPlayerNameOverride { get; private set; }
 
-    /// <summary>
-    /// 做房主专用最大连接数
-    /// </summary>
-    public ConfigEntry<int> HostMaxConnections { get; private set; }
+        public ConfigEntry<int> HostMaxConnections { get; private set; }
 
-    /// <summary>
-    /// 做房主专用连接密钥
-    /// </summary>
-    public ConfigEntry<string> HostConnectionKey { get; private set; }
+        public ConfigEntry<string> HostConnectionKey { get; private set; }
 
-    /// <summary>
-    /// 服务器端口号
-    /// 联机服务器监听的端口号
-    /// 默认值为 7777
-    /// </summary>
-    public ConfigEntry<int> ServerPort { get; private set; }
+        public ConfigEntry<int> ServerPort { get; private set; }
 
-    /// <summary>
-    /// 服务器IP地址
-    /// 连接服务器的IP地址
-    /// 默认为本地回环地址 127.0.0.1
-    /// </summary>
-    public ConfigEntry<string> ServerIP { get; private set; }
+        public ConfigEntry<string> ServerIP { get; private set; }
 
-    /// <summary>
-    /// 日志详细程度
-    /// 控制日志输出的详细程度
-    /// 0 = 仅错误，1 = 错误和警告，2 = 全部
-    /// </summary>
-    public ConfigEntry<int> LogVerbosity { get; private set; }
+        public ConfigEntry<int> LogVerbosity { get; private set; }
 
-    /// <summary>
-    /// 中继服务器端口
-    /// 中继服务器监听的端口号
-    /// </summary>
-    public ConfigEntry<int> RelayServerPort { get; private set; }
+        public ConfigEntry<int> RelayServerPort { get; private set; }
 
-    /// <summary>
-    /// 中继服务器最大连接数
-    /// 中继服务器允许的最大并发连接数
-    /// </summary>
-    public ConfigEntry<int> RelayServerMaxConnections { get; private set; }
+        public ConfigEntry<int> RelayServerMaxConnections { get; private set; }
 
-    /// <summary>
-    /// 中继服务器连接密钥
-    /// 客户端连接中继服务器时需要验证的密钥
-    /// </summary>
-    public ConfigEntry<string> RelayServerConnectionKey { get; private set; }
+        public ConfigEntry<string> RelayServerConnectionKey { get; private set; }
 
-    /// <summary>
-    /// 中继服务器最大房间数
-    /// 中继服务器允许创建的最大房间数量
-    /// </summary>
-    public ConfigEntry<int> RelayServerMaxRooms { get; private set; }
+        public ConfigEntry<int> RelayServerMaxRooms { get; private set; }
 
-    /// <summary>
-    /// 中继服务器每个房间最大玩家数
-    /// 每个游戏房间允许的最大玩家数量
-    /// </summary>
-    public ConfigEntry<int> RelayServerMaxPlayersPerRoom { get; private set; }
+        public ConfigEntry<int> RelayServerMaxPlayersPerRoom { get; private set; }
 
     #endregion
 
-    /// <summary>
-    /// 绑定网络参数配置
-    /// </summary>
-    private void BindNetworkSettings(ConfigFile configFile)
+        private void BindNetworkSettings(ConfigFile configFile)
     {
-        // 玩家自定义身份（可选）。
+
         PlayerIdOverride = configFile.Bind(
             "Network",
             "PlayerIdOverride",
@@ -107,7 +47,6 @@ public partial class ConfigManager
             "玩家自定义 PlayerId（可选；为空则使用服务器下发的 PlayerId）。"
         );
 
-        // 玩家自定义联机昵称。
         PlayerNameOverride = configFile.Bind(
             "Network",
             "PlayerNameOverride",
@@ -143,7 +82,6 @@ public partial class ConfigManager
             "做房主本地服务器连接密钥"
         );
 
-        // 在Network区域下绑定网络相关配置
         ServerPort = configFile.Bind(
             "Network",
             "ServerPort",
@@ -165,7 +103,6 @@ public partial class ConfigManager
             "日志详细程度，0 = 仅错误，1 = 错误和警告，2 = 全部"
         );
 
-        // 中继服务器相关配置
         RelayServerPort = configFile.Bind(
             "RelayServer",
             "Port",
@@ -202,10 +139,7 @@ public partial class ConfigManager
         );
     }
 
-    /// <summary>
-    /// 获取中继服务器配置对象
-    /// </summary>
-    public NetworkPlugin.Network.Server.RelayServerConfig GetRelayServerConfig()
+        public NetworkPlugin.Network.Server.RelayServerConfig GetRelayServerConfig()
     {
         return new NetworkPlugin.Network.Server.RelayServerConfig
         {
@@ -217,11 +151,7 @@ public partial class ConfigManager
         };
     }
 
-    /// <summary>
-    /// 检查指定的日志等级是否满足 LogVerbosity 的阈值
-    /// 0 = 仅错误 (level 0), 1 = 错误和警告 (level <= 1), 2 = 全部 (level <= 2)
-    /// </summary>
-    public bool ShouldLog(int level)
+        public bool ShouldLog(int level)
     {
         int verbosity = LogVerbosity?.Value ?? 2;
         return verbosity >= level;

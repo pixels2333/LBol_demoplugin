@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using HarmonyLib;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,11 +17,6 @@ using UnityEngine.UI;
 
 namespace NetworkPlugin.Patch.UI;
 
-/// <summary>
-/// 参照 Together in Spire 的 ShopTradeIconPatch.java：
-/// - 在商店界面可见时渲染/更新一个“交易(TRADE)”按钮
-/// - 当联机且允许交易时显示，点击后尝试打开交易面板（若不可用则提示）
-/// </summary>
 [HarmonyPatch]
 public static class ShopTradeIconPatch
 {
@@ -58,7 +53,6 @@ public static class ShopTradeIconPatch
 
     private static ShopPanel _cachedShopPanel;
 
-    // 该补丁每帧都会通过 GameDirector.Update 运行，因此需要节流高频日志。
     private static TradeUiUpdateState _lastState;
     private static bool _hasLastState;
     private static float _nextStateLogTime;
@@ -95,7 +89,7 @@ public static class ShopTradeIconPatch
         {
             if (_ui?.Root != null)
             {
-                // 商店即将关闭，销毁注入的 UI，避免残留对象泄漏。
+
                 CleanupUi();
             }
 
@@ -141,7 +135,7 @@ public static class ShopTradeIconPatch
     {
         try
         {
-            // 轻量级看门狗：只在商店当前可见时刷新。
+
             var shopPanel = _cachedShopPanel;
             if (shopPanel == null)
             {
@@ -176,7 +170,6 @@ public static class ShopTradeIconPatch
             return;
         }
 
-        // 避免每帧都执行重建之类的重操作。
         if (_ui == null || _ui.Root == null || _ui.ShopPanel != shopPanel)
         {
             EnsureUi(shopPanel);
@@ -189,21 +182,20 @@ public static class ShopTradeIconPatch
 
     private static void EnsureUi(ShopPanel shopPanel)
     {
-        if (_ui != null && _ui.Root != null && _ui.ShopPanel == shopPanel) // 如果UI已存在且匹配当前商店面板，则无需重建
+        if (_ui != null && _ui.Root != null && _ui.ShopPanel == shopPanel)
         {
             return;
         }
 
-        CleanupUi(); // 清理旧UI以准备重建
+        CleanupUi();
 
-        bool gotButtons = TryGetShopButtons(shopPanel, out Button cardServiceButton, out Button returnButton); // 尝试获取商店的卡牌服务和返回按钮
+        bool gotButtons = TryGetShopButtons(shopPanel, out Button cardServiceButton, out Button returnButton);
         if (!gotButtons)
         {
             Plugin.Logger?.LogWarning("[ShopTradeIcon] 无法找到商店按钮，无法在中间插入。");
             return;
         }
 
-        // 直接读取 ShopPanel.shopBoard 字段作为统一父节点，确保与 cardServiceButton、returnButton 严格同级。
         Transform barParent = TryGetShopBoardTransform(shopPanel);
 
         if (barParent == null)
@@ -216,7 +208,6 @@ public static class ShopTradeIconPatch
 
         _defaultFont ??= FindDefaultFont(barParent);
 
-        // 获取 CardService 容器和 ReturnButton 容器作为参照
         RectTransform leftContainer = cardServiceButton.transform.parent as RectTransform;
         RectTransform rightContainer = returnButton.transform.parent as RectTransform;
 
@@ -233,7 +224,7 @@ public static class ShopTradeIconPatch
             CardServiceButton = cardServiceButton,
             ReturnButton      = returnButton,
         };
-        
+
         if (leftContainer != null)
         {
             ui.CardServiceOriginalAnchoredPosition = leftContainer.anchoredPosition;
@@ -241,7 +232,7 @@ public static class ShopTradeIconPatch
             ui.CardServiceOriginalScale = leftContainer.localScale;
             ui.CardServiceOriginalLocalPosition = leftContainer.localPosition;
         }
-        
+
         if (rightContainer != null)
         {
             ui.ReturnOriginalAnchoredPosition = rightContainer.anchoredPosition;
@@ -249,40 +240,35 @@ public static class ShopTradeIconPatch
             ui.ReturnOriginalScale = rightContainer.localScale;
             ui.ReturnOriginalLocalPosition = rightContainer.localPosition;
         }
-        
+
         _ui = ui;
-        
+
         GameObject midGo = null;
         try
         {
 
-        // 克隆整个 CardService 容器，以获得背景、边框等完整按钮样式
         midGo = UnityEngine.Object.Instantiate(leftContainer.gameObject, barParent, false);
         midGo.name = "NetworkPlugin_TradeButton";
         RectTransform mid = midGo.GetComponent<RectTransform>();
-        
-        // 查找克隆后的 Button 组件并重新挂载事件
+
         Button tradeButton = midGo.GetComponentInChildren<Button>(true);
         if (tradeButton != null)
         {
             tradeButton.onClick = new Button.ButtonClickedEvent();
             tradeButton.onClick.AddListener(() => OnTradeButtonClicked(shopPanel));
         }
-        
+
         CleanTooltipComponents(midGo);
 
-        // 剥离本地化组件，防止文字被游戏本地化系统覆盖回原文
         TryStripLocalizationComponents(midGo);
 
         ApplyTradeButtonLabel(midGo, tradeButton, TradeButtonLabelText);
 
-        // 设置为用户指定的固定坐标项（参考运行时截图）
         mid.anchorMin        = new Vector2(0.5f, 0.5f);
         mid.anchorMax        = new Vector2(0.5f, 0.5f);
         mid.pivot            = new Vector2(0.5f, 0.5f);
         mid.sizeDelta        = new Vector2(300f, 100f);
-        
-        // 直接设置本地坐标、缩放和旋转
+
         mid.localPosition    = new Vector3(1031.00f, -669.00f, 0.00f);
         mid.localScale       = Vector3.one;
         mid.localEulerAngles = Vector3.zero;
@@ -290,7 +276,6 @@ public static class ShopTradeIconPatch
         Plugin.Logger?.LogInfo(
             $"[ShopTradeIcon] TradeButton (Container) 已设置为固定坐标: localPos={mid.localPosition}, size={mid.sizeDelta}");
 
-        // 同步调整原生 CardService 容器到截图中的属性
         if (leftContainer != null)
         {
             ui.CardServiceOriginalLocalPosition = leftContainer.localPosition;
@@ -300,7 +285,6 @@ public static class ShopTradeIconPatch
             Plugin.Logger?.LogInfo($"[ShopTradeIcon] CardService 容器已调整: localPos=870,-720,0 sizeDelta=300,100");
         }
 
-        // 同步调整原生 ReturnButton 容器到截图中的属性
         if (rightContainer != null)
         {
             ui.ReturnOriginalLocalPosition = rightContainer.localPosition;
@@ -502,7 +486,6 @@ public static class ShopTradeIconPatch
         }
     }
 
-
     private static Transform TryGetShopBoardTransform(ShopPanel shopPanel)
     {
         try
@@ -675,8 +658,6 @@ public static class ShopTradeIconPatch
         }
     }
 
-
-
     private static void SetUiVisible(bool visible)
     {
         if (_ui?.Root == null)
@@ -712,15 +693,11 @@ public static class ShopTradeIconPatch
         }
     }
 
-
-
     private static TMP_FontAsset FindDefaultFont(Transform root)
     {
         var tmp = root.GetComponentInChildren<TextMeshProUGUI>(true);
         return tmp?.font;
     }
-
-
 
     private static Sprite TryLoadTradeSprite()
         => Resources.Load<Sprite>("UI/Icons/TradeIcon") ?? Resources.Load<Sprite>("UI/Icons/DefaultIcon");

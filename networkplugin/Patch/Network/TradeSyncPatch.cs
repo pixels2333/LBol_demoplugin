@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -11,12 +11,6 @@ using NetworkPlugin.Patch.UI;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// Trade 同步补丁（Host 权威裁决 + 广播）。
-///
-/// 注意：服务端广播会排除发送方，因此 Host 必须在本地也执行一次 Apply。
-/// 该行为与 EndTurnSyncPatch / RemoteCardUsePatch 等保持一致。
-/// </summary>
 public static class TradeSyncPatch
 {
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
@@ -25,16 +19,13 @@ public static class TradeSyncPatch
     private static bool _subscribed;
     private static INetworkClient _subscribedClient;
 
-    // Host 侧会话缓存（内存态；断线后可由 Snapshot 恢复/取消）。
     private static readonly Dictionary<string, TradeSessionState> _hostSessions = new(StringComparer.Ordinal);
 
-    // Host 侧请求去重（per trade sliding window）。
     private const int RequestIdWindowSize = 64;
     private static readonly Dictionary<string, LinkedList<string>> _recentRequestIdsByTrade = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, HashSet<string>> _recentRequestIdSetsByTrade = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, long> _lastRequestTimestampByTrade = new(StringComparer.Ordinal);
 
-    // 客户端侧最近一次状态（用于 UI 刷新）。
     private static readonly Dictionary<string, TradeSessionState> _lastKnown = new(StringComparer.Ordinal);
 
     public static bool IsApplyingTrade { get; private set; }
@@ -162,7 +153,7 @@ public static class TradeSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
         try
@@ -279,7 +270,6 @@ public static class TradeSyncPatch
                 return;
             }
 
-            // 仅在未连接网络时的离线单机降级
             if (TryGetJsonElement(payload, out JsonElement root))
             {
                 HandleRequest(eventType, root);
@@ -327,7 +317,7 @@ public static class TradeSyncPatch
 
     private static void HandleRequest(string eventType, JsonElement root)
     {
-        // 只有 Host 处理请求。
+
         if (!NetworkIdentityTracker.GetSelfIsHost())
         {
             return;
@@ -339,7 +329,6 @@ public static class TradeSyncPatch
             return;
         }
 
-        // RequestId 去重：避免重复请求导致状态被重复推进。
         string requestId = GetString(root, "RequestId");
         long ts = GetLong(root, "Timestamp", 0);
         if (!string.IsNullOrWhiteSpace(requestId) && IsDuplicateRequest_NoLock(tradeId, requestId, ts))
@@ -393,7 +382,6 @@ public static class TradeSyncPatch
         string b = GetString(root, "PlayerBId");
         int maxSlots = GetInt(root, "MaxTradeSlots", 5);
 
-        // 基础参数校验
         if (string.IsNullOrWhiteSpace(a) || string.IsNullOrWhiteSpace(b) || string.Equals(a, b, StringComparison.OrdinalIgnoreCase))
         {
             Plugin.Logger?.LogWarning($"[TradeSyncPatch] HandleStart rejected: invalid participants (a='{a}', b='{b}')");
@@ -441,7 +429,6 @@ public static class TradeSyncPatch
                 }
             }
 
-            // 确保打开交易时确认状态复位。
             state.AConfirmed = false;
             state.BConfirmed = false;
             state.APrepared = false;
@@ -467,13 +454,11 @@ public static class TradeSyncPatch
             return;
         }
 
-        // Only participants can update offers.
         if (!state.IsParticipant(requester))
         {
             return;
         }
 
-        // L1 structural validation/sanitization.
         List<CardRef> offer = SanitizeOffer(ParseOffer(root), state.MaxTradeSlots);
         int money = SanitizeMoney(GetInt(root, "Money", 0));
         List<ExhibitRef> exhibits = SanitizeExhibits(ParseExhibits(root));
@@ -486,7 +471,6 @@ public static class TradeSyncPatch
                 return;
             }
 
-            // 任意报价变化都要取消双方确认，避免“确认后偷偷改报价”。
             state.AConfirmed = false;
             state.BConfirmed = false;
             state.APrepared = false;
@@ -559,7 +543,7 @@ public static class TradeSyncPatch
 
             if (state.AConfirmed && state.BConfirmed)
             {
-                // 两边都点了确认后，进入 Preparing：由参与者各自做本地预检，回报 ok 后才能进入 Completed。
+
                 state.Status = TradeStatus.Preparing;
                 state.APrepared = false;
                 state.BPrepared = false;
@@ -618,7 +602,7 @@ public static class TradeSyncPatch
 
             if (!ok)
             {
-                // 允许重试：回到 Open，清空确认与准备状态。
+
                 state.Status = TradeStatus.Open;
                 state.AConfirmed = false;
                 state.BConfirmed = false;
@@ -690,7 +674,6 @@ public static class TradeSyncPatch
             return;
         }
 
-        // 直接回一份 state update（由服务端广播机制送达除 Host 外的参与者；Host 自己再本地 apply）。
         BroadcastState(state);
     }
 
@@ -737,10 +720,8 @@ public static class TradeSyncPatch
             return;
         }
 
-        // 1. 本地立即应用最新状态，完成 Host 侧权威状态更新闭环
         ApplyStateLocal(state);
 
-        // 2. 广播给房间内其他客户端
         try
         {
             INetworkClient client = TryGetClient();
@@ -815,7 +796,6 @@ public static class TradeSyncPatch
                 return;
             }
 
-            // 只有当前玩家是被邀请者 (PlayerB) 时，才触发确认弹窗
             if (!string.Equals(state.PlayerBId, selfId, StringComparison.OrdinalIgnoreCase))
             {
                 return;
@@ -852,11 +832,9 @@ public static class TradeSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
-
-
 
     public static TradeSessionState GetLastKnown(string tradeId)
     {
@@ -932,7 +910,7 @@ public static class TradeSyncPatch
 
     private static List<CardRef> ParseOffer(JsonElement root)
     {
-        // Request payload: Offer: [ ... ]
+
         try
         {
             return ParseOfferArray(root, "Offer");
@@ -945,7 +923,7 @@ public static class TradeSyncPatch
 
     private static List<ExhibitRef> ParseExhibits(JsonElement root)
     {
-        // Request payload: Exhibits: [ "id1", "id2" ]
+
         try
         {
             if (!root.TryGetProperty("Exhibits", out JsonElement arr))
@@ -953,7 +931,6 @@ public static class TradeSyncPatch
                 return new List<ExhibitRef>();
             }
 
-            // 新格式：字符串数组
             if (arr.ValueKind == JsonValueKind.Array)
             {
                 List<ExhibitRef> list = new List<ExhibitRef>();
@@ -976,7 +953,7 @@ public static class TradeSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
         return new List<ExhibitRef>();
@@ -1008,7 +985,7 @@ public static class TradeSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
         return list
@@ -1050,10 +1027,9 @@ public static class TradeSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
-        // 去重（InstanceId 优先；否则 CardId 兜底）。
         return list
             .GroupBy(x => x.InstanceId >= 0 ? $"i:{x.InstanceId}" : $"c:{x.CardId}")
             .Select(g => g.First())
@@ -1067,7 +1043,6 @@ public static class TradeSyncPatch
             return new List<CardRef>();
         }
 
-        // ParseOfferArray already removes empty CardId and dedupes by instance-id/card-id.
         List<CardRef> clean = offer
             .Where(c => c != null && !string.IsNullOrWhiteSpace(c.CardId))
             .ToList();
@@ -1082,7 +1057,7 @@ public static class TradeSyncPatch
 
     private static int SanitizeMoney(int money)
     {
-        // Keep it non-negative and within a sane game-ish upper bound.
+
         if (money < 0)
         {
             return 0;
@@ -1110,7 +1085,7 @@ public static class TradeSyncPatch
 
     private static bool IsDuplicateRequest_NoLock(string tradeId, string requestId, long timestamp)
     {
-        // This method is called on the Host side; protect shared structures.
+
         lock (SyncLock)
         {
             if (!_recentRequestIdsByTrade.TryGetValue(tradeId, out LinkedList<string> order) || order == null)
@@ -1144,7 +1119,7 @@ public static class TradeSyncPatch
 
             if (timestamp > 0)
             {
-                // Keep for potential future window checks / debugging.
+
                 _lastRequestTimestampByTrade[tradeId] = Math.Max(_lastRequestTimestampByTrade.TryGetValue(tradeId, out long prev) ? prev : 0, timestamp);
             }
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
@@ -17,32 +17,18 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// 敌人意图同步补丁（参考 Together in Spire: Monster_IntentPatches.java）
-/// <para/>
-/// 对应关系：
-/// - StS: MonsterGroup.showIntent() -> LBoL: StartRoundAction.MainPhase()（回合开始生成/展示下一回合意图）
-/// - StS: AbstractMonster.createIntent() -> LBoL: EnemyUnit.UpdateTurnMoves()（刷新敌人回合行动并重建 Intentions）
-/// </summary>
 [HarmonyPatch]
 public static class EnemyIntentSyncPatch
 {
-    /// <summary>
-    /// 与 TogetherInSpire 一致：在应用远端同步/批量重放时可临时关闭意图同步，防止回环。
-    /// </summary>
-    public static bool PauseIntentSync { get; set; }
+        public static bool PauseIntentSync { get; set; }
 
-    /// <summary>
-    /// 标记当前是否处于“回合切换时生成下一回合意图”的阶段（类似 StS 的 EOT intents）。
-    /// </summary>
-    private static bool _generatingRoundStartIntentions;
+        private static bool _generatingRoundStartIntentions;
 
     private static bool _subscribed;
     private static INetworkClient _subscribedClient;
     private static readonly Action<string, object> _onGameEventReceived = OnGameEventReceived;
     private static readonly Action<bool> _onConnectionStateChanged = OnConnectionStateChanged;
 
-    // When a player joins/reconnects mid-battle, proactively rebroadcast current intentions.
     private static long _lastJoinBroadcastTicks;
 
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
@@ -50,10 +36,7 @@ public static class EnemyIntentSyncPatch
     private static INetworkClient TryGetNetworkClient()
         => ServiceProvider?.GetService<INetworkClient>();
 
-    /// <summary>
-    /// 订阅钩子：在 GameDirector.Update 时确保订阅网络事件
-    /// </summary>
-    [HarmonyPatch(typeof(GameDirector), "Update")]
+        [HarmonyPatch(typeof(GameDirector), "Update")]
     private static class SubscribeHook
     {
         [HarmonyPostfix]
@@ -87,7 +70,7 @@ public static class EnemyIntentSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
         try
@@ -116,7 +99,7 @@ public static class EnemyIntentSyncPatch
 
     private static void OnGameEventReceived(string eventType, object payload)
     {
-        // Host-only: when a player joins/reconnects, rebroadcast current battle intentions to speed up catch-up.
+
         if (!string.Equals(eventType, NetworkMessageTypes.PlayerJoined, StringComparison.Ordinal) &&
             !string.Equals(eventType, NetworkMessageTypes.Welcome, StringComparison.Ordinal) &&
             !string.Equals(eventType, NetworkMessageTypes.PlayerListUpdate, StringComparison.Ordinal))
@@ -137,30 +120,21 @@ public static class EnemyIntentSyncPatch
         TryBroadcastCurrentBattleIntentions();
     }
 
-    /// <summary>
-    /// 主阶段开始前置：标记即将广播回合开始的意图
-    /// </summary>
-    [HarmonyPatch(typeof(StartRoundAction), "MainPhase")]
+        [HarmonyPatch(typeof(StartRoundAction), "MainPhase")]
     [HarmonyPrefix]
     public static void StartRoundAction_MainPhase_Prefix()
     {
         _generatingRoundStartIntentions = true;
     }
 
-    /// <summary>
-    /// 主阶段结束后置：清除回合开始意图标记
-    /// </summary>
-    [HarmonyPatch(typeof(StartRoundAction), "MainPhase")]
+        [HarmonyPatch(typeof(StartRoundAction), "MainPhase")]
     [HarmonyPostfix]
     public static void StartRoundAction_MainPhase_Postfix()
     {
         _generatingRoundStartIntentions = false;
     }
 
-    /// <summary>
-    /// 敌人更新行动回合后置：广播该敌人的最新意图给其他客户端
-    /// </summary>
-    [HarmonyPatch(typeof(EnemyUnit), nameof(EnemyUnit.UpdateTurnMoves))]
+        [HarmonyPatch(typeof(EnemyUnit), nameof(EnemyUnit.UpdateTurnMoves))]
     [HarmonyPostfix]
     public static void EnemyUnit_UpdateTurnMoves_Postfix(EnemyUnit __instance)
     {
@@ -182,7 +156,6 @@ public static class EnemyIntentSyncPatch
                 return;
             }
 
-            // Host-authoritative: only host broadcasts intentions.
             NetworkIdentityTracker.EnsureSubscribed(networkClient);
             if (!NetworkIdentityTracker.GetSelfIsHost())
             {
@@ -208,7 +181,6 @@ public static class EnemyIntentSyncPatch
 
             string json = JsonCompat.Serialize(payload);
 
-            // 用 Battle* 前缀走 GameEvent 通道，避免被 NetworkClient/Server 当作“未知系统消息”丢弃。
             networkClient.SendRequest(NetworkMessageTypes.BattleEnemyIntentChanged, json);
 
             Plugin.Logger?.LogDebug(

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text.Json;
@@ -51,7 +51,7 @@ public static partial class RemoteCardUsePatch
         }
         catch
         {
-            // ignored
+
         }
 
         try
@@ -63,7 +63,7 @@ public static partial class RemoteCardUsePatch
         }
         catch
         {
-            // ignored
+
         }
 
         try
@@ -72,7 +72,7 @@ public static partial class RemoteCardUsePatch
         }
         catch
         {
-            // ignored
+
         }
 
         try
@@ -95,7 +95,7 @@ public static partial class RemoteCardUsePatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -162,7 +162,7 @@ public static partial class RemoteCardUsePatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -184,7 +184,6 @@ public static partial class RemoteCardUsePatch
 
             PlayerUnit caster = TryCreateRemoteCaster(root, battle) ?? battle.Player;
 
-            // 根据 TargetUnitKind 选择伤害目标：Enemy 时从 EnemyGroup 按 Id 查找，否则用本地玩家。
             Unit targetUnit = ResolveTargetUnit(root, battle);
 
             using (EnterRemotePipelineScope())
@@ -216,9 +215,6 @@ public static partial class RemoteCardUsePatch
         protected override void ResolvePhase() => _callback?.Invoke();
     }
 
-    // 根据载荷中 TargetUnitKind 选择效果目标。
-    // "Enemy"：按 TargetPlayerId 从 EnemyGroup 查找匹配 EnemyUnit（先按 Id，再按 RootIndex）。
-    // 默认（"Player" 或缺失）：返回 battle.Player（本地玩家自己承受效果）。
     private static Unit ResolveTargetUnit(JsonElement root, BattleController battle)
     {
         string targetUnitKind = NetworkEventHelper.GetString(root, "TargetUnitKind");
@@ -233,7 +229,6 @@ public static partial class RemoteCardUsePatch
             return battle.Player;
         }
 
-        // 优先按 Id 精确匹配。
         foreach (EnemyUnit enemy in battle.EnemyGroup)
         {
             if (enemy != null && !string.IsNullOrWhiteSpace(enemy.Id) &&
@@ -243,7 +238,6 @@ public static partial class RemoteCardUsePatch
             }
         }
 
-        // 兜底：按 RootIndex（数字字符串）匹配。
         if (int.TryParse(targetId, out int rootIndex))
         {
             EnemyUnit byIndex = battle.GetEnemyByRootIndex(rootIndex);
@@ -266,12 +260,7 @@ public static partial class RemoteCardUsePatch
 
         try
         {
-            // BattleController.React(Reactor, GameEntity, ActionCause) 要求当前处于 action 解析上下文
-            //（_resolver._reactors != null），在网络回调中直接调用会抛 InvalidOperationException:
-            // "Reacting out of action-resolving status"。
-            // 正确入口是 public RequestDebugAction(BattleAction, string)：将 action 入队 _debugActionQueue，
-            // 由战斗协程在 ResolveAction→ResolveDebugActions 中消费执行。
-            // 逐个入队：Queue 是 FIFO，ResolveDebugActions 会依次 resolve 每个 action。
+
             string recordPrefix = "RemoteCard";
             int i = 0;
             foreach (BattleAction action in actions)
@@ -281,7 +270,6 @@ public static partial class RemoteCardUsePatch
                     continue;
                 }
 
-                // 绑定卡牌来源（可能为 null，SetSource(null) 安全）和出牌原因。
                 action.SetSource(actionSourceCard).SetCause(ActionCause.Card);
 
                 string recordName = $"{recordPrefix}:{action.GetType().Name}:{i}";
@@ -362,7 +350,7 @@ public static partial class RemoteCardUsePatch
             }
             catch
             {
-                // ignored
+
             }
 
             var payload = new
@@ -428,7 +416,7 @@ public static partial class RemoteCardUsePatch
             }
             catch
             {
-                // ignored
+
             }
 
             card = created;
@@ -532,7 +520,7 @@ public static partial class RemoteCardUsePatch
         }
         catch
         {
-            // ignored
+
         }
 
         return list;
@@ -591,7 +579,7 @@ public static partial class RemoteCardUsePatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -626,7 +614,7 @@ public static partial class RemoteCardUsePatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -659,7 +647,7 @@ public static partial class RemoteCardUsePatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -725,7 +713,7 @@ public static partial class RemoteCardUsePatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -754,7 +742,7 @@ public static partial class RemoteCardUsePatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -766,7 +754,7 @@ public static partial class RemoteCardUsePatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -778,7 +766,7 @@ public static partial class RemoteCardUsePatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -790,7 +778,7 @@ public static partial class RemoteCardUsePatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -802,11 +790,10 @@ public static partial class RemoteCardUsePatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
-    // Helper to resolve a Unit from serialized JSON representation
     private static Unit ResolveUnit(JsonElement elem, BattleController battle)
     {
         if (elem.ValueKind != JsonValueKind.Object) return null;
@@ -859,7 +846,6 @@ public static partial class RemoteCardUsePatch
         return null;
     }
 
-    // Helper to reconstruct PerformAction subclasses from JSON
     private static PerformAction ReconstructPerformAction(JsonElement elem, BattleController battle)
     {
         string type = GetString(elem, "Type");
@@ -1028,12 +1014,11 @@ public static partial class RemoteCardUsePatch
         return null;
     }
 
-    // Helper to resolve a UnitView from Unit or serialized JSON representation, supporting remote player UnitViews
     private static UnitView ResolveUnitView(Unit unit, JsonElement elem, BattleController battle, string defaultPlayerId = null)
     {
         try
         {
-            // 1. 如果有 Unit 实例
+
             if (unit != null)
             {
                 if (Singleton<GameDirector>.Instance?.PlayerUnitView != null && unit == Singleton<GameDirector>.Instance.PlayerUnitView.Unit)
@@ -1056,7 +1041,6 @@ public static partial class RemoteCardUsePatch
                 }
             }
 
-            // 2. 从 JSON 载荷解析
             if (elem.ValueKind == JsonValueKind.Object)
             {
                 string kind = GetString(elem, "Kind");
@@ -1109,7 +1093,6 @@ public static partial class RemoteCardUsePatch
                 }
             }
 
-            // 3. Fallback: 使用 defaultPlayerId 查找远程玩家
             if (!string.IsNullOrWhiteSpace(defaultPlayerId))
             {
                 if (OtherPlayersOverlayPatch.TryGetRemoteCharacterUnitView(defaultPlayerId, out UnitView remoteView) && remoteView != null)
@@ -1136,7 +1119,6 @@ public static partial class RemoteCardUsePatch
                 return tv;
             }
 
-            // 智能敌方目标兜底：如果本地战斗有敌方单位，选择第一个存活的敌人
             if (GameDirector.Enemies != null)
             {
                 foreach (UnitView enemyView in GameDirector.Enemies)
@@ -1156,7 +1138,6 @@ public static partial class RemoteCardUsePatch
         }
     }
 
-    // Play visuals sequentially on non-executing client via a coroutine
     public static System.Collections.IEnumerator PlayVisualsCoroutine(JsonElement actionsEl, BattleController battle, bool skipStateVisuals, string defaultSenderPlayerId = null)
     {
         if (actionsEl.ValueKind != JsonValueKind.Array)
@@ -1512,7 +1493,7 @@ public static partial class RemoteCardUsePatch
         }
         catch
         {
-            // ignored
+
         }
         yield return new UnityEngine.WaitForSeconds(0.2f);
     }
@@ -1573,7 +1554,7 @@ public static partial class RemoteCardUsePatch
         }
         catch
         {
-            // ignored
+
         }
 
         yield return new UnityEngine.WaitForSeconds(0.2f);

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using HarmonyLib;
@@ -17,12 +17,6 @@ using UnityEngine.UI;
 
 namespace NetworkPlugin.Patch.Map;
 
-/// <summary>
-/// 地图节点投票同步与渲染。
-/// - 玩家右键地图节点：提交当前轮投票。
-/// - 房主在“全员投票完成”后裁决节点并广播结果。
-/// - 地图刷新时：显示投票候选（黄色）与裁决结果（绿色）以及投票玩家圆点。
-/// </summary>
 public static class MapNodeMarkSyncPatch
 {
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
@@ -133,7 +127,7 @@ public static class MapNodeMarkSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
         try
@@ -183,7 +177,7 @@ public static class MapNodeMarkSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -353,7 +347,7 @@ public static class MapNodeMarkSyncPatch
             }
             catch
             {
-                // ignored
+
             }
         }
 
@@ -443,7 +437,7 @@ public static class MapNodeMarkSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
         if (!string.IsNullOrWhiteSpace(id))
@@ -467,7 +461,7 @@ public static class MapNodeMarkSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
         return null;
@@ -527,7 +521,7 @@ public static class MapNodeMarkSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -549,7 +543,7 @@ public static class MapNodeMarkSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -654,7 +648,7 @@ public static class MapNodeMarkSyncPatch
             }
             catch
             {
-                // ignored
+
             }
         }
 
@@ -692,7 +686,7 @@ public static class MapNodeMarkSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -1051,7 +1045,7 @@ public static class MapNodeMarkSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
         return playerId;
@@ -1200,7 +1194,7 @@ public static class MapNodeMarkSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
         root = default;

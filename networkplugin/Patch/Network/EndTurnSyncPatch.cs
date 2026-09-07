@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using HarmonyLib;
@@ -18,14 +18,6 @@ using TMPro;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// 回合结束同步补丁（参考 Together in Spire 的 EndTurnPatches）：
-/// - 玩家点击“结束回合”时不立刻结束，而是上报“已结束回合”并锁定本地操作；
-/// - 等待房主/服务器确认“所有玩家都结束回合”，再允许真正进入敌方回合。
-///
-/// 说明：当前实现采用“房主客户端侧聚合 EndTurnRequest 并广播确认”的策略，
-/// 前提是服务器会将 SendGameEventData 广播给所有客户端（含发送方）。
-/// </summary>
 [HarmonyPatch]
 public static class EndTurnSyncPatch
 {
@@ -49,8 +41,6 @@ public static class EndTurnSyncPatch
     private static string _lastConfirmedBattleId;
     private static int _lastConfirmedRound = -1;
 
-    // Confirm may arrive while the battle is still resolving animations and not yet waiting for input.
-    // If we only try once, we can permanently stall with the UI gated.
     private static string _pendingProceedBattleId;
     private static int _pendingProceedRound = -1;
     private static long _pendingProceedStartUtcTicks;
@@ -110,10 +100,8 @@ public static class EndTurnSyncPatch
 
             EnsureSubscribed(client);
 
-            // Drive any deferred end-turn proceed attempts on the main thread.
             PumpPendingProceed_NoThrow();
 
-            // 更新结束回合按钮文字（显示 X/Y 或"取消结束回合"）
             UpdateEndTurnButtonText();
         }
     }
@@ -135,7 +123,7 @@ public static class EndTurnSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
         try
@@ -167,7 +155,6 @@ public static class EndTurnSyncPatch
         }
         ResetLocalTurnState();
 
-        // If we disconnected while the local gate was holding the UI, release it.
         SetEndTurnButtonInteractable(true);
         RefreshAllCardsEdge();
     }
@@ -217,7 +204,7 @@ public static class EndTurnSyncPatch
             bool hasPlayers = root.TryGetProperty("Players", out playersElem) && playersElem.ValueKind == JsonValueKind.Array;
             if (!hasPlayers)
             {
-                // NetworkServer.Welcome 使用 PlayerList 字段
+
                 hasPlayers = root.TryGetProperty("PlayerList", out playersElem) && playersElem.ValueKind == JsonValueKind.Array;
             }
 
@@ -231,7 +218,7 @@ public static class EndTurnSyncPatch
                         : true;
                     if (!string.IsNullOrWhiteSpace(id))
                     {
-                        // “等所有玩家同意”默认只统计在线玩家；离线玩家不阻塞回合推进
+
                         if (isConnected)
                         {
                             activeIds.Add(id);
@@ -249,7 +236,7 @@ public static class EndTurnSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -270,7 +257,7 @@ public static class EndTurnSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -369,11 +356,7 @@ public static class EndTurnSyncPatch
         }
     }
 
-    /// <summary>
-    /// 检查所有在线玩家是否都已结束回合；若是则本地推进。
-    /// 参考 sts2 CombatManager.AllPlayersReadyToEndTurn：每个客户端独立判断，不依赖 Host 聚合。
-    /// </summary>
-    private static void CheckAllPlayersEnded()
+        private static void CheckAllPlayersEnded()
     {
         bool allEnded;
         int totalCount;
@@ -395,11 +378,10 @@ public static class EndTurnSyncPatch
             return;
         }
 
-        // 所有在线玩家都结束了：设置允许推进标志，让 Prefix 放行 RequestEndPlayerTurn。
         BattleController battle = TryGetCurrentBattle();
         if (battle == null || !battle.IsWaitingPlayerInput)
         {
-            // 战斗未就绪，延迟推进（由 PumpPendingProceed 在 Update 中重试）。
+
             SchedulePendingProceed_NoThrow(pendingBattleId ?? "battle", pendingRound, battle == null ? "battle_null" : "not_waiting_input");
             return;
         }
@@ -415,7 +397,7 @@ public static class EndTurnSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -443,7 +425,7 @@ public static class EndTurnSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -461,7 +443,7 @@ public static class EndTurnSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -505,7 +487,6 @@ public static class EndTurnSyncPatch
                 _pendingProceedAttempts++;
             }
 
-            // 重新检查是否所有玩家都结束了（可能在此期间有新玩家加入 ended）
             bool allEnded;
             lock (_syncLock)
             {
@@ -534,7 +515,7 @@ public static class EndTurnSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -554,13 +535,13 @@ public static class EndTurnSyncPatch
             var node = run?.CurrentMap?.VisitingNode;
             if (node != null)
             {
-                // act/x/y/站点类型：在同一局中对所有客户端应一致
+
                 return $"Act{node.Act}:{node.X}:{node.Y}:{node.StationType}";
             }
         }
         catch
         {
-            // ignored
+
         }
 
         return "battle";
@@ -599,7 +580,7 @@ public static class EndTurnSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -621,19 +602,15 @@ public static class EndTurnSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
-    /// <summary>
-    /// 更新结束回合按钮文字：本地已结束 → "取消结束回合 (X/Y)"，未结束 → 恢复原始文字。
-    /// 参考 sts2 NMultiplayerPlayerState.RefreshPlayerReadyIndicator。
-    /// </summary>
-    private static void UpdateEndTurnButtonText()
+        private static void UpdateEndTurnButtonText()
     {
         try
         {
-            // 未连接或不在联机模式时不修改
+
             INetworkClient client = TryGetNetworkClient();
             if (client == null || !client.IsConnected)
             {
@@ -662,7 +639,6 @@ public static class EndTurnSyncPatch
                 endedCount = _endedPlayers.Count;
             }
 
-            // 本地已结束回合时，强制按钮保持可见且可交互（游戏自身可能隐藏它）
             if (localEnded)
             {
                 if (!endTurnButton.gameObject.activeSelf)
@@ -675,7 +651,6 @@ public static class EndTurnSyncPatch
                 }
             }
 
-            // 尝试获取按钮文字组件（TMPro 或 UnityEngine.UI.Text）
             var textComponent = endTurnButton.GetComponentInChildren<TMPro.TMP_Text>(true);
             string targetText = localEnded
                 ? $"取消结束回合 ({endedCount}/{totalCount})"
@@ -696,7 +671,7 @@ public static class EndTurnSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -722,7 +697,7 @@ public static class EndTurnSyncPatch
             }
             catch
             {
-                // ignored
+
             }
         }
     }
@@ -744,7 +719,7 @@ public static class EndTurnSyncPatch
             }
             catch
             {
-                // ignored
+
             }
         }
     }
@@ -766,7 +741,7 @@ public static class EndTurnSyncPatch
             }
             catch
             {
-                // ignored
+
             }
         }
     }
@@ -790,7 +765,6 @@ public static class EndTurnSyncPatch
                     return true;
                 }
 
-                // 所有玩家都结束 → 放行真正结束回合
                 bool allowNow;
                 lock (_syncLock)
                 {
@@ -806,7 +780,7 @@ public static class EndTurnSyncPatch
                         _pendingBattleId = null;
                         _pendingRound = -1;
                     }
-                    // 回合结束后由 StartPlayerTurn postfix 重置 _endedPlayers
+
                     return true;
                 }
 
@@ -828,7 +802,7 @@ public static class EndTurnSyncPatch
 
                 if (alreadyEnded)
                 {
-                    // 已结束回合 → 取消结束回合（参考 sts2 UndoReadyToEndTurn）
+
                     lock (_syncLock)
                     {
                         _localEndedTurn = false;
@@ -845,7 +819,7 @@ public static class EndTurnSyncPatch
                     }
                     catch
                     {
-                        // ignored
+
                     }
 
                     RefreshAllCardsEdge();
@@ -853,7 +827,6 @@ public static class EndTurnSyncPatch
                     return false;
                 }
 
-                // 结束回合
                 string battleId = GetBattleId(__instance);
                 int round = __instance.RoundCounter;
 
@@ -865,7 +838,6 @@ public static class EndTurnSyncPatch
                     _endedPlayers.Add(selfPlayerId);
                 }
 
-                // 按钮保持可交互（用于取消），不设为不可点击
                 RefreshAllCardsEdge();
 
                 try
@@ -880,10 +852,9 @@ public static class EndTurnSyncPatch
                 }
                 catch
                 {
-                    // ignored
+
                 }
 
-                // 检查是否所有玩家都结束了（单玩家时直接推进）
                 CheckAllPlayersEnded();
 
                 return false;

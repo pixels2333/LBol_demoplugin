@@ -1,17 +1,11 @@
-using System;
+﻿using System;
 using LBoL.Base;
 
 namespace NetworkPlugin.Utils
 {
-    /// <summary>
-    /// LBoL 法力系统工具类：用于处理 ManaGroup 的转换与简单计算。
-    /// </summary>
-    public static class ManaUtils
+        public static class ManaUtils
     {
-        /// <summary>
-        /// 将 ManaGroup 转换为数组格式 [红, 蓝, 绿, 白]。
-        /// </summary>
-        public static int[] ManaGroupToArray(ManaGroup manaGroup)
+                public static int[] ManaGroupToArray(ManaGroup manaGroup)
         {
             return
             [
@@ -22,10 +16,7 @@ namespace NetworkPlugin.Utils
             ];
         }
 
-        /// <summary>
-        /// 将数组转换为 ManaGroup（数组格式 [红, 蓝, 绿, 白]）。
-        /// </summary>
-        public static ManaGroup ArrayToManaGroup(int[] manaArray)
+                public static ManaGroup ArrayToManaGroup(int[] manaArray)
         {
             if (manaArray == null || manaArray.Length < 4)
             {

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using HarmonyLib;
 using LBoL.Core;
@@ -14,17 +14,6 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.MidGameJoin;
 
-/// <summary>
-/// Joiner start-game lock:
-/// - Joiner chooses character in StartGamePanel.
-/// - Right before GameMaster.StartGame creates the run, override seed/difficulty/puzzles/mode/stages
-///   to match host settings from the pending FullSnapshot.
-///
-/// Guard:
-/// - Must be connected.
-/// - Must be joiner (self is NOT host).
-/// - Must have a pending FullSnapshot with the required host start config.
-/// </summary>
 [HarmonyPatch]
 public static class JoinerStartGameLockPatch
 {
@@ -36,11 +25,7 @@ public static class JoinerStartGameLockPatch
     private static MapCatchUpOrchestrator TryGetCatchUp()
         => ServiceProvider?.GetService<MapCatchUpOrchestrator>();
 
-    // Patch the seed overload (the non-seed overload delegates to this one).
-    /// <summary>
-    /// 开始游戏前置：将加入者的种子/难度/开局配置对齐到主机的快照
-    /// </summary>
-    [HarmonyPatch(typeof(LBoL.Presentation.GameMaster), nameof(LBoL.Presentation.GameMaster.StartGame),
+        [HarmonyPatch(typeof(LBoL.Presentation.GameMaster), nameof(LBoL.Presentation.GameMaster.StartGame),
         new[]
         {
             typeof(ulong?),
@@ -83,7 +68,6 @@ public static class JoinerStartGameLockPatch
 
             NetworkIdentityTracker.EnsureSubscribed(client);
 
-            // Do not affect the host.
             if (NetworkIdentityTracker.GetSelfIsHost())
             {
                 return;
@@ -92,14 +76,14 @@ public static class JoinerStartGameLockPatch
             MapCatchUpOrchestrator catchUp = TryGetCatchUp();
             if (catchUp == null)
             {
-                // 无 MapCatchUpOrchestrator（非中途加入场景），尝试用 GameSeedSyncPatch 缓存的房主配置兜底。
+
                 TryApplyCachedHostSeed(ref seed, ref difficulty, ref puzzles, ref stages, ref debutAdventureType, ref jadeBoxes, ref gameMode, ref showRandomResult);
                 return;
             }
 
             if (!catchUp.TryGetPendingFullSnapshot(out FullStateSnapshot snapshot))
             {
-                // 无 pending FullStateSnapshot（正常联机开始），用 GameSeedSyncPatch 缓存的房主配置兜底。
+
                 TryApplyCachedHostSeed(ref seed, ref difficulty, ref puzzles, ref stages, ref debutAdventureType, ref jadeBoxes, ref gameMode, ref showRandomResult);
                 return;
             }
@@ -110,7 +94,6 @@ public static class JoinerStartGameLockPatch
                 return;
             }
 
-            // Require host config; otherwise we cannot guarantee deterministic alignment.
             if (snapshot.GameState.RootSeed == null ||
                 snapshot.GameState.Difficulty == null ||
                 snapshot.GameState.Puzzles == null ||
@@ -118,12 +101,11 @@ public static class JoinerStartGameLockPatch
                 snapshot.GameState.StageTypeNames == null ||
                 snapshot.GameState.StageTypeNames.Count == 0)
             {
-                // FullStateSnapshot 不完整，尝试用缓存配置兜底。
+
                 TryApplyCachedHostSeed(ref seed, ref difficulty, ref puzzles, ref stages, ref debutAdventureType, ref jadeBoxes, ref gameMode, ref showRandomResult);
                 return;
             }
 
-            // Lock run-level settings.
             seed = snapshot.GameState.RootSeed;
             difficulty = (GameDifficulty)snapshot.GameState.Difficulty.Value;
             puzzles = (PuzzleFlag)snapshot.GameState.Puzzles.Value;
@@ -134,10 +116,8 @@ public static class JoinerStartGameLockPatch
                 showRandomResult = snapshot.GameState.ShowRandomResult.Value;
             }
 
-            // Lock stages to host list.
             stages = BuildStages(snapshot.GameState.StageTypeNames, stages);
 
-            // Debut adventure: optional, best-effort.
             if (!string.IsNullOrWhiteSpace(snapshot.GameState.DebutAdventureTypeName))
             {
                 Type resolved = TryResolveDebutAdventureType(snapshot.GameState.DebutAdventureTypeName);
@@ -149,7 +129,7 @@ public static class JoinerStartGameLockPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -194,8 +174,6 @@ public static class JoinerStartGameLockPatch
                 return null;
             }
 
-            // Safest path: try instantiate an adventure by ID, then use its runtime type.
-            // This avoids referencing internal TypeFactory<>, which is not accessible from the plugin assembly.
             try
             {
                 var adv = Library.TryCreateAdventure(typeName);
@@ -206,10 +184,9 @@ public static class JoinerStartGameLockPatch
             }
             catch
             {
-                // ignored
+
             }
 
-            // Fallback: scan loaded assemblies by simple name.
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
             {
                 try
@@ -224,7 +201,7 @@ public static class JoinerStartGameLockPatch
                 }
                 catch
                 {
-                    // ignored
+
                 }
             }
 
@@ -236,12 +213,7 @@ public static class JoinerStartGameLockPatch
         }
     }
 
-    /// <summary>
-    /// 正常联机开始游戏（无 FullStateSnapshot）时，用 GameSeedSyncPatch 缓存的房主配置覆盖
-    /// seed/difficulty/puzzles/gameMode/showRandomResult/stages/debutAdventure/jadeBoxes，
-    /// 使客户端的开局配置与房主完全一致。
-    /// </summary>
-    private static void TryApplyCachedHostSeed(
+        private static void TryApplyCachedHostSeed(
         ref ulong? seed,
         ref GameDifficulty difficulty,
         ref PuzzleFlag puzzles,
@@ -292,7 +264,7 @@ public static class JoinerStartGameLockPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 

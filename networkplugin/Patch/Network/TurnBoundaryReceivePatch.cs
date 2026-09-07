@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using HarmonyLib;
@@ -13,9 +13,6 @@ using NetworkPlugin.Network.Snapshot;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// 回合边界快照（OnTurnStart / OnTurnEnd）接收落地。
-/// </summary>
 [HarmonyPatch]
 public static class TurnBoundaryReceivePatch
 {
@@ -28,10 +25,7 @@ public static class TurnBoundaryReceivePatch
 
     private static readonly Dictionary<string, TurnBoundarySnapshot> _lastSnapshotByPlayer = new(StringComparer.Ordinal);
 
-    /// <summary>
-    /// 订阅钩子：在 GameDirector.Update 时确保订阅网络客户端事件
-    /// </summary>
-    [HarmonyPatch(typeof(GameDirector), "Update")]
+        [HarmonyPatch(typeof(GameDirector), "Update")]
     private static class SubscribeHook
     {
         [HarmonyPostfix]
@@ -153,13 +147,7 @@ public static class TurnBoundaryReceivePatch
         }
     }
 
-    /// <summary>
-    /// 尝试获取指定玩家的最新回合边界快照
-    /// </summary>
-    /// <param name="playerId">玩家 ID</param>
-    /// <param name="snapshot">输出的快照</param>
-    /// <returns>成功获取时返回 true</returns>
-    public static bool TryGetLastSnapshot(string playerId, out TurnBoundarySnapshot snapshot)
+        public static bool TryGetLastSnapshot(string playerId, out TurnBoundarySnapshot snapshot)
     {
         snapshot = null;
         if (string.IsNullOrWhiteSpace(playerId))

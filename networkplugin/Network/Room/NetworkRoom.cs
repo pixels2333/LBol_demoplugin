@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Logging;
@@ -7,13 +7,6 @@ using NetworkPlugin.Network.Server;
 
 namespace NetworkPlugin.Network.Room;
 
-/// <summary>
-/// 网络房间实体，管理房间内的玩家连接、消息广播、房主权限及游戏状态。
-/// </summary>
-/// <remarks>
-/// 由 <see cref="RelayServer"/> 创建并持有；线程安全通过 <c>_lock</c> 保证。
-/// 房主身份在创建者加入时自动设置，房主离开后按加入顺序迁移。
-/// </remarks>
 public class NetworkRoom(string roomId, RoomConfig config, ILogger logger)
 {
     #region 字段与属性
@@ -21,54 +14,38 @@ public class NetworkRoom(string roomId, RoomConfig config, ILogger logger)
     private readonly ILogger _logger = logger;
     private readonly object _lock = new();
 
-    /// <summary>房间唯一标识符。</summary>
-    public string RoomId { get; } = roomId;
+        public string RoomId { get; } = roomId;
 
-    /// <summary>房间配置（容量、密码、模式等）。</summary>
-    public RoomConfig Config { get; } = config;
+        public RoomConfig Config { get; } = config;
 
-    /// <summary>房间内玩家连接字典，Key=PlayerId。</summary>
-    private readonly Dictionary<string, NetworkConnection> _players = [];
+        private readonly Dictionary<string, NetworkConnection> _players = [];
 
-    /// <summary>房间创建时间（UTC）。</summary>
-    public DateTime CreatedAt { get; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; } = DateTime.UtcNow;
 
-    /// <summary>当前房主 PlayerId；空字符串表示无房主。</summary>
-    public string HostPlayerId { get; private set; } = string.Empty;
+        public string HostPlayerId { get; private set; } = string.Empty;
 
-    /// <summary>房间是否已满员。</summary>
-    public bool IsFull => _players.Count >= Config.MaxPlayers;
+        public bool IsFull => _players.Count >= Config.MaxPlayers;
 
-    /// <summary>当前房间内玩家数量。</summary>
-    public int PlayerCount => _players.Count;
+        public int PlayerCount => _players.Count;
 
-    /// <summary>房间最大容量。</summary>
-    public int MaxPlayers => Config.MaxPlayers;
+        public int MaxPlayers => Config.MaxPlayers;
 
-    /// <summary>房间是否已开局；开局后禁止新玩家加入。</summary>
-    public bool IsInGame { get; private set; }
+        public bool IsInGame { get; private set; }
 
     #endregion
 
     #region 玩家管理
 
-    /// <summary>
-    /// 将玩家加入房间。首个加入者自动成为房主。
-    /// </summary>
-    /// <param name="playerId">玩家唯一标识。</param>
-    /// <param name="connection">玩家网络连接。</param>
-    /// <returns>成功返回 <see cref="JoinResult.Success"/>，否则返回错误原因。</returns>
-    public JoinResult AddPlayer(string playerId, NetworkConnection connection)
+        public JoinResult AddPlayer(string playerId, NetworkConnection connection)
     {
         lock (_lock)
         {
-            // 重复加入检测：同一 PlayerId 不允许重复加入（可能是重连场景，需先 Remove 再 Add）
+
             if (_players.ContainsKey(playerId))
             {
                 return JoinResult.Failed($"Player {playerId} already in room");
             }
 
-            // 容量检测：满员房间拒绝新加入（除非房主提升容量）
             if (IsFull)
             {
                 return JoinResult.Failed("Room is full");
@@ -77,7 +54,6 @@ public class NetworkRoom(string roomId, RoomConfig config, ILogger logger)
             _players[playerId] = connection;
             connection.CurrentRoomId = RoomId;
 
-            // 第一个加入的玩家成为房主
             if (string.IsNullOrEmpty(HostPlayerId))
             {
                 HostPlayerId = playerId;
@@ -90,10 +66,7 @@ public class NetworkRoom(string roomId, RoomConfig config, ILogger logger)
         }
     }
 
-    /// <summary>
-    /// 从房间移除玩家
-    /// </summary>
-    public void RemovePlayer(string playerId)
+        public void RemovePlayer(string playerId)
     {
         lock (_lock)
         {
@@ -104,7 +77,6 @@ public class NetworkRoom(string roomId, RoomConfig config, ILogger logger)
 
             _players.Remove(playerId);
 
-            // 如果房主离开，指定新房主
             if (HostPlayerId == playerId && _players.Count > 0)
             {
                 HostPlayerId = _players.Keys.First();
@@ -120,10 +92,7 @@ public class NetworkRoom(string roomId, RoomConfig config, ILogger logger)
         }
     }
 
-    /// <summary>
-    /// 向房间所有玩家广播消息
-    /// </summary>
-    public void BroadcastMessage(NetworkMessage message, string? excludePlayerId = null)
+        public void BroadcastMessage(NetworkMessage message, string? excludePlayerId = null)
     {
         lock (_lock)
         {
@@ -146,10 +115,7 @@ public class NetworkRoom(string roomId, RoomConfig config, ILogger logger)
         }
     }
 
-    /// <summary>
-    /// 向特定玩家发送消息
-    /// </summary>
-    public void SendMessageToPlayer(string playerId, NetworkMessage message)
+        public void SendMessageToPlayer(string playerId, NetworkMessage message)
     {
         lock (_lock)
         {
@@ -167,10 +133,7 @@ public class NetworkRoom(string roomId, RoomConfig config, ILogger logger)
         }
     }
 
-    /// <summary>
-    /// 获取所有玩家ID
-    /// </summary>
-    public List<string> GetAllPlayerIds()
+        public List<string> GetAllPlayerIds()
     {
         lock (_lock)
         {
@@ -178,10 +141,7 @@ public class NetworkRoom(string roomId, RoomConfig config, ILogger logger)
         }
     }
 
-    /// <summary>
-    /// 开始游戏
-    /// </summary>
-    public void StartGame()
+        public void StartGame()
     {
         lock (_lock)
         {
@@ -202,10 +162,7 @@ public class NetworkRoom(string roomId, RoomConfig config, ILogger logger)
         }
     }
 
-    /// <summary>
-    /// 结束游戏
-    /// </summary>
-    public void EndGame()
+        public void EndGame()
     {
         lock (_lock)
         {
@@ -225,10 +182,7 @@ public class NetworkRoom(string roomId, RoomConfig config, ILogger logger)
         }
     }
 
-    /// <summary>
-    /// 检查玩家是否在房间中
-    /// </summary>
-    public bool ContainsPlayer(string playerId)
+        public bool ContainsPlayer(string playerId)
     {
         lock (_lock)
         {
@@ -236,10 +190,7 @@ public class NetworkRoom(string roomId, RoomConfig config, ILogger logger)
         }
     }
 
-    /// <summary>
-    /// 获取玩家连接
-    /// </summary>
-    public NetworkConnection? GetPlayerConnection(string playerId)
+        public NetworkConnection? GetPlayerConnection(string playerId)
     {
         lock (_lock)
         {
@@ -248,10 +199,7 @@ public class NetworkRoom(string roomId, RoomConfig config, ILogger logger)
         }
     }
 
-    /// <summary>
-    /// 获取房间状态
-    /// </summary>
-    public RoomStatus GetStatus()
+        public RoomStatus GetStatus()
     {
         lock (_lock)
         {

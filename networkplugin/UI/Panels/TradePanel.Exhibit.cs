@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,7 +28,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 namespace NetworkPlugin.UI.Panels;
-// 展品预览、遗物选择器与协程入口
+
 public sealed partial class TradePanel
 {
 #region 展品预览栏
@@ -104,7 +104,7 @@ public sealed partial class TradePanel
         }
         else
         {
-            // 远端展品来自 trade state
+
             TradeSyncPatch.TradeSessionState state = TradeSyncPatch.GetLastKnown(_tradeId);
             if (state != null)
             {
@@ -257,7 +257,6 @@ public sealed partial class TradePanel
 
             _exhibitPickerRoot = scaffold.Root;
 
-            // 调整滚动区域宽度为 1100 像素，使其与标题视觉宽度更契合 (方案 B)
             if (scaffold.ScrollRect is not null)
             {
                 RectTransform scrollRt = scaffold.ScrollRect.GetComponent<RectTransform>();
@@ -421,7 +420,7 @@ public sealed partial class TradePanel
         }
         catch
         {
-            // 忽略
+
         }
     }
 
@@ -461,18 +460,13 @@ public sealed partial class TradePanel
         }
     }
 
-    /// <summary>
-    /// 显示交易 UI 的协程方法，调用方可等待该协程直到面板被关闭。
-    /// </summary>
-    /// <param name="payload">交易配置参数。</param>
-    /// <returns>用于等待面板关闭的协程。</returns>
-    public IEnumerator ShowTradeAsync(TradePayload payload)
+        public IEnumerator ShowTradeAsync(TradePayload payload)
     {
         Plugin.Logger?.LogInfo($"[TradePanel] ShowTradeAsync enter: payloadNull={(payload is null)}, isVisibleBefore={IsVisible}, gameObjectActiveSelf={gameObject.activeSelf}, activeInHierarchy={gameObject.activeInHierarchy}");
-        // 显示交易面板
+
         Show(payload);
         Plugin.Logger?.LogInfo($"[TradePanel] ShowTradeAsync after Show: isVisibleAfter={IsVisible}, gameObjectActiveSelf={gameObject.activeSelf}, activeInHierarchy={gameObject.activeInHierarchy}");
-        // 在面板可见期间一直等待
+
         yield return new WaitWhile(() => IsVisible);
         Plugin.Logger?.LogInfo("[TradePanel] ShowTradeAsync exit: panel hidden.");
     }

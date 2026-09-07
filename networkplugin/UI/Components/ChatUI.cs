@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,13 +13,10 @@ using UnityEngine.UI;
 
 namespace NetworkPlugin.UI.Components;
 
-/// <summary>
-/// 聊天UI组件 - 显示多人聊天消息
-/// </summary>
 public class ChatUI : MonoBehaviour
 {
     [Header("UI组件")]
-    public TMP_InputField inputField;        
+    public TMP_InputField inputField;
     public TextMeshProUGUI chatDisplay;
     public ScrollRect scrollRect;
     public Button sendButton;
@@ -32,10 +29,10 @@ public class ChatUI : MonoBehaviour
     public Color systemMessageColor = Color.yellow;
     public float messageFadeTime = 10f;
 
-    private Queue<ChatMessage> messageQueue = new();      // 存储聊天消息的队列，先进先出
-    private List<GameObject> messageObjects = [];          // 存储 UI 消息对象列表，用于管理和清理
+    private Queue<ChatMessage> messageQueue = new();
+    private List<GameObject> messageObjects = [];
     private Dictionary<GameObject, DateTime> messageCreatedAt = [];
-    private INetworkClient _networkClient;                // 网络客户端接口，负责消息发送
+    private INetworkClient _networkClient;
 
     private void Start()
     {
@@ -43,19 +40,18 @@ public class ChatUI : MonoBehaviour
 
         SetupUI();
 
-        // 注册聊天消息接收事件（当前通过 NetworkClient.OnGameEventReceived 分发）
         if (_networkClient is NetworkClient concrete)
         {
             NetworkIdentityTracker.EnsureSubscribed(concrete);
             concrete.OnGameEventReceived += OnNetworkGameEventReceived;
         }
-    }    // 初始化聊天UI，设置服务依赖和事件注册
+    }
 
     private void Update()
     {
-        // 处理消息淡出
+
         UpdateMessageFading();
-    }    // 每帧更新，处理消息淡出等视觉效果
+    }
 
     private void OnDestroy()
     {
@@ -63,12 +59,9 @@ public class ChatUI : MonoBehaviour
         {
             concrete.OnGameEventReceived -= OnNetworkGameEventReceived;
         }
-    }    // 组件销毁时清理网络事件监听
+    }
 
-    /// <summary>
-    /// 设置UI组件
-    /// </summary>
-    private void SetupUI()
+        private void SetupUI()
     {
         if (inputField != null)
         {
@@ -93,7 +86,6 @@ public class ChatUI : MonoBehaviour
 
         if (chatDisplay != null) chatDisplay.text = "聊天系统已启用...\n";
 
-        // 初始隐藏聊天容器
         chatContainer?.SetActive(false);
     }
 
@@ -143,10 +135,7 @@ public class ChatUI : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 切换聊天窗口显示
-    /// </summary>
-    public void ToggleChatWindow()
+        public void ToggleChatWindow()
     {
         if (chatContainer != null)
         {
@@ -155,7 +144,7 @@ public class ChatUI : MonoBehaviour
 
             if (!isActive)
             {
-                // 重新激活时聚焦输入框
+
                 if (inputField != null)
                 {
                     inputField.Select();
@@ -163,12 +152,9 @@ public class ChatUI : MonoBehaviour
                 }
             }
         }
-    }    // 切换聊天窗口的显示/隐藏状态
+    }
 
-    /// <summary>
-    /// 发送聊天消息
-    /// </summary>
-    public void SendMessage(string message)
+        public void SendMessage(string message)
     {
         if (string.IsNullOrEmpty(message) || _networkClient == null || !_networkClient.IsConnected)
         {
@@ -195,12 +181,9 @@ public class ChatUI : MonoBehaviour
             Plugin.Logger?.LogError($"[ChatUI] Failed to send chat message: {ex.Message}");
             AddSystemMessage("消息发送失败，请检查网络连接");
         }
-    }    // 发送聊天消息到网络并显示在本地聊天窗口
+    }
 
-    /// <summary>
-    /// 添加消息到聊天显示
-    /// </summary>
-    public void AddMessageToChat(ChatMessage message)
+        public void AddMessageToChat(ChatMessage message)
     {
         messageQueue.Enqueue(message);
 
@@ -210,18 +193,15 @@ public class ChatUI : MonoBehaviour
         }
 
         CreateMessageObject(message);
-        
+
         if (scrollRect != null)
         {
             Canvas.ForceUpdateCanvases();
-            scrollRect.verticalNormalizedPosition = 0f; // 滚动到底部
+            scrollRect.verticalNormalizedPosition = 0f;
         }
     }
 
-    /// <summary>
-    /// 添加系统消息
-    /// </summary>
-    public void AddSystemMessage(string message)
+        public void AddSystemMessage(string message)
     {
         ChatMessage systemMessage = new ChatMessage
         {
@@ -236,12 +216,7 @@ public class ChatUI : MonoBehaviour
         AddMessageToChat(systemMessage);
     }
 
-
-
-    /// <summary>
-    /// 创建消息UI对象
-    /// </summary>
-    private void CreateMessageObject(ChatMessage message)
+        private void CreateMessageObject(ChatMessage message)
     {
         if (messagePrefab == null || chatContainer == null)
         {
@@ -262,13 +237,11 @@ public class ChatUI : MonoBehaviour
             textComponent.text = formattedMessage;
             textComponent.color = message.MessageType == ChatMessageType.System ? systemMessageColor : playerMessageColor;
 
-            // 存储消息对象用于后续管理
             messageObj.name = $"Message_{message.MessageId}";
             messageObjects.Add(messageObj);
             messageCreatedAt[messageObj] = DateTime.UtcNow;
         }
 
-        // 限制消息对象数量
         if (messageObjects.Count > maxMessages)
         {
             var oldestMessage = messageObjects[0];
@@ -278,12 +251,7 @@ public class ChatUI : MonoBehaviour
         }
     }
 
-
-
-    /// <summary>
-    /// 更新消息淡出效果
-    /// </summary>
-    private void UpdateMessageFading()
+        private void UpdateMessageFading()
     {
         var now = DateTime.UtcNow;
 
@@ -317,12 +285,7 @@ public class ChatUI : MonoBehaviour
         }
     }
 
-
-
-    /// <summary>
-    /// 获取当前玩家ID
-    /// </summary>
-    private string GetCurrentPlayerId()
+        private string GetCurrentPlayerId()
     {
         string id = NetworkIdentityTracker.GetSelfPlayerId();
         if (!string.IsNullOrWhiteSpace(id))
@@ -339,10 +302,7 @@ public class ChatUI : MonoBehaviour
         return "Unknown_Player";
     }
 
-    /// <summary>
-    /// 获取当前玩家名称
-    /// </summary>
-    private string GetCurrentPlayerName()
+        private string GetCurrentPlayerName()
     {
         object player = GameStateUtils.GetCurrentPlayer();
         if (player != null)
@@ -353,7 +313,6 @@ public class ChatUI : MonoBehaviour
                 return name;
             }
 
-            // LBoL 的玩家对象可能有 `ModelName` / `Id` 等字段，这里用作兜底显示名。
             string fallback = TryReadPlayerString(player, "ModelName", "Id");
             if (!string.IsNullOrWhiteSpace(fallback))
             {
@@ -395,18 +354,12 @@ public class ChatUI : MonoBehaviour
         return null;
     }
 
-    /// <summary>
-    /// 设置聊天窗口可见性
-    /// </summary>
-    public void SetChatWindowVisible(bool visible)
+        public void SetChatWindowVisible(bool visible)
     {
         chatContainer?.SetActive(visible);
     }
 
-    /// <summary>
-    /// 清空聊天记录
-    /// </summary>
-    public void ClearChat()
+        public void ClearChat()
     {
         foreach (var messageObj in messageObjects)
         {

@@ -1,4 +1,4 @@
-using NetworkPlugin.Core;
+﻿using NetworkPlugin.Core;
 using Xunit;
 
 namespace NetworkPlugin.Tests;
@@ -11,7 +11,6 @@ public class NetworkEventBufferManagerAdvancedTests
         var mgr = new NetworkEventBufferManager();
         long now = DateTime.Now.Ticks;
 
-        // Enqueue two events with different timestamps
         var event1 = new Dictionary<string, object>
         {
             ["EventType"] = "EventA",
@@ -26,7 +25,6 @@ public class NetworkEventBufferManagerAdvancedTests
         mgr.EnqueueEvent(event1);
         mgr.EnqueueEvent(event2);
 
-        // After processing, verify no exceptions
         bool hitA = false, hitB = false;
         mgr.ProcessBufferedEvents(gameEvent =>
         {
@@ -64,7 +62,6 @@ public class NetworkEventBufferManagerAdvancedTests
             ["Timestamp"] = sameTick
         };
 
-        // Both should enqueue without exception (key conflict resolved)
         mgr.EnqueueEvent(event1);
         var ex = Record.Exception(() => mgr.EnqueueEvent(event2));
         Assert.Null(ex);
@@ -105,10 +102,8 @@ public class NetworkEventBufferManagerAdvancedTests
         };
         mgr.EnqueueEvent(evt);
 
-        // Process to clear buffer
         mgr.ProcessBufferedEvents(_ => { });
 
-        // Get stats after processing
         var stats = mgr.GetStatistics();
         Assert.NotNull(stats);
     }

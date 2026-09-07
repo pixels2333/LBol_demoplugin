@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -20,28 +20,14 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch;
 
-/// <summary>
-/// 战斗控制器相关补丁。
-/// 通过 Harmony 拦截 <see cref="BattleController"/> 的关键流程，并将本地玩家的战斗状态变化同步到联机层。
-/// </summary>
-/// <remarks>
-/// 说明：这里的同步以“本地玩家”为中心，避免在同一房间中对其他玩家的状态进行重复广播造成冲突。
-/// </remarks>
 [HarmonyPatch]
 public class BattleController_Patch
 {
     #region 依赖注入与客户端
 
-    /// <summary>
-    /// 服务提供者（依赖注入入口），用于解析网络客户端等服务。
-    /// </summary>
-    // NOTE: 不要缓存 ServiceProvider 的实例引用：插件 Awake 之前可能为 null，且可被重建。
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
-    /// <summary>
-    /// 网络客户端（通过依赖注入获取）。
-    /// </summary>
-    private static INetworkClient TryGetNetworkClient()
+        private static INetworkClient TryGetNetworkClient()
         => ServiceProvider?.GetService<INetworkClient>();
 
     private static bool IsBattleSyncEnabled()
@@ -70,14 +56,10 @@ public class BattleController_Patch
 
     private static string ResolveSelfPlayerId()
     {
-        // PlayerId 规则(按用户最新确认):
-        // - UserName: 原游戏存档里填写的玩家名(ProfileSaveData.Name)
-        // - IP: 本机 IPv4
-        // - PlayerId = UserName + IP 的字符串拼接(为减少歧义，这里使用分隔符拼接)
-        // NOTE: 旧的 NetworkIdentityTracker.GetSelfPlayerId() 是“服务器下发的唯一标识”，仍可用于调试/对照。
+
         try
         {
-            // 可选调试覆盖：直接指定 PlayerId。
+
             string overrideId = Plugin.ConfigManager?.PlayerIdOverride?.Value;
             if (!string.IsNullOrWhiteSpace(overrideId))
             {
@@ -86,7 +68,7 @@ public class BattleController_Patch
         }
         catch
         {
-            // ignored
+
         }
 
         string name = ResolveSelfPlayerName();
@@ -94,11 +76,10 @@ public class BattleController_Patch
 
         if (!string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(ip))
         {
-            // 分隔符拼接仍属于“字符串拼接”；服务端如需更严格格式，可统一改为无分隔符。
+
             return $"{name}@{ip}";
         }
 
-        // 兜底：保持旧逻辑可用(用于早期阶段 CurrentProfile 为空，或 IP 无法取到)。
         string serverAssigned = NetworkIdentityTracker.GetSelfPlayerId();
         if (!string.IsNullOrWhiteSpace(serverAssigned))
         {
@@ -110,7 +91,7 @@ public class BattleController_Patch
 
     private static string ResolveSelfPlayerName()
     {
-        // 优先从存档/档案读取玩家名：ProfileSaveData.Name。
+
         try
         {
             string profileName = Singleton<GameMaster>.Instance?.CurrentProfile?.Name;
@@ -121,10 +102,9 @@ public class BattleController_Patch
         }
         catch
         {
-            // ignored
+
         }
 
-        // 兜底：从当前 PlayerUnit 反射尝试 userName/UserName/Name。
         try
         {
             object player = GameStateUtils.GetCurrentPlayer();
@@ -145,10 +125,9 @@ public class BattleController_Patch
         }
         catch
         {
-            // ignored
+
         }
 
-        // 最后兜底：使用服务器下发的 id(可能不可读，但至少稳定)。
         string id = NetworkIdentityTracker.GetSelfPlayerId();
         if (!string.IsNullOrWhiteSpace(id))
         {
@@ -171,7 +150,6 @@ public class BattleController_Patch
             }
         }
 
-        // 1) 优先尝试从网络连接拿到的本地端点地址(如果实现返回的不是 IPAddress.Any)。
         try
         {
             INetworkClient client = TryGetNetworkClient();
@@ -191,10 +169,9 @@ public class BattleController_Patch
         }
         catch
         {
-            // ignored
+
         }
 
-        // 2) 枚举本机网卡，选取一个合理的 IPv4。
         try
         {
             foreach (NetworkInterface ni in NetworkInterface.GetAllNetworkInterfaces())
@@ -209,7 +186,6 @@ public class BattleController_Patch
                     continue;
                 }
 
-                // 跳过回环与隧道设备。
                 if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback ||
                     ni.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
                 {
@@ -244,7 +220,6 @@ public class BattleController_Patch
                         continue;
                     }
 
-                    // 排除 APIPA 169.254.x.x
                     byte[] bytes = a.GetAddressBytes();
                     if (bytes.Length == 4 && bytes[0] == 169 && bytes[1] == 254)
                     {
@@ -262,11 +237,9 @@ public class BattleController_Patch
         }
         catch
         {
-            // ignored
+
         }
 
-        // 3) 最终兜底：无法获取本机局域网 IP 时返回 0.0.0.0。
-        // NOTE: 按当前需求不使用 ServerIP 作为替代，避免把“服务器地址”误当作“本机地址”。
         return "0.0.0.0";
     }
 
@@ -287,7 +260,6 @@ public class BattleController_Patch
             return false;
         }
 
-        // 确保 NetworkIdentityTracker 已订阅并能更新 host/self 信息。
         NetworkIdentityTracker.EnsureSubscribed(client);
         isHost = NetworkIdentityTracker.GetSelfIsHost();
         selfPlayerId = ResolveSelfPlayerId();
@@ -296,7 +268,7 @@ public class BattleController_Patch
 
     private static void SendBattleEvent(INetworkClient client, string eventType, object payload)
     {
-        // 统一走 GameEvent 通道；NetworkClient 内部会序列化 payload。
+
         client.SendGameEventData(eventType, payload);
     }
 
@@ -304,27 +276,13 @@ public class BattleController_Patch
 
     #region 防回环
 
-    /// <summary>
-    /// 用于在应用远端同步/批量重放时临时关闭本地上报，避免回环。
-    /// TODO: 远端落地补丁(接收端)在执行本地状态写入前后设置该开关。
-    /// </summary>
-    public static bool PausePlayerBattleSync { get; set; }
+        public static bool PausePlayerBattleSync { get; set; }
 
     #endregion
 
     #region 伤害同步
 
-    /// <summary>
-    /// 伤害应用完成后同步（仅同步本地玩家）。
-    /// </summary>
-    /// <param name="__instance">被补丁的 <see cref="BattleController"/> 实例（Harmony 注入）。</param>
-    /// <param name="damageinfo">本次伤害信息（结构体）。</param>
-    /// <param name="target">伤害目标单位。</param>
-    // BattleController.Damage 的真实签名为:
-    /// <summary>
-    /// 伤害事件后置：将本地玩家造成的伤害同步到网络
-    /// </summary>
-    [HarmonyPatch(typeof(BattleController), "Damage")]
+        [HarmonyPatch(typeof(BattleController), "Damage")]
     [HarmonyPostfix]
     public static void Damage_Postfix(
         BattleController __instance,
@@ -351,22 +309,16 @@ public class BattleController_Patch
                 return;
             }
 
-            // 只同步玩家单位的伤害（敌人伤害在其他补丁中处理）。
             if (target is not PlayerUnit playerTarget)
             {
                 return;
             }
 
-            // 只同步本地玩家：避免同步其他玩家的状态导致彼此覆盖。
             if (__instance.Player == null || __instance.Player != playerTarget)
             {
                 return;
             }
 
-            // Host 权威模型:
-            // - Client: 上报 Report 给 Host/Server
-            // - Host: 对本地变更广播 Broadcast 给房间
-            // NOTE: Host 侧转发 *Report -> *Broadcast 已由 `networkplugin/Patch/Network/BattleReportForwardPatch.cs` 实现。
             string playerName = ResolveSelfPlayerName();
             string playerIp = ResolveSelfIpAddress();
 
@@ -374,7 +326,6 @@ public class BattleController_Patch
                 ? NetworkMessageTypes.BattlePlayerDamageBroadcast
                 : NetworkMessageTypes.BattlePlayerDamageReport;
 
-            // 构建“伤害 + 目标快照”的同步数据。
             var payload = new
             {
                 Timestamp = DateTime.Now.Ticks,
@@ -410,7 +361,6 @@ public class BattleController_Patch
 
             SendBattleEvent(client, eventType, payload);
 
-            // 记录日志，便于排查同步问题。
             Plugin.Logger?.LogInfo(
                 $"[BattlePlayerDamage] {eventType} Total={__result.Amount:F1} (HP: {__result.Damage:F1}, " +
                 $"Block: {__result.DamageBlocked:F1}, Shield: {__result.DamageShielded:F1}). " +
@@ -418,7 +368,7 @@ public class BattleController_Patch
         }
         catch (Exception ex)
         {
-            // 捕获异常：防止补丁异常影响游戏主流程。
+
             Plugin.Logger?.LogError($"[BattlePlayerDamage] Error: {ex.Message}\n{ex.StackTrace}");
         }
     }
@@ -426,8 +376,6 @@ public class BattleController_Patch
     #endregion
 
     #region 状态效果同步
-
-    // 说明: Unit 已暴露 StatusEffects 只读列表，因此不需要 Traverse 访问私有字段。
 
     private const int StatusEffectsFullSyncEveryNChanges = 10;
     private static readonly Dictionary<string, HashSet<string>> _cachedStatusEffects = new(StringComparer.Ordinal);
@@ -485,7 +433,6 @@ public class BattleController_Patch
             return;
         }
 
-        // 只同步本地玩家。
         if (battle.Player == null || battle.Player != playerTarget)
         {
             return;
@@ -524,10 +471,8 @@ public class BattleController_Patch
             _statusEffectChangeCounters[targetId] = counter;
         }
 
-        // 首次看到该单位时，直接发一次全量以建立基线。
         shouldFullSync = !_cachedStatusEffects.ContainsKey(targetId) || (counter > 0 && counter % StatusEffectsFullSyncEveryNChanges == 0);
 
-        // 更新缓存。
         _cachedStatusEffects[targetId] = current;
 
         if (hasDelta)
@@ -616,12 +561,7 @@ public class BattleController_Patch
         }
     }
 
-    /// <summary>
-    /// 添加状态效果完成后，同步目标单位的完整状态列表。
-    /// </summary>
-    /// <param name="__instance">被补丁的 <see cref="BattleController"/> 实例（Harmony 注入）。</param>
-    /// <param name="target">被添加状态效果的单位。</param>
-    [HarmonyPatch(typeof(BattleController), "TryAddStatusEffect")]
+        [HarmonyPatch(typeof(BattleController), "TryAddStatusEffect")]
     [HarmonyPostfix]
     public static void TryAddStatusEffect_Postfix(
         BattleController __instance,
@@ -633,7 +573,6 @@ public class BattleController_Patch
         {
             bool success = __result != null;
 
-            // TODO: 若要更严格，可只在 Added/Stacked/Neutralized 等特定结果时同步。
             SyncStatusEffectsIfNeeded(__instance, target, effect, success, "TryAddStatusEffect");
         }
         catch (Exception ex)
@@ -642,12 +581,7 @@ public class BattleController_Patch
         }
     }
 
-    /// <summary>
-    /// 移除状态效果完成后，同步目标单位的完整状态列表。
-    /// </summary>
-    /// <param name="__instance">被补丁的 <see cref="BattleController"/> 实例（Harmony 注入）。</param>
-    /// <param name="target">被移除状态效果的单位。</param>
-    [HarmonyPatch(typeof(BattleController), "RemoveStatusEffect")]
+        [HarmonyPatch(typeof(BattleController), "RemoveStatusEffect")]
     [HarmonyPostfix]
     public static void RemoveStatusEffect_Postfix(
         BattleController __instance,
@@ -699,13 +633,6 @@ public class BattleController_Patch
 
     #region 治疗同步
 
-    /// <summary>
-    /// 治疗完成后同步目标单位的生命相关数据。
-    /// </summary>
-    /// <param name="__instance">被补丁的 <see cref="BattleController"/> 实例（Harmony 注入）。</param>
-    /// <param name="target">接受治疗的目标单位。</param>
-    // BattleController.Heal 的真实签名为:
-    // internal int Heal(Unit target, int healValue)
     [HarmonyPatch(typeof(BattleController), "Heal")]
     [HarmonyPostfix]
     public static void Heal_Postfix(BattleController __instance, Unit target, int healValue, int __result)

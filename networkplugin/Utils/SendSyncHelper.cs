@@ -1,13 +1,10 @@
-using LBoL.Core.Battle;
+﻿using LBoL.Core.Battle;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 
 namespace NetworkPlugin.Utils;
 
-/// <summary>
-/// 发送端补丁的通用辅助方法。
-/// </summary>
 public static class SendSyncHelper
 {
     public static INetworkClient TryGetClient()

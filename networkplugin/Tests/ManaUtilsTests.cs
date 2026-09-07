@@ -1,4 +1,4 @@
-using LBoL.Base;
+﻿using LBoL.Base;
 using NetworkPlugin.Utils;
 using Xunit;
 
@@ -118,7 +118,7 @@ public class ManaUtilsTests
         };
 
         var total = ManaUtils.GetTotalMana(group);
-        // 1+2+3+4+5+6+7+8+9 = 45
+
         Assert.Equal(45, total);
     }
 

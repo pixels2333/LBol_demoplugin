@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Moq;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
@@ -15,7 +15,7 @@ public class NetworkIdentityTrackerTests
     {
         _mockClient = new Mock<INetworkClient>();
         NetworkIdentityTracker.EnsureSubscribed(_mockClient.Object);
-        // Reset the tracker state using OnConnectionStateChanged(false)
+
         _mockClient.Raise(m => m.OnConnectionStateChanged += null, false);
     }
 
@@ -43,7 +43,7 @@ public class NetworkIdentityTrackerTests
 
         Assert.Equal("player_1", NetworkIdentityTracker.GetSelfPlayerId());
         Assert.True(NetworkIdentityTracker.GetSelfIsHost());
-        
+
         var players = NetworkIdentityTracker.GetPlayerIdsSnapshot();
         Assert.Equal(2, players.Count);
         Assert.Contains("player_1", players);
@@ -66,7 +66,7 @@ public class NetworkIdentityTrackerTests
 
         Assert.Equal("player_1", NetworkIdentityTracker.GetSelfPlayerId());
         Assert.False(NetworkIdentityTracker.GetSelfIsHost());
-        
+
         var players = NetworkIdentityTracker.GetPlayerIdsSnapshot();
         Assert.Equal(2, players.Count);
         Assert.Contains("player_1", players);
@@ -76,17 +76,15 @@ public class NetworkIdentityTrackerTests
     [Fact]
     public void HostChangedMessage_UpdatesHostState()
     {
-        // First set self player ID via a welcome pack
+
         var welcomePayload = "{\"PlayerId\":\"player_1\",\"IsHost\":false,\"Players\":[]}";
         _mockClient.Raise(m => m.OnGameEventReceived += null, NetworkMessageTypes.Welcome, welcomePayload);
         Assert.False(NetworkIdentityTracker.GetSelfIsHost());
 
-        // Now host changes to player_1
         var hostChangedPayload = "{\"NewHostId\":\"player_1\"}";
         _mockClient.Raise(m => m.OnGameEventReceived += null, NetworkMessageTypes.HostChanged, hostChangedPayload);
         Assert.True(NetworkIdentityTracker.GetSelfIsHost());
 
-        // Host changes to someone else
         var hostChangedPayload2 = "{\"NewHostId\":\"player_2\"}";
         _mockClient.Raise(m => m.OnGameEventReceived += null, NetworkMessageTypes.HostChanged, hostChangedPayload2);
         Assert.False(NetworkIdentityTracker.GetSelfIsHost());
@@ -95,11 +93,10 @@ public class NetworkIdentityTrackerTests
     [Fact]
     public void PlayerJoined_AddsPlayerToSnapshot()
     {
-        // First initialize tracker via Welcome
+
         var welcomePayload = "{\"PlayerId\":\"player_1\",\"IsHost\":true,\"Players\":[{\"PlayerId\":\"player_1\"}]}";
         _mockClient.Raise(m => m.OnGameEventReceived += null, NetworkMessageTypes.Welcome, welcomePayload);
 
-        // Player joined
         var joinedPayload = "{\"PlayerId\":\"player_new\"}";
         _mockClient.Raise(m => m.OnGameEventReceived += null, NetworkMessageTypes.PlayerJoined, joinedPayload);
 
@@ -112,7 +109,7 @@ public class NetworkIdentityTrackerTests
     [Fact]
     public void PlayerLeft_RemovesPlayerFromSnapshot()
     {
-        // First initialize tracker via Welcome
+
         var welcomePayload = "{" +
                              "\"PlayerId\":\"player_1\"," +
                              "\"IsHost\":true," +
@@ -123,7 +120,6 @@ public class NetworkIdentityTrackerTests
                              "}";
         _mockClient.Raise(m => m.OnGameEventReceived += null, NetworkMessageTypes.Welcome, welcomePayload);
 
-        // Player left
         var leftPayload = "{\"PlayerId\":\"player_leave\"}";
         _mockClient.Raise(m => m.OnGameEventReceived += null, NetworkMessageTypes.PlayerLeft, leftPayload);
 
@@ -136,7 +132,7 @@ public class NetworkIdentityTrackerTests
     [Fact]
     public void PlayerListUpdate_ReplacesPlayersAndUpdatesHost()
     {
-        // Welcome first
+
         var welcomePayload = "{" +
                              "\"PlayerId\":\"player_1\"," +
                              "\"IsHost\":true," +
@@ -147,7 +143,6 @@ public class NetworkIdentityTrackerTests
                              "}";
         _mockClient.Raise(m => m.OnGameEventReceived += null, NetworkMessageTypes.Welcome, welcomePayload);
 
-        // Full player list update
         var updatePayload = "{" +
                             "\"Players\":[" +
                             "  {\"PlayerId\":\"player_1\",\"IsHost\":false}," +
@@ -157,7 +152,7 @@ public class NetworkIdentityTrackerTests
         _mockClient.Raise(m => m.OnGameEventReceived += null, NetworkMessageTypes.PlayerListUpdate, updatePayload);
 
         Assert.Equal("player_1", NetworkIdentityTracker.GetSelfPlayerId());
-        Assert.False(NetworkIdentityTracker.GetSelfIsHost()); // Should update to false since list marks player_1 as isHost = false
+        Assert.False(NetworkIdentityTracker.GetSelfIsHost());
 
         var players = NetworkIdentityTracker.GetPlayerIdsSnapshot();
         Assert.Equal(2, players.Count);
@@ -169,7 +164,7 @@ public class NetworkIdentityTrackerTests
     [Fact]
     public void ConnectionStateChanged_False_ClearsAllState()
     {
-        // Set up some state
+
         var welcomePayload = "{" +
                              "\"PlayerId\":\"player_1\"," +
                              "\"IsHost\":true," +
@@ -180,7 +175,6 @@ public class NetworkIdentityTrackerTests
                              "}";
         _mockClient.Raise(m => m.OnGameEventReceived += null, NetworkMessageTypes.Welcome, welcomePayload);
 
-        // Disconnect
         _mockClient.Raise(m => m.OnConnectionStateChanged += null, false);
 
         Assert.Null(NetworkIdentityTracker.GetSelfPlayerId());

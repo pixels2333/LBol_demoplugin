@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using HarmonyLib;
@@ -16,76 +16,36 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// 敌人生成同步补丁
-/// 客机接收主机的敌人生成事件并在本地真正生成敌人。
-/// - 主机：正常执行 BattleController.Spawn，并广播 BattleEnemySpawned（兼容镜像 EnemySpawned）
-/// - 客机：收到 BattleEnemySpawned/EnemySpawned 后，调用 BattleController 的私有 Spawn 重放生成流程（并抑制二次广播）
-/// 同时处理网络连接状态变化和消息去重，确保生成同步的可靠性。
-/// </summary>
 public static class EnemySpawnSyncPatch
 {
     #region 字段和属性
 
-    /// <summary>
-    /// 服务提供者，用于获取网络客户端实例
-    /// </summary>
-    private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
+        private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
-    /// <summary>
-    /// 是否已订阅网络客户端事件
-    /// </summary>
-    private static bool _subscribed;
+        private static bool _subscribed;
 
-    /// <summary>
-    /// 当前订阅的网络客户端实例
-    /// </summary>
-    private static INetworkClient _subscribedClient;
+        private static INetworkClient _subscribedClient;
 
-    /// <summary>
-    /// 游戏事件接收回调
-    /// </summary>
-    private static readonly Action<string, object> _onGameEventReceived = OnGameEventReceived;
+        private static readonly Action<string, object> _onGameEventReceived = OnGameEventReceived;
 
-    /// <summary>
-    /// 连接状态变化回调
-    /// </summary>
-    private static readonly Action<bool> _onConnectionStateChanged = OnConnectionStateChanged;
+        private static readonly Action<bool> _onConnectionStateChanged = OnConnectionStateChanged;
 
-    /// <summary>
-    /// 当前玩家ID
-    /// </summary>
-    private static string _selfPlayerId;
+        private static string _selfPlayerId;
 
-    /// <summary>
-    /// 当前玩家是否为主机
-    /// </summary>
-    private static bool _selfIsHost;
+        private static bool _selfIsHost;
 
-    /// <summary>
-    /// 同步锁，用于线程安全访问共享字段
-    /// </summary>
-    private static readonly object _syncLock = new();
+        private static readonly object _syncLock = new();
 
-    /// <summary>
-    /// 已处理的生成事件集合，用于去重（格式：BattleId:SpawnIndex）
-    /// </summary>
-    private static readonly HashSet<string> _processedSpawns = new(StringComparer.Ordinal);
+        private static readonly HashSet<string> _processedSpawns = new(StringComparer.Ordinal);
 
     #endregion
 
     #region Harmony补丁
 
-    /// <summary>
-    /// 订阅钩子，在GameDirector.Update后确保订阅网络客户端事件
-    /// </summary>
-    [HarmonyPatch(typeof(GameDirector), "Update")]
+        [HarmonyPatch(typeof(GameDirector), "Update")]
     private static class SubscribeHook
     {
-        /// <summary>
-        /// 后置补丁，每帧检查并订阅网络客户端事件
-        /// </summary>
-        [HarmonyPostfix]
+                [HarmonyPostfix]
         public static void Postfix()
         {
             INetworkClient client = TryGetNetworkClient();
@@ -102,18 +62,10 @@ public static class EnemySpawnSyncPatch
 
     #region 网络客户端管理
 
-    /// <summary>
-    /// 尝试获取网络客户端实例
-    /// </summary>
-    /// <returns>网络客户端实例，如果获取失败则返回null</returns>
-    private static INetworkClient TryGetNetworkClient()
+        private static INetworkClient TryGetNetworkClient()
         => NetworkEventHelper.TryGetNetworkClient();
 
-    /// <summary>
-    /// 确保订阅指定网络客户端的事件
-    /// </summary>
-    /// <param name="client">要订阅的网络客户端</param>
-    private static void EnsureSubscribed(INetworkClient client)
+        private static void EnsureSubscribed(INetworkClient client)
     {
         if (_subscribed && ReferenceEquals(_subscribedClient, client))
         {
@@ -130,7 +82,7 @@ public static class EnemySpawnSyncPatch
         }
         catch
         {
-            // 忽略取消订阅异常
+
         }
 
         try
@@ -151,11 +103,7 @@ public static class EnemySpawnSyncPatch
 
     #region 事件处理
 
-    /// <summary>
-    /// 连接状态变化事件处理
-    /// </summary>
-    /// <param name="connected">是否已连接</param>
-    private static void OnConnectionStateChanged(bool connected)
+        private static void OnConnectionStateChanged(bool connected)
     {
         if (connected)
         {
@@ -170,12 +118,7 @@ public static class EnemySpawnSyncPatch
         }
     }
 
-    /// <summary>
-    /// 游戏事件接收处理
-    /// </summary>
-    /// <param name="eventType">事件类型</param>
-    /// <param name="payload">事件负载</param>
-    private static void OnGameEventReceived(string eventType, object payload)
+        private static void OnGameEventReceived(string eventType, object payload)
     {
         if (!TryGetJsonElement(payload, out JsonElement root))
         {
@@ -197,11 +140,7 @@ public static class EnemySpawnSyncPatch
         }
     }
 
-    /// <summary>
-    /// 处理Welcome消息，更新本地玩家信息
-    /// </summary>
-    /// <param name="root">消息JSON根元素</param>
-    private static void HandleWelcome(JsonElement root)
+        private static void HandleWelcome(JsonElement root)
     {
         try
         {
@@ -216,15 +155,11 @@ public static class EnemySpawnSyncPatch
         }
         catch
         {
-            // 忽略解析异常
+
         }
     }
 
-    /// <summary>
-    /// 处理主机变更消息，更新本地主机状态
-    /// </summary>
-    /// <param name="root">消息JSON根元素</param>
-    private static void HandleHostChanged(JsonElement root)
+        private static void HandleHostChanged(JsonElement root)
     {
         try
         {
@@ -240,15 +175,11 @@ public static class EnemySpawnSyncPatch
         }
         catch
         {
-            // 忽略解析异常
+
         }
     }
 
-    /// <summary>
-    /// 处理敌人生成消息，在客机端重放生成流程
-    /// </summary>
-    /// <param name="root">消息JSON根元素</param>
-    private static void HandleEnemySpawned(JsonElement root)
+        private static void HandleEnemySpawned(JsonElement root)
     {
         try
         {
@@ -258,7 +189,6 @@ public static class EnemySpawnSyncPatch
                 isHost = _selfIsHost;
             }
 
-            // 主机不需要重放（否则会生成两次：本地一次 + 收到转发一次）
             if (isHost)
             {
                 return;
@@ -324,7 +254,7 @@ public static class EnemySpawnSyncPatch
 
             using (SpawnedEnemyManager.SuppressBroadcast())
             {
-                // 调用 BattleController 私有 Spawn(spawner, enemyUnit, rootIndex, isServant) 以复用原生生成流程（EnterBattle/OnSpawn 等）
+
                 EnemyUnit spawned = Traverse.Create(battle)
                                             .Method("Spawn", spawner, enemyUnit, rootIndex, isServant)
                                             .GetValue<EnemyUnit>();
@@ -334,7 +264,6 @@ public static class EnemySpawnSyncPatch
                     SpawnedEnemySyncPatch.BindSpawnId(spawned, spawnId);
                 }
 
-                // 尽量把可见基础状态对齐（后续细节由 EnemySyncPatch 的增量同步覆盖）
                 ApplySpawnedSnapshot(spawned, spawnedEl);
             }
         }
@@ -348,13 +277,7 @@ public static class EnemySpawnSyncPatch
 
     #region 辅助方法
 
-    /// <summary>
-    /// 查找生成者敌人单位
-    /// </summary>
-    /// <param name="battle">战斗控制器</param>
-    /// <param name="root">消息JSON根元素</param>
-    /// <returns>找到的生成者，如果未找到则返回null</returns>
-    private static EnemyUnit FindSpawner(BattleController battle, JsonElement root)
+        private static EnemyUnit FindSpawner(BattleController battle, JsonElement root)
     {
         try
         {
@@ -407,17 +330,12 @@ public static class EnemySpawnSyncPatch
         }
         catch
         {
-            // 忽略查找异常
+
         }
 
         return null;
     }
-    /// <summary>
-    /// 应用生成快照，同步敌人单位的基础状态
-    /// </summary>
-    /// <param name="spawned">生成的敌人单位</param>
-    /// <param name="spawnedEl">生成快照JSON元素</param>
-    private static void ApplySpawnedSnapshot(EnemyUnit spawned, JsonElement spawnedEl)
+        private static void ApplySpawnedSnapshot(EnemyUnit spawned, JsonElement spawnedEl)
     {
         try
         {
@@ -433,7 +351,7 @@ public static class EnemySpawnSyncPatch
 
             if (maxHp > 0 && spawned.MaxHp != maxHp)
             {
-                // EnemyUnit.MaxHp 仅 protected set，这里用 Traverse 兜底；失败则不强制
+
                 try
                 {
                     Traverse.Create(spawned).Property("MaxHp").SetValue(maxHp);
@@ -444,7 +362,6 @@ public static class EnemySpawnSyncPatch
                 }
             }
 
-            // Unit.Hp/Block/Shield 的 setter 多为 internal；用 Traverse 确保插件侧可写。
             try
             {
                 Traverse.Create(spawned).Property("Hp").SetValue(currentHp);
@@ -455,18 +372,12 @@ public static class EnemySpawnSyncPatch
         }
         catch (Exception ex)
         {
-            // 记录但继续——Traverse 设置属性是可接受失败的（internal setter 可能被 Unity 拦截）
+
             Plugin.Logger?.LogWarning($"[EnemySpawnSync] 应用快照异常: {ex.Message}");
         }
     }
 
-    /// <summary>
-    /// 尝试将负载转换为JsonElement
-    /// </summary>
-    /// <param name="payload">事件负载</param>
-    /// <param name="root">输出的JsonElement</param>
-    /// <returns>转换是否成功</returns>
-    private static bool TryGetJsonElement(object payload, out JsonElement root)
+        private static bool TryGetJsonElement(object payload, out JsonElement root)
     {
         try
         {
@@ -485,44 +396,24 @@ public static class EnemySpawnSyncPatch
         }
         catch
         {
-            // 忽略转换异常
+
         }
 
         root = default;
         return false;
     }
 
-    /// <summary>
-    /// 从JsonElement获取字符串属性值
-    /// </summary>
-    /// <param name="elem">JSON元素</param>
-    /// <param name="property">属性名</param>
-    /// <returns>属性值字符串，如果获取失败则返回null</returns>
-    private static string GetString(JsonElement root, string name)
+        private static string GetString(JsonElement root, string name)
         => NetworkEventHelper.GetString(root, name);
 
-    /// <summary>
-    /// 从JsonElement获取整数属性值
-    /// </summary>
-    /// <param name="elem">JSON元素</param>
-    /// <param name="property">属性名</param>
-    /// <param name="fallback">失败时的默认值</param>
-    /// <returns>属性值整数</returns>
-    private static int GetInt(JsonElement elem, string property, int fallback)
+        private static int GetInt(JsonElement elem, string property, int fallback)
     {
         if (NetworkEventHelper.TryGetInt(elem, property, out int v))
             return v;
         return fallback;
     }
 
-    /// <summary>
-    /// 从JsonElement获取布尔属性值
-    /// </summary>
-    /// <param name="elem">JSON元素</param>
-    /// <param name="property">属性名</param>
-    /// <param name="fallback">失败时的默认值</param>
-    /// <returns>属性值布尔值</returns>
-    private static bool GetBool(JsonElement elem, string property, bool fallback)
+        private static bool GetBool(JsonElement elem, string property, bool fallback)
         => NetworkEventHelper.GetBool(elem, property, fallback);
 
     #endregion

@@ -1,4 +1,4 @@
-using NetworkPlugin.Network.NetworkPlayer;
+﻿using NetworkPlugin.Network.NetworkPlayer;
 using Xunit;
 
 namespace NetworkPlugin.Tests;
@@ -8,7 +8,7 @@ public class InterfaceSegregationTests
     [Fact]
     public void INetworkPlayer_IsCompositeInterface()
     {
-        // 验证 INetworkPlayer 继承了所有子接口
+
         var playerType = typeof(INetworkPlayer);
         var interfaces = playerType.GetInterfaces();
 

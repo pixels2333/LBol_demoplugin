@@ -1,4 +1,4 @@
-using NetworkPlugin.Utils;
+﻿using NetworkPlugin.Utils;
 using Xunit;
 
 namespace NetworkPlugin.Tests;
@@ -24,7 +24,7 @@ public class NetLogHelperTests
     {
         var json = "{\"EventType\":\"Test\",\"JoinToken\":\"secret123\",\"PlayerName\":\"Alice\"}";
         var result = NetLogHelper.BuildSummary("Test", json);
-        // Token values should not appear in plaintext in the summary
+
         Assert.DoesNotContain("secret123", result, StringComparison.Ordinal);
     }
 
@@ -50,7 +50,7 @@ public class NetLogHelperTests
         var longPayload = new string('x', 10_000);
         var json = $"{{\"EventType\":\"Test\",\"PlayerName\":\"Bob\",\"Payload\":\"{longPayload}\"}}";
         var result = NetLogHelper.BuildSummary("Test", json);
-        // Should not contain the full 10k payload
+
         Assert.True(result.Length < 5000, "Summary should be significantly shorter than the full payload");
     }
 }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Reflection;
@@ -9,10 +9,6 @@ using Newtonsoft.Json.Serialization;
 
 namespace NetworkPlugin.Utils;
 
-/// <summary>
-/// Unity/Mono 兼容的 JSON 序列化/反序列化封装。
-/// 目的：避免 System.Text.Json 在部分运行时触发 Utf8JsonWriter 相关崩溃，同时保留项目现有的 JsonPropertyName 映射。
-/// </summary>
 public static class JsonCompat
 {
     private sealed class IPEndPointNewtonsoftConverter : Newtonsoft.Json.JsonConverter<IPEndPoint>
@@ -25,7 +21,6 @@ public static class JsonCompat
                 return;
             }
 
-            // IPv6 常见格式为 [::1]:1234，这里输出同样的兼容格式。
             string ip = value.Address?.ToString() ?? string.Empty;
             string s = ip.Contains(":", StringComparison.Ordinal) ? $"[{ip}]:{value.Port}" : $"{ip}:{value.Port}";
             writer.WriteValue(s);
@@ -49,7 +44,6 @@ public static class JsonCompat
                 return null;
             }
 
-            // IPv6: [::1]:1234
             if (s.StartsWith("[", StringComparison.Ordinal))
             {
                 int idx = s.IndexOf("]:", StringComparison.Ordinal);
@@ -93,7 +87,6 @@ public static class JsonCompat
         {
             Newtonsoft.Json.Serialization.JsonProperty prop = base.CreateProperty(member, memberSerialization);
 
-            // 保持与 System.Text.Json 的 [JsonPropertyName] 一致，避免协议字段名改变。
             try
             {
                 string mapped = _nameCache.GetOrAdd(member, static m =>
@@ -109,10 +102,9 @@ public static class JsonCompat
             }
             catch
             {
-                // 特性读取失败时保持默认字段名。
+
             }
 
-            // 兼容 [JsonIgnore]（System.Text.Json 的特性）。
             try
             {
                 var ignore = member.GetCustomAttribute<System.Text.Json.Serialization.JsonIgnoreAttribute>(inherit: true);
@@ -123,7 +115,7 @@ public static class JsonCompat
             }
             catch
             {
-                // 忽略特性读取失败，继续按默认行为处理。
+
             }
 
             return prop;
@@ -134,25 +126,19 @@ public static class JsonCompat
     {
         ContractResolver = new SystemTextJsonAttributeContractResolver(),
         NullValueHandling = NullValueHandling.Ignore,
-        // 维持可读的 JSON（便于排查联机协议）。
+
         Formatting = Formatting.None,
         DateParseHandling = DateParseHandling.DateTime,
         Converters = { new IPEndPointNewtonsoftConverter() },
     };
 
-    /// <summary>
-    /// 将对象序列化为 JSON 字符串。
-    /// </summary>
-    public static string Serialize(object value)
+        public static string Serialize(object value)
     {
-        // 重要：不要“直接返回 string”，因为调用方期望得到 JSON（string 需要被加引号）。
+
         return JsonConvert.SerializeObject(value, Settings);
     }
 
-    /// <summary>
-    /// 将 JSON 字符串反序列化为指定类型。
-    /// </summary>
-    public static T Deserialize<T>(string json)
+        public static T Deserialize<T>(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
         {
@@ -169,10 +155,7 @@ public static class JsonCompat
         }
     }
 
-    /// <summary>
-    /// 将任意 payload 归一化为 JsonElement（只用于读取字段）。
-    /// </summary>
-    public static JsonElement ToJsonElement(object payload)
+        public static JsonElement ToJsonElement(object payload)
     {
         try
         {
@@ -187,7 +170,6 @@ public static class JsonCompat
                 return doc.RootElement.Clone();
             }
 
-            // 先用 Newtonsoft 生成 JSON，再用 System.Text.Json 解析为 JsonElement（避免 Utf8JsonWriter）。
             using JsonDocument doc2 = JsonDocument.Parse(Serialize(payload));
             return doc2.RootElement.Clone();
         }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Reflection;
 using LBoL.Core;
 using LBoL.Core.Units;
@@ -10,16 +10,16 @@ namespace NetworkPlugin.Tests
     {
         public static GameRunController CreateMockGameRun(PlayerUnit? player = null, int money = 0)
         {
-            // Invoke the private parameterless constructor of GameRunController
+
             var gameRun = (GameRunController)Activator.CreateInstance(typeof(GameRunController), true)!;
-            
+
             if (player != null)
             {
                 SetPrivateFieldOrProperty(gameRun, "Player", player);
             }
-            
+
             SetPrivateFieldOrProperty(gameRun, "Money", money);
-            
+
             return gameRun;
         }
 
@@ -28,12 +28,10 @@ namespace NetworkPlugin.Tests
             var mock = new Mock<PlayerUnit>();
             var player = mock.Object;
 
-            // Set private backing fields inherited from GameEntity/Unit
             SetPrivateFieldOrProperty(player, "Id", id);
             SetPrivateFieldOrProperty(player, "MaxHp", maxHp);
             SetPrivateFieldOrProperty(player, "Hp", hp);
-            
-            // Set up virtual properties via Moq
+
             mock.Setup(p => p.Name).Returns(name);
 
             return player;
@@ -42,11 +40,11 @@ namespace NetworkPlugin.Tests
         public static void SetPrivateFieldOrProperty(object instance, string name, object value)
         {
             if (instance == null) return;
-            
+
             var type = instance.GetType();
             while (type != null)
             {
-                // 1. Try backing field (for auto-properties like <Name>k__BackingField or <Id>k__BackingField)
+
                 var backingFieldName = $"<{name}>k__BackingField";
                 var backingField = type.GetField(backingFieldName, BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
                 if (backingField != null)
@@ -55,7 +53,6 @@ namespace NetworkPlugin.Tests
                     return;
                 }
 
-                // 2. Try standard field
                 var field = type.GetField(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                             ?? type.GetField($"_{char.ToLower(name[0])}{name.Substring(1)}", BindingFlags.NonPublic | BindingFlags.Instance);
                 if (field != null)
@@ -64,7 +61,6 @@ namespace NetworkPlugin.Tests
                     return;
                 }
 
-                // 3. Try property setter
                 var prop = type.GetProperty(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 if (prop != null && prop.CanWrite)
                 {
@@ -74,7 +70,7 @@ namespace NetworkPlugin.Tests
 
                 type = type.BaseType;
             }
-            
+
             throw new InvalidOperationException($"Could not find field or property '{name}' on type {instance.GetType().FullName}");
         }
     }

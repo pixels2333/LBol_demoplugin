@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
@@ -18,44 +18,29 @@ using NetworkPlugin.Network.Snapshot;
 
 namespace NetworkPlugin.Patch.Actions;
 
-/// <summary>
-/// 回合/战斗关键动作同步补丁。
-/// </summary>
-/// <remarks>
-/// 目标：在回合开始/结束、战斗开始/结束等关键节点，将本地状态打包并发送到服务器，
-/// 以便远端玩家对齐时间线与状态。
-/// </remarks>
 public class TurnAction_Patch
 {
     #region 依赖注入
 
-    /// <summary>
-    /// 依赖注入服务提供者（用于解析网络客户端服务）。
-    /// </summary>
-    private static IServiceProvider serviceProvider => ModService.ServiceProvider;
+        private static IServiceProvider serviceProvider => ModService.ServiceProvider;
 
     #endregion
 
     #region 玩家回合开始同步
 
-    /// <summary>
-    /// 玩家回合开始后置补丁：构建回合开始快照并发送。
-    /// </summary>
-    /// <param name="__instance">被补丁的 <see cref="StartPlayerTurnAction"/> 实例（Harmony 注入）。</param>
-    [HarmonyPatch(typeof(StartPlayerTurnAction), "Execute")]
+        [HarmonyPatch(typeof(StartPlayerTurnAction), "Execute")]
     [HarmonyPostfix]
     public static void StartPlayerTurn_Postfix(StartPlayerTurnAction __instance)
     {
         try
         {
-            // 依赖注入服务未就绪时跳过。
+
             if (serviceProvider == null)
             {
                 Plugin.Logger?.LogDebug("[TurnSync] ServiceProvider 未初始化（StartPlayerTurn）");
                 return;
             }
 
-            // 获取网络客户端并确认连接。
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
             {
@@ -63,10 +48,8 @@ public class TurnAction_Patch
                 return;
             }
 
-            // 确保已追踪到服务器分配的 PlayerId（用于跨客户端定位 INetworkPlayer）。
             NetworkIdentityTracker.EnsureSubscribed(networkClient);
 
-            // 取战斗上下文与本地玩家单位。
             BattleController battle = __instance.Unit?.Battle;
             if (battle == null)
             {
@@ -79,7 +62,7 @@ public class TurnAction_Patch
         }
         catch (Exception ex)
         {
-            // 捕获异常，避免补丁异常影响回合流程。
+
             Plugin.Logger?.LogError($"[TurnSync] StartPlayerTurn_Postfix 异常: {ex.Message}\n{ex.StackTrace}");
         }
     }
@@ -88,24 +71,19 @@ public class TurnAction_Patch
 
     #region 玩家回合结束同步
 
-    /// <summary>
-    /// 玩家回合结束后置补丁（预留）。
-    /// </summary>
-    /// <param name="__instance">被补丁的 <see cref="EndPlayerTurnAction"/> 实例（Harmony 注入）。</param>
-    [HarmonyPatch(typeof(EndPlayerTurnAction), "Execute")]
+        [HarmonyPatch(typeof(EndPlayerTurnAction), "Execute")]
     [HarmonyPostfix]
     public static void EndPlayerTurn_Postfix(EndPlayerTurnAction __instance)
     {
         try
         {
-            // 依赖注入服务未就绪时跳过。
+
             if (serviceProvider == null)
             {
                 Plugin.Logger?.LogDebug("[TurnSync] ServiceProvider 未初始化（EndPlayerTurn）");
                 return;
             }
 
-            // 获取网络客户端并确认连接。
             var networkClient = serviceProvider.GetService<INetworkClient>();
             if (networkClient == null || !networkClient.IsConnected)
             {
@@ -115,10 +93,6 @@ public class TurnAction_Patch
 
             NetworkIdentityTracker.EnsureSubscribed(networkClient);
 
-            // 回合结束的“协商/锁定”逻辑由 EndTurnSyncPatch 处理（EndTurnRequest/Confirm）。
-            // 当真正执行到 EndPlayerTurnAction 时，说明回合已实际结束；此处仅发送“回合边界快照”，不介入协商过程。
-
-            // 取战斗上下文与本地玩家单位。
             BattleController battle = __instance.Unit?.Battle;
             if (battle == null)
             {
@@ -144,11 +118,7 @@ public class TurnAction_Patch
 
     #region 战斗开始/结束同步（预留）
 
-    /// <summary>
-    /// 战斗开始后置补丁（预留）。
-    /// </summary>
-    /// <param name="__instance">被补丁的 <see cref="StartBattleAction"/> 实例（Harmony 注入）。</param>
-    [HarmonyPatch(typeof(StartBattleAction), "Execute")]
+        [HarmonyPatch(typeof(StartBattleAction), "Execute")]
     [HarmonyPostfix]
     public static void StartBattle_Postfix(StartBattleAction __instance)
     {
@@ -168,7 +138,7 @@ public class TurnAction_Patch
             NetworkIdentityTracker.EnsureSubscribed(networkClient);
             if (!NetworkIdentityTracker.GetSelfIsHost())
             {
-                // 房主权威：仅房主广播战斗边界事件。
+
                 return;
             }
 
@@ -178,7 +148,6 @@ public class TurnAction_Patch
                 return;
             }
 
-            // 只同步本地玩家触发的战斗。
             if (battle.Player != GameStateUtils.GetCurrentPlayer())
             {
                 return;
@@ -232,11 +201,7 @@ public class TurnAction_Patch
         }
     }
 
-    /// <summary>
-    /// 战斗结束后置补丁（预留）。
-    /// </summary>
-    /// <param name="__instance">被补丁的 <see cref="EndBattleAction"/> 实例（Harmony 注入）。</param>
-    [HarmonyPatch(typeof(EndBattleAction), "Execute")]
+        [HarmonyPatch(typeof(EndBattleAction), "Execute")]
     [HarmonyPostfix]
     public static void EndBattle_Postfix(EndBattleAction __instance)
     {
@@ -301,7 +266,7 @@ public class TurnAction_Patch
 
             try
             {
-                // Host-only: record a key checkpoint for mid-game join / reconnection.
+
                 var reconnection = serviceProvider.GetService<ReconnectionManager>();
                 string nodeKey = run?.CurrentMap?.VisitingNode != null
                     ? $"{run.CurrentMap.VisitingNode.Act}:{run.CurrentMap.VisitingNode.X}:{run.CurrentMap.VisitingNode.Y}:{run.CurrentMap.VisitingNode.StationType}"
@@ -310,7 +275,7 @@ public class TurnAction_Patch
             }
             catch
             {
-                // ignored
+
             }
 
             networkClient.BroadcastState(NetworkMessageTypes.OnBattleEnd, payload);
@@ -326,20 +291,14 @@ public class TurnAction_Patch
 
     #region 辅助方法
 
-    /// <summary>
-    /// 将 <see cref="ManaGroup"/> 转换为整数数组，用于网络序列化。
-    /// </summary>
-    /// <param name="manaGroup">法力组对象。</param>
-    /// <returns>数组格式：<c>[红, 蓝, 绿, 白]</c>。</returns>
-    private static int[] GetManaGroup(ManaGroup manaGroup)
+        private static int[] GetManaGroup(ManaGroup manaGroup)
     {
         if (manaGroup == null)
         {
-            // 默认值：所有颜色法力为 0。
+
             return [0, 0, 0, 0];
         }
 
-        // 按颜色顺序输出。
         return
         [
             manaGroup.Red,
@@ -349,14 +308,9 @@ public class TurnAction_Patch
         ];
     }
 
-    /// <summary>
-    /// 将 <see cref="ManaGroup"/> 转换为字典形式（颜色 -> 数量），用于网络序列化。
-    /// </summary>
-    /// <param name="manaGroup">法力组对象。</param>
-    /// <returns>颜色到数量的映射字典。</returns>
-    private static Dictionary<ManaColor, int> ConvertManaGroupToDictionary(ManaGroup manaGroup)
+        private static Dictionary<ManaColor, int> ConvertManaGroupToDictionary(ManaGroup manaGroup)
     {
-        // 空法力组直接返回空字典。
+
         if (manaGroup.IsEmpty)
         {
             return [];
@@ -376,12 +330,7 @@ public class TurnAction_Patch
         };
     }
 
-    /// <summary>
-    /// 从敌人组中提取敌人类型名称列表，用于战斗开始同步。
-    /// </summary>
-    /// <param name="enemyGroup">敌人组。</param>
-    /// <returns>敌人名称数组。</returns>
-    private static string[] GetEnemyTypes(IEnumerable<EnemyUnit> enemyGroup)
+        private static string[] GetEnemyTypes(IEnumerable<EnemyUnit> enemyGroup)
     {
         if (enemyGroup == null)
         {
@@ -493,7 +442,7 @@ public class TurnAction_Patch
         }
         catch
         {
-            // ignored
+
         }
 
         return battleId;
@@ -593,7 +542,7 @@ public class TurnAction_Patch
         }
         catch
         {
-            // ignored
+
         }
 
         return result;
@@ -638,7 +587,7 @@ public class TurnAction_Patch
         }
         catch
         {
-            // ignored
+
         }
 
         return enemies;

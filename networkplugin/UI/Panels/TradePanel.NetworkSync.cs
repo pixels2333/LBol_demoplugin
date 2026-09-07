@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,7 +27,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 namespace NetworkPlugin.UI.Panels;
-// 网络同步与交易状态
+
 public sealed partial class TradePanel
 {
 private void TrySubscribeTradeEvents()
@@ -53,7 +53,6 @@ private void TrySubscribeTradeEvents()
                 return;
             }
 
-            // 只关心参与者。
             if (!state.IsParticipant(_selfPlayerId))
             {
                 return;
@@ -61,7 +60,6 @@ private void TrySubscribeTradeEvents()
 
             ApplyStateToUi(state);
 
-            // Preparing：运行严格本地预检并一次性上报结果。
             if (state.Status == TradeSyncPatch.TradeStatus.Preparing)
             {
                 TryHandlePreparing(state);
@@ -73,12 +71,12 @@ private void TrySubscribeTradeEvents()
             }
             else if (state.Status == TradeSyncPatch.TradeStatus.Canceled)
             {
-                UpdateUIStatus("Trade.Canceled".Localize());
+                UpdateUIStatus("交易已取消");
                 Hide();
             }
             else if (state.Status == TradeSyncPatch.TradeStatus.Open)
             {
-        // 若 host 将状态回退到 Open（Prepare 失败），显示原因并允许重试。
+
                 if (_lastTradeStatus == TradeSyncPatch.TradeStatus.Preparing && !string.IsNullOrWhiteSpace(state.Reason))
                 {
                     UpdateUIStatus($"Prepare failed: {state.Reason}");
@@ -89,7 +87,7 @@ private void TrySubscribeTradeEvents()
         }
         catch
         {
-            // 忽略
+
         }
     }
 
@@ -97,11 +95,9 @@ private void TrySubscribeTradeEvents()
     {
         bool localIsA = IsPlayerA(state);
 
-        // 以 Host 广播状态为准刷新 UI。
         using (new ApplyingStateScope(this))
         {
 
-            // 清空现有报价卡牌列表与槽位显示
             _player1OfferedCards.Clear();
             _player2OfferedCards.Clear();
             player1Slots?.ToList().ForEach(s => s?.ClearSlot());
@@ -114,14 +110,12 @@ private void TrySubscribeTradeEvents()
             _playerAId = state.PlayerAId;
             _playerBId = state.PlayerBId;
 
-            // 确保运行时 overlay 存在并保持可见
             EnsureOfferEditorOverlay();
             EnsureCardPickerOverlay();
             EnsureOfferPreviewOverlay();
             EnsureExhibitPickerOverlay();
             SetTradeDetailsVisible(true);
 
-            // 确保玩家姓名显示：左边永远是本地玩家（我），右边永远是对方（Partner）
             if (player1NameText is not null)
             {
                 string selfName = localIsA ? state.PlayerAName : state.PlayerBName;
@@ -138,7 +132,6 @@ private void TrySubscribeTradeEvents()
                 player2NameText.text = OtherPlayersOverlayPatch.ResolveDisplayName(partnerId, partnerName, isLocal: false);
             }
 
-            // 从 host 状态拉取本地金币/展品报价，保持 UI 一致。
             _localMoneyOffer = localIsA ? state.MoneyA : state.MoneyB;
             _localExhibitOfferIds.Clear();
             (localIsA ? state.ExhibitsA : state.ExhibitsB)?
@@ -147,14 +140,12 @@ private void TrySubscribeTradeEvents()
                 .ToList()
                 .ForEach(id => _localExhibitOfferIds.Add(id));
 
-            // 本地报价：显示在 player1
             (localIsA ? state.OfferA : state.OfferB)
                 ?.Select(c => TryFindDeckCard(c))
                 .Where(real => real is not null)
                 .ToList()
                 .ForEach(real => AddCardToTrade(real, true));
 
-            // 远端报价：显示在 player2（临时卡用于展示）
             (localIsA ? state.OfferB : state.OfferA)
                 ?.Where(c => c != null && !string.IsNullOrWhiteSpace(c.CardId))
                 .Select(c =>
@@ -166,18 +157,14 @@ private void TrySubscribeTradeEvents()
                 .ToList()
                 .ForEach(temp => AddCardToTrade(temp, false));
 
-            // 刷新展品预览栏（左侧我方，右侧对方）
             RebuildExhibitPreviews();
 
-            // 刷新报价编辑器文本与卡牌预览
             RefreshOfferEditorTexts();
             RefreshOfferPreview();
 
-            // 锁住远端槽位，避免误删
             player2Slots?.ToList().ForEach(s => s?.SetLocked(true));
         }
 
-        // 用户需求：永不禁用确认按钮，点击时再做逻辑守卫。
         if (confirmButton?.button is not null)
         {
             confirmButton.button.interactable = true;
@@ -244,7 +231,6 @@ private void TrySubscribeTradeEvents()
             return;
         }
 
-        // 只发送本地侧(player1)报价。
         List<Card> offered = _player1OfferedCards;
         List<TradeSyncPatch.CardRef> refs = offered
             .Where(c => c is not null)
@@ -279,12 +265,11 @@ private void TrySubscribeTradeEvents()
             yield break;
         }
 
-        // 禁用交互
         SetCanvasInteractable(false);
 
         using (TradeSyncPatch.EnterApplyingTradeScope())
         {
-            // 自己移除自己报价，添加对方报价。
+
             List<TradeSyncPatch.CardRef> mine = localIsA ? state.OfferA : state.OfferB;
             List<TradeSyncPatch.CardRef> theirs = localIsA ? state.OfferB : state.OfferA;
 
@@ -314,7 +299,6 @@ private void TrySubscribeTradeEvents()
                 }
             }
 
-            // 金币：严格核查（不足则失败）。
             try
             {
                 if (myMoney > 0)
@@ -333,7 +317,6 @@ private void TrySubscribeTradeEvents()
                 run.GainMoney(theirMoney, true, new VisualSourceData { SourceType = VisualSourceType.CardSelect });
             }
 
-            // 展品：严格核查（未找到/不可交易/黑名单/重复 则失败）。
             if (myExhibits is not null)
             {
                 foreach (var ex in myExhibits)
@@ -456,7 +439,6 @@ private void TrySubscribeTradeEvents()
             return;
         }
 
-        // 避免对同一 preparing 阶段发送多次结果。
         if (state.Timestamp > 0 && _lastPreparingHandledTimestamp == state.Timestamp)
         {
             return;
@@ -466,7 +448,6 @@ private void TrySubscribeTradeEvents()
 
         bool localIsA = IsPlayerA(state);
 
-        // 仅严格验证本地自身的报价。
         List<TradeSyncPatch.CardRef> mine = localIsA ? state.OfferA : state.OfferB;
         int myMoney = localIsA ? state.MoneyA : state.MoneyB;
         List<TradeSyncPatch.ExhibitRef> myExhibits = localIsA ? state.ExhibitsA : state.ExhibitsB;
@@ -479,7 +460,6 @@ private void TrySubscribeTradeEvents()
             return;
         }
 
-        // 本地报价为空（单向接受赠予）：无需扣除本地资产，本地预检直接通过。
         if ((mine?.Count ?? 0) == 0 && myMoney <= 0 && (myExhibits?.Count ?? 0) == 0)
         {
             Plugin.Logger?.LogInfo($"[TradePanel] TryHandlePreparing: local offer is empty (receiving items), passing check for self={_selfPlayerId}, tradeId={_tradeId}");
@@ -487,7 +467,6 @@ private void TrySubscribeTradeEvents()
             return;
         }
 
-        // 卡牌必须已存在（按实例 ID 核查）。
         if (mine is not null && mine.Count > 0)
         {
             foreach (var c in mine)
@@ -513,7 +492,6 @@ private void TrySubscribeTradeEvents()
             }
         }
 
-        // 金币必须足够支付。
         if (myMoney > 0)
         {
             try
@@ -533,7 +511,6 @@ private void TrySubscribeTradeEvents()
             }
         }
 
-        // 展品必须存在且可交易。
         if (myExhibits is not null && myExhibits.Count > 0)
         {
             foreach (var ex in myExhibits)

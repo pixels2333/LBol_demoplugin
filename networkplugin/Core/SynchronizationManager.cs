@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,14 +11,6 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Core;
 
-/// <summary>
-/// 同步管理器类
-/// LBoL联机MOD的核心组件，负责协调所有游戏状态的同步功能
-/// 整合所有Harmony补丁点和网络通信，基于LiteNetLib网络框架实现多人游戏状态同步
-///
-/// 重构说明：已将缓冲区管理、状态缓存、网络可用性跟踪分别委托给
-/// <see cref="NetworkEventBufferManager"/>、<see cref="StateCacheManager"/>、<see cref="NetworkAvailabilityTracker"/>。
-/// </summary>
 public class SynchronizationManager : ISynchronizationManager
 {
     #region 依赖注入和服务
@@ -31,26 +23,13 @@ public class SynchronizationManager : ISynchronizationManager
     private readonly StateCacheManager _stateCacheManager;
     private readonly NetworkAvailabilityTracker _netAvailTracker;
 
-    /// <summary>
-    /// 网络不可用时的事件队列（并发安全）
-    /// </summary>
-    private readonly ConcurrentQueue<GameEvent> _eventQueue = new();
+        private readonly ConcurrentQueue<GameEvent> _eventQueue = new();
 
-    /// <summary>
-    /// 同步配置对象
-    /// </summary>
-    private readonly SyncConfiguration _config;
+        private readonly SyncConfiguration _config;
 
     #endregion
 
-    /// <summary>
-    /// 初始化同步管理器
-    /// </summary>
-    /// <param name="networkClient">网络客户端实例</param>
-    /// <param name="netAvailTracker">网络可用性跟踪器</param>
-    /// <param name="logger">日志记录器</param>
-    /// <param name="configManager">配置管理器</param>
-    public SynchronizationManager(
+        public SynchronizationManager(
         INetworkClient networkClient,
         NetworkAvailabilityTracker netAvailTracker,
         ManualLogSource logger,
@@ -68,11 +47,7 @@ public class SynchronizationManager : ISynchronizationManager
 
     #region 网络可用性检查
 
-    /// <summary>
-    /// 检查网络客户端是否可用
-    /// </summary>
-    /// <returns>网络可用时返回 true，否则 false</returns>
-    private bool IsNetworkAvailable()
+        private bool IsNetworkAvailable()
     {
         try
         {
@@ -93,11 +68,7 @@ public class SynchronizationManager : ISynchronizationManager
 
     #region ISynchronizationManager 实现
 
-    /// <summary>
-    /// 处理游戏事件的主要入口点，将本地游戏事件同步到网络
-    /// </summary>
-    /// <param name="gameEvent">需要处理的游戏事件对象</param>
-    public void SyncGameEventToNetwork(GameEvent gameEvent)
+        public void SyncGameEventToNetwork(GameEvent gameEvent)
     {
         if (gameEvent == null)
         {
@@ -137,11 +108,7 @@ public class SynchronizationManager : ISynchronizationManager
         }
     }
 
-    /// <summary>
-    /// 接收并处理来自网络的远程事件，将网络传输的事件数据应用到本地游戏状态
-    /// </summary>
-    /// <param name="eventData">来自网络的原始事件数据</param>
-    public void ProcessEventFromNetwork(object eventData)
+        public void ProcessEventFromNetwork(object eventData)
     {
         if (eventData == null)
         {
@@ -163,16 +130,7 @@ public class SynchronizationManager : ISynchronizationManager
         }
     }
 
-    /// <summary>
-    /// 发送卡牌使用事件到网络
-    /// </summary>
-    /// <param name="cardId">卡牌唯一标识符</param>
-    /// <param name="cardName">卡牌显示名称</param>
-    /// <param name="cardType">卡牌类型</param>
-    /// <param name="manaCost">法力消耗数组</param>
-    /// <param name="targetSelector">目标选择器</param>
-    /// <param name="playerState">玩家状态</param>
-    public void SendCardPlayEvent(string cardId, string cardName, string cardType,
+        public void SendCardPlayEvent(string cardId, string cardName, string cardType,
         int[] manaCost, string targetSelector, object playerState)
     {
         string playerId = GameStateUtils.GetCurrentPlayerId();
@@ -188,13 +146,7 @@ public class SynchronizationManager : ISynchronizationManager
         SendGameEvent(new GameEvent("CardPlayed", playerId, eventData));
     }
 
-    /// <summary>
-    /// 发送法力消耗事件到网络
-    /// </summary>
-    /// <param name="manaBefore">消耗前的法力值数组</param>
-    /// <param name="manaConsumed">消耗的法力值数组</param>
-    /// <param name="source">消耗来源</param>
-    public void SendManaConsumeEvent(int[] manaBefore, int[] manaConsumed, string source)
+        public void SendManaConsumeEvent(int[] manaBefore, int[] manaConsumed, string source)
     {
         string playerId = GameStateUtils.GetCurrentPlayerId();
         var eventData = new Dictionary<string, object>
@@ -206,13 +158,7 @@ public class SynchronizationManager : ISynchronizationManager
         SendGameEvent(new GameEvent("ManaConsumeStarted", playerId, eventData));
     }
 
-    /// <summary>
-    /// 发送 GapStation 选项事件到网络
-    /// </summary>
-    /// <param name="eventType">事件类型</param>
-    /// <param name="optionData">选项数据</param>
-    /// <param name="playerState">玩家状态</param>
-    public void SendGapStationEvent(string eventType, object optionData, object playerState)
+        public void SendGapStationEvent(string eventType, object optionData, object playerState)
     {
         string playerId = GameStateUtils.GetCurrentPlayerId();
         var eventData = new Dictionary<string, object>
@@ -223,10 +169,7 @@ public class SynchronizationManager : ISynchronizationManager
         SendGameEvent(new GameEvent(eventType, playerId, eventData));
     }
 
-    /// <summary>
-    /// 请求完整状态同步，用于新玩家加入游戏或断线重连时获取完整的游戏状态
-    /// </summary>
-    public void RequestFullSync()
+        public void RequestFullSync()
     {
         try
         {
@@ -260,10 +203,7 @@ public class SynchronizationManager : ISynchronizationManager
         }
     }
 
-    /// <summary>
-    /// 处理网络连接恢复事件
-    /// </summary>
-    public void OnConnectionRestored()
+        public void OnConnectionRestored()
     {
         try
         {
@@ -290,10 +230,7 @@ public class SynchronizationManager : ISynchronizationManager
         }
     }
 
-    /// <summary>
-    /// 处理网络连接丢失事件
-    /// </summary>
-    public void OnConnectionLost()
+        public void OnConnectionLost()
     {
         try
         {
@@ -306,11 +243,7 @@ public class SynchronizationManager : ISynchronizationManager
         }
     }
 
-    /// <summary>
-    /// 获取同步统计信息
-    /// </summary>
-    /// <returns>同步统计数据对象</returns>
-    public object GetSyncStatistics()
+        public object GetSyncStatistics()
     {
         return new
         {
@@ -326,17 +259,9 @@ public class SynchronizationManager : ISynchronizationManager
         };
     }
 
-    /// <summary>
-    /// 获取远程事件缓冲区统计信息
-    /// </summary>
-    /// <returns>缓冲区统计数据对象</returns>
-    public object GetEventBufferStatistics() => _eventBufferManager.GetStatistics();
+        public object GetEventBufferStatistics() => _eventBufferManager.GetStatistics();
 
-    /// <summary>
-    /// 底层的网络发送方法，负责实际的事件数据传输和网络通信
-    /// </summary>
-    /// <param name="gameEvent">要发送的游戏事件</param>
-    public void SendGameEvent(GameEvent gameEvent)
+        public void SendGameEvent(GameEvent gameEvent)
     {
         try
         {
@@ -363,12 +288,7 @@ public class SynchronizationManager : ISynchronizationManager
 
     #region 事件过滤
 
-    /// <summary>
-    /// 根据配置判断事件是否需要同步到网络
-    /// </summary>
-    /// <param name="gameEvent">待判断的游戏事件</param>
-    /// <returns>需要同步则返回 true</returns>
-    private bool ShouldSyncEvent(GameEvent gameEvent)
+        private bool ShouldSyncEvent(GameEvent gameEvent)
     {
         if (gameEvent == null || string.IsNullOrWhiteSpace(gameEvent.EventType))
             return false;
@@ -447,12 +367,7 @@ public class SynchronizationManager : ISynchronizationManager
 
     #region 辅助方法
 
-    /// <summary>
-    /// 将法力值数组转换为包含各色法力和总量的匿名对象
-    /// </summary>
-    /// <param name="manaArray">法力值数组 [红, 蓝, 绿, 白]</param>
-    /// <returns>包含 Red、Blue、Green、White、Total 的匿名对象</returns>
-    private object ConvertManaArray(int[] manaArray)
+        private object ConvertManaArray(int[] manaArray)
     {
         if (manaArray == null || manaArray.Length < 4)
             return new { Red = 0, Blue = 0, Green = 0, White = 0, Total = 0 };

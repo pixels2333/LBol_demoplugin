@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using NetworkPlugin.Network.Event;
@@ -13,7 +13,7 @@ public class EnemyAttackVisualSyncTests
     [Fact]
     public void EnemyAttackVisualEvent_CreatesAndParsesCorrectly()
     {
-        // 构造敌人攻击视觉数据（包括闪避状态）
+
         Dictionary<string, object> attackVisualData = new()
         {
             ["PlayerId"] = "player_123",
@@ -38,7 +38,6 @@ public class EnemyAttackVisualSyncTests
         Assert.Equal(NetworkMessageTypes.OnEnemyAttackPlayerVisual, gameEvent.EventType);
         Assert.NotNull(gameEvent.Data);
 
-        // 验证 JSON 反序列化与字段提取
         bool parsed = NetworkEventHelper.TryGetJsonElement(gameEvent.Data, out JsonElement root);
         Assert.True(parsed);
 

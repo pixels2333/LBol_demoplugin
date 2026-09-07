@@ -53,10 +53,11 @@ public static partial class OtherPlayersOverlayPatch
 
         if (!hasSnapshot && !hasRuntime)
         {
-            int defaultMaxHp = GetDefaultMaxHpForCharacter(playerSummary.CharacterId);
+            int defaultMaxHp = playerSummary.MaxHp > 0 ? playerSummary.MaxHp : GetDefaultMaxHpForCharacter(playerSummary.CharacterId);
+            int defaultHp = playerSummary.Hp >= 0 ? Math.Min(playerSummary.Hp, defaultMaxHp) : defaultMaxHp;
             state = new RemoteBattleState
             {
-                Health = defaultMaxHp,
+                Health = defaultHp,
                 MaxHealth = defaultMaxHp,
                 Shield = 0,
                 Block = 0,
@@ -70,8 +71,8 @@ public static partial class OtherPlayersOverlayPatch
 
         bool useRuntime = networkPlayer != null && networkPlayer.maxHP > 0;
 
-        int health = useRuntime ? networkPlayer.HP : (hasSnapshot ? snapshot.Health : 0);
-        int maxHealth = useRuntime ? networkPlayer.maxHP : (hasSnapshot ? snapshot.MaxHealth : 0);
+        int health = useRuntime ? networkPlayer.HP : (hasSnapshot ? snapshot.Health : (playerSummary.Hp >= 0 ? playerSummary.Hp : 0));
+        int maxHealth = useRuntime ? networkPlayer.maxHP : (hasSnapshot ? snapshot.MaxHealth : (playerSummary.MaxHp > 0 ? playerSummary.MaxHp : 0));
         int shield = useRuntime ? networkPlayer.shield : (hasSnapshot ? snapshot.Shield : 0);
         int block = useRuntime ? networkPlayer.block : (hasSnapshot ? snapshot.Block : 0);
         int currentPower = networkPlayer?.GetCurrentPowerSafe() ?? 0;
@@ -80,8 +81,8 @@ public static partial class OtherPlayersOverlayPatch
 
         if (maxHealth <= 0)
         {
-            maxHealth = GetDefaultMaxHpForCharacter(playerSummary.CharacterId);
-            if (health <= 0) health = maxHealth;
+            maxHealth = playerSummary.MaxHp > 0 ? playerSummary.MaxHp : GetDefaultMaxHpForCharacter(playerSummary.CharacterId);
+            if (health <= 0) health = playerSummary.Hp >= 0 ? playerSummary.Hp : maxHealth;
         }
 
         state = new RemoteBattleState
@@ -108,7 +109,8 @@ public static partial class OtherPlayersOverlayPatch
             "Marisa" => 75,
             "Sakuya" => 80,
             "Cirno" => 70,
-            "Koishi" => 75,
+            "Koishi" => 95,
+            "Youmu" => 80,
             _ => 80,
         };
     }

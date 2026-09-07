@@ -1,4 +1,4 @@
-using NetworkPlugin.Configuration;
+﻿using NetworkPlugin.Configuration;
 using NetworkPlugin.Core;
 using NetworkPlugin.Network.Event;
 using Xunit;
@@ -54,7 +54,7 @@ public class StateCacheManagerAdvancedTests
     public void ValidateEventTimestamp_PastWithinRange_ReturnsTrue()
     {
         var mgr = CreateManager();
-        // 5 minutes ago should be valid (max is 1 hour ago)
+
         Assert.True(mgr.ValidateEventTimestamp(DateTime.Now.AddMinutes(-5)));
     }
 
@@ -98,7 +98,7 @@ public class StateCacheManagerAdvancedTests
         await System.Threading.Tasks.Task.Delay(100);
 
         mgr.UpdateLocalState(new GameEvent("EventB", "p1", "data2"));
-        // EventA > 50ms 缓存应被清理，只保留 EventB
+
         Assert.Equal(1, mgr.CachedStateCount);
     }
 }

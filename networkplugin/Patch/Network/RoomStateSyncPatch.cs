@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
@@ -17,12 +17,6 @@ using LBoL.Presentation.UI.Widgets;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// 房间/战斗残局同步：
-/// - EnterNode 后请求主机房间快照
-/// - 战斗开始/回合结束/战斗结束时上传房间快照（由先进入者成为权威）
-/// - 客机进入战斗时尽力把敌人状态调到与主机一致（HP/Block/Shield/存活）
-/// </summary>
 [HarmonyPatch]
 public static class RoomStateSyncPatch
 {
@@ -167,10 +161,7 @@ public static class RoomStateSyncPatch
         }
     }
 
-    /// <summary>
-    /// 进入节点时记录房间元数据
-    /// </summary>
-    [HarmonyPatch(typeof(GameMap), nameof(GameMap.EnterNode))]
+        [HarmonyPatch(typeof(GameMap), nameof(GameMap.EnterNode))]
     private static class GameMap_EnterNode_RequestRoomState
     {
         [HarmonyPostfix]
@@ -195,15 +186,12 @@ public static class RoomStateSyncPatch
             }
             catch
             {
-                // ignored
+
             }
         }
     }
 
-    /// <summary>
-    /// 战斗开始时上传房间快照并应用主机缓存（如果有）
-    /// </summary>
-    [HarmonyPatch(typeof(BattleController), "StartBattle")]
+        [HarmonyPatch(typeof(BattleController), "StartBattle")]
     private static class BattleController_StartBattle_UploadAndApply
     {
         [HarmonyPostfix]
@@ -216,23 +204,18 @@ public static class RoomStateSyncPatch
                     return;
                 }
 
-                // 客机：如果主机已缓存该房间为 InBattle，则尽力把敌人状态调到一致（不强行重建敌人）。
                 ApplyHostSnapshotIfAny(__instance, roomKey);
 
-                // 上传一次初始快照：怪物清单 + 初始状态。
                 TryGetRoomSync()?.UploadRoomState(BuildSnapshot(__instance, roomKey, RoomPhase.InBattle));
             }
             catch
             {
-                // ignored
+
             }
         }
     }
 
-    /// <summary>
-    /// 回合结束时上传房间状态
-    /// </summary>
-    [HarmonyPatch(typeof(BattleController), nameof(BattleController.RequestEndPlayerTurn))]
+        [HarmonyPatch(typeof(BattleController), nameof(BattleController.RequestEndPlayerTurn))]
     private static class BattleController_EndTurn_Upload
     {
         [HarmonyPostfix]
@@ -245,20 +228,16 @@ public static class RoomStateSyncPatch
                     return;
                 }
 
-                // 这里做一次节流：只在敌方回合结束/或每回合一次更合适；暂用 EndPlayerTurn 作为近似。
                 TryGetRoomSync()?.UploadRoomState(BuildSnapshot(__instance, roomKey, RoomPhase.InBattle));
             }
             catch
             {
-                // ignored
+
             }
         }
     }
 
-    /// <summary>
-    /// 战斗结束时上传最终快照
-    /// </summary>
-    [HarmonyPatch(typeof(BattleController), "EndBattle")]
+        [HarmonyPatch(typeof(BattleController), "EndBattle")]
     private static class BattleController_EndBattle_UploadFinished
     {
         [HarmonyPostfix]
@@ -275,7 +254,7 @@ public static class RoomStateSyncPatch
             }
             catch
             {
-                // ignored
+
             }
         }
     }
@@ -295,7 +274,6 @@ public static class RoomStateSyncPatch
                 return;
             }
 
-            // 按 Index 对齐；若数量不足则仅对齐交集。
             List<EnemyUnit> localEnemies = battle.EnemyGroup.Where(e => e != null).ToList();
             foreach (var remote in snapshot.Enemies.OrderBy(e => e.Index))
             {
@@ -310,8 +288,6 @@ public static class RoomStateSyncPatch
                     continue;
                 }
 
-                // 只做基础状态对齐：避免强行改复杂字段导致崩溃。
-                // 注意：LBoL 的 Unit.Hp/Block/Shield 的 setter 可能是 internal，需用反射/Traverse。
                 try
                 {
                     Traverse.Create(local).Property("Hp").SetValue(remote.Health);
@@ -323,7 +299,7 @@ public static class RoomStateSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -336,8 +312,6 @@ public static class RoomStateSyncPatch
             BattleId = battle.GetHashCode().ToString(),
         };
 
-        // 最后进入节点的元数据
-        // RoomKey 已包含 Act/X/Y/StationType，但这里也填充一份，便于日志与调试。
         try
         {
             string[] parts = roomKey.Split(':');
@@ -351,7 +325,7 @@ public static class RoomStateSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
         try
@@ -386,10 +360,9 @@ public static class RoomStateSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
-        // Rewards: 当前阶段不强行生成/发放，只占位留给后续补齐。
         snapshot.Rewards = new BattleRewardSnapshot();
         snapshot.GapOptionsEvents = GapOptionsSyncPatch.GetRecentGapOptionsEvents(roomKey);
         return snapshot;

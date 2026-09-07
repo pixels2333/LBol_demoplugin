@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using HarmonyLib;
 using LBoL.Core;
@@ -36,7 +36,7 @@ public static class LobbySyncPatches
                 INetworkClient client = TryGetNetworkClient();
                 if (client != null && client.IsConnected)
                 {
-                    // 更新本地 NetworkPlayer
+
                     var networkManager = ServiceProvider?.GetService<NetworkManager>();
                     if (networkManager != null)
                     {
@@ -47,7 +47,6 @@ public static class LobbySyncPatches
                         }
                     }
 
-                    // 广播 CharacterId 给服务器 (通过 UpdatePlayerLocation，服务器能自动更新 s.Metadata["CharacterId"] 并广播更新列表)
                     client.SendRequest(
                         "UpdatePlayerLocation",
                         JsonCompat.Serialize(
@@ -59,7 +58,6 @@ public static class LobbySyncPatches
                     );
                     Plugin.Logger?.LogInfo($"[Lobby] 本地玩家切换角色为: {characterId}，已广播同步给服务器和房间成员。");
 
-                    // 刷新房间列表 UI 呈现最新角色
                     MainMenuMultiplayerEntryPatch.RefreshRoomList();
                 }
             }

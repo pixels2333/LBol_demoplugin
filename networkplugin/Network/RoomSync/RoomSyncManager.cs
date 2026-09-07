@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using BepInEx.Logging;
@@ -10,11 +10,6 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Network.RoomSync;
 
-/// <summary>
-/// 房间/战斗残局同步：
-/// - 客户端：进入节点后向主机请求 RoomStateSnapshot，并在战斗开始/回合结束/战斗结束时上传。
-/// - 主机：缓存每个 RoomKey 的最新状态，并对请求方定向响应。
-/// </summary>
 public class RoomSyncManager
 {
     private readonly INetworkClient _client;
@@ -25,13 +20,10 @@ public class RoomSyncManager
     private INetworkClient _subscribedClient;
     private bool _subscribed;
 
-    // Host-only: RoomKey -> latest snapshot
     private readonly Dictionary<string, RoomStateSnapshot> _hostRoomStates = new(StringComparer.Ordinal);
 
-    // Client-only: pending response cache (latest per RoomKey)
     private readonly Dictionary<string, RoomStateSnapshot> _clientRoomStates = new(StringComparer.Ordinal);
 
-    // Local helper: last entered node (for computing room key & metadata)
     private (string roomKey, int act, int x, int y, string stationType, long atUtcTicks)? _lastEntered;
 
     public RoomSyncManager(INetworkClient networkClient, ManualLogSource logger)
@@ -75,10 +67,7 @@ public class RoomSyncManager
         }
     }
 
-    /// <summary>
-    /// RoomKey 口径：Act:X:Y:StationType。
-    /// </summary>
-    public static string BuildRoomKey(int act, int x, int y, string stationType)
+        public static string BuildRoomKey(int act, int x, int y, string stationType)
     {
         return $"{act}:{x}:{y}:{stationType}";
     }
@@ -92,8 +81,7 @@ public class RoomSyncManager
         }
         catch
         {
-            // TODO: 应记录异常详情，避免静默失败。
-            // ignored
+
         }
     }
 
@@ -115,11 +103,7 @@ public class RoomSyncManager
         }
     }
 
-    /// <summary>
-    /// 客户端：进入节点后请求主机返回该房间的最新状态。
-    /// Host 模式下，事件会在本地直接回调（参考 TradeSyncPatch 的模式）。
-    /// </summary>
-    public void RequestRoomState(string roomKey, long knownVersion)
+        public void RequestRoomState(string roomKey, long knownVersion)
     {
         try
         {
@@ -128,7 +112,6 @@ public class RoomSyncManager
                 return;
             }
 
-            // 网络客户端已通过构造函数注入，直接使用。
             var client = _client;
             if (client == null || !client.IsConnected)
             {
@@ -155,7 +138,6 @@ public class RoomSyncManager
 
             client.SendGameEventData(NetworkMessageTypes.RoomStateRequest, payload);
 
-            // Host 发起请求时不会收到服务器转发，直接在本地走一次处理。
             if (NetworkIdentityTracker.GetSelfIsHost())
             {
                 OnGameEventReceived(NetworkMessageTypes.RoomStateRequest, payload);
@@ -163,15 +145,11 @@ public class RoomSyncManager
         }
         catch
         {
-            // TODO: 应记录异常详情，避免静默失败。
-            // ignored
+
         }
     }
 
-    /// <summary>
-    /// 上传房间状态（战斗开始/回合结束/战斗结束）。
-    /// </summary>
-    public void UploadRoomState(RoomStateSnapshot snapshot)
+        public void UploadRoomState(RoomStateSnapshot snapshot)
     {
         try
         {
@@ -199,7 +177,6 @@ public class RoomSyncManager
             snapshot.UpdatedAtUtcTicks = DateTime.UtcNow.Ticks;
             snapshot.GapOptionsEvents = GapOptionsSyncPatch.GetRecentGapOptionsEvents(snapshot.RoomKey);
 
-            // 平铺为匿名对象，避免 JsonElement 解析时出现不稳定的复杂类型。
             var payload = new
             {
                 Timestamp = snapshot.UpdatedAtUtcTicks,
@@ -220,7 +197,6 @@ public class RoomSyncManager
 
             client.SendGameEventData(NetworkMessageTypes.RoomStateUpload, payload);
 
-            // Host 上传时同样本地处理一次。
             if (NetworkIdentityTracker.GetSelfIsHost())
             {
                 OnGameEventReceived(NetworkMessageTypes.RoomStateUpload, payload);
@@ -228,8 +204,7 @@ public class RoomSyncManager
         }
         catch
         {
-            // TODO: 应记录异常详情，避免静默失败。
-            // ignored
+
         }
     }
 
@@ -240,7 +215,6 @@ public class RoomSyncManager
             return;
         }
 
-        // 仅处理 RoomState* 相关事件。
         if (!string.Equals(eventType, NetworkMessageTypes.RoomStateRequest, StringComparison.Ordinal) &&
             !string.Equals(eventType, NetworkMessageTypes.RoomStateResponse, StringComparison.Ordinal) &&
             !string.Equals(eventType, NetworkMessageTypes.RoomStateUpload, StringComparison.Ordinal) &&
@@ -273,7 +247,7 @@ public class RoomSyncManager
 
     private void HandleRoomStateRequest(JsonElement root)
     {
-        // Only host answers.
+
         if (!NetworkIdentityTracker.GetSelfIsHost())
         {
             return;
@@ -303,10 +277,9 @@ public class RoomSyncManager
             }
         }
 
-        // 如果请求方已经是最新版本，可以选择不回复；但为了简单/可诊断，这里仍回复一次。
         if (snapshot.RoomVersion < knownVersion)
         {
-            // 请求方版本更高（不太可能）：仍按主机为准回发。
+
         }
 
         snapshot.GapOptionsEvents = GapOptionsSyncPatch.GetRecentGapOptionsEvents(roomKey);
@@ -316,7 +289,7 @@ public class RoomSyncManager
 
     private void HandleRoomStateUpload(JsonElement root)
     {
-        // Only host stores.
+
         if (!NetworkIdentityTracker.GetSelfIsHost())
         {
             return;
@@ -359,19 +332,17 @@ public class RoomSyncManager
         {
             if (_hostRoomStates.TryGetValue(roomKey, out stored!))
             {
-                // Owner arbitration: first uploader becomes owner.
+
                 if (string.IsNullOrWhiteSpace(stored.OwnerPlayerId))
                 {
                     stored.OwnerPlayerId = uploaderId;
                 }
 
-                // Ignore uploads from non-owner if owner already chosen.
                 if (!string.Equals(stored.OwnerPlayerId, uploaderId, StringComparison.Ordinal))
                 {
                     return;
                 }
 
-                // Bump version on host.
                 stored.RoomVersion = Math.Max(stored.RoomVersion + 1, incoming.RoomVersion);
                 stored.Phase = incoming.Phase;
                 stored.UpdatedAtUtcTicks = incoming.UpdatedAtUtcTicks;
@@ -392,7 +363,6 @@ public class RoomSyncManager
             }
         }
 
-        // Optional: host can broadcast updates, but default to "request on enter".
     }
 
     private void HandleRoomStateResponse(JsonElement root)
@@ -477,8 +447,7 @@ public class RoomSyncManager
         }
         catch
         {
-            // TODO: 应记录异常详情，避免静默失败。
-            // ignored
+
         }
     }
 
@@ -577,5 +546,4 @@ public class RoomSyncManager
         }
     }
 
-    // RoomId（Relay 作用域）当前不从客户端侧主动填充：服务端可使用 session.CurrentRoomId 作为默认作用域。
 }

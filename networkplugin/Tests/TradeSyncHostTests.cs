@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
@@ -49,7 +49,6 @@ public class TradeSyncHostTests : IDisposable
         NetworkIdentityTracker.EnsureSubscribed(_mockClient.Object);
         TradeSyncPatch.EnsureSubscribed(_mockClient.Object);
 
-        // 初始化房主身份
         var welcomePayload = "{" +
                              "\"PlayerId\":\"host_1\"," +
                              "\"IsHost\":true," +
@@ -168,7 +167,7 @@ public class TradeSyncHostTests : IDisposable
         TradeSyncPatch.OnTradeStateUpdated += handler;
         try
         {
-            // Host 确认
+
             TradeSyncPatch.RequestConfirm(tradeId, "host_1");
             Plugin.FlushMainThreadActionsForTest();
 
@@ -177,7 +176,6 @@ public class TradeSyncHostTests : IDisposable
             Assert.False(currentState.BConfirmed);
             Assert.Equal(TradeStatus.Open, currentState.Status);
 
-            // 客户端确认请求模拟通过网络到达 Host
             var clientConfirmJson = "{" +
                                    $"\"TradeId\":\"{tradeId}\"," +
                                    "\"RequesterPlayerId\":\"client_2\"" +
@@ -201,7 +199,6 @@ public class TradeSyncHostTests : IDisposable
         Assert.Equal("host_1", NetworkIdentityTracker.GetSelfPlayerId());
         Assert.True(NetworkIdentityTracker.GetSelfIsHost());
 
-        // 模拟断开清空内部状态
         _mockClient.Raise(m => m.OnConnectionStateChanged += null, false);
         Assert.Null(NetworkIdentityTracker.GetSelfPlayerId());
         Assert.False(NetworkIdentityTracker.GetSelfIsHost());
@@ -213,7 +210,6 @@ public class TradeSyncHostTests : IDisposable
         var clientMock = new Mock<INetworkClient>();
         clientMock.Setup(c => c.IsConnected).Returns(true);
 
-        // 模拟普通客机创建 NetworkManager（冷启动，从未主动发送过任何交易请求）
         var netMgr = new NetworkManager(clientMock.Object);
 
         string tradeId = "coldboot_trade_" + Guid.NewGuid().ToString("N");
@@ -230,7 +226,7 @@ public class TradeSyncHostTests : IDisposable
         TradeSyncPatch.OnTradeStateUpdated += handler;
         try
         {
-            // 房主向该客机广播 OnTradeStateUpdate
+
             var stateBroadcastJson = "{" +
                                      $"\"TradeId\":\"{tradeId}\"," +
                                      "\"PlayerAId\":\"host_1\"," +
@@ -262,4 +258,3 @@ public class TradeSyncHostTests : IDisposable
         }
     }
 }
-

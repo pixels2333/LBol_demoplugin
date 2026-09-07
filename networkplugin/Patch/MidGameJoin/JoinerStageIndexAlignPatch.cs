@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using HarmonyLib;
 using LBoL.Core;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,23 +10,6 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.MidGameJoin;
 
-/// <summary>
-/// Align joiner's initial stage index to host snapshot.
-///
-/// Why:
-/// - Host may already be in stage N.
-/// - Joiner starts a fresh run; by default _stageIndex is -1 and the first EnterNextStage enters stage 0.
-/// - MapCatchUpOrchestrator waits for map seed alignment; entering the correct stage makes Stage.MapSeed match sooner.
-///
-/// How:
-/// - Before the FIRST EnterNextStage call of a new run, set private _stageIndex = targetStageIndex - 1.
-///   (EnterNextStage will then enter targetStageIndex.)
-///
-/// Guard:
-/// - Only when connected and self is NOT host.
-/// - Only when there is a pending FullSnapshot with GameState.StageIndex.
-/// - Only when the current _stageIndex is still -1 (fresh run).
-/// </summary>
 [HarmonyPatch]
 public static class JoinerStageIndexAlignPatch
 {
@@ -38,10 +21,7 @@ public static class JoinerStageIndexAlignPatch
     private static MapCatchUpOrchestrator TryGetCatchUp()
         => ServiceProvider?.GetService<MapCatchUpOrchestrator>();
 
-    /// <summary>
-    /// 进入下一阶段前置：将加入者的初始阶段索引对齐到主机的快照
-    /// </summary>
-    [HarmonyPatch(typeof(GameRunController), nameof(GameRunController.EnterNextStage))]
+        [HarmonyPatch(typeof(GameRunController), nameof(GameRunController.EnterNextStage))]
     [HarmonyPrefix]
     public static void GameRunController_EnterNextStage_Prefix(GameRunController __instance)
     {
@@ -82,14 +62,12 @@ public static class JoinerStageIndexAlignPatch
                 return;
             }
 
-            // Only align fresh runs.
             int currentStageIndex = Traverse.Create(__instance).Field("_stageIndex").GetValue<int>();
             if (currentStageIndex != -1)
             {
                 return;
             }
 
-            // Clamp to available stages.
             int stageCount = 0;
             try
             {
@@ -115,7 +93,7 @@ public static class JoinerStageIndexAlignPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 }

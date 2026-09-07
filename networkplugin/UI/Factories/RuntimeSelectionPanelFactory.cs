@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Reflection;
 using HarmonyLib;
 using LBoL.Presentation.UI.Dialogs;
@@ -507,7 +507,7 @@ internal static class RuntimeSelectionPanelFactory
         TextMeshProUGUI text;
         if (template != null)
         {
-            // 直接创建对象，避免克隆模板上的意外组件
+
             GameObject go = new(name);
             go.transform.SetParent(parent, false);
             go.transform.localScale = Vector3.one;

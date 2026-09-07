@@ -1,23 +1,14 @@
-using BepInEx.Configuration;
+﻿using BepInEx.Configuration;
 
 namespace NetworkPlugin.Configuration;
 
 public partial class ConfigManager
 {
-    /// <summary>
-    /// 其他玩家 Overlay 停靠在屏幕右上角时的 X 偏移。
-    /// </summary>
-    public ConfigEntry<float> OtherPlayersOverlayRightOffsetX { get; private set; }
+        public ConfigEntry<float> OtherPlayersOverlayRightOffsetX { get; private set; }
 
-    /// <summary>
-    /// 其他玩家 Overlay 停靠在屏幕右上角时的 Y 偏移。
-    /// </summary>
-    public ConfigEntry<float> OtherPlayersOverlayRightOffsetY { get; private set; }
+        public ConfigEntry<float> OtherPlayersOverlayRightOffsetY { get; private set; }
 
-    /// <summary>
-    /// 调试：为所有 UI 控件添加红色 5px 边界，用于查看控件边界。
-    /// </summary>
-    public ConfigEntry<bool> DebugShowControlBounds { get; private set; }
+        public ConfigEntry<bool> DebugShowControlBounds { get; private set; }
 
     private void BindUiSettings(ConfigFile configFile)
     {
@@ -43,10 +34,7 @@ public partial class ConfigManager
         );
     }
 
-    /// <summary>
-    /// 获取其他玩家 Overlay 在右上角停靠时的 (X, Y) 偏移量。
-    /// </summary>
-    public (float X, float Y) GetOtherPlayersOverlayRightOffset()
+        public (float X, float Y) GetOtherPlayersOverlayRightOffset()
     {
         float x = OtherPlayersOverlayRightOffsetX?.Value ?? -24f;
         float y = OtherPlayersOverlayRightOffsetY?.Value ?? -144f;

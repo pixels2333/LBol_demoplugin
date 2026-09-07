@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using NetworkPlugin.Utils;
 using Xunit;
 
@@ -120,7 +120,7 @@ public class NetworkEventHelperTests
         Assert.Equal(42, numVal);
 
         Assert.True(NetworkEventHelper.TryGetInt(element, "float", out int floatVal));
-        Assert.Equal(43, floatVal); // 42.6 rounded is 43
+        Assert.Equal(43, floatVal);
 
         Assert.True(NetworkEventHelper.TryGetInt(element, "str", out int strVal));
         Assert.Equal(100, strVal);

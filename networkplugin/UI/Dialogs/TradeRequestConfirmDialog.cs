@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Linq;
 using HarmonyLib;
@@ -20,12 +20,6 @@ using UnityEngine.UI;
 
 namespace NetworkPlugin.UI.Dialogs;
 
-/// <summary>
-/// 被动交易确认弹窗（严格遵循 /lbol-ui-handbook 原生 UI 指南规范设计）。
-/// 当其他玩家发起交易请求时，接收方显示本弹窗询问是否接受。
-/// 点击【接受】后关闭弹窗并自动调起 TradePanel 报价面板；
-/// 点击【拒绝】或倒计时超时自动拒绝交易。
-/// </summary>
 public sealed class TradeRequestConfirmDialog : UiDialog<TradeSyncPatch.TradeSessionState>, IInputActionHandler
 {
     private CanvasGroup _canvasGroup;
@@ -147,7 +141,6 @@ public sealed class TradeRequestConfirmDialog : UiDialog<TradeSyncPatch.TradeSes
 
         TradeSyncPatch.OnTradeStateUpdated -= OnTradeStateUpdated;
 
-        // 若离开时未明确处理（未点接受或拒绝），补一次拒绝，防止挂起
         if (!_handled && !string.IsNullOrWhiteSpace(_tradeId) && !string.IsNullOrWhiteSpace(_selfId))
         {
             _handled = true;
@@ -168,7 +161,6 @@ public sealed class TradeRequestConfirmDialog : UiDialog<TradeSyncPatch.TradeSes
             return;
         }
 
-        // 若发起方取消或交易已结束/失败，自动关闭本弹窗
         if (state.Status == TradeSyncPatch.TradeStatus.Canceled ||
             state.Status == TradeSyncPatch.TradeStatus.Failed ||
             state.Status == TradeSyncPatch.TradeStatus.Completed)
@@ -191,7 +183,6 @@ public sealed class TradeRequestConfirmDialog : UiDialog<TradeSyncPatch.TradeSes
             remaining--;
         }
 
-        // 超时自动拒绝
         Plugin.Logger?.LogInfo($"[TradeRequestConfirmDialog] Trade request timed out after {totalSeconds}s, auto-declining: tradeId={_tradeId}");
         OnDecline();
     }
@@ -206,7 +197,6 @@ public sealed class TradeRequestConfirmDialog : UiDialog<TradeSyncPatch.TradeSes
 
         Hide();
 
-        // 自动切到 TradePanel 交易面板
         Plugin.RunOnMainThread(() =>
         {
             var tradePanel = TradePanelRuntimeFactory.GetOrCreate(UiManager.Instance?.transform);
@@ -262,7 +252,6 @@ public sealed class TradeRequestConfirmDialog : UiDialog<TradeSyncPatch.TradeSes
 
         textTemplate ??= _panelRoot.GetComponentInChildren<TextMeshProUGUI>(true);
 
-        // 1. 顶部金色大标题 (TitleText)
         _titleText = _panelRoot.Find("TitleText")?.GetComponent<TextMeshProUGUI>();
         if (_titleText == null && textTemplate != null)
         {
@@ -278,12 +267,11 @@ public sealed class TradeRequestConfirmDialog : UiDialog<TradeSyncPatch.TradeSes
             _titleText.gameObject.SetActive(true);
             _titleText.alignment = TextAlignmentOptions.Center;
             _titleText.fontSize = 42;
-            _titleText.color = new Color(1f, 0.85f, 0.3f, 1f); // 金色
+            _titleText.color = new Color(1f, 0.85f, 0.3f, 1f);
             _titleText.text = "交易请求";
             SetCenteredRect(_titleText.rectTransform, new Vector2(0f, 280f), new Vector2(1000f, 80f));
         }
 
-        // 2. 中部正文 (MessageText)
         _messageText = _panelRoot.Find("MessageText")?.GetComponent<TextMeshProUGUI>();
         if (_messageText == null && textTemplate != null)
         {
@@ -303,7 +291,6 @@ public sealed class TradeRequestConfirmDialog : UiDialog<TradeSyncPatch.TradeSes
             SetCenteredRect(_messageText.rectTransform, new Vector2(0f, 60f), new Vector2(1200f, 120f));
         }
 
-        // 3. 倒计时提示文本 (TimerText)
         _timerText = _panelRoot.Find("TimerText")?.GetComponent<TextMeshProUGUI>();
         if (_timerText == null && textTemplate != null)
         {
@@ -320,11 +307,10 @@ public sealed class TradeRequestConfirmDialog : UiDialog<TradeSyncPatch.TradeSes
             _timerText.alignment = TextAlignmentOptions.Center;
             _timerText.fontSize = 22;
             _timerText.color = new Color(0.8f, 0.8f, 0.8f, 0.9f);
-            _timerText.text = ""; // 初始置空，防止显示 prefab 占位内容
+            _timerText.text = "";
             SetCenteredRect(_timerText.rectTransform, new Vector2(0f, -40f), new Vector2(600f, 50f));
         }
 
-        // 4. 原生拒绝按钮 (Cancel)
         Transform cancelTr = _panelRoot.Find("Cancel");
         if (cancelTr != null)
         {
@@ -347,7 +333,6 @@ public sealed class TradeRequestConfirmDialog : UiDialog<TradeSyncPatch.TradeSes
             }
         }
 
-        // 5. 原生接受按钮 (Confirm)
         Transform confirmTr = _panelRoot.Find("Confirm");
         if (confirmTr != null)
         {

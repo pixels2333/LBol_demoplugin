@@ -1,23 +1,14 @@
-using BepInEx.Logging;
+﻿using BepInEx.Logging;
 
 namespace NetworkPlugin.Network.MidGameJoin;
 
-/// <summary>
-/// 快速同步服务，用于中途加入时的玩家状态快速同步
-/// </summary>
-/// <param name="logger">BepInEx 日志记录器</param>
 public class FastSyncService(ManualLogSource logger)
 {
     private readonly ManualLogSource _logger = logger;
 
-    /// <summary>
-    /// 同步指定玩家的状态
-    /// </summary>
-    /// <param name="playerId">玩家ID</param>
-    /// <param name="state">玩家引导状态</param>
-    public void SyncPlayerState(string playerId, PlayerBootstrappedState state)
+        public void SyncPlayerState(string playerId, PlayerBootstrappedState state)
     {
-        // TODO: 当前仅为日志占位，缺少实际的同步逻辑（如发送同步请求到服务器或更新本地状态）。
+
         _logger.LogDebug($"[FastSyncService] Syncing state for {playerId}: progress {state.GameProgress}%");
     }
 }

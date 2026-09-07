@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Services;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
+using NetworkPlugin.Network.NetworkPlayer;
 using NetworkPlugin.Patch.UI;
 using NetworkPlugin.UI.Models;
 using NetworkPlugin.UI.State;
@@ -14,12 +15,6 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// Gap 治疗同步补丁：
-/// - 客户端发起 OnGapHealRequest。
-/// - Host 校验并广播 OnGapPlayerHealed（或 OnGapHealFailed）。
-/// - 所有客户端收到广播后：更新目标玩家缓存；仅目标本人执行本地治疗落地。
-/// </summary>
 public static class ResurrectSyncPatch
 {
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
@@ -28,16 +23,9 @@ public static class ResurrectSyncPatch
     private static bool _subscribed;
     private static INetworkClient _subscribedClient;
 
-    /// <summary>
-    /// 复活操作结果事件：（requestId, success, reason）
-    /// </summary>
-    public static event Action<string, bool, string> OnResurrectResult;
+        public static event Action<string, bool, string> OnResurrectResult;
 
-    /// <summary>
-    /// 确保已订阅网络客户端事件
-    /// </summary>
-    /// <param name="client">网络客户端实例</param>
-    public static void EnsureSubscribed(INetworkClient client)
+        public static void EnsureSubscribed(INetworkClient client)
     {
         if (client == null)
         {
@@ -59,7 +47,7 @@ public static class ResurrectSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
         try
@@ -126,9 +114,6 @@ public static class ResurrectSyncPatch
 
     private static void HandleDeathStatusChanged(JsonElement root)
     {
-        // 统一把“死者列表”汇总到 DeathRegistry，供 Gap 复活面板展示。
-        // 注意：DeathPatches 当前发送的 PlayerId 是 PlayerUnit.Id；但需求规定应以网络 PlayerId 为准。
-        // v1：若 payload 没有 Network PlayerId，则先用字符串字段 PlayerId 作为 key（实施后续可补齐映射）。
 
         string playerId = GetString(root, "PlayerId");
         bool isFakeDeath = GetBool(root, "IsFakeDeath");
@@ -153,7 +138,7 @@ public static class ResurrectSyncPatch
             CanResurrect = true,
             MaxHp = maxHp,
             DeathTime = DateTime.UtcNow,
-            // 默认经济模型：Cost = MaxHp => ResurrectionHp = Cost/2 = MaxHp/2
+
             ResurrectionCost = Math.Max(0, maxHp),
             Level = 0,
         };
@@ -163,7 +148,7 @@ public static class ResurrectSyncPatch
 
     private static void HandleGapHealRequest(JsonElement root)
     {
-        // 仅 Host 处理请求并广播结果。
+
         if (!NetworkIdentityTracker.GetSelfIsHost())
         {
             return;
@@ -240,7 +225,6 @@ public static class ResurrectSyncPatch
 
             string selfId = NetworkIdentityTracker.GetSelfPlayerId();
 
-            // 目标本人：执行治疗落地。
             if (!string.IsNullOrWhiteSpace(selfId) && string.Equals(selfId, targetPlayerId, StringComparison.Ordinal))
             {
                 try
@@ -299,7 +283,7 @@ public static class ResurrectSyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -314,52 +298,17 @@ public static class ResurrectSyncPatch
         }
 
         INetworkManager networkManager = ServiceProvider?.GetService<INetworkManager>();
-        if (networkManager == null)
+        INetworkPlayer networkPlayer = networkManager?.GetPlayer(playerId);
+        if (networkPlayer == null && networkManager != null)
         {
-            return false;
-        }
-
-        string selfPlayerId = NetworkIdentityTracker.GetSelfPlayerId();
-        if (!string.IsNullOrWhiteSpace(selfPlayerId) && string.Equals(selfPlayerId, playerId, StringComparison.Ordinal))
-        {
-            var localPlayer = GameStateUtils.GetCurrentPlayer();
-            if (localPlayer != null)
+            var self = networkManager.GetSelf();
+            if (self != null && string.Equals(self.playerId, playerId, StringComparison.Ordinal))
             {
-                currentHp = Math.Max(0, localPlayer.Hp);
-                maxHp = Math.Max(0, localPlayer.MaxHp);
-                return maxHp > 0;
+                networkPlayer = self;
             }
         }
 
-        var networkPlayer = networkManager.GetPlayer(playerId);
-        if (networkPlayer == null)
-        {
-            networkPlayer = networkManager.GetSelf();
-            if (networkPlayer == null || !string.Equals(networkPlayer.playerId, playerId, StringComparison.Ordinal))
-            {
-                // 虚拟AI模拟玩家支持
-                if (GapOptionsPanel_Patch.IsVirtualAiSimulatedPlayer(playerId))
-                {
-                    var localPlayer = GameStateUtils.GetCurrentPlayer();
-                    maxHp = Math.Max(1, localPlayer?.MaxHp ?? 100);
-                    currentHp = Math.Max(0, (int)Math.Ceiling(maxHp * 0.7f));
-                    return true;
-                }
-                return false;
-            }
-        }
-
-        currentHp = Math.Max(0, networkPlayer.HP);
-        maxHp = Math.Max(0, networkPlayer.maxHP);
-
-        // 如果 maxHp 尚未同步过，尝试用本地玩家 MaxHp 兜底
-        if (maxHp <= 0)
-        {
-            var localPlayer = GameStateUtils.GetCurrentPlayer();
-            maxHp = Math.Max(1, localPlayer?.MaxHp ?? 100);
-        }
-
-        return maxHp > 0;
+        return PlayerVitalsHelper.TryResolveVitals(playerId, networkPlayer, out currentHp, out maxHp);
     }
 
     private static void UpdateKnownPlayerVitals(string playerId, int hp, int maxHp)

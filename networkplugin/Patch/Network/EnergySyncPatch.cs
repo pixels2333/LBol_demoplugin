@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using HarmonyLib;
 using LBoL.Base;
 using LBoL.Core.Battle;
@@ -9,11 +9,6 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// 能量/法力同步补丁：
-/// 参考 Together in Spire 的 PlayerPatches 能量同步思路，但在 LBoL 中统一从 BattleController 的
-/// Gain/Lose/Consume/Convert/TurnMana 入口同步，避免仅监听 Action 导致漏报或重复。
-/// </summary>
 public static class EnergySyncPatch
 {
     private static INetworkClient TryGetNetworkClient()

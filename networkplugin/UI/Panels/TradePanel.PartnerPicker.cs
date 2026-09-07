@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,7 +28,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 namespace NetworkPlugin.UI.Panels;
-// 伙伴选择器 —— 玩家匹配与选择 UI
+
 public sealed partial class TradePanel
 {
     private void ShowPartnerPickerOverlay()
@@ -41,11 +41,9 @@ public sealed partial class TradePanel
 
         Plugin.Logger?.LogInfo($"[TradePanel] ShowPartnerPickerOverlay enter: tradeId={_tradeId ?? "<null>"}, self={_selfPlayerId ?? "<null>"}, currentPartner={_playerBId ?? "<null>"}");
 
-        // 确保 overlay 获得点击响应（即使面板之前被隐藏过）。
         _canvasGroup.interactable = true;
         _canvasGroup.blocksRaycasts = true;
 
-        // 懒创建 overlay。
         EnsurePartnerPickerOverlay();
         if (_partnerPickerRoot is null)
         {
@@ -58,28 +56,19 @@ public sealed partial class TradePanel
     _partnerPickerInputReadyTime = Time.unscaledTime + 0.15f;
         _partnerPickerRoot.SetActive(true);
         EnsurePopupTopmost();
-        // 隐藏外层 Frame，避免与 picker 重叠。
+
         transform.Find("NetworkPlugin_TradePanel_Frame")?.gameObject.SetActive(false);
     Plugin.Logger?.LogInfo($"[TradePanel] ShowPartnerPickerOverlay armed click guard until={_partnerPickerInputReadyTime:F3}");
 
-        // 通过 prefab 实例化 MessageDialog 后其 CanvasGroup 默认可能不可交互，强制开启 raycasts。
         ForceEnableRaycasts(_partnerPickerRoot);
 
-        // 隐藏底层交易详情，直到选择了交易对象。
         SetTradeDetailsVisible(false);
 
-        // picker 自带取消按钮，隐藏底层的以避免重复。
         cancelButton?.gameObject.SetActive(false);
 
-        // 注意：不要在此处禁用根 CanvasGroup。
-        // partner picker overlay 是 TradePanel 的子对象，禁用根 CanvasGroup
-        // 也会使 overlay 按钮（包括取消和交易对象行）无法点击。
-
-        // 避免重复标题文本（overlay 已有自己的标题）。
         UpdateUIStatus(string.Empty);
         RebuildPartnerPickerList();
 
-        // 如果自身位置尚未获取，显示等待提示并安排一次自动刷新。
         if (!OtherPlayersOverlayPatch.TryGetSelfLocation(out _, out _, out _, out _))
         {
             Plugin.Logger?.LogInfo("[TradePanel] ShowPartnerPickerOverlay: self location unavailable, waiting for auto refresh.");
@@ -121,7 +110,7 @@ public sealed partial class TradePanel
 
     private IEnumerator CoPartnerPickerAutoRefreshOnce()
     {
-        // 最多等待 1.0 秒并刷新一次列表。
+
         float t = 0f;
         while (t < 1.0f)
         {
@@ -131,7 +120,6 @@ public sealed partial class TradePanel
                 yield break;
             }
 
-            // 若已取得位置信息，可立即刷新。
             if (OtherPlayersOverlayPatch.TryGetSelfLocation(out _, out _, out _, out _))
             {
                 break;
@@ -166,13 +154,12 @@ public sealed partial class TradePanel
 
     private void ShowTradeTargetUnavailableDialog(string detail)
     {
-        // 与 vanilla 保持一致：使用 UiManager 管理的 MessageDialog 播放过渡动画。
+
         if (!UiManager.IsInitialized)
         {
             return;
         }
 
-        // 显示 dialog 期间阻断底层交易 UI。
         _blockingCenterMessageActive = true;
         SetTradeDetailsVisible(false);
 
@@ -212,16 +199,13 @@ public sealed partial class TradePanel
     _partnerPickerInputReadyTime = 0f;
         _partnerPickerRoot?.SetActive(false);
 
-        // 恢复外层 Frame。
         transform.Find("NetworkPlugin_TradePanel_Frame")?.gameObject.SetActive(true);
 
-        // 重新开启交易 UI。
         SetTradeDetailsVisible(true);
 
         _canvasGroup.interactable = true;
         _canvasGroup.blocksRaycasts = true;
 
-        // 恢复底层取消按钮状态。
         cancelButton?.gameObject.SetActive(_canCancel);
     }
 
@@ -243,7 +227,6 @@ public sealed partial class TradePanel
         player1NameText?.gameObject.SetActive(visible);
         player2NameText?.gameObject.SetActive(visible);
 
-        // 隐藏确认按钮以减少 session 开始前的视觉混乱，取消按钮在允许取消时保持可见。
         confirmButton?.gameObject.SetActive(visible);
         cancelButton?.gameObject.SetActive(visible || _canCancel);
 
@@ -271,7 +254,6 @@ public sealed partial class TradePanel
         {
             Transform parent = transform;
 
-            // 严格要求：使用游戏内 dialog prefab 作为 overlay 窗口框架，而非运行时构建的 Image/Outline。
             GameObject prefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
             if (prefab is null)
             {
@@ -302,7 +284,6 @@ public sealed partial class TradePanel
                 return;
             }
 
-            // 通过反射提取序列化字段，以复用 prefab 的文字/按钮。
             TextMeshProUGUI mainText = GetDialogField<TextMeshProUGUI>(dialog, "mainText");
             TextMeshProUGUI subText = GetDialogField<TextMeshProUGUI>(dialog, "subText");
             Button singleConfirm = GetDialogField<Button>(dialog, "singleConfirmButton");
@@ -320,7 +301,7 @@ public sealed partial class TradePanel
 
             if (subText is not null)
             {
-                // 复用其 rect 作为列表占位区域；并添加点击刺激（点击可触发刷新）。
+
                 subText.text = string.Empty;
                 subText.raycastTarget = true;
                 subText.alignment = TextAlignmentOptions.Center;
@@ -329,14 +310,12 @@ public sealed partial class TradePanel
                 subText.color = c;
                 subText.gameObject.SetActive(true);
 
-                // 添加 Button 使空状态标签可点击（触发刷新）。
                 var subTextBtn = subText.gameObject.GetComponent<Button>() ?? subText.gameObject.AddComponent<Button>();
                 subTextBtn.targetGraphic = subText;
                 subTextBtn.onClick.RemoveAllListeners();
                 subTextBtn.onClick.AddListener(() => OnPartnerPickerRefreshClicked());
             }
 
-            // 确保 dialog 按钮不会调用 UiDialog.Hide()（调用会修改 UiManager 当前 dialog 状态）。
             if (singleConfirm is not null)
             {
                 singleConfirm.onClick.RemoveAllListeners();
@@ -378,8 +357,6 @@ public sealed partial class TradePanel
                 });
             }
 
-            // 安全网：如果行级 pointer 事件受 prefab raycast 层次/逆序阻塞，
-            // 则在 overlay 根捕获点击并通过矩形命中测试解析被点击的行。
             var catcher = _partnerPickerRoot.GetComponent<PartnerPickerClickCatcher>();
             if (catcher is null)
             {
@@ -405,7 +382,6 @@ public sealed partial class TradePanel
                 return;
             }
 
-            // 构建用于显示 TMP 可点击文字 partner 条目的简单 ScrollRect 容器。
             TextMeshProUGUI pickerTextTemplate = mainText ?? subText;
             if (pickerTextTemplate is null)
             {
@@ -474,13 +450,11 @@ public sealed partial class TradePanel
                 tag.EmptyText = subText;
             }
 
-            // 确保取消按钮在列表上方。
             if (cancel is not null)
             {
                 cancel.transform.SetAsLastSibling();
             }
 
-            // 验证标签创建成功。
             PartnerPickerTag tagCheck = _partnerPickerRoot.GetComponentInChildren<PartnerPickerTag>(true);
             if (tagCheck is null || tagCheck.TextTemplate is null)
             {
@@ -490,7 +464,6 @@ public sealed partial class TradePanel
                 return;
             }
 
-            // 禁用 dialog 组件以避免意外的输入处理；我们只需要其视觉呈现。
             dialog.enabled = false;
         }
         catch
@@ -514,10 +487,8 @@ public sealed partial class TradePanel
             return;
         }
 
-        // 立即尝试重建列表。
         RebuildPartnerPickerList();
 
-        // 若自身位置仍不可用，显示等待状态并安排一次性刷新。
         if (!OtherPlayersOverlayPatch.TryGetSelfLocation(out _, out _, out _, out _))
         {
             TryShowPartnerPickerWaiting();
@@ -636,13 +607,10 @@ public sealed partial class TradePanel
 
         string selfId = _selfPlayerId ?? NetworkIdentityTracker.GetSelfPlayerId();
 
-        // 优先使用详细快照，以便过滤“当前在商店中的玩家”并展示头像/位置。
         var players = OtherPlayersOverlayPatch.SnapshotPlayersDetailed();
 
         bool hasSelfLoc = OtherPlayersOverlayPatch.TryGetSelfLocation(out int selfStage, out int selfX, out int selfY, out string selfLocName);
 
-        // 部分环境可能过早没有将虚拟调试玩家注入快照。
-        // 如果调试开关已开启，合成一个对齐到自身位置的 "AI Default" 条目，小节点同节点规则并可用于本地 UI 测试。
         if (hasSelfLoc && IsLocalDebugTradeAllowed())
         {
             if (players.All(p => !string.Equals(p.PlayerId, "aidefault", StringComparison.Ordinal)))
@@ -674,8 +642,6 @@ public sealed partial class TradePanel
                 .Where(p => IsShopLikeLocation(p.LocationName))
                 .ToList();
 
-            // 选择规则：必须在相同节点才可选择。
-            // 如果尚不知道自身位置，无法安全强制执行该规则。
             if (!hasSelfLoc)
             {
                 candidates.Clear();
@@ -691,7 +657,7 @@ public sealed partial class TradePanel
 
             if (candidates.Count == 0)
             {
-                // 严格模式：空状态也必须使用游戏内 UI 元素。
+
                 tag.ScrollRect?.gameObject.SetActive(false);
 
                 if (tag.EmptyText is not null)
@@ -777,10 +743,9 @@ public sealed partial class TradePanel
         HidePartnerPickerOverlay();
         transform.Find("NetworkPlugin_TradePanel_Frame")?.gameObject.SetActive(true);
 
-        // 已连接：进行实际的 host 驱动会话。离线/本地调试：保持本地 UI（不发送网络请求）。
         if (IsLocalDebugTradeAllowed() && (!string.IsNullOrWhiteSpace(partnerPlayerId) && partnerPlayerId.StartsWith("aidefault", StringComparison.OrdinalIgnoreCase)))
         {
-            // 即使已连接，选择本地调试虚拟玩家也允许启动纯本地 UI 测试会话。
+
             _localDebugTradeMode = true;
             Plugin.Logger?.LogInfo($"[TradePanel] OnPartnerSelected: local debug shortcut for {partnerPlayerId}");
             PopulateLocalDebugRemoteOffer();
@@ -817,10 +782,9 @@ public sealed partial class TradePanel
     {
         GameRunController run = ActiveGameRun;
 
-        // 初始化远端侧（player2）的展示报价，供离线 UI 测试。不修改真实牌组/背包。
         using (new ApplyingStateScope(this))
         {
-            // 取少量本地牌组卡牌作为展示克隆。
+
             var deck = run?.BaseDeck?.Where(c => c is not null).ToList() ?? new List<Card>();
             deck.Take(2)
                 .Where(src => src is not null)
@@ -829,7 +793,6 @@ public sealed partial class TradePanel
                 .ToList()
                 .ForEach(temp => AddCardToTrade(temp, false));
 
-            // 本地侧加小额金币报价，使报价编辑器显示非零状态。
             _localMoneyOffer = Math.Min(10, run?.Money ?? 10);
             RefreshOfferEditorTexts();
             CheckTradeReady();
@@ -849,7 +812,7 @@ public sealed partial class TradePanel
 
     private string ResolvePartnerDisplayName(TradePayload payload)
     {
-        // 如使用了 partner picker，_playerBId 将在选择后被赋值。
+
         string id = _playerBId;
         if (string.IsNullOrWhiteSpace(id))
         {
@@ -866,8 +829,6 @@ public sealed partial class TradePanel
             return false;
         }
 
-        // LocationName 由网络同步设置为 visitingNode.StationType.ToString()。
-        // 模糊匹配以应对重命名/变体。允许交易的地点：Shop/Trade（商人）和 Gap（GapOptions 节点）。
         return locationName.IndexOf("shop", StringComparison.OrdinalIgnoreCase) >= 0
             || locationName.IndexOf("trade", StringComparison.OrdinalIgnoreCase) >= 0
             || locationName.IndexOf("gap", StringComparison.OrdinalIgnoreCase) >= 0
@@ -904,8 +865,6 @@ public sealed partial class TradePanel
                 return false;
             }
 
-            // LBoL UI 通常基于 camera，但部分 prefab 可能如 overlay 行为。
-            // 根据 camera 和 null 分别尝试以增强鲁棒性。
             try
             {
                 if (RectTransformUtility.RectangleContainsScreenPoint(rt, screenPoint, CameraController.UiCamera))
@@ -915,7 +874,7 @@ public sealed partial class TradePanel
             }
             catch
             {
-                // 忽略
+
             }
 
             return RectTransformUtility.RectangleContainsScreenPoint(rt, screenPoint, null);
@@ -925,7 +884,6 @@ public sealed partial class TradePanel
         {
             screenPos = default;
 
-            // 优先新 Input System（部分构建禁用了旧版 UnityEngine.Input API）。
             try
             {
                 var mouse = Mouse.current;
@@ -937,10 +895,9 @@ public sealed partial class TradePanel
             }
             catch
             {
-                // 忽略
+
             }
 
-            // 旧版输入备用方式。
             try
             {
                 if (Input.GetMouseButtonDown(0))
@@ -951,7 +908,7 @@ public sealed partial class TradePanel
             }
             catch
             {
-                // 忽略
+
             }
 
             return false;
@@ -976,7 +933,6 @@ public sealed partial class TradePanel
                     return;
                 }
 
-                // 忽略取消按钮点击。
                 if (Panel._partnerPickerCancelButton is not null)
                 {
                     RectTransform cancelRt = Panel._partnerPickerCancelButton.transform as RectTransform;
@@ -1006,7 +962,6 @@ public sealed partial class TradePanel
                     listRegion = pickerTag.transform as RectTransform;
                 }
 
-                // 仅处理列表区域内的点击。
                 if (listRegion is not null && !Contains(listRegion, pos))
                 {
                     return;
@@ -1019,7 +974,6 @@ public sealed partial class TradePanel
                     return;
                 }
 
-                // 命中测试候选项，倒序遍历以从当前最高层开始。
                 var candidates = container.GetComponentsInChildren<PartnerCandidateTag>(true);
                 for (int i = candidates.Length - 1; i >= 0; i--)
                 {
@@ -1029,7 +983,6 @@ public sealed partial class TradePanel
                         continue;
                     }
 
-                    // 优先测试候选项根节点 rect。
                     RectTransform rt = cand.transform as RectTransform;
                     if (Contains(rt, pos))
                     {
@@ -1037,7 +990,6 @@ public sealed partial class TradePanel
                         return;
                     }
 
-                    // 备用：部分 prefab 根 rect 尺寸为零，需对其全部图形进行命中测试（TMP/Image/等）。
                     foreach (var g in cand.GetComponentsInChildren<Graphic>(true))
                     {
                         if (g is null)
@@ -1055,7 +1007,7 @@ public sealed partial class TradePanel
             }
             catch
             {
-                // 忽略
+
             }
         }
 
@@ -1078,7 +1030,6 @@ public sealed partial class TradePanel
                     return;
                 }
 
-                // 忽略对取消按钮的干扰。
                 try
                 {
                     if (Panel._partnerPickerCancelButton is not null)
@@ -1098,7 +1049,7 @@ public sealed partial class TradePanel
                 }
                 catch
                 {
-                    // 忽略
+
                 }
 
                 PartnerPickerTag pickerTag = Panel._partnerPickerRoot.GetComponentInChildren<PartnerPickerTag>(true);
@@ -1114,7 +1065,6 @@ public sealed partial class TradePanel
                     return;
                 }
 
-                // 仅依矩形命中测试解析被点击的候选。
                 var candidates = container.GetComponentsInChildren<PartnerCandidateTag>(true);
                 foreach (var cand in candidates)
                 {
@@ -1147,7 +1097,6 @@ public sealed partial class TradePanel
                         return;
                     }
 
-                    // 备用：测试候选项的所有图形方块。
                     foreach (var g in cand.GetComponentsInChildren<Graphic>(true))
                     {
                         if (g is null)
@@ -1173,7 +1122,7 @@ public sealed partial class TradePanel
             }
             catch
             {
-                // 忽略
+
             }
         }
     }

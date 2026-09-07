@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -20,11 +20,6 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// 敌人状态接收补丁：
-/// - 订阅 BattleEnemyStateChanged（兼容 EnemyStateUpdate）；
-/// - 客机按 SpawnId 主键 + RootIndex/Id 兼容键匹配并落地 HP/Block/Shield。
-/// </summary>
 public static class EnemyStateReceivePatch
 {
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
@@ -129,7 +124,7 @@ public static class EnemyStateReceivePatch
         }
         catch
         {
-            // ignored
+
         }
 
         try
@@ -198,7 +193,7 @@ public static class EnemyStateReceivePatch
                 parsedEffects = ParseStatusEffects(seElem);
             }
         }
-        
+
         if (parsedEffects == null && (enemyElem.TryGetProperty("StatusEffects", out JsonElement seElemDirect) || enemyElem.TryGetProperty("statusEffects", out seElemDirect)) && seElemDirect.ValueKind == JsonValueKind.Array)
         {
             parsedEffects = ParseStatusEffects(seElemDirect);
@@ -305,7 +300,6 @@ public static class EnemyStateReceivePatch
 
         Plugin.Logger?.LogInfo($"[EnemyStateReceive] ApplyState: {enemy.Name} Hp: {oldHp}->{newHp}, Block: {oldBlock}->{newBlock}, Shield: {oldShield}->{newShield}");
 
-        // 应用远端状态时抑制 EnemySyncPatch 广播回环
         using (EnemySyncPatch.EnterApplyRemoteStateScope())
         {
             TrySetEnemyProperty(enemy, "Hp", newHp);
@@ -313,7 +307,6 @@ public static class EnemyStateReceivePatch
             TrySetEnemyProperty(enemy, "Shield", newShield);
         }
 
-        // 若 HP 变为 0，则触发死亡流（通过 _killedEnemiesInBattle 保障单场战斗仅触发一次斩杀，防止多网络包重复击杀）
         if (newHp == 0)
         {
             var battle = enemy.Battle;
@@ -331,7 +324,6 @@ public static class EnemyStateReceivePatch
             return;
         }
 
-        // 触发 UI 与 View 视图层更新
         try
         {
             var view = GameDirector.GetEnemy(enemy);
@@ -351,29 +343,26 @@ public static class EnemyStateReceivePatch
                     view.ComingDamage = damageInfo;
                     view.Hit(ignoreCoolDown: true);
 
-                    // 触发漂浮伤害数值
                     if (PopupHud.Instance != null)
                     {
                         PopupHud.Instance.DamagePopupFromScene(damageInfo, view.transform.position, sourceIsPlayer: true);
                     }
 
-                    // 更新 HP Bar UI
                     view.OnDamageReceived(damageInfo);
                 }
                 else if (healAmount > 0)
                 {
-                    // 触发漂浮治疗数值
+
                     if (PopupHud.Instance != null)
                     {
                         PopupHud.Instance.HealPopupFromScene(healAmount, view.transform.position);
                     }
 
-                    // 更新 HP Bar UI
                     view.OnHealingReceived(healAmount);
                 }
                 else if (newBlock != oldBlock || newShield != oldShield)
                 {
-                    // 仅 Block/Shield 变化，通过反射获取 _statusWidget 并触发 HP Bar UI 状态刷新
+
                     var widget = Traverse.Create(view).Field("_statusWidget").GetValue();
                     if (widget != null)
                     {
@@ -440,8 +429,8 @@ public static class EnemyStateReceivePatch
                     string effectId = !string.IsNullOrWhiteSpace(rInfo.Id) ? rInfo.Id : rInfo.Type;
                     remoteIds.Add(effectId);
 
-                    StatusEffect existing = currentEffects.FirstOrDefault(se => 
-                        string.Equals(se.Id, effectId, StringComparison.Ordinal) || 
+                    StatusEffect existing = currentEffects.FirstOrDefault(se =>
+                        string.Equals(se.Id, effectId, StringComparison.Ordinal) ||
                         string.Equals(se.GetType().Name, effectId, StringComparison.Ordinal));
 
                     if (existing != null)
@@ -563,7 +552,7 @@ public static class EnemyStateReceivePatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -587,9 +576,7 @@ public static class EnemyStateReceivePatch
 
     private static string BuildSpawnKey(string battleId, string spawnId, int rootIndex, string enemyId)
     {
-        // key 不含 battleId：host 与 client 的 BattleController 实例不同，
-        // GetHashCode().ToString() 必然不同，会导致跨端 pending 永远匹配不上。
-        // 每端同一时刻只有一个活跃战斗，spawnId 或 rootIndex|enemyId 已足够唯一。
+
         if (!string.IsNullOrWhiteSpace(spawnId))
         {
             return $"spawn:{spawnId}";

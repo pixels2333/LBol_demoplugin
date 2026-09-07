@@ -1,10 +1,7 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace NetworkPlugin.Network.Event;
 
-/// <summary>
-/// 状态效果应用事件
-/// </summary>
 public class StatusEffectAppliedEvent : GameEvent
 {
     public StatusEffectAppliedEvent() : base()

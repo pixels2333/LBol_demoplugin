@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
@@ -7,137 +7,84 @@ using NetworkPlugin.Network.Sync;
 
 namespace NetworkPlugin.Network.NetworkPlayer;
 
-/// <summary>
-/// 玩家实体类 - 使用SyncVar实现自动同步的核心玩家数据
-/// 所有需要网络同步的玩家状态都应该在这里定义
-/// </summary>
 public class PlayerEntity
 {
-    // 玩家标识
-    /// <summary>玩家唯一ID</summary>
-    [JsonPropertyName("playerId")]
+
+        [JsonPropertyName("playerId")]
     public string PlayerId { get; set; }
 
-    /// <summary>玩家显示名称</summary>
-    [JsonPropertyName("username")]
+        [JsonPropertyName("username")]
     public string Username { get; set; }
 
-    /// <summary>是否是房主</summary>
-    [JsonPropertyName("isHost")]
+        [JsonPropertyName("isHost")]
     public bool IsHost { get; set; }
 
-    // 基础状态属性 - 使用SyncVar自动同步
-    /// <summary>当前生命值（自动同步）</summary>
-    public SyncVar<int> HP { get; private set; }
-    /// <summary>最大生命值（自动同步）</summary>
-    public SyncVar<int> MaxHP { get; private set; }
-    /// <summary>格挡值（自动同步）</summary>
-    public SyncVar<int> Block { get; private set; }
-    /// <summary>护盾值（自动同步）</summary>
-    public SyncVar<int> Shield { get; private set; }
-    /// <summary>金币数量（自动同步）</summary>
-    public SyncVar<int> Coins { get; private set; }
+        public SyncVar<int> HP { get; private set; }
+        public SyncVar<int> MaxHP { get; private set; }
+        public SyncVar<int> Block { get; private set; }
+        public SyncVar<int> Shield { get; private set; }
+        public SyncVar<int> Coins { get; private set; }
 
-    // 资源
-    /// <summary>能量值（自动同步）</summary>
-    public SyncVar<int> Power { get; private set; }
-    /// <summary>终极能量值（自动同步）</summary>
-    public SyncVar<int> UltimatePower { get; private set; }
-    /// <summary>4色法力: 0=红,1=蓝,2=绿,3=白（自动同步）</summary>
-    public SyncVar<int[]> Mana { get; private set; }
+        public SyncVar<int> Power { get; private set; }
+        public SyncVar<int> UltimatePower { get; private set; }
+        public SyncVar<int[]> Mana { get; private set; }
 
-    // 位置与进度
-    /// <summary>位置X坐标（自动同步）</summary>
-    public SyncVar<int> LocationX { get; private set; }
-    /// <summary>位置Y坐标（自动同步）</summary>
-    public SyncVar<int> LocationY { get; private set; }
-    /// <summary>当前位置名称（自动同步）</summary>
-    public SyncVar<string> CurrentLocation { get; private set; }
-    /// <summary>当前章节（自动同步）</summary>
-    public SyncVar<int> CurrentStage { get; private set; }
-    /// <summary>角色ID（自动同步）</summary>
-    public SyncVar<string> CharacterId { get; private set; }
+        public SyncVar<int> LocationX { get; private set; }
+        public SyncVar<int> LocationY { get; private set; }
+        public SyncVar<string> CurrentLocation { get; private set; }
+        public SyncVar<int> CurrentStage { get; private set; }
+        public SyncVar<string> CharacterId { get; private set; }
 
-    // 回合状态
-    /// <summary>是否在战斗中（自动同步）</summary>
-    public SyncVar<bool> IsInBattle { get; private set; }
-    /// <summary>是否是我的回合（自动同步）</summary>
-    public SyncVar<bool> IsMyTurn { get; private set; }
-    /// <summary>结束回合标记（自动同步）</summary>
-    public SyncVar<bool> EndTurnFlag { get; private set; }
+        public SyncVar<bool> IsInBattle { get; private set; }
+        public SyncVar<bool> IsMyTurn { get; private set; }
+        public SyncVar<bool> EndTurnFlag { get; private set; }
 
-    // 状态效果 (存储状态效果的ID列表)
-    /// <summary>活跃状态效果ID列表（自动同步）</summary>
-    public SyncVar<List<string>> ActiveStatusEffects { get; private set; }
+        public SyncVar<List<string>> ActiveStatusEffects { get; private set; }
 
-    // 宝物 (存储宝物的ID列表)
-    /// <summary>遗物ID列表（自动同步）</summary>
-    public SyncVar<List<string>> Exhibits { get; private set; }
+        public SyncVar<List<string>> Exhibits { get; private set; }
 
-    // 在线状态
-    /// <summary>是否已连接（自动同步）</summary>
-    public SyncVar<bool> IsConnected { get; private set; }
-    /// <summary>最后更新时间</summary>
-    public DateTime LastUpdate { get; private set; }
+        public SyncVar<bool> IsConnected { get; private set; }
+        public DateTime LastUpdate { get; private set; }
 
-    /// <summary>
-    /// 构造函数，初始化玩家实体的所有属性
-    /// 设置默认值并创建所有SyncVar同步变量
-    /// </summary>
-    /// <param name="playerId">玩家唯一标识符</param>
-    /// <param name="username">玩家显示用户名</param>
-    /// <param name="isHost">是否为游戏主机，默认为false</param>
-    public PlayerEntity(string playerId, string username, bool isHost = false)
+        public PlayerEntity(string playerId, string username, bool isHost = false)
     {
-        // 基础玩家信息
+
         PlayerId = playerId;
         Username = username;
         IsHost = isHost;
 
-        // 初始化SyncVar属性，确保网络同步功能正常工作
         HP = new SyncVar<int>(nameof(HP), 100);
         MaxHP = new SyncVar<int>(nameof(MaxHP), 100);
         Block = new SyncVar<int>(nameof(Block), 0);
         Shield = new SyncVar<int>(nameof(Shield), 0);
         Coins = new SyncVar<int>(nameof(Coins), 0);
 
-        // 战斗和技能资源初始化
         Power = new SyncVar<int>(nameof(Power), 0);
         UltimatePower = new SyncVar<int>(nameof(UltimatePower), 0);
-        Mana = new SyncVar<int[]>(nameof(Mana), new int[4]); // 4色法力：0=红,1=蓝,2=绿,3=白
+        Mana = new SyncVar<int[]>(nameof(Mana), new int[4]);
 
-        // 位置和进度信息初始化
         LocationX = new SyncVar<int>(nameof(LocationX), 0);
         LocationY = new SyncVar<int>(nameof(LocationY), 0);
         CurrentLocation = new SyncVar<string>(nameof(CurrentLocation), "");
         CurrentStage = new SyncVar<int>(nameof(CurrentStage), 1);
         CharacterId = new SyncVar<string>(nameof(CharacterId), "");
 
-        // 回合制状态初始化
         IsInBattle = new SyncVar<bool>(nameof(IsInBattle), false);
         IsMyTurn = new SyncVar<bool>(nameof(IsMyTurn), false);
         EndTurnFlag = new SyncVar<bool>(nameof(EndTurnFlag), false);
 
-        // 状态效果和宝物系统初始化
         ActiveStatusEffects = new SyncVar<List<string>>(nameof(ActiveStatusEffects), []);
         Exhibits = new SyncVar<List<string>>(nameof(Exhibits), []);
 
-        // 网络连接状态初始化
         IsConnected = new SyncVar<bool>(nameof(IsConnected), true);
     }
 
-    /// <summary>
-    /// 更新最后更新时间
-    /// </summary>
-    public void UpdateTimestamp()
+        public void UpdateTimestamp()
     {
         LastUpdate = DateTime.Now;
     }
 
-    /// <summary>
-    /// 重置战斗状态(战斗结束后调用)
-    /// </summary>
-    public void ResetBattleState()
+        public void ResetBattleState()
     {
         Block.Value = 0;
         Shield.Value = 0;
@@ -147,10 +94,7 @@ public class PlayerEntity
         EndTurnFlag.Value = false;
     }
 
-    /// <summary>
-    /// 快照当前状态(用于网络传输)
-    /// </summary>
-    public PlayerStateSnapshot CreateSnapshot()
+        public PlayerStateSnapshot CreateSnapshot()
     {
         return new PlayerStateSnapshot()
         {
@@ -171,10 +115,7 @@ public class PlayerEntity
         };
     }
 
-    /// <summary>
-    /// 从快照恢复状态
-    /// </summary>
-    public void ApplySnapshot(PlayerStateSnapshot snapshot)
+        public void ApplySnapshot(PlayerStateSnapshot snapshot)
     {
         HP.Value = snapshot.Health;
         MaxHP.Value = snapshot.MaxHealth;

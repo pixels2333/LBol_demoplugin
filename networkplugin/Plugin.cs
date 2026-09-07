@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -21,26 +21,12 @@ using System.Diagnostics;
 
 namespace NetworkPlugin;
 
-/// <summary>
-/// LBoL联机MOD的主插件类
-/// 负责插件的初始化、依赖注入配置和生命周期管理
-/// </summary>
 [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
 [BepInProcess("LBoL.exe")]
-/// <summary>
-/// LBoL网络插件的主入口类
-/// 负责插件的初始化、服务注册、生命周期管理和网络功能的整体协调
-/// 实现了BepInEx插件的完整生命周期管理
-/// </summary>
 public class Plugin : BaseUnityPlugin
 {
-    /// <summary>
-    /// 插件日志输出器，用于记录插件运行状态和调试信息
-    /// 通过BepInEx框架提供的日志服务，支持不同级别的日志输出
-    /// </summary>
-    internal static new ManualLogSource Logger;
+        internal static new ManualLogSource Logger;
 
-    // Simple main-thread dispatcher so background networking work can safely update UI.
     private static readonly ConcurrentQueue<Action> _mainThreadActions = new();
     private static readonly object _syncProbeLock = new();
     private static bool _syncWiringLogged;
@@ -68,71 +54,43 @@ public class Plugin : BaseUnityPlugin
             }
             catch
             {
-                // 测试清空异常静默忽略
+
             }
         }
     }
 
-    /// <summary>
-    /// 配置管理器实例，管理插件的所有配置项
-    /// 使用BepInEx原生的配置系统，自动加载和保存配置
-    /// </summary>
-    public static ConfigManager ConfigManager { get; private set; }
+        public static ConfigManager ConfigManager { get; private set; }
 
-    /// <summary>
-    /// 服务提供者，负责管理和解析所有注册的服务接口
-    /// 使用依赖注入模式，管理网络管理器、客户端等核心服务的生命周期
-    /// </summary>
-    private ServiceProvider _serviceProvider;
+        private ServiceProvider _serviceProvider;
 
-    /// <summary>
-    /// Harmony补丁实例，用于运行时修改和扩展游戏逻辑
-    /// 通过网络补丁实现游戏机制的网络化同步和功能增强
-    /// </summary>
-    private static readonly Harmony harmony = PluginInfo.harmony;
+        private static readonly Harmony harmony = PluginInfo.harmony;
 
     private float _lastCatchUpPumpAtRealtime;
 
-    /// <summary>
-    /// 插件唤醒方法，在插件加载时自动调用
-    /// 负责初始化所有系统组件、注册服务配置、设置网络环境
-    /// 是插件启动流程的核心入口点
-    /// </summary>
-    private void Awake()
+        private void Awake()
     {
-        // 插件启动逻辑开始
+
         Logger = base.Logger;
         MainThreadId = Thread.CurrentThread.ManagedThreadId;
         Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
 
-        // Print a stable fingerprint so we can confirm which DLL is actually loaded in-game.
-        // This helps diagnose "no visible change" issues caused by copying to the wrong folder.
         TryLogAssemblyFingerprint();
 
-        // 初始化配置管理器，使用BepInEx原生的配置系统
         ConfigManager = new ConfigManager(Config);
         Logger.LogInfo("配置管理器已初始化");
 
-        // 第1步：创建服务容器，用于依赖注入管理
         ServiceCollection services = new ServiceCollection();
 
-        // 注册配置管理器到DI容器，供其他服务使用
         services.AddSingleton(ConfigManager);
 
-        // 第2步：注册服务接口和对应的实现类
-        // 通过配置方法完成具体服务注册
         ConfigureServices(services);
 
-        // 第3步：构建服务提供者，完成依赖注入容器的初始化
         _serviceProvider = services.BuildServiceProvider();
 
-        // 将服务提供者注册到模块服务中，供其他组件使用
         ModService.ServiceProvider = _serviceProvider;
 
-        // 一次性输出同步管理器 wiring 自检，用于确认 DI 别名与客户端注入一致。
         LogSynchronizationManagerWiringOnce(_serviceProvider);
 
-        // 初始化断线重连管理器（即使未连接，也会保持低开销监听）。
         try
         {
             _serviceProvider.GetService<ReconnectionManager>()?.Initialize();
@@ -142,7 +100,6 @@ public class Plugin : BaseUnityPlugin
             Logger?.LogWarning($"[Plugin] Failed to initialize ReconnectionManager: {ex.Message}");
         }
 
-        // 初始化中途加入管理器（订阅必要的网络事件；幂等可重复调用）。
         try
         {
             _serviceProvider.GetService<MidGameJoinManager>()?.Initialize();
@@ -152,24 +109,17 @@ public class Plugin : BaseUnityPlugin
             Logger?.LogWarning($"[Plugin] Failed to initialize MidGameJoinManager: {ex.Message}");
         }
 
-        // 安全检查：确保GameObject不为空
         if (gameObject == null)
         {
             Logger.LogError("GameObject is null, cannot call DontDestroyOnLoad.");
             return;
         }
 
-        // 设置GameObject在场景切换时不被销毁，确保插件持久运行
         DontDestroyOnLoad(gameObject);
 
-        // 应用所有 Harmony 补丁。
-        // 注意：部分反射扫描类补丁可能会误命中“无方法体(abstract/extern)”的方法，
-        // Harmony 在 detour 时会抛出 BadImageFormatException("Method has no body") 并导致插件启动失败。
-        // 这里按类型逐个 Patch，单个补丁失败不会拖垮整个插件。
         ApplyHarmonyPatchesSafely(harmony);
         Logger.LogInfo("补丁已加载");
 
-        // 输出当前配置信息到日志
         LogCurrentConfig();
     }
 
@@ -201,8 +151,7 @@ public class Plugin : BaseUnityPlugin
         }
         catch
         {
-            // TODO: 应记录异常详情，避免静默失败。
-            // ignored
+
         }
     }
 
@@ -319,52 +268,36 @@ public class Plugin : BaseUnityPlugin
         }
     }
 
-    /// <summary>
-    /// 配置服务注册，将各种接口和实现类注册到依赖注入容器中
-    /// 采用单例模式注册核心网络服务，确保整个应用中共享同一实例
-    /// </summary>
-    /// <param name="services">服务容器，用于注册各种服务接口和实现</param>
-    private void ConfigureServices(IServiceCollection services)
+        private void ConfigureServices(IServiceCollection services)
     {
-        // 注册你的自定义服务接口和实现类
-        // services.AddSingleton<IService, ServiceImpl>();
 
-        // 注册系统服务和框架服务
-        services.AddSingleton(Logger); // 注册BepInEx的日志服务
-        // Self 玩家：作为单例暴露给 DI；远端玩家由 NetworkManager 在运行时根据 Welcome/PlayerListUpdate 创建。
+        services.AddSingleton(Logger);
+
         services.AddSingleton<LocalNetworkPlayer>();
         services.AddSingleton<INetworkPlayer>(sp => sp.GetRequiredService<LocalNetworkPlayer>());
-        services.AddSingleton<INetworkManager, NetworkManager>(); // 注册网络管理器服务
+        services.AddSingleton<INetworkManager, NetworkManager>();
         services.AddSingleton<NetworkAvailabilityTracker>();
         services.AddSingleton<SynchronizationManager>();
         services.AddSingleton<ISynchronizationManager>(sp => sp.GetRequiredService<SynchronizationManager>());
-        // Break circular dependency: NetworkClient -> ISynchronizationManager -> SynchronizationManager -> NetworkAvailabilityTracker -> INetworkClient
+
         services.AddSingleton<INetworkClient>(sp => new NetworkClient(sp.GetRequiredService<ConfigManager>(), null));
         services.AddSingleton<RoomSyncManager>();
 
-        // 断线重连：作为单例服务提供；内部通过 INetworkClient 事件监听连接状态并维护快照/事件历史。
         services.AddSingleton(sp => new ReconnectionManager(
             new ReconnectionConfig(), null,
             sp.GetRequiredService<INetworkClient>(),
             sp.GetRequiredService<INetworkManager>(),
             Logger));
 
-        // 中途加入：按"可用优先"先跑通 DirectMessage 协作闭环。
         services.AddSingleton(new MidGameJoinConfig());
         services.AddSingleton<MidGameJoinManager>();
 
-        // 客户端追赶：接收 FullSnapshot 后在本地地图界面尽力对齐节点状态。
         services.AddSingleton(sp => new MapCatchUpOrchestrator(Logger, sp.GetRequiredService<RoomSyncManager>()));
     }
 
-    /// <summary>
-    /// 每帧调用的更新方法
-    /// 在游戏主循环中执行，可用于处理需要持续更新的网络相关逻辑
-    /// 目前保留用于未来可能的实时网络状态监控和处理
-    /// </summary>
-    void Update()
+        void Update()
     {
-        // 1) Flush main-thread callbacks scheduled by background work.
+
         try
         {
             while (_mainThreadActions.TryDequeue(out Action a))
@@ -381,11 +314,9 @@ public class Plugin : BaseUnityPlugin
         }
         catch
         {
-            // TODO: 应记录异常详情，避免静默失败。
-            // ignored
+
         }
 
-        // 2) Periodically pump mid-game catch-up (works even when MapPanel is never opened).
         try
         {
             if (_serviceProvider == null)
@@ -402,7 +333,6 @@ public class Plugin : BaseUnityPlugin
             _lastCatchUpPumpAtRealtime = now;
             _serviceProvider.GetService<MapCatchUpOrchestrator>()?.PumpMainThread();
 
-            // 3) 主菜单 UI 入口强制保底校验（防 Hook 漏挂）
             if (Time.frameCount % 30 == 0)
             {
                 NetworkPlugin.Patch.UI.MainMenuMultiplayerEntryPatch.ForceEnsureButtonInCurrentScene();
@@ -410,24 +340,15 @@ public class Plugin : BaseUnityPlugin
         }
         catch
         {
-            // TODO: 应记录异常详情，避免静默失败。
-            // ignored
+
         }
     }
 
-    /// <summary>
-    /// 插件销毁方法，在插件卸载或游戏关闭时调用
-    /// 负责清理所有资源，包括服务提供者的释放和资源回收
-    /// </summary>
-    void OnDestroy()
+        void OnDestroy()
     {
-        // 释放依赖注入容器的资源
-        // 防止内存泄漏和资源未释放问题
-        // 如果serviceProvider实现了IDisposable接口，需要在此处进行Dispose操作
 
         _serviceProvider?.Dispose();
 
-        // 记录插件销毁日志
         Logger?.LogInfo("Plugin has been destroyed and resources cleaned up.");
     }
 
@@ -438,7 +359,7 @@ public class Plugin : BaseUnityPlugin
 
         foreach (Type type in Assembly.GetExecutingAssembly().GetTypes())
         {
-            // 只处理显式标注 [HarmonyPatch] 的类型，避免扫到普通类。
+
             if (!Attribute.IsDefined(type, typeof(HarmonyPatch), inherit: true))
             {
                 continue;
@@ -459,10 +380,7 @@ public class Plugin : BaseUnityPlugin
         Logger?.LogInfo($"[Harmony] Patch result: ok={ok}, failed={failed}");
     }
 
-    /// <summary>
-    /// 输出当前配置信息到日志，用于调试和验证配置加载
-    /// </summary>
-    private void LogCurrentConfig()
+        private void LogCurrentConfig()
     {
         Logger.LogInfo("=== 当前配置信息 ===");
         Logger.LogInfo($"功能开关:");
@@ -474,7 +392,7 @@ public class Plugin : BaseUnityPlugin
         Logger.LogInfo($"  UI控件边界调试: {ConfigManager.DebugShowControlBounds.Value}");
         if (ConfigManager.EnableSaveLoadSync.Value)
         {
-            // Enforce the inrun-map-progress-sync decision: never transmit save bytes.
+
             Logger.LogWarning("  存档/读档同步: true (Deprecated) -> 已强制关闭：联机不再同步存档 bytes。将使用 FullSnapshot+checkpoint 追赶。");
             try
             {
@@ -482,8 +400,7 @@ public class Plugin : BaseUnityPlugin
             }
             catch
             {
-                // TODO: 应记录异常详情，避免静默失败。
-                // ignored
+
             }
         }
         else

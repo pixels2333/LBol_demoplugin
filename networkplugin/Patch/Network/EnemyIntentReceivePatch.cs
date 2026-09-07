@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text.Json;
@@ -16,13 +16,6 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// 接收并落地敌人意图同步：
-/// - 订阅 <see cref="INetworkClient.OnGameEventReceived"/>，处理 "BattleEnemyIntentChanged"；
-/// - 在非 Host 客户端，将远端提供的意图列表写入本地 <see cref="EnemyUnit.Intentions"/> 并触发 UI 刷新。
-///
-/// 设计边界：仅用于“展示正确意图 UI”，不改动敌人 AI/_turnMoves。
-/// </summary>
 [HarmonyPatch]
 public static class EnemyIntentReceivePatch
 {
@@ -79,7 +72,6 @@ public static class EnemyIntentReceivePatch
                     return;
                 }
 
-                // Host should never apply remote intentions.
                 if (NetworkIdentityTracker.GetSelfIsHost())
                 {
                     return;
@@ -89,7 +81,7 @@ public static class EnemyIntentReceivePatch
             }
             catch
             {
-                // ignored
+
             }
         }
     }
@@ -144,7 +136,6 @@ public static class EnemyIntentReceivePatch
             return;
         }
 
-        // Host doesn't need to apply remote intentions.
         if (NetworkIdentityTracker.GetSelfIsHost())
         {
             return;
@@ -201,7 +192,6 @@ public static class EnemyIntentReceivePatch
                 }
             }
 
-            // Best-effort immediate apply.
             TryApplyPendingToBattle(groupId);
         }
         catch (Exception ex)
@@ -233,7 +223,7 @@ public static class EnemyIntentReceivePatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -279,7 +269,7 @@ public static class EnemyIntentReceivePatch
         }
         catch
         {
-            // ignored
+
         }
         finally
         {
@@ -414,10 +404,8 @@ public static class EnemyIntentReceivePatch
         bool acc = GetBool(specific, "IsAccuracy");
         string iconName = GetString(specific, "IconName");
 
-        // The sender uses MoveName to carry the spell name.
         string name = string.IsNullOrWhiteSpace(moveName) ? null : moveName;
 
-        // Use iconName overload when available.
         if (!string.IsNullOrWhiteSpace(iconName))
         {
             return Intention.SpellCard(name, iconName, dmg, times, acc);
@@ -448,13 +436,12 @@ public static class EnemyIntentReceivePatch
                 return;
             }
 
-            // Intention.SetSource is internal, use reflection.
             MethodInfo m = AccessTools.Method(intention.GetType(), "SetSource") ?? AccessTools.Method(typeof(Intention), "SetSource");
             m?.Invoke(intention, new object[] { enemy });
         }
         catch
         {
-            // ignored
+
         }
     }
 

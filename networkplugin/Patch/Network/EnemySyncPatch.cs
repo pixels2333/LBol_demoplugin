@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
@@ -14,30 +14,13 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// 敌人完整状态同步补丁。
-/// </summary>
-/// <remarks>
-/// 同步范围（主要面向“观察/复现”）：
-/// - 敌人 HP / Block / Shield
-/// - 敌人状态效果（增减）
-/// - 敌人意图（CreateEnemyIntention）
-/// - 敌人死亡
-/// </remarks>
 [HarmonyPatch]
 public class EnemySyncPatch
 {
     #region 依赖注入
 
-    /// <summary>
-    /// 依赖注入服务提供者，用于解析网络客户端。
-    /// </summary>
-    private static IServiceProvider serviceProvider => ModService.ServiceProvider;
+        private static IServiceProvider serviceProvider => ModService.ServiceProvider;
 
-    // 当 EnemyStateReceivePatch 正在应用远端敌人状态时置 true，
-    // 此时本地 setter 不应再广播，避免"收到→应用→再广播"的回环。
-    // 参考 sts2 lockstep 模式：动作经主机广播后各端本地执行，
-    // 远端驱动的状态变更不应再回传。
     [ThreadStatic]
     private static bool _isApplyingRemoteState;
     internal static bool IsApplyingRemoteState => _isApplyingRemoteState;
@@ -57,9 +40,7 @@ public class EnemySyncPatch
 
     private static INetworkClient TryGetSyncNetworkClient()
     {
-        // 允许任何已连接客户端（含非房主）广播敌人状态变化，
-        // 使非房主打敌人时所有人都能同步收到。
-        // 正在应用远端状态时跳过（防止回环）。
+
         if (_isApplyingRemoteState) return null;
         var client = SendSyncHelper.TryGetClient();
         if (client?.IsConnected != true) return null;
@@ -76,12 +57,7 @@ public class EnemySyncPatch
 
     #region HP 同步
 
-    /// <summary>
-    /// HP Setter 前置：记录变更前的 HP。
-    /// </summary>
-    /// <param name="__instance">敌人单位。</param>
-    /// <param name="__state">用于保存变更前的 HP。</param>
-    [HarmonyPatch(typeof(Unit), "Hp", MethodType.Setter)]
+        [HarmonyPatch(typeof(Unit), "Hp", MethodType.Setter)]
     [HarmonyPrefix]
     public static void EnemyHpChanged_Prefix(Unit __instance, ref int __state)
     {
@@ -89,13 +65,7 @@ public class EnemySyncPatch
         __state = __instance.Hp;
     }
 
-    /// <summary>
-    /// HP Setter 后置：若 HP 发生变化则发送同步。
-    /// </summary>
-    /// <param name="__instance">敌人单位。</param>
-    /// <param name="value">设置后的 HP 值。</param>
-    /// <param name="__state">前置记录的旧 HP。</param>
-    [HarmonyPatch(typeof(Unit), "Hp", MethodType.Setter)]
+        [HarmonyPatch(typeof(Unit), "Hp", MethodType.Setter)]
     [HarmonyPostfix]
     public static void EnemyHpChanged_Postfix(Unit __instance, int value, int __state)
     {
@@ -141,12 +111,7 @@ public class EnemySyncPatch
 
     #region Block 同步
 
-    /// <summary>
-    /// Block Setter 前置：记录变更前的 Block。
-    /// </summary>
-    /// <param name="__instance">敌人单位。</param>
-    /// <param name="__state">用于保存变更前的 Block。</param>
-    [HarmonyPatch(typeof(Unit), "Block", MethodType.Setter)]
+        [HarmonyPatch(typeof(Unit), "Block", MethodType.Setter)]
     [HarmonyPrefix]
     public static void EnemyBlockChanged_Prefix(Unit __instance, ref int __state)
     {
@@ -154,13 +119,7 @@ public class EnemySyncPatch
         __state = __instance.Block;
     }
 
-    /// <summary>
-    /// Block Setter 后置：若 Block 发生变化则发送同步。
-    /// </summary>
-    /// <param name="__instance">敌人单位。</param>
-    /// <param name="value">设置后的 Block 值。</param>
-    /// <param name="__state">前置记录的旧 Block。</param>
-    [HarmonyPatch(typeof(Unit), "Block", MethodType.Setter)]
+        [HarmonyPatch(typeof(Unit), "Block", MethodType.Setter)]
     [HarmonyPostfix]
     public static void EnemyBlockChanged_Postfix(Unit __instance, int value, int __state)
     {
@@ -206,12 +165,7 @@ public class EnemySyncPatch
 
     #region Shield 同步
 
-    /// <summary>
-    /// Shield Setter 前置：记录变更前的 Shield。
-    /// </summary>
-    /// <param name="__instance">敌人单位。</param>
-    /// <param name="__state">用于保存变更前的 Shield。</param>
-    [HarmonyPatch(typeof(Unit), "Shield", MethodType.Setter)]
+        [HarmonyPatch(typeof(Unit), "Shield", MethodType.Setter)]
     [HarmonyPrefix]
     public static void EnemyShieldChanged_Prefix(Unit __instance, ref int __state)
     {
@@ -219,13 +173,7 @@ public class EnemySyncPatch
         __state = __instance.Shield;
     }
 
-    /// <summary>
-    /// Shield Setter 后置：若 Shield 发生变化则发送同步。
-    /// </summary>
-    /// <param name="__instance">敌人单位。</param>
-    /// <param name="value">设置后的 Shield 值。</param>
-    /// <param name="__state">前置记录的旧 Shield。</param>
-    [HarmonyPatch(typeof(Unit), "Shield", MethodType.Setter)]
+        [HarmonyPatch(typeof(Unit), "Shield", MethodType.Setter)]
     [HarmonyPostfix]
     public static void EnemyShieldChanged_Postfix(Unit __instance, int value, int __state)
     {
@@ -271,12 +219,7 @@ public class EnemySyncPatch
 
     #region 状态效果同步
 
-    /// <summary>
-    /// 敌人添加状态效果后置：同步敌人完整状态效果列表。
-    /// </summary>
-    /// <param name="__instance">战斗控制器实例。</param>
-    /// <param name="target">被添加状态效果的目标。</param>
-    [HarmonyPatch(typeof(BattleController), "TryAddStatusEffect")]
+        [HarmonyPatch(typeof(BattleController), "TryAddStatusEffect")]
     [HarmonyPostfix]
     public static void EnemyStatusEffectAdded_Postfix(BattleController __instance, Unit target)
     {
@@ -288,7 +231,6 @@ public class EnemySyncPatch
                 return;
             }
 
-            // 只处理敌人目标。
             if (target is not EnemyUnit enemy)
             {
                 return;
@@ -313,12 +255,7 @@ public class EnemySyncPatch
         }
     }
 
-    /// <summary>
-    /// 敌人移除状态效果后置：同步敌人完整状态效果列表。
-    /// </summary>
-    /// <param name="__instance">战斗控制器实例。</param>
-    /// <param name="target">被移除状态效果的目标。</param>
-    [HarmonyPatch(typeof(BattleController), "RemoveStatusEffect")]
+        [HarmonyPatch(typeof(BattleController), "RemoveStatusEffect")]
     [HarmonyPostfix]
     public static void EnemyStatusEffectRemoved_Postfix(BattleController __instance, Unit target)
     {
@@ -330,7 +267,6 @@ public class EnemySyncPatch
                 return;
             }
 
-            // 只处理敌人目标。
             if (target is not EnemyUnit enemy)
             {
                 return;
@@ -391,11 +327,7 @@ public class EnemySyncPatch
 
     #region 意图同步
 
-    /// <summary>
-    /// 敌人创建/更新意图后置：同步敌人当前意图。
-    /// </summary>
-    /// <param name="__instance">敌人单位实例。</param>
-    [HarmonyPatch(typeof(EnemyUnit), nameof(EnemyUnit.NotifyIntentionsChanged))]
+        [HarmonyPatch(typeof(EnemyUnit), nameof(EnemyUnit.NotifyIntentionsChanged))]
     [HarmonyPostfix]
     public static void EnemyIntentionCreated_Postfix(EnemyUnit __instance)
     {
@@ -408,7 +340,6 @@ public class EnemySyncPatch
                 return;
             }
 
-            // 没有意图不处理。
             if (enemy == null || !enemy.Intentions.Any())
             {
                 return;
@@ -436,12 +367,7 @@ public class EnemySyncPatch
 
     #region 死亡同步
 
-    /// <summary>
-    /// 敌人死亡后置：同步敌人死亡状态。
-    /// </summary>
-    /// <param name="__instance">战斗控制器实例。</param>
-    /// <param name="unit">死亡单位。</param>
-    [HarmonyPatch(typeof(BattleController), "Die")]
+        [HarmonyPatch(typeof(BattleController), "Die")]
     [HarmonyPostfix]
     public static void EnemyDied_Postfix(BattleController __instance, Unit unit)
     {
@@ -481,16 +407,9 @@ public class EnemySyncPatch
 
     #region 数据构建与提取
 
-    /// <summary>
-    /// 构建敌人状态更新包。
-    /// </summary>
-    /// <param name="enemy">敌人单位。</param>
-    /// <param name="updateType">更新类型标记。</param>
-    /// <param name="additionalData">附加数据。</param>
-    /// <returns>可序列化对象。</returns>
-    private static object BuildEnemyUpdateData(EnemyUnit enemy, string updateType, object additionalData)
+        private static object BuildEnemyUpdateData(EnemyUnit enemy, string updateType, object additionalData)
     {
-        // 尝试获取 spawnId（若该敌人来自 SpawnedEnemySyncPatch 的生成逻辑）。
+
         SpawnedEnemySyncPatch.TryGetSpawnId(enemy, out string spawnId);
 
         return new
@@ -518,12 +437,7 @@ public class EnemySyncPatch
         };
     }
 
-    /// <summary>
-    /// 获取敌人状态效果列表（通过 Traverse 读取私有字段）。
-    /// </summary>
-    /// <param name="enemy">敌人单位。</param>
-    /// <returns>状态效果信息列表。</returns>
-    private static List<EnemyStatusEffectInfo> GetEnemyStatusEffects(EnemyUnit enemy)
+        private static List<EnemyStatusEffectInfo> GetEnemyStatusEffects(EnemyUnit enemy)
     {
         List<EnemyStatusEffectInfo> effects = [];
 
@@ -580,12 +494,7 @@ public class EnemySyncPatch
         return effects;
     }
 
-    /// <summary>
-    /// 获取敌人当前意图（取第一条意图作为展示/同步对象）。
-    /// </summary>
-    /// <param name="enemy">敌人单位。</param>
-    /// <returns>意图信息。</returns>
-    private static EnemyIntentionInfo GetEnemyIntention(EnemyUnit enemy)
+        private static EnemyIntentionInfo GetEnemyIntention(EnemyUnit enemy)
     {
         if (enemy.Intentions == null)
         {
@@ -614,52 +523,34 @@ public class EnemySyncPatch
 
     #region 数据结构
 
-    /// <summary>
-    /// 用于网络传输的状态效果信息。
-    /// </summary>
-    private class EnemyStatusEffectInfo
+        private class EnemyStatusEffectInfo
     {
-        /// <summary>状态效果 Id。</summary>
-        public string Id { get; set; }
+                public string Id { get; set; }
 
-        /// <summary>状态效果名称。</summary>
-        public string Name { get; set; }
+                public string Name { get; set; }
 
-        /// <summary>状态效果类型名。</summary>
-        public string Type { get; set; }
+                public string Type { get; set; }
 
-        /// <summary>等级。</summary>
-        public int Level { get; set; }
+                public int Level { get; set; }
 
-        /// <summary>持续回合。</summary>
-        public int Duration { get; set; }
+                public int Duration { get; set; }
 
-        /// <summary>是否为减益（此处为占位，需更准确分类时补充）。</summary>
-        public bool IsDebuff { get; set; }
+                public bool IsDebuff { get; set; }
     }
 
-    /// <summary>
-    /// 用于网络传输的敌人意图信息。
-    /// </summary>
-    private class EnemyIntentionInfo
+        private class EnemyIntentionInfo
     {
-        /// <summary>意图类型名。</summary>
-        public string Type { get; set; }
+                public string Type { get; set; }
 
-        /// <summary>意图显示名称。</summary>
-        public string Name { get; set; }
+                public string Name { get; set; }
 
-        /// <summary>意图描述。</summary>
-        public string Description { get; set; }
+                public string Description { get; set; }
 
-        /// <summary>目标单位 Id（预留）。</summary>
-        public string TargetId { get; set; }
+                public string TargetId { get; set; }
 
-        /// <summary>目标类型（预留）。</summary>
-        public string TargetType { get; set; }
+                public string TargetType { get; set; }
 
-        /// <summary>意图数值（预留）。</summary>
-        public int Value { get; set; }
+                public int Value { get; set; }
     }
 
     #endregion

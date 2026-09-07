@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using LBoL.Core;
 using LBoL.Core.Cards;
 using LBoL.Presentation;
@@ -13,11 +13,6 @@ using UnityEngine.UI;
 
 namespace NetworkPlugin.UI.Widgets;
 
-/// <summary>
-/// 交易槽位控件类
-/// 基于游戏 UI 模式显示单个可交易的卡牌
-/// 继承 CommonButtonWidget 以获得游戏标准的按钮行为
-/// </summary>
 public class TradeSlotWidget : CommonButtonWidget
 	, ICardTooltipSource
 	, IPointerEnterHandler
@@ -62,21 +57,13 @@ public class TradeSlotWidget : CommonButtonWidget
 		new TooltipPosition(TooltipDirection.Bottom, TooltipAlignment.Center)
 	};
 
-    /// <summary>
-    /// 当前绑定的卡牌（实现 ICardTooltipSource 接口）
-    /// </summary>
-    public Card Card => _currentCard;
-    /// <summary>控件的 RectTransform</summary>
-    public RectTransform RectTransform => transform as RectTransform;
-    /// <summary>卡牌提示框位置配置</summary>
-    public TooltipPosition[] TooltipPositions => DefaultTooltipPositions;
+        public Card Card => _currentCard;
+        public RectTransform RectTransform => transform as RectTransform;
+        public TooltipPosition[] TooltipPositions => DefaultTooltipPositions;
 
-    /// <summary>
-    /// 运行时绑定 UI 组件（运行时创建的槽位没有 prefab 绑定）
-    /// </summary>
-    internal void BindRuntime(TextMeshProUGUI runtimeCardNameText, RawImage runtimeCardImage = null)
+        internal void BindRuntime(TextMeshProUGUI runtimeCardNameText, RawImage runtimeCardImage = null)
 	{
-		// 运行时创建的槽位不会自带 prefab 绑定引用。
+
 		cardNameText = runtimeCardNameText;
 		cardImage = runtimeCardImage;
 	}
@@ -115,14 +102,11 @@ public class TradeSlotWidget : CommonButtonWidget
 		_capturedButtonStyle = true;
 	}
 
-
-
 	public void SetCard(Card card, Action<Card> removeCallback = null)
 	{
 		_currentCard = card;
 		_onRemoveCard = removeCallback;
 
-		// Avoid accumulating listeners if SetCard is called multiple times.
 		if (button != null)
 			button.onClick.RemoveListener(OnRemoveClicked);
 
@@ -130,10 +114,8 @@ public class TradeSlotWidget : CommonButtonWidget
 		{
 			if (cardNameText != null) cardNameText.text = card.Name;
 
-			// 优先使用游戏原生卡牌纹理。
 			TrySetCardImage(card);
 
-			// 使用纹理时隐藏占位图标。
 			cardIcon?.gameObject.SetActive(false);
 
 			var bg = ResolveBackgroundImage();
@@ -141,7 +123,7 @@ public class TradeSlotWidget : CommonButtonWidget
 			{
 				bg.enabled = true;
 				bg.raycastTarget = true;
-				// 透明度和染色交给 SetSelected() 处理。
+
 			}
 
 			if (button != null)
@@ -151,10 +133,8 @@ public class TradeSlotWidget : CommonButtonWidget
 				button.colors = _originalColors;
 			}
 
-			// 启用按钮交互
 			if (button != null) button.interactable = true;
 
-			// 注册移除事件
 			button?.onClick.AddListener(OnRemoveClicked);
 		}
 		else
@@ -190,7 +170,6 @@ public class TradeSlotWidget : CommonButtonWidget
 				imageId = string.IsNullOrWhiteSpace(card.Config?.ImageId) ? card.Id : card.Config.ImageId;
 			}
 
-			// 对齐原版 RecordCardCell：优先尝试 imageId + preferredIllustrator。
 			Texture tex = ResourcesHelper.TryGetCardImage(imageId + preferredCardIllustrator);
 			if (tex == null)
 			{
@@ -209,10 +188,7 @@ public class TradeSlotWidget : CommonButtonWidget
 		}
 	}
 
-    /// <summary>
-    /// 清空槽位
-    /// </summary>
-    public void ClearSlot()
+        public void ClearSlot()
 	{
 		_currentCard = null;
 		_onRemoveCard = null;
@@ -228,16 +204,16 @@ public class TradeSlotWidget : CommonButtonWidget
 		if (button != null)
 		{
 			button.interactable = false;
-			// 移除所有监听器
+
 			button.onClick.RemoveAllListeners();
 		}
 
 		SetSelected(false);
-		
+
 		var bg = ResolveBackgroundImage();
 		if (bg != null)
 		{
-			// 空槽位时彻底关闭渲染和射线命中区域。
+
 			bg.enabled = false;
 			bg.raycastTarget = false;
 			var c = bg.color;
@@ -254,10 +230,7 @@ public class TradeSlotWidget : CommonButtonWidget
 		lockedOverlay?.SetActive(false);
 	}
 
-    /// <summary>
-    /// 鼠标进入事件：显示卡牌提示
-    /// </summary>
-    public override void OnPointerEnter(PointerEventData eventData)
+        public override void OnPointerEnter(PointerEventData eventData)
 	{
 		base.OnPointerEnter(eventData);
 		if (_currentCard == null || !UiManager.IsInitialized)
@@ -269,10 +242,7 @@ public class TradeSlotWidget : CommonButtonWidget
 		UiManager.HoveringRightClickInteractionElements = true;
 	}
 
-    /// <summary>
-    /// 鼠标离开事件：隐藏卡牌提示
-    /// </summary>
-    public override void OnPointerExit(PointerEventData eventData)
+        public override void OnPointerExit(PointerEventData eventData)
 	{
 		base.OnPointerExit(eventData);
 		TooltipsLayer.Hide(_tooltipId);
@@ -286,10 +256,7 @@ public class TradeSlotWidget : CommonButtonWidget
 		_tooltipId = 0;
 	}
 
-    /// <summary>
-    /// 鼠标点击事件：触发移除卡牌回调
-    /// </summary>
-    public override void OnPointerClick(PointerEventData eventData)
+        public override void OnPointerClick(PointerEventData eventData)
 	{
 		base.OnPointerClick(eventData);
 		if (eventData == null || eventData.button != PointerEventData.InputButton.Right)
@@ -314,35 +281,27 @@ public class TradeSlotWidget : CommonButtonWidget
 		GamepadNavigationManager.SetOverrideOrigin(currentSelected, topPanel);
 	}
 
-    /// <summary>
-    /// 设置槽位的锁定状态
-    /// </summary>
-    public void SetLocked(bool locked)
+        public void SetLocked(bool locked)
 	{
 		lockedOverlay?.SetActive(locked);
 
 		if (button != null) button.interactable = !locked;
 	}
 
-    /// <summary>
-    /// 设置槽位的选中状态
-    /// </summary>
-    public void SetSelected(bool selected)
+        public void SetSelected(bool selected)
 	{
 		var bg = ResolveBackgroundImage();
 		if (bg != null)
 		{
 			if (_currentCard == null)
 			{
-				// 空槽位不应显示按钮主体。
+
 				var empty = bg.color;
 				empty.a = 0f;
 				bg.color = empty;
 				return;
 			}
 
-			// 保留原版按钮的 sprite/material 外观，不把它染成纯色矩形。
-			// 仅调整透明度；只有没有 sprite 的运行时占位按钮才回退到纯色染色。
 			if (bg.sprite != null)
 			{
 				var c = bg.color;

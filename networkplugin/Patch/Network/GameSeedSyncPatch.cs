@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using HarmonyLib;
@@ -14,18 +14,6 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// 游戏种子同步补丁：房主创建 GameRun 后广播 RootSeed 及开局配置，
-/// 客户端收到后缓存，供 <see cref="MidGameJoin.JoinerStartGameLockPatch"/> 在无 FullStateSnapshot 时
-/// 覆盖本地 seed，使 <see cref="EnemyUnits.SpawnedEnemyManager"/> 的确定性敌人生成种子与房主一致。
-/// </summary>
-/// <remarks>
-/// 正常联机开始游戏时，OnGameStart/FullStateSync 等流程不传递 RootSeed，
-/// 导致客户端各自随机生成种子、敌人生成不同步。此补丁填补该缺口：
-/// 1. 房主侧：GameRunController.Create Postfix → 广播 OnGameStart（含 RootSeed+配置）
-/// 2. 客户端侧：订阅网络事件 → 收到 OnGameStart → 缓存
-/// 3. JoinerStartGameLockPatch：无 FullStateSnapshot 时 fallback 到缓存种子
-/// </remarks>
 [HarmonyPatch]
 public static class GameSeedSyncPatch
 {
@@ -34,7 +22,6 @@ public static class GameSeedSyncPatch
     private static INetworkClient TryGetClient()
         => ServiceProvider?.GetService<INetworkClient>();
 
-    // --- 缓存：客户端收到的房主开局配置 ---
     private static readonly object CacheLock = new();
     private static ulong? _cachedRootSeed;
     private static int? _cachedDifficulty;
@@ -50,10 +37,7 @@ public static class GameSeedSyncPatch
     private static INetworkClient? _subscribedClient;
     private static readonly Action<string, object> OnGameEventReceivedHandler = HandleGameEventReceived;
 
-    /// <summary>
-    /// 尝试获取缓存的房主 RootSeed（供 JoinerStartGameLockPatch 使用）。
-    /// </summary>
-    public static bool TryGetCachedHostSeed(out ulong rootSeed)
+        public static bool TryGetCachedHostSeed(out ulong rootSeed)
     {
         lock (CacheLock)
         {
@@ -67,10 +51,7 @@ public static class GameSeedSyncPatch
         return false;
     }
 
-    /// <summary>
-    /// 尝试获取缓存的房主完整开局配置（供 JoinerStartGameLockPatch fallback 使用）。
-    /// </summary>
-    public static bool TryGetCachedHostConfig(
+        public static bool TryGetCachedHostConfig(
         out ulong rootSeed,
         out GameDifficulty difficulty,
         out PuzzleFlag puzzles,
@@ -113,8 +94,6 @@ public static class GameSeedSyncPatch
         }
     }
 
-    // --- 发送端：房主创建 GameRun 后广播种子 ---
-
     [HarmonyPatch(typeof(GameRunController), nameof(GameRunController.Create))]
     [HarmonyPostfix]
     public static void GameRunController_Create_Postfix(GameRunController __result, GameRunStartupParameters parameters)
@@ -134,7 +113,6 @@ public static class GameSeedSyncPatch
 
             NetworkIdentityTracker.EnsureSubscribed(client);
 
-            // 仅房主广播。
             if (!NetworkIdentityTracker.GetSelfIsHost())
             {
                 return;
@@ -144,7 +122,7 @@ public static class GameSeedSyncPatch
         }
         catch
         {
-            // 广播失败不影响本地游戏启动。
+
         }
     }
 
@@ -166,7 +144,7 @@ public static class GameSeedSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
         string? debutAdventureTypeName = null;
@@ -177,7 +155,7 @@ public static class GameSeedSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
         List<string> jadeBoxIds = new();
@@ -191,7 +169,7 @@ public static class GameSeedSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
         string hostId = NetworkIdentityTracker.GetSelfPlayerId();
@@ -219,8 +197,6 @@ public static class GameSeedSyncPatch
         Plugin.Logger?.LogInfo($"[GameSeedSync] 广播房主种子: RootSeed={run.RootSeed}, Difficulty={run.Difficulty}, Mode={run.Mode}");
     }
 
-    // --- 接收端：客户端缓存房主种子 ---
-
     private static void EnsureSubscribed(INetworkClient client)
     {
         if (_subscribed && ReferenceEquals(_subscribedClient, client))
@@ -237,7 +213,7 @@ public static class GameSeedSyncPatch
         }
         catch
         {
-            // ignored
+
         }
 
         try
@@ -267,7 +243,7 @@ public static class GameSeedSyncPatch
 
         try
         {
-            // 房主自己发出的事件可能回环，跳过。
+
             if (NetworkIdentityTracker.GetSelfIsHost())
             {
                 return;
@@ -304,7 +280,6 @@ public static class GameSeedSyncPatch
 
             Plugin.Logger?.LogInfo($"[GameSeedSync] 已缓存房主种子: RootSeed={rootSeed}, HostId={hostPlayerId}");
 
-            // 房主开局后，自动引导客户端玩家开局
             NetworkPlugin.Patch.UI.MainMenuMultiplayerEntryPatch.OnLobbyGameStartedReceived();
         }
         catch (Exception ex)
@@ -312,8 +287,6 @@ public static class GameSeedSyncPatch
             Plugin.Logger?.LogError($"[GameSeedSync] 处理 OnGameStart 失败: {ex.Message}");
         }
     }
-
-    // --- 订阅钩子：在 GameDirector.Update 中确保订阅 ---
 
     [HarmonyPatch(typeof(GameDirector), "Update")]
     private static class SubscribeHook
@@ -329,8 +302,6 @@ public static class GameSeedSyncPatch
             EnsureSubscribed(client);
         }
     }
-
-    // --- 辅助方法 ---
 
     private static ulong? GetULong(JsonElement elem, string name)
     {

@@ -1,4 +1,4 @@
-using LBoL.Presentation.UI.Widgets;
+﻿using LBoL.Presentation.UI.Widgets;
 using LBoL.Presentation.UI.Panels;
 using NetworkPlugin.UI.Models;
 using System.Reflection;
@@ -9,11 +9,6 @@ using UnityEngine.UI;
 
 namespace NetworkPlugin.UI.Widgets;
 
-/// <summary>
-/// 死亡玩家列表条目 Widget
-/// 基于游戏 UI 模式（类似 StartStatusWidget）
-/// 显示单个死亡玩家的信息
-/// </summary>
 public class DeadPlayerEntryWidget : CommonButtonWidget
 {
 	public DeadPlayerEntry PlayerEntry { get; private set; }
@@ -57,7 +52,6 @@ public class DeadPlayerEntryWidget : CommonButtonWidget
 		EnsureRuntimeBindings();
 		string displayName = string.IsNullOrWhiteSpace(player?.PlayerName) ? player?.PlayerId : player.PlayerName;
 
-		// 设置玩家名字
 		if (playerName != null) playerName.text = displayName;
 
 		string statusText = string.IsNullOrWhiteSpace(player.StatusText)
@@ -69,7 +63,6 @@ public class DeadPlayerEntryWidget : CommonButtonWidget
 		string infoLine = $"HP {player.CurrentHp}/{player.MaxHp} | {actionText} | {statusText}";
 		if (playerInfo != null) playerInfo.text = infoLine;
 
-		// 设置文字颜色和按钮状态
 		bool canResurrect = player.CanResurrect;
 		Color textColor = canResurrect ? Color.white : Color.gray;
 
@@ -84,7 +77,6 @@ public class DeadPlayerEntryWidget : CommonButtonWidget
 
 		TryApplyRecordRowTextFallback(displayName, infoLine, textColor);
 
-		// 设置按钮可交互性
 		if (button != null)
 		{
 			button.interactable = canResurrect;

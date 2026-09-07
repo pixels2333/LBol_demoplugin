@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,10 +8,6 @@ using NetworkPlugin.Network.Messages;
 
 namespace NetworkPlugin.Utils;
 
-/// <summary>
-/// 追踪服务器侧分配的 PlayerId / Host 信息（从 Welcome / PlayerListUpdate 等 GameEvent 中提取）。
-/// 注意：NetworkServer 会在广播 GameEvent 时排除发送方，因此不要假设“自己发出的事件自己也能收到”。
-/// </summary>
 public static class NetworkIdentityTracker
 {
     private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
@@ -55,7 +51,7 @@ public static class NetworkIdentityTracker
         }
         catch
         {
-            // 重复解绑时静默忽略。
+
         }
 
         try
@@ -156,7 +152,6 @@ public static class NetworkIdentityTracker
             string playerId = GetString(root, "PlayerId");
             bool isHost = GetBool(root, "IsHost");
 
-            // NetworkServer.Welcome 使用 PlayerList 字段；其他代码使用 Players 字段，兼容两者。
             JsonElement listElem;
             bool hasList = root.TryGetProperty("Players", out listElem) && listElem.ValueKind == JsonValueKind.Array;
             if (!hasList)
@@ -184,7 +179,7 @@ public static class NetworkIdentityTracker
         }
         catch
         {
-            // 非法欢迎包直接忽略。
+
         }
     }
 
@@ -205,7 +200,7 @@ public static class NetworkIdentityTracker
         }
         catch
         {
-            // 异常 host 变更包直接忽略。
+
         }
     }
 
@@ -291,7 +286,7 @@ public static class NetworkIdentityTracker
         }
         catch
         {
-            // 非法 payload 无法转换成 JsonElement 时直接忽略。
+
         }
 
         root = default;

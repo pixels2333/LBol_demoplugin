@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Reflection;
 using LBoL.Presentation.UI;
@@ -187,7 +187,6 @@ internal static class GapSharedPanelTemplateFactory
         DisableTooltipBehaviours(cancelButton.gameObject);
         ConfigureAnchors(cancelButton.GetComponent<RectTransform>(), new Vector2(0.52f, 0.06f), new Vector2(0.70f, 0.18f));
 
-        // ContentRoot 移到最后层，确保其子元素（报价编辑器等覆盖层）的渲染顺序高于确认/取消按钮。
         contentGo.transform.SetAsLastSibling();
 
         return new GapRuntimePanelTemplate
@@ -208,7 +207,7 @@ internal static class GapSharedPanelTemplateFactory
         TextMeshProUGUI text;
         if (template != null)
         {
-            // 直接创建对象，避免克隆模板上的意外组件
+
             GameObject go = new GameObject(name);
             go.transform.SetParent(parent, false);
             go.transform.localScale = Vector3.one;
@@ -477,7 +476,7 @@ internal static class GapSharedPanelTemplateFactory
     {
         try
         {
-            // 从 MessageDialog prefab 直接创建按钮，与原生对话框按钮样式一致
+
             GameObject prefab = Resources.Load<GameObject>("UI/Dialogs/MessageDialog");
             if (prefab != null)
             {
@@ -503,7 +502,6 @@ internal static class GapSharedPanelTemplateFactory
                 }
             }
 
-            // fallback：创建简单按钮
             GameObject go = new GameObject(name);
             go.transform.SetParent(parent, false);
             go.transform.localScale = Vector3.one;

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using HarmonyLib;
 using LBoL.Base;
@@ -11,11 +11,6 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// 工具牌（Tool 卡）同步补丁：
-/// LBoL 的 Tool 卡（CardType.Tool + DeckCounter）获取/移除发生在 GameRunController 的牌组增删，
-/// 使用发生在战斗中 UseCardAction 流程里并最终调用 BattleController.RecordCardUsage。
-/// </summary>
 public static class ToolCardSyncPatch
 {
     private static INetworkClient TryGetNetworkClient()

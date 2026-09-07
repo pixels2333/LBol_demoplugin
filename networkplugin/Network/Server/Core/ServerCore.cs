@@ -1,5 +1,4 @@
-// 服务器公共内核：统一 LiteNetLib 生命周期、连接鉴权、入站消息队列、心跳/超时清理等基础能力。
-#nullable enable
+﻿#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -8,10 +7,6 @@ using NetworkPlugin.Network.Messages;
 
 namespace NetworkPlugin.Network.Server.Core;
 
-/// <summary>
-/// 服务器公共内核
-/// 统一 LiteNetLib 生命周期、连接鉴权、入站消息队列、心跳/超时清理等基础能力
-/// </summary>
 public sealed class ServerCore : IServerCore
 {
     private readonly ServerMessageQueue _messageQueue = new ServerMessageQueue();
@@ -22,34 +17,19 @@ public sealed class ServerCore : IServerCore
     private CancellationTokenSource? _cts;
     private bool _isRunning;
 
-    /// <inheritdoc />
-    public ServerOptions Options { get; }
-    /// <inheritdoc />
-    public IServerLogger Logger { get; }
-    /// <inheritdoc />
-    public IServerMessageCodec Codec { get; }
+        public ServerOptions Options { get; }
+        public IServerLogger Logger { get; }
+        public IServerMessageCodec Codec { get; }
 
-    /// <inheritdoc />
-    public EventBasedNetListener Listener { get; }
-    /// <inheritdoc />
-    public NetManager NetManager { get; }
+        public EventBasedNetListener Listener { get; }
+        public NetManager NetManager { get; }
 
-    /// <inheritdoc />
-    public event Action<NetPeer>? PeerConnected;
-    /// <inheritdoc />
-    public event Action<NetPeer, DisconnectInfo>? PeerDisconnected;
-    /// <inheritdoc />
-    public event Action<NetPeer, int>? PeerLatencyUpdated;
-    /// <inheritdoc />
-    public event Action<ServerInboundMessage>? MessageReceived;
+        public event Action<NetPeer>? PeerConnected;
+        public event Action<NetPeer, DisconnectInfo>? PeerDisconnected;
+        public event Action<NetPeer, int>? PeerLatencyUpdated;
+        public event Action<ServerInboundMessage>? MessageReceived;
 
-    /// <summary>
-    /// 初始化服务器内核
-    /// </summary>
-    /// <param name="options">服务器配置选项</param>
-    /// <param name="logger">日志记录器（可选，默认使用空日志）</param>
-    /// <param name="codec">消息编解码器（可选，默认使用 JSON 编解码）</param>
-    public ServerCore(ServerOptions options, IServerLogger? logger = null, IServerMessageCodec? codec = null)
+        public ServerCore(ServerOptions options, IServerLogger? logger = null, IServerMessageCodec? codec = null)
     {
         Options = options ?? new ServerOptions();
         Logger = logger ?? new NullServerLogger();
@@ -67,8 +47,7 @@ public sealed class ServerCore : IServerCore
         RegisterCoreEvents();
     }
 
-    /// <inheritdoc />
-    public void Start()
+        public void Start()
     {
         if (_isRunning)
         {
@@ -92,8 +71,7 @@ public sealed class ServerCore : IServerCore
         }
     }
 
-    /// <inheritdoc />
-    public void Stop()
+        public void Stop()
     {
         if (!_isRunning)
         {
@@ -102,7 +80,7 @@ public sealed class ServerCore : IServerCore
 
         _isRunning = false;
         try { _cts?.Cancel(); }
-        catch (ObjectDisposedException) { /* cancellation source already disposed */ }
+        catch (ObjectDisposedException) {  }
         catch (Exception ex) { Logger?.Warn($"[ServerCore] 取消 CancellationTokenSource 失败: {ex.Message}"); }
 
         try
@@ -114,7 +92,7 @@ public sealed class ServerCore : IServerCore
         }
         catch
         {
-            // ignore
+
         }
 
         NetManager.Stop();
@@ -127,16 +105,14 @@ public sealed class ServerCore : IServerCore
         Logger.Info("[ServerCore] Server stopped");
     }
 
-    /// <inheritdoc />
-    public void PollEvents()
+        public void PollEvents()
     {
         NetManager.PollEvents();
         DrainMessages();
         CleanupTimeoutConnections();
     }
 
-    /// <inheritdoc />
-    public bool TryGetSession(NetPeer peer, out CorePeerSession? session)
+        public bool TryGetSession(NetPeer peer, out CorePeerSession? session)
     {
         lock (_lock)
         {
@@ -144,8 +120,7 @@ public sealed class ServerCore : IServerCore
         }
     }
 
-    /// <inheritdoc />
-    public void MarkPeerSeen(NetPeer peer)
+        public void MarkPeerSeen(NetPeer peer)
     {
         if (peer == null)
         {
@@ -161,10 +136,7 @@ public sealed class ServerCore : IServerCore
         }
     }
 
-    /// <summary>
-    /// 注册 LiteNetLib 事件回调
-    /// </summary>
-    private void RegisterCoreEvents()
+        private void RegisterCoreEvents()
     {
         Listener.ConnectionRequestEvent += request =>
         {
@@ -194,7 +166,7 @@ public sealed class ServerCore : IServerCore
             {
                 Logger.Error(ex, "[ServerCore] Error handling connection request");
                 try { request.Reject(); }
-                catch (ObjectDisposedException) { /* peer already disconnected */ }
+                catch (ObjectDisposedException) {  }
                 catch (Exception rejectEx) { Logger?.Warn($"[ServerCore] 拒绝连接请求失败: {rejectEx.Message}"); }
             }
         };
@@ -265,10 +237,7 @@ public sealed class ServerCore : IServerCore
         };
     }
 
-    /// <summary>
-    /// 排空消息队列，依次触发每个消息的接收回调
-    /// </summary>
-    private void DrainMessages()
+        private void DrainMessages()
     {
         int handled = 0;
         while (handled < Options.MaxMessagesPerTick && _messageQueue.TryDequeueHighest(out var message))
@@ -288,10 +257,7 @@ public sealed class ServerCore : IServerCore
         }
     }
 
-    /// <summary>
-    /// 清理超时连接，断开长时间无活动的对等端
-    /// </summary>
-    private void CleanupTimeoutConnections()
+        private void CleanupTimeoutConnections()
     {
         const int defaultTimeoutSeconds = 30;
         int timeoutSeconds = Math.Max(1, Options.DisconnectTimeoutMs / 1000);
@@ -335,10 +301,7 @@ public sealed class ServerCore : IServerCore
         }
     }
 
-    /// <summary>
-    /// 后台线程主循环，持续轮询网络事件
-    /// </summary>
-    private void RunLoop()
+        private void RunLoop()
     {
         CancellationToken token = _cts != null ? _cts.Token : CancellationToken.None;
         while (_isRunning && !token.IsCancellationRequested)

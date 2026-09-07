@@ -1,12 +1,8 @@
-using System;
+﻿using System;
 using LiteNetLib;
 
 namespace NetworkPlugin.Network.Server.Core;
 
-/// <summary>
-/// Abstraction over the underlying server networking core.
-/// Keeps business servers (Host/Relay) decoupled from the concrete <see cref="ServerCore"/> implementation.
-/// </summary>
 public interface IServerCore
 {
     ServerOptions Options { get; }

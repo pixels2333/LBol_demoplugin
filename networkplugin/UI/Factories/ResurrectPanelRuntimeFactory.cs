@@ -17,7 +17,7 @@ namespace NetworkPlugin.UI.Factories;
 internal static class ResurrectPanelRuntimeFactory
 {
     private const string RuntimeRootName = "NetworkPlugin_ResurrectPanel";
-    private const string RuntimeUiVersion = "2026-04-19-runtime-selection-list-v17";
+    private const string RuntimeUiVersion = "2026-09-07-runtime-selection-list-v18";
 
     internal static ResurrectPanel GetOrCreate(Transform preferredParent)
     {
@@ -74,7 +74,6 @@ internal static class ResurrectPanelRuntimeFactory
             RectTransform listContent;
             TextMeshProUGUI textTemplate = scaffold.TextTemplate;
 
-            // 按 TradePartnerPicker 结构：列表挂在 dialog panelRect，滚动区域优先复用 subText 的 Rect。
             Transform framePanelXform = scaffold.Root.transform.Find(RuntimeRootName + "_Frame")
                 ?? (Transform)scaffold.ContentRoot;
 
@@ -125,7 +124,9 @@ internal static class ResurrectPanelRuntimeFactory
 
             if (scaffold.StatusText != null)
             {
-                scaffold.StatusText.gameObject.SetActive(false);
+                scaffold.StatusText.gameObject.SetActive(true);
+                scaffold.StatusText.text = string.Empty;
+                scaffold.StatusText.alignment = TextAlignmentOptions.Center;
             }
 
             RectTransform panelRect = frameRect
@@ -138,7 +139,6 @@ internal static class ResurrectPanelRuntimeFactory
                 return null;
             }
 
-            // 对齐到 TradePartnerPicker 的 PartnerScroll 锚点：(0.15, 0.42)~(0.85, 0.58)
             RectTransform playersScrollRect = scrollArea.ScrollRect?.GetComponent<RectTransform>();
             if (playersScrollRect != null)
             {
@@ -153,7 +153,8 @@ internal static class ResurrectPanelRuntimeFactory
                 textTemplate,
                 scaffold.ConfirmButton,
                 scaffold.CancelButton,
-                scaffold.CanvasGroup);
+                scaffold.CanvasGroup,
+                scaffold.StatusText);
 
             ResurrectPanelRuntimeMarker marker = scaffold.Root.AddComponent<ResurrectPanelRuntimeMarker>();
             marker.Version = RuntimeUiVersion;
@@ -217,7 +218,7 @@ internal static class ResurrectPanelRuntimeFactory
             Button button;
             if (buttonTemplate != null)
             {
-                // 直接创建对象，避免克隆模板上的意外组件
+
                 entryGo = new GameObject("DeadPlayerEntryTemplate");
                 entryGo.transform.SetParent(parent, false);
                 entryGo.transform.localScale = Vector3.one;
@@ -305,7 +306,6 @@ internal static class ResurrectPanelRuntimeFactory
                 return null;
             }
 
-            // 直接创建对象，避免克隆模板上的意外组件
             GameObject rowGo = new GameObject("DeadPlayerEntryTemplate");
             rowGo.transform.SetParent(parent, false);
             rowGo.transform.localScale = Vector3.one;
@@ -317,7 +317,6 @@ internal static class ResurrectPanelRuntimeFactory
             rowRt.pivot = new Vector2(0.5f, 0.5f);
             rowRt.sizeDelta = new Vector2(0f, 72f);
 
-            // cover（全屏遮罩，用于 hover 效果）
             GameObject coverGo = new GameObject("Cover");
             coverGo.transform.SetParent(rowGo.transform, false);
             coverGo.transform.localScale = Vector3.one;
@@ -329,7 +328,6 @@ internal static class ResurrectPanelRuntimeFactory
             coverRt.offsetMin = Vector2.zero;
             coverRt.offsetMax = Vector2.zero;
 
-            // nameText (gameResultText)
             GameObject nameGo = new GameObject("Name");
             nameGo.transform.SetParent(rowGo.transform, false);
             nameGo.transform.localScale = Vector3.one;
@@ -342,7 +340,6 @@ internal static class ResurrectPanelRuntimeFactory
             nameRt.offsetMin = Vector2.zero;
             nameRt.offsetMax = Vector2.zero;
 
-            // infoText (difficultyText)
             GameObject infoGo = new GameObject("Info");
             infoGo.transform.SetParent(rowGo.transform, false);
             infoGo.transform.localScale = Vector3.one;
@@ -355,7 +352,6 @@ internal static class ResurrectPanelRuntimeFactory
             infoRt.offsetMin = Vector2.zero;
             infoRt.offsetMax = Vector2.zero;
 
-            // selectedIndicator
             GameObject selectedGo = new GameObject("SelectedIndicator");
             selectedGo.transform.SetParent(rowGo.transform, false);
             selectedGo.transform.localScale = Vector3.one;
@@ -368,7 +364,6 @@ internal static class ResurrectPanelRuntimeFactory
             selectedRt.offsetMax = Vector2.zero;
             selectedGo.SetActive(false);
 
-            // avatarImage（隐藏）
             GameObject avatarGo = new GameObject("Avatar");
             avatarGo.transform.SetParent(rowGo.transform, false);
             avatarGo.transform.localScale = Vector3.one;
@@ -381,7 +376,6 @@ internal static class ResurrectPanelRuntimeFactory
             avatarRt.sizeDelta = new Vector2(48f, 48f);
             avatarGo.SetActive(false);
 
-            // exhibitIcon（隐藏）
             GameObject exIconGo = new GameObject("ExhibitIcon");
             exIconGo.transform.SetParent(rowGo.transform, false);
             exIconGo.transform.localScale = Vector3.one;
@@ -394,7 +388,6 @@ internal static class ResurrectPanelRuntimeFactory
             exIconRt.sizeDelta = new Vector2(32f, 32f);
             exIconGo.SetActive(false);
 
-            // timestampText（隐藏）
             GameObject tsGo = new GameObject("Timestamp");
             tsGo.transform.SetParent(rowGo.transform, false);
             tsGo.transform.localScale = Vector3.one;
@@ -408,11 +401,9 @@ internal static class ResurrectPanelRuntimeFactory
             tsRt.offsetMax = Vector2.zero;
             tsGo.SetActive(false);
 
-            // Button
             Button button = rowGo.AddComponent<Button>();
             button.targetGraphic = cover;
 
-            // 使用 Traverse 设置私有字段
             var rowTraverse = Traverse.Create(templateRow);
             rowTraverse.Field("cover").SetValue(cover);
             rowTraverse.Field("root").SetValue(rowRt);
@@ -443,7 +434,6 @@ internal static class ResurrectPanelRuntimeFactory
             return null;
         }
     }
-
 
     private static bool TryAttachHistoryListWithRecordRow(
         RectTransform dialogPanelRect,
@@ -652,7 +642,7 @@ internal static class ResurrectPanelRuntimeFactory
         TextMeshProUGUI text;
         if (template != null)
         {
-            // 直接创建对象，避免克隆模板上的意外组件
+
             GameObject go = new GameObject(name);
             go.transform.SetParent(parent, false);
             go.transform.localScale = Vector3.one;

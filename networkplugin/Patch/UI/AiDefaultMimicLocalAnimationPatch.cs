@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using HarmonyLib;
 using LBoL.Core;
 using LBoL.Presentation.Units;
@@ -9,10 +9,6 @@ using NetworkPlugin.Network.Client;
 
 namespace NetworkPlugin.Patch.UI;
 
-/// <summary>
-/// 仅用于调试：启用后，把本地玩家的战斗动画镜像到虚拟远程玩家（PlayerId=aidefault）。
-/// 这样可以在没有真实网络对端时验证“远程玩家”渲染路径。
-/// </summary>
 [HarmonyPatch]
 internal static class AiDefaultMimicLocalAnimationPatch
 {
@@ -44,7 +40,6 @@ internal static class AiDefaultMimicLocalAnimationPatch
             return;
         }
 
-        // 避免影响真实联机对局。
         if (IsNetworkConnected())
         {
             return;
@@ -56,13 +51,11 @@ internal static class AiDefaultMimicLocalAnimationPatch
             return;
         }
 
-        // 避免调试角色看起来像是承受了双倍受击动画。
         if (string.Equals(animationName, "hit", StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
 
-        // 只镜像本地玩家自己的 UnitView 动画。
         if (!ReferenceEquals(__instance, local))
         {
             return;

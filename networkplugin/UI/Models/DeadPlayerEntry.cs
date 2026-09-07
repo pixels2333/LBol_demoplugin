@@ -1,10 +1,7 @@
-using System;
+﻿using System;
 
 namespace NetworkPlugin.UI.Models;
 
-/// <summary>
-/// Gap 支援面板中的玩家信息条目。
-/// </summary>
 public class DeadPlayerEntry
 {
     public string PlayerId { get; set; }

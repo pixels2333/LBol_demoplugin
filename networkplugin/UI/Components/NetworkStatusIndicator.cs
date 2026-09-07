@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkPlugin.Network.Services;
@@ -11,9 +11,6 @@ using UnityEngine.UI;
 
 namespace NetworkPlugin.UI.Components;
 
-/// <summary>
-/// 网络状态指示器 - 显示连接状态、延迟、玩家列表等
-/// </summary>
 public class NetworkStatusIndicator : MonoBehaviour
 {
     [Header("状态指示器")]
@@ -38,15 +35,15 @@ public class NetworkStatusIndicator : MonoBehaviour
     public float highPingThreshold = 200f;
     public float mediumPingThreshold = 100f;
 
-    private IServiceProvider _serviceProvider;    // 依赖注入服务提供者
-    private INetworkClient _networkClient;      // 网络客户端接口
-    private float lastPingUpdate;                // 上次延迟更新时间
-    private ConnectionState _lastConnectionState; // 上次连接状态，用于状态变化检测
+    private IServiceProvider _serviceProvider;
+    private INetworkClient _networkClient;
+    private float lastPingUpdate;
+    private ConnectionState _lastConnectionState;
 
     private void Start()
     {
         _serviceProvider = ModService.ServiceProvider;
-        _networkClient = _serviceProvider?.GetService<INetworkClient>();        
+        _networkClient = _serviceProvider?.GetService<INetworkClient>();
 
         if (_networkClient != null)
         {
@@ -55,18 +52,15 @@ public class NetworkStatusIndicator : MonoBehaviour
 
         SetupUI();
         UpdateConnectionStatus();
-    } // 组件启动时初始化依赖注入，设置UI和注册网络事件
+    }
 
     private void Update()
     {
         UpdatePingDisplay();
         UpdateConnectionStatus();
-    } // 每 N 帧更新延迟和连接状态（帧节流优化）
+    }
 
-    /// <summary>
-    /// 设置UI组件
-    /// </summary>
-    private void SetupUI()
+        private void SetupUI()
     {
         reconnectButton?.onClick.AddListener(() =>
         {
@@ -107,12 +101,9 @@ public class NetworkStatusIndicator : MonoBehaviour
         connectionPanel?.SetActive(true);
 
         _lastConnectionState = ConnectionState.Disconnected;
-    } // 设置UI组件，监听按钮点击事件并初始化连接状态
+    }
 
-    /// <summary>
-    /// 更新连接状态显示
-    /// </summary>
-    private void UpdateConnectionStatus()
+        private void UpdateConnectionStatus()
     {
         ConnectionState currentState;
         if (_networkClient == null)
@@ -143,12 +134,9 @@ public class NetworkStatusIndicator : MonoBehaviour
             int playerCount = GetConnectedPlayerCount();
             playerCountText.text = $"玩家: {playerCount}";
         }
-    } // 更新连接状态显示，检测状态变化并更新UI和玩家数量
+    }
 
-    /// <summary>
-    /// 更新连接状态UI
-    /// </summary>
-    private void UpdateConnectionStatusUI(ConnectionState state)
+        private void UpdateConnectionStatusUI(ConnectionState state)
     {
         var (iconColor, statusMessage) = state switch
         {
@@ -173,17 +161,13 @@ public class NetworkStatusIndicator : MonoBehaviour
             reconnectButton.gameObject.SetActive(state == ConnectionState.Disconnected);
         }
 
-        // 根据连接状态显示/隐藏相关面板
         if (connectionPanel != null)
         {
-            // 可以根据需要控制面板的显示
-        }
-    } // 更新连接状态UI，根据状态设置图标颜色、状态文本和按钮可用性
 
-    /// <summary>
-    /// 更新延迟显示
-    /// </summary>
-    private void UpdatePingDisplay()
+        }
+    }
+
+        private void UpdatePingDisplay()
     {
         if (Time.time - lastPingUpdate < pingUpdateInterval)
         {
@@ -207,20 +191,12 @@ public class NetworkStatusIndicator : MonoBehaviour
 
         pingText.color = pingColor;
         lastPingUpdate = Time.time;
-    } // 更新延迟显示，根据延迟值设置颜色并在指定间隔内更新
+    }
 
-    /// <summary>
-    /// 获取延迟值
-    /// </summary>
-    private int GetPingValue()
-        => _networkClient?.Ping ?? 0; // 获取网络延迟值，从网络客户端获取实际延迟或返回 0
+        private int GetPingValue()
+        => _networkClient?.Ping ?? 0;
 
-
-
-    /// <summary>
-    /// 更新 NAT 状态显示
-    /// </summary>
-    private void UpdateNatStatusDisplay()
+        private void UpdateNatStatusDisplay()
     {
         string natSummary = NatTraversal.GetStatusSummary();
 
@@ -230,7 +206,6 @@ public class NetworkStatusIndicator : MonoBehaviour
             return;
         }
 
-        // 兼容旧预制体：未配置专用文本时，写入连接状态行第二行。
         if (statusText != null)
         {
             string current = statusText.text ?? string.Empty;
@@ -240,34 +215,22 @@ public class NetworkStatusIndicator : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 获取连接的玩家数量
-    /// </summary>
-    private int GetConnectedPlayerCount()
+        private int GetConnectedPlayerCount()
     {
         if (_networkClient?.IsConnected != true)
         {
             return 0;
         }
 
-        // 基于 PlayerListUpdate 的快照统计玩家数量，比“已连接=1”更接近真实联机房间人数。
         return NetworkIdentityTracker.GetPlayerIdsSnapshot().Count;
-    } // 获取连接的玩家数量，根据网络连接状态返回玩家数量
+    }
 
-
-
-    /// <summary>
-    /// 添加系统日志到UI
-    /// </summary>
-    private void AddSystemLog(string message)
+        private void AddSystemLog(string message)
     {
         Plugin.Logger?.LogInfo($"[NetworkStatusIndicator] {message}");
-    } // 添加系统日志到控制台，包含组件标识符信息
+    }
 
-    /// <summary>
-    /// 显示连接详情面板
-    /// </summary>
-    public void ShowConnectionDetails()
+        public void ShowConnectionDetails()
     {
         StringBuilder details = new StringBuilder();
         details.AppendLine("=== 网络连接详情 ===");
@@ -286,12 +249,9 @@ public class NetworkStatusIndicator : MonoBehaviour
 
         string connectionDetailsStr = details.ToString();
         Plugin.Logger?.LogInfo($"[NetworkStatus] Connection Details:\n{connectionDetailsStr}");
-    } // 显示连接详情面板，生成并输出详细的网络连接信息
+    }
 
-    /// <summary>
-    /// 获取连接状态字符串
-    /// </summary>
-    public string GetConnectionStatusString()
+        public string GetConnectionStatusString()
     {
         return _lastConnectionState switch
         {
@@ -301,12 +261,9 @@ public class NetworkStatusIndicator : MonoBehaviour
             ConnectionState.Reconnecting => "重连中",
             _ => "未知"
         };
-    } // 获取连接状态字符串表示，用于UI显示和日志记录
+    }
 }
 
-/// <summary>
-/// 连接状态枚举
-/// </summary>
 public enum ConnectionState
 {
     Connected,

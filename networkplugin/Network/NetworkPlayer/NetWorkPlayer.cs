@@ -1,153 +1,93 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using LBoL.Core;
 
 namespace NetworkPlugin.Network.NetworkPlayer;
 
-/// <summary>
-/// 网络玩家的数据模型。
-/// </summary>
-/// <remarks>
-/// 该类型主要用于序列化/反序列化与网络同步承载；字段名通过 <see cref="JsonPropertyNameAttribute"/> 与协议字段绑定。
-/// 注意：当前实现以 public 字段为主，后续若引入 SyncVar/属性封装，需要同步更新序列化与补丁逻辑。
-/// </remarks>
 public class NetWorkPlayer
 {
     #region Json Fields
 
-    /// <summary>
-    /// 玩家名称/标识。
-    /// </summary>
-    [JsonPropertyName("username")]
+        [JsonPropertyName("username")]
     public string username;
 
-    /// <summary>
-    /// 当前生命值。
-    /// </summary>
-    [JsonPropertyName("HP")]
+        [JsonPropertyName("HP")]
     public int HP;
 
-    /// <summary>
-    /// 最大生命值。
-    /// </summary>
-    [JsonPropertyName("maxHP")]
+        [JsonPropertyName("maxHP")]
     public int maxHP;
 
-    /// <summary>
-    /// 格挡值。
-    /// </summary>
-    [JsonPropertyName("block")]
+        [JsonPropertyName("block")]
     public int block;
 
-    /// <summary>
-    /// 护盾值。
-    /// </summary>
-    [JsonPropertyName("shield")]
+        [JsonPropertyName("shield")]
     public int shield;
 
-    /// <summary>
-    /// 金币数量。
-    /// </summary>
-    [JsonPropertyName("coins")]
+        [JsonPropertyName("coins")]
     public int coins;
 
-    /// <summary>
-    /// 角色标识（例如角色/模型名）。
-    /// </summary>
-    [JsonPropertyName("chara")]
+        [JsonPropertyName("chara")]
     public string chara;
 
-    /// <summary>
-    /// 终极能量/充能值。
-    /// </summary>
-    [JsonPropertyName("UltimatePower")]
+        [JsonPropertyName("UltimatePower")]
     public int UltimatePower;
 
-    /// <summary>
-    /// 位置名称（可由地图节点站点类型派生）。
-    /// </summary>
-    [JsonPropertyName("location")]
+        [JsonPropertyName("location")]
     public string location;
 
-    /// <summary>
-    /// 是否已结束回合。
-    /// </summary>
-    [JsonPropertyName("endturn")]
+        [JsonPropertyName("endturn")]
     public bool endturn;
 
-    /// <summary>
-    /// 法力数组（通常为红、蓝、绿、白四种）。
-    /// </summary>
-    [JsonPropertyName("mana")]
+        [JsonPropertyName("mana")]
     public int[] mana;
 
-    /// <summary>
-    /// 心境标识。
-    /// </summary>
-    [JsonPropertyName("mood")]
-    public string mood; 
+        [JsonPropertyName("mood")]
+    public string mood;
 
-    /// <summary>
-    /// 展品列表。
-    /// </summary>
-    [JsonPropertyName("exhibits")]
+        [JsonPropertyName("exhibits")]
     public string[] exhibits;
 
-    /// <summary>
-    /// 交易状态。
-    /// </summary>
-    [JsonPropertyName("tradingStatus")]
+        [JsonPropertyName("tradingStatus")]
     public bool tradingStatus;
 
-    /// <summary>
-    /// 位置 X 坐标。
-    /// </summary>
-    [JsonPropertyName("location_X")]
+        [JsonPropertyName("location_X")]
     public int location_X;
 
-    /// <summary>
-    /// 位置 Y 坐标。
-    /// </summary>
-    [JsonPropertyName("location_Y")]
+        [JsonPropertyName("location_Y")]
     public int location_Y;
 
     #endregion
 
     #region Runtime aliases
 
-    /// <summary>运行时玩家名称别名</summary>
-    [JsonIgnore]
+        [JsonIgnore]
     public string PlayerName
     {
         get => username;
         set => username = string.IsNullOrWhiteSpace(value) ? "Player" : value;
     }
 
-    /// <summary>运行时角色ID别名</summary>
-    [JsonIgnore]
+        [JsonIgnore]
     public string CharacterId
     {
         get => chara;
         set => chara = value ?? string.Empty;
     }
 
-    /// <summary>运行时位置名称别名</summary>
-    [JsonIgnore]
+        [JsonIgnore]
     public string LocationName
     {
         get => location;
         set => location = value ?? string.Empty;
     }
 
-    /// <summary>运行时X坐标别名</summary>
-    [JsonIgnore]
+        [JsonIgnore]
     public int LocationX
     {
         get => location_X;
         set => location_X = value;
     }
 
-    /// <summary>运行时Y坐标别名</summary>
-    [JsonIgnore]
+        [JsonIgnore]
     public int LocationY
     {
         get => location_Y;
@@ -158,60 +98,40 @@ public class NetWorkPlayer
 
     #region Runtime-only
 
-    /// <summary>
-    /// 玩家当前访问的地图节点（运行时引用）。
-    /// </summary>
-    /// <remarks>
-    /// 该属性通常不参与 JSON 协议字段映射；更多用于本地逻辑关联。
-    /// </remarks>
-    public MapNode VisitingNode { get; set; }
+        public MapNode VisitingNode { get; set; }
 
     #endregion
 
-    /// <summary>
-    /// 初始化 <see cref="NetWorkPlayer"/>。
-    /// </summary>
-    /// <remarks>
-    /// 仅设置默认值，具体数值应在进入局内/同步时更新。
-    /// 注意：构造函数末尾访问 <see cref="VisitingNode"/> 坐标前，需要确保其已被赋值。
-    /// </remarks>
-    public NetWorkPlayer()
+        public NetWorkPlayer()
     {
-        // 身份信息
-        PlayerName = "Player"; // 默认用户名（实际应由外部配置/同步赋值）
 
-        // 战斗状态
-        HP = 100; // 默认生命值
-        maxHP = 100; // 默认最大生命值
-        block = 0; // 默认格挡
-        shield = 0; // 默认护盾
+        PlayerName = "Player";
 
-        // 经济
-        coins = 0; // 默认金币
+        HP = 100;
+        maxHP = 100;
+        block = 0;
+        shield = 0;
 
-        // 角色/位置
-        CharacterId = ""; // 默认角色标识
+        coins = 0;
 
-        UltimatePower = 0; // 默认终极能量
+        CharacterId = "";
 
-        LocationName = ""; // 默认位置名称
+        UltimatePower = 0;
 
-        // 回合
-        endturn = false; // 默认未结束回合
+        LocationName = "";
 
-        // 资源：四色法力
-        mana = new int[4]; // 默认法力数组
+        endturn = false;
 
-        mood = ""; // 默认姿态标识
+        mana = new int[4];
 
-        // 装备
-        exhibits = new string[4]; // 默认展品数组
+        mood = "";
 
-        tradingStatus = false; // 默认不在交易中
+        exhibits = new string[4];
 
-        // 坐标：从访问节点同步（需确保 VisitingNode 非空）
-        LocationX = VisitingNode?.X ?? 0; // 与访问节点同步 X（无节点时回退0）
-        LocationY = VisitingNode?.Y ?? 0; // 与访问节点同步 Y（无节点时回退0）
+        tradingStatus = false;
+
+        LocationX = VisitingNode?.X ?? 0;
+        LocationY = VisitingNode?.Y ?? 0;
     }
 
 }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using HarmonyLib;
 using LBoL.Core;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,10 +10,6 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// 房间/地图节点进入同步补丁（参考 Together in Spire 的 RoomEntryPatch 思路）：
-/// - 当本地进入一个新的地图节点时，广播一个“进入节点”的事件，供其他客户端更新位置/推进进度。
-/// </summary>
 [HarmonyPatch]
 public static class RoomEntrySyncPatch
 {
@@ -46,17 +42,14 @@ public static class RoomEntrySyncPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
     [HarmonyPatch(typeof(GameMap), nameof(GameMap.EnterNode))]
     private static class GameMap_EnterNode_Patch
     {
-        /// <summary>
-        /// 进入地图节点后置补丁：标记检查点并广播进入节点事件
-        /// </summary>
-        [HarmonyPostfix]
+                [HarmonyPostfix]
         public static void Postfix(GameMap __instance, MapNode node, bool freeMove, bool forced)
         {
             try
@@ -66,7 +59,6 @@ public static class RoomEntrySyncPatch
                     return;
                 }
 
-                // Ignore forced EnterNode (e.g., RestorePath) to avoid checkpoint noise.
                 if (forced)
                 {
                     return;

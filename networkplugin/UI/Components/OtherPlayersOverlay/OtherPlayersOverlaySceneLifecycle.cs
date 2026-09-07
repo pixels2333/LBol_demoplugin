@@ -1,4 +1,4 @@
-using HarmonyLib;
+﻿using HarmonyLib;
 using LBoL.Core;
 using LBoL.Presentation.UI;
 using LBoL.Presentation.UI.Panels;
@@ -66,7 +66,7 @@ public static partial class OtherPlayersOverlayPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -140,9 +140,6 @@ public static partial class OtherPlayersOverlayPatch
             _nextOverlayDebugLogTime = 0f;
             _lastSceneBindingSignature = 0;
 
-            // ClearRemoteCharacters/ClearMapIcons 已销毁缓存，必须同步重置可见性状态，
-            // 否则下一帧 showRemoteChars == _wasRemoteCharactersVisible 会跳过 EnsureRemoteCharacters 重建，
-            // 导致进入新关卡后远程玩家(含真实玩家)角色实体不显示。
             _wasRemoteCharactersVisible = false;
             _wasOverlayVisible = false;
 

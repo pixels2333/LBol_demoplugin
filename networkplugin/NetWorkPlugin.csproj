@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>NetworkPlugin</AssemblyName>
@@ -6,10 +6,7 @@
     <Version>1.0.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>12.0</LangVersion>
-    <!--
-      Ensure all NuGet/runtime dependencies are copied next to NetworkPlugin.dll.
-      BepInEx will fail to instantiate the plugin if required assemblies are missing.
-    -->
+
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <RestoreAdditionalProjectSources>
       https://api.nuget.org/v3/index.json;
@@ -20,10 +17,6 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);Tests/**/*.cs</DefaultItemExcludes>
   </PropertyGroup>
 
-  <!-- Debug configuration tuned for Unity Mono compatibility.
-       .NET 10+ SDK defaults to portable PDB which Unity 6 Mono can fail to parse,
-       leading to a silent crash on plugin load. Embedded keeps symbols inside the DLL
-       and avoids the external PDB read path. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>

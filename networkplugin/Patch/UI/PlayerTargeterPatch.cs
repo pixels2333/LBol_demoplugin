@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using HarmonyLib;
 using LBoL.Base;
@@ -17,11 +17,6 @@ using UnityEngine.InputSystem;
 
 namespace NetworkPlugin.Patch.UI;
 
-/// <summary>
-/// 参照 Together in Spire 的 PlayerTargeter.java：
-/// 在“单体目标选择”状态下，把其它玩家的角色实体也加入可指向目标列表，
-/// 并临时开启其 SelectorCollider 以便被鼠标射线命中，从而显示 SelectingVisible/指向反馈。
-/// </summary>
 [HarmonyPatch]
 public static class PlayerTargeterPatch
 {
@@ -83,8 +78,7 @@ public static class PlayerTargeterPatch
         }
         catch
         {
-            // TODO: 应记录异常详情，避免静默失败。
-            // 忽略反射失败，继续尝试其他目标来源。
+
         }
 
         try
@@ -98,8 +92,7 @@ public static class PlayerTargeterPatch
         }
         catch
         {
-            // TODO: 应记录异常详情，避免静默失败。
-            // 忽略反射失败，继续尝试其他目标来源。
+
         }
 
         try
@@ -109,8 +102,7 @@ public static class PlayerTargeterPatch
         }
         catch
         {
-            // TODO: 应记录异常详情，避免静默失败。
-            // 忽略反射失败，继续尝试其他目标来源。
+
         }
     }
 

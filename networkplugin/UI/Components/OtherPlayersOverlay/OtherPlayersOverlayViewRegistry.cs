@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -33,7 +33,7 @@ public static partial class OtherPlayersOverlayPatch
 
     private static void EnsureRemoteCharacters()
     {
-        // 确保渲染时 _selfPlayerId 已同步，过滤逻辑才能正确排除本地玩家
+
         _selfPlayerId = NetworkIdentityTracker.GetSelfPlayerId();
 
         if (!ShouldRenderRemoteCharacters(IsMapPanelVisible()))
@@ -217,7 +217,6 @@ public static partial class OtherPlayersOverlayPatch
             bool currentHasShield = traverse.Property<bool>("HasShield").Value;
             bool currentHasBlock = traverse.Property<bool>("HasBlock").Value;
 
-            // 1. 如果盾的状态发生改变，调用属性 set 改变常驻外罩显示
             if (currentHasShield != isShieldActive)
             {
                 traverse.Property<bool>("HasShield").Value = isShieldActive;
@@ -228,7 +227,6 @@ public static partial class OtherPlayersOverlayPatch
                 }
             }
 
-            // 2. 如果格挡状态发生改变，同理
             if (currentHasBlock != isBlockActive)
             {
                 traverse.Property<bool>("HasBlock").Value = isBlockActive;
@@ -239,7 +237,6 @@ public static partial class OtherPlayersOverlayPatch
                 }
             }
 
-            // 3. 对齐数值
             int oldBlock = view.Unit.Block;
             int oldShield = view.Unit.Shield;
             int oldHp = view.Unit.Hp;
@@ -274,22 +271,19 @@ public static partial class OtherPlayersOverlayPatch
                 needsMaxHpRefresh = true;
             }
 
-            // 4. 触发状态条 Widget UI 刷新与防定位组件销毁重置
             object statusWidgetObj = traverse.Field("_statusWidget").GetValue();
             if (statusWidgetObj != null)
             {
                 var statusWidget = (LBoL.Presentation.UI.Widgets.UnitStatusWidget)statusWidgetObj;
                 statusWidget.Alpha = 1f;
-                
-                // 重点：修复 ScenePositionTier 因没有 TargetTransform 自我销毁导致血条滞留左下角的 Bug
+
                 var scenePositionTier = statusWidget.GetComponent<LBoL.Presentation.UI.ScenePositionTier>();
                 if (scenePositionTier == null)
                 {
                     scenePositionTier = statusWidget.gameObject.AddComponent<LBoL.Presentation.UI.ScenePositionTier>();
                     Transform hpBarPoint = Traverse.Create(view).Field("hpBarPoint").GetValue<Transform>();
                     scenePositionTier.TargetTransform = hpBarPoint;
-                    
-                    // 通过反射重新给 statusWidget 内部的 _scenePositionTier 字段设值
+
                     Traverse.Create(statusWidget).Field("_scenePositionTier").SetValue(scenePositionTier);
                 }
 
@@ -383,37 +377,29 @@ public static partial class OtherPlayersOverlayPatch
         }
     }
 
-    /// <summary>
-    /// 异步加载远程玩家的 spine 模型，加载完成后通过一次 SetActive(false)→SetActive(true)
-    /// 切换强制触发 OnEnable，使 SkeletonAnimation/SkeletonMecanim 组件重新初始化并渲染。
-    /// 否则模型加载完成时 GameObject 已激活，OnEnable 不会再次调用，spine 不显示。
-    /// </summary>
-    private static async UniTaskVoid LoadAndActivateRemoteModelAsync(UnitView view, PlayerUnit unit, GameObject container)
+        private static async UniTaskVoid LoadAndActivateRemoteModelAsync(UnitView view, PlayerUnit unit, GameObject container)
     {
         try
         {
             await view.LoadUnitModelAsync(unit.ModelName, true, default(float?));
-            
-            // 等待直到远端角色根节点在层级中处于激活状态（意味着场景已加载完毕且Overlay处于可见状态）
+
             while (_remoteCharactersRoot == null || !_remoteCharactersRoot.gameObject.activeInHierarchy)
             {
                 await UniTask.DelayFrame(1);
             }
 
-            // 在根节点激活后，再等待几帧让 Unity 完成渲染管线的相关设置
             await UniTask.DelayFrame(5);
 
             if (container != null)
             {
-                // 彻底禁用
+
                 container.SetActive(false);
-                
-                // 延迟 2 帧，确保 Unity 状态机和 Spine 组件彻底卸载/重置
+
                 await UniTask.DelayFrame(2);
 
                 if (container != null)
                 {
-                    // 重新启用，强制触发 OnEnable 重建 Spine 动画渲染
+
                     container.SetActive(true);
                 }
             }
@@ -466,14 +452,12 @@ public static partial class OtherPlayersOverlayPatch
 
                 UnitView view = charView.View;
 
-                // 1. 头顶气泡与招式名称
                 if (!string.IsNullOrWhiteSpace(cardOrUsName))
                 {
                     string bubbleText = isUs ? $"【符卡】{cardOrUsName}" : cardOrUsName;
                     view.Chat(bubbleText, 2.0f);
                 }
 
-                // 2. 特效回放：如果有动作蓝图，调度 PlayVisualsCoroutine 播放卡牌专属弹幕与特效
                 bool hasBlueprintActions = actions.HasValue && actions.Value.ValueKind == JsonValueKind.Array && actions.Value.GetArrayLength() > 0;
                 if (hasBlueprintActions)
                 {
@@ -482,7 +466,7 @@ public static partial class OtherPlayersOverlayPatch
                 }
                 else
                 {
-                    // 兜底：通用动作与声光
+
                     string animName = isUs ? "spell" : "cast";
                     try
                     {
@@ -499,7 +483,7 @@ public static partial class OtherPlayersOverlayPatch
                     }
                     catch
                     {
-                        // ignored
+
                     }
                 }
             }
@@ -510,10 +494,7 @@ public static partial class OtherPlayersOverlayPatch
         });
     }
 
-    /// <summary>
-    /// 触发敌人攻击队友小人的视觉效果（弹幕射击与擦弹/受击动作）。
-    /// </summary>
-    public static void TriggerRemoteEnemyAttackVisual(
+        public static void TriggerRemoteEnemyAttackVisual(
         string playerId,
         string enemyId,
         string gunName,
@@ -542,7 +523,6 @@ public static partial class OtherPlayersOverlayPatch
                     return;
                 }
 
-                // 查找当前场景中的敌人 UnitView
                 UnitView enemyView = FindMatchingEnemyUnitView(enemyId);
 
                 DamageInfo info = DamageInfo.Attack((float)damage, isAccuracy);
@@ -568,7 +548,6 @@ public static partial class OtherPlayersOverlayPatch
                     }
                 }
 
-                // 兜底或即时动画
                 if (isGrazed)
                 {
                     targetView.PlayAnimation("graze");
@@ -610,8 +589,7 @@ public static partial class OtherPlayersOverlayPatch
                 }
             }
 
-            // 找不到匹配 ID 则回退到第一个存活敌人
-            return enemyViews.FirstOrDefault(ev => ev != null && ev.Unit != null && ev.Unit.IsAlive) 
+            return enemyViews.FirstOrDefault(ev => ev != null && ev.Unit != null && ev.Unit.IsAlive)
                    ?? enemyViews.FirstOrDefault(ev => ev != null);
         }
         catch
@@ -924,7 +902,6 @@ public static partial class OtherPlayersOverlayPatch
             return tracked;
         }
 
-        // 单机模式下 NetworkIdentityTracker 也没有 ID，使用固定兜底
         return "__local__";
     }
 
@@ -976,7 +953,7 @@ public static partial class OtherPlayersOverlayPatch
 
             lock (_syncLock)
             {
-                // 清理旧的本地玩家条目，避免 _selfPlayerId 变化后旧条目仍出现在地图上
+
                 List<string> toRemove = null;
                 foreach (var kvp in _players)
                 {
@@ -1030,7 +1007,6 @@ public static partial class OtherPlayersOverlayPatch
 
         INetworkClient client = TryGetNetworkClient();
 
-        // 先同步 _selfPlayerId，确保 EnsureSelfPlayer_NoThrow 使用正确的 ID
         string tracked = NetworkIdentityTracker.GetSelfPlayerId();
         _selfPlayerId = !string.IsNullOrWhiteSpace(tracked) ? tracked : "__local__";
 
@@ -1066,7 +1042,6 @@ public static partial class OtherPlayersOverlayPatch
             return;
         }
 
-        // 尊重 Runtime Editor 手动 Active 开关：不在每帧强制开启。
         if (!overlayRoot.gameObject.activeSelf)
         {
             return;
@@ -1104,7 +1079,7 @@ public static partial class OtherPlayersOverlayPatch
             int selfX = -1;
             int selfY = -1;
             string selfLocationName = null;
-            // 兜底：直接用当前访问节点
+
             try
             {
                 var run = GameStateUtils.GetCurrentGameRun();
@@ -1168,7 +1143,6 @@ public static partial class OtherPlayersOverlayPatch
             List<PlayerSummary> orderedPlayers = [.. group
                 .OrderByDescending(p => p.IsHost)
                 .ThenBy(p => p.PlayerName, StringComparer.OrdinalIgnoreCase)];
-
 
             const float baseY = 0f;
             const float horizontalSpacing = 130f;
@@ -1369,7 +1343,7 @@ public static partial class OtherPlayersOverlayPatch
         if (_mapIcons.TryGetValue(player.PlayerId, out MapIconUi ui) && ui?.Root != null)
         {
             Sprite sprite = TryGetAvatarSpriteForPlayer(player);
-            // 本地玩家强制兜底：如果 sprite 可疑（1x1 或 null），直接复制其他玩家已加载的有效 sprite
+
             if (isSelf)
             {
                 if (sprite == null || (sprite.texture != null && sprite.texture.width <= 1 && sprite.texture.height <= 1))
@@ -1397,7 +1371,7 @@ public static partial class OtherPlayersOverlayPatch
                 }
             }
             ui.Image.sprite = sprite ?? GetWhiteSprite();
-            // 重置缓存 icon 的尺寸/锚点，避免历史脏数据导致对齐不一致
+
             ui.RootRect.sizeDelta = new Vector2(100f, 140f);
             ui.RootRect.anchorMin = new Vector2(0.5f, 0.5f);
             ui.RootRect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -1417,7 +1391,6 @@ public static partial class OtherPlayersOverlayPatch
         RectTransform rootRect = root.AddComponent<RectTransform>();
         rootRect.sizeDelta = new Vector2(100f, 140f);
 
-        // 创建 AvatarMask 节点
         GameObject maskGo = new("AvatarMask");
         maskGo.transform.SetParent(root.transform, false);
 
@@ -1437,7 +1410,6 @@ public static partial class OtherPlayersOverlayPatch
         Mask mask = maskGo.AddComponent<Mask>();
         mask.showMaskGraphic = false;
 
-        // 创建 AvatarImage 节点（放入 Mask 下面）
         GameObject avatarGo = new("AvatarImage");
         avatarGo.transform.SetParent(maskGo.transform, false);
 
@@ -1453,7 +1425,7 @@ public static partial class OtherPlayersOverlayPatch
         avatar.preserveAspect = true;
 
         Sprite avatarSprite = TryGetAvatarSpriteForPlayer(player);
-        // 本地玩家强制兜底：如果 sprite 可疑（1x1 或 null），直接复制其他玩家已加载的有效 sprite
+
         if (isSelf)
         {
             if (avatarSprite == null || (avatarSprite.texture != null && avatarSprite.texture.width <= 1 && avatarSprite.texture.height <= 1))
@@ -1482,7 +1454,6 @@ public static partial class OtherPlayersOverlayPatch
         }
         avatar.sprite = avatarSprite ?? GetWhiteSprite();
 
-        // 创建 Border 节点（放在 root 下，与 mask 节点平级，使其覆盖在头像之上）
         GameObject borderGo = new("Border");
         borderGo.transform.SetParent(root.transform, false);
 
@@ -1645,7 +1616,7 @@ public static partial class OtherPlayersOverlayPatch
             {
                 return null;
             }
-            // 过滤掉 Addressables 可能返回的 1x1 占位符（视为加载失败）
+
             if (sprite.texture != null && sprite.texture.width <= 1 && sprite.texture.height <= 1)
             {
                 Plugin.Logger?.LogWarning($"[NetworkPlugin] Avatar loaded but is 1x1 placeholder: {characterId}");
@@ -1712,7 +1683,6 @@ public static partial class OtherPlayersOverlayPatch
             }
         }
 
-        // 保留总根节点 Active 状态，避免覆盖 Runtime Editor 的手动开关。
     }
 
     private static void ClearMapIcons()
@@ -1825,7 +1795,7 @@ public static partial class OtherPlayersOverlayPatch
                 {
                     Plugin.Logger?.LogInfo("[OtherPlayersOverlay] Active Spine refresh triggered programmatically.");
                     _remoteCharactersRoot.gameObject.SetActive(false);
-                    
+
                     UniTask.DelayFrame(3).ContinueWith(() =>
                     {
                         if (_remoteCharactersRoot != null)

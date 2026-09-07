@@ -11,9 +11,6 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Map;
 
-/// <summary>
-/// 地图节点同步补丁 - 同步玩家位置变化
-/// </summary>
 [HarmonyPatch]
 public class MapPanelUpdateMapNodesStatusPatch
 {
@@ -22,10 +19,7 @@ public class MapPanelUpdateMapNodesStatusPatch
     private static ulong _lastSentFp;
     private static long _lastSentAtTicks;
 
-    /// <summary>
-    /// MapPanel 每帧更新：以小预算推进追赶，避免在 UpdateMapNodesStatus 中集中做大量工作导致卡顿。
-    /// </summary>
-    [HarmonyPatch(typeof(MapPanel), "Update")]
+        [HarmonyPatch(typeof(MapPanel), "Update")]
     [HarmonyPostfix]
     public static void MapPanel_Update_Postfix(MapPanel __instance)
     {
@@ -36,33 +30,27 @@ public class MapPanelUpdateMapNodesStatusPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
-    /// <summary>
-    /// 当地图节点状态更新时同步玩家位置
-    /// </summary>
-    [HarmonyPatch(typeof(MapPanel), "UpdateMapNodesStatus")]
+        [HarmonyPatch(typeof(MapPanel), "UpdateMapNodesStatus")]
     [HarmonyPrefix]
     public static void Prefix(MapPanel __instance)
     {
         try
         {
-            // Apply pending catch-up *before* the UI reads node statuses.
+
             IServiceProvider sp = ModService.ServiceProvider;
             sp?.GetService<MapCatchUpOrchestrator>()?.TryApplyPendingToCurrentRun(pathStepsBudget: 2, nodeStatesBudget: 60);
         }
         catch
         {
-            // ignored
+
         }
     }
 
-    /// <summary>
-    /// 当地图节点状态更新后同步玩家位置
-    /// </summary>
-    [HarmonyPatch(typeof(MapPanel), "UpdateMapNodesStatus")]
+        [HarmonyPatch(typeof(MapPanel), "UpdateMapNodesStatus")]
     [HarmonyPostfix]
     public static void Postfix(MapPanel __instance)
     {
@@ -82,7 +70,6 @@ public class MapPanelUpdateMapNodesStatusPatch
                 return;
             }
 
-            // 获取GameMap实例
             var gameMapField = Traverse.Create(__instance).Field("_map");
             if (!gameMapField.FieldExists())
             {
@@ -111,9 +98,10 @@ public class MapPanelUpdateMapNodesStatusPatch
             }
             catch
             {
-                // ignored
+
             }
 
+            var localPlayer = GameStateUtils.GetCurrentPlayer();
             var locationData = new
             {
                 LocationX = visitingNode.X,
@@ -121,13 +109,13 @@ public class MapPanelUpdateMapNodesStatusPatch
                 LocationName = visitingNode.StationType.ToString(),
                 LocationType = visitingNode.GetType().Name,
                 Stage = visitingNode.Act,
-                CharacterId = characterId
+                CharacterId = characterId,
+                Hp = localPlayer?.Hp ?? 0,
+                MaxHp = localPlayer?.MaxHp ?? 0,
             };
 
             string json = JsonCompat.Serialize(locationData);
 
-            // 去重/限流：UpdateMapNodesStatus 可能在短时间内被频繁调用；
-            // 只在位置 payload 变化或超过一定时间后才发送，避免刷屏并减少网络流量。
             bool shouldSend;
             bool isReconnectFirstSend = false;
             long nowTicks = DateTime.UtcNow.Ticks;
@@ -137,7 +125,7 @@ public class MapPanelUpdateMapNodesStatusPatch
                 bool connected = networkClient.IsConnected;
                 if (connected && !_wasConnected)
                 {
-                    // 刚刚从断线恢复：允许立刻发送一次当前位置。
+
                     _lastSentFp = 0;
                     _lastSentAtTicks = 0;
                     isReconnectFirstSend = true;
@@ -180,10 +168,7 @@ public class MapPanelUpdateMapNodesStatusPatch
         }
     }
 
-    /// <summary>
-    /// 主动上报当前玩家位置（进入新关卡/节点时调用，跳过防抖动限制）
-    /// </summary>
-    public static void SendLocationUpdateActive(bool force = false)
+        public static void SendLocationUpdateActive(bool force = false)
     {
         try
         {
@@ -213,6 +198,7 @@ public class MapPanelUpdateMapNodesStatusPatch
             string characterId = null;
             try { characterId = GameStateUtils.GetCurrentPlayer()?.ModelName; } catch { }
 
+            var localPlayer = GameStateUtils.GetCurrentPlayer();
             var locationData = new
             {
                 LocationX = visitingNode.X,
@@ -220,7 +206,9 @@ public class MapPanelUpdateMapNodesStatusPatch
                 LocationName = visitingNode.StationType.ToString(),
                 LocationType = visitingNode.GetType().Name,
                 Stage = visitingNode.Act,
-                CharacterId = characterId
+                CharacterId = characterId,
+                Hp = localPlayer?.Hp ?? 0,
+                MaxHp = localPlayer?.MaxHp ?? 0,
             };
 
             string json = JsonCompat.Serialize(locationData);
@@ -242,6 +230,7 @@ internal static class GameRunController_EnterStation_ActiveLocationPatch
     {
         try
         {
+            DeathStateSyncPatch.EnsureInitialHpSynced();
             MapPanelUpdateMapNodesStatusPatch.SendLocationUpdateActive(force: true);
         }
         catch (Exception ex)

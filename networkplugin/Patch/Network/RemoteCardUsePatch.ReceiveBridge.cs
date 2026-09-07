@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using HarmonyLib;
@@ -17,46 +17,22 @@ public static partial class RemoteCardUsePatch
 {
     #region Receive (subscribe + UI hint)
 
-    /// <summary>
-    /// 是否已订阅网络事件
-    /// </summary>
-    private static bool _subscribed;
+        private static bool _subscribed;
 
-    /// <summary>
-    /// 已订阅的网络客户端实例
-    /// </summary>
-    private static INetworkClient _subscribedClient;
+        private static INetworkClient _subscribedClient;
 
-    /// <summary>
-    /// 游戏事件接收回调
-    /// </summary>
-    private static readonly Action<string, object> _onGameEventReceived = OnGameEventReceived;
+        private static readonly Action<string, object> _onGameEventReceived = OnGameEventReceived;
 
-    /// <summary>
-    /// 连接状态变化回调
-    /// </summary>
-    private static readonly Action<bool> _onConnectionStateChanged = OnConnectionStateChanged;
+        private static readonly Action<bool> _onConnectionStateChanged = OnConnectionStateChanged;
 
-    /// <summary>
-    /// 同步锁，用于线程安全访问共享字段
-    /// </summary>
-    private static readonly object _syncLock = new();
+        private static readonly object _syncLock = new();
 
-    /// <summary>
-    /// 自身玩家ID
-    /// </summary>
-    private static string _selfPlayerId;
+        private static string _selfPlayerId;
 
-    /// <summary>
-    /// 订阅钩子类，用于在GameDirector.Update中订阅网络事件
-    /// </summary>
-    [HarmonyPatch(typeof(GameDirector), "Update")]
+        [HarmonyPatch(typeof(GameDirector), "Update")]
     private static class SubscribeHook
     {
-        /// <summary>
-        /// GameDirector.Update的后缀补丁，确保订阅网络事件
-        /// </summary>
-        [HarmonyPostfix]
+                [HarmonyPostfix]
         public static void Postfix()
         {
             INetworkClient client = TryGetClient();
@@ -69,11 +45,7 @@ public static partial class RemoteCardUsePatch
         }
     }
 
-    /// <summary>
-    /// 确保已订阅网络客户端事件
-    /// </summary>
-    /// <param name="client">网络客户端实例</param>
-    private static void EnsureSubscribed(INetworkClient client)
+        private static void EnsureSubscribed(INetworkClient client)
     {
         if (_subscribed && ReferenceEquals(_subscribedClient, client))
         {
@@ -90,7 +62,7 @@ public static partial class RemoteCardUsePatch
         }
         catch
         {
-            // ignored
+
         }
 
         try
@@ -107,11 +79,7 @@ public static partial class RemoteCardUsePatch
         }
     }
 
-    /// <summary>
-    /// 连接状态变化回调处理
-    /// </summary>
-    /// <param name="connected">是否已连接</param>
-    private static void OnConnectionStateChanged(bool connected)
+        private static void OnConnectionStateChanged(bool connected)
     {
         if (connected)
         {
@@ -131,12 +99,7 @@ public static partial class RemoteCardUsePatch
         }
     }
 
-    /// <summary>
-    /// 游戏事件接收回调处理
-    /// </summary>
-    /// <param name="eventType">事件类型</param>
-    /// <param name="payload">事件负载</param>
-    private static void OnGameEventReceived(string eventType, object payload)
+        private static void OnGameEventReceived(string eventType, object payload)
     {
         if (!TryGetJsonElement(payload, out JsonElement root))
         {
@@ -157,11 +120,7 @@ public static partial class RemoteCardUsePatch
         }
     }
 
-    /// <summary>
-    /// 处理欢迎消息，获取自身玩家ID
-    /// </summary>
-    /// <param name="root">JSON根元素</param>
-    private static void HandleWelcome(JsonElement root)
+        private static void HandleWelcome(JsonElement root)
     {
         try
         {
@@ -178,15 +137,11 @@ public static partial class RemoteCardUsePatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
-    /// <summary>
-    /// 处理远程卡牌使用事件
-    /// </summary>
-    /// <param name="root">JSON根元素</param>
-    private static void HandleRemoteCardUse(JsonElement root)
+        private static void HandleRemoteCardUse(JsonElement root)
     {
         try
         {
@@ -213,7 +168,6 @@ public static partial class RemoteCardUsePatch
             GameRunController run = GameStateUtils.GetCurrentGameRun();
             BattleController battle = run?.Battle;
 
-            // Check if this client is the executing client
             bool isExecutingClient = false;
             string targetUnitKind = GetString(root, "TargetUnitKind");
             if (string.Equals(targetUnitKind, "Enemy", StringComparison.OrdinalIgnoreCase))
@@ -231,7 +185,6 @@ public static partial class RemoteCardUsePatch
                 }
             }
 
-            // Start playing visuals on all clients
             if (battle != null)
             {
                 if (root.TryGetProperty("Actions", out JsonElement actionsEl))
@@ -263,11 +216,7 @@ public static partial class RemoteCardUsePatch
         }
     }
 
-    /// <summary>
-    /// 处理远程卡牌解析事件
-    /// </summary>
-    /// <param name="root">JSON根元素</param>
-    private static void HandleRemoteCardResolved(JsonElement root)
+        private static void HandleRemoteCardResolved(JsonElement root)
     {
         try
         {
@@ -356,11 +305,7 @@ public static partial class RemoteCardUsePatch
         }
     }
 
-    /// <summary>
-    /// 尝试播放远程卡牌使用动画
-    /// </summary>
-    /// <param name="root">JSON根元素</param>
-    private static void TryPlayRemoteCardUseAnimation(JsonElement root)
+        private static void TryPlayRemoteCardUseAnimation(JsonElement root)
     {
         try
         {
@@ -393,7 +338,7 @@ public static partial class RemoteCardUsePatch
                 }
                 catch
                 {
-                    // ignored
+
                 }
             }
 
@@ -435,7 +380,7 @@ public static partial class RemoteCardUsePatch
                 }
                 catch
                 {
-                    // ignored
+
                 }
                 return;
             }
@@ -447,16 +392,11 @@ public static partial class RemoteCardUsePatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
-    /// <summary>
-    /// 映射卡牌类型到对应的动画名称
-    /// </summary>
-    /// <param name="cardType">卡牌类型字符串</param>
-    /// <returns>动画名称</returns>
-    private static string MapCardTypeToAnimation(string cardType)
+        private static string MapCardTypeToAnimation(string cardType)
     {
         return cardType switch
         {

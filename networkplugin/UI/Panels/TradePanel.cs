@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,26 +31,16 @@ using UnityEngine.UI;
 
 namespace NetworkPlugin.UI.Panels;
 
-/// <summary>
-/// 交易面板类，处理玩家之间的物品（卡牌）交易界面与逻辑。
-/// </summary>
 public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 {
     #region 常量
 
-    /// <summary>
-    /// 默认最大交易卡牌槽位数量。
-    /// </summary>
-    private const int DefaultMaxTradeSlots = 3;
+        private const int DefaultMaxTradeSlots = 3;
 
-    /// <summary>
-    /// 交易完成后等待多少秒再关闭界面。
-    /// </summary>
-    private const float TradeCompleteWaitTime = 2f;
+        private const float TradeCompleteWaitTime = 2f;
 
     private const int MaxMoneyOffer = 99999;
 
-    // 通过反射读取本地化总表，避免直接调用 key.Localize() 在 key 缺失时产生日志噪声。
     private static readonly FieldInfo LocalizationTableField =
         typeof(Localization).GetField("LocalizationTable", BindingFlags.NonPublic | BindingFlags.Static);
 
@@ -114,39 +104,30 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private CanvasGroup _canvasGroup;
     private bool _canCancel = true;
 
-    // v2 本地报价（金币 + 展品），卡牌存储于 _player1OfferedCards。
     private int _localMoneyOffer;
     private readonly HashSet<string> _localExhibitOfferIds = new HashSet<string>(StringComparer.Ordinal);
 
-    // 运行时展品预览容器（位于 player1TradeArea / player2TradeArea 内）。
     private GameObject _localExhibitContainer;
     private GameObject _remoteExhibitContainer;
     private ExhibitWidget _exhibitIconTemplate;
 
-    // 状态转换时用于记录上一次已知状态（Preparing 阶段验证）。
     private TradeSyncPatch.TradeStatus? _lastTradeStatus;
     private long _lastPreparingHandledTimestamp;
 
-    // 运行时 partner picker overlay（精简构建，避免 prefab 依赖）。
     private GameObject _partnerPickerRoot;
     private bool _partnerPickerActive;
     private float _partnerPickerInputReadyTime;
     private string _partnerPickerBuildError;
     private Button _partnerPickerCancelButton;
 
-    // 打开面板后自动刷新一次 partner 列表（应对位置元数据稍晚到达的情况）。
     private Coroutine _partnerPickerAutoRefreshCo;
 
-    // 标记本面板是否已将自身压入 UiManager 的 action handler 栈。
     private bool _actionHandlerPushed;
 
-    // 当 true 时，中央正在显示模态提示对话框，交易详情被屏蔽。
     private bool _blockingCenterMessageActive;
 
-    // 离线/本地调试模式：允许在无服务器时打开并操作 TradePanel。
     private bool _localDebugTradeMode;
 
-    // 运行时报价编辑器 overlay（金币 + 展品）。
     private GameObject _offerEditorRoot;
     private GameObject _offerActionsRoot;
     private GameObject _moneyTripletRoot;
@@ -155,12 +136,10 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     private TextMeshProUGUI _moneyValueText;
     private TextMeshProUGUI _exhibitValueText;
 
-    // 运行时卡牌选择器 overlay（卡组卡牌）。
     private GameObject _cardPickerRoot;
     private bool _cardPickerApplyingSelection;
     private TextMeshProUGUI _cardCountText;
 
-    // 主面板结果展示区：位于状态文案下方，展示双方已选卡牌。
     private GameObject _offerPreviewRoot;
     private OfferPreviewPanelTag _localOfferPreviewPanel;
     private OfferPreviewPanelTag _remoteOfferPreviewPanel;
@@ -175,7 +154,7 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         TextMeshProUGUI runtimePlayer1NameText,
         TextMeshProUGUI runtimePlayer2NameText)
     {
-        // 这些字段通常由 prefab 连接，运行时创建时需手动绑定。
+
         _runtimeContentRoot = runtimeContentRoot;
         confirmButton = runtimeConfirmButton;
         cancelButton = runtimeCancelButton;
@@ -183,13 +162,11 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         player1NameText = runtimePlayer1NameText;
         player2NameText = runtimePlayer2NameText;
 
-        // 运行时创建的面板在 Awake() 之后绑定，因此需在此处注册按钮事件。
         if (confirmButton?.button is not null)
         {
             confirmButton.button.onClick.RemoveAllListeners();
             confirmButton.button.onClick.AddListener(OnConfirmTrade);
 
-            // 用户需求：确认按钮使用 Open behavior + Normal weight.
             try
             {
                 Traverse traverse = HarmonyLib.Traverse.Create(confirmButton);
@@ -198,7 +175,7 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             }
             catch
             {
-                // 忽略
+
             }
         }
 
@@ -221,11 +198,10 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     public void Awake()
     {
-        // 获取或添加 CanvasGroup，用于控制面板交互
+
         _canvasGroup = GetComponent<CanvasGroup>();
         _canvasGroup ??= gameObject.AddComponent<CanvasGroup>();
 
-        // 注册按钮点击事件
         confirmButton?.button?.onClick.AddListener(OnConfirmTrade);
         cancelButton?.button?.onClick.AddListener(OnCancelTrade);
     }
@@ -236,7 +212,7 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     public override void OnLocaleChanged()
     {
-        // 语言切换时刷新界面文本（如果当前有有效的 payload）
+
         if (_payload is not null)
         {
             UpdateUIStrings();
@@ -252,7 +228,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         Plugin.Logger?.LogInfo($"[TradePanel] OnShowing enter: payloadNull={(payload is null)}, activeGameRun={(ActiveGameRun is not null)}");
         EnsurePopupTopmost();
 
-        // 本地 UI 测试：调试开关启用时允许在无服务器情况下打开面板。
         bool networkConnected = TryEnsureNetworkConnected();
         _localDebugTradeMode = !networkConnected && IsLocalDebugTradeAllowed();
         if (!networkConnected && !_localDebugTradeMode)
@@ -262,51 +237,38 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             return;
         }
 
-        // 提前注册输入处理器，确保在设置期间弹出的 MessageDialog 能正确压栈。
-        // （否则 MessageDialog/TradePanel Push/Pop 顺序可能错误，UiManager 会记录错误日志。）
         UiManager.PushActionHandler(this);
         _actionHandlerPushed = true;
 
-        // 重要：在可能提前返回之前（即显示 partner picker 或 modal dialog 前）确保面板可交互。
-        // 否则如果面板在上次隐藏后再次打开，picker 可能显示但无法点击。
         _canvasGroup.interactable = true;
         _canvasGroup.blocksRaycasts = true;
 
-        // 缓存本次交易的参数
         _payload = payload;
-        // 根据 payload 设置允许的最大交易卡位
+
         _maxTradeSlots = payload?.MaxTradeSlots ?? DefaultMaxTradeSlots;
-        // 是否允许玩家取消本次交易
+
         _canCancel = payload?.CanCancel ?? true;
 
-        // 重置交易数据和显示。
-        // 注意：如果 payload 未指定交易对象，我们会立即弹出 partner picker。
         ResetTradeData();
 
-        // 初始化交易参与者（联机：会触发 partner picker；本地调试：也需要 partner picker）。
         SetupTradeSession(payload);
 
-        // 若正在选择交易对象，或已经进入“阻塞提示”状态，则不需要提前初始化报价编辑/卡牌选择等 overlay。
         if (_partnerPickerActive || _blockingCenterMessageActive)
         {
             return;
         }
 
-        // 确保运行时 overlay 存在（工厂创建的面板无法通过 prefab 和进 UI）。
         EnsureOfferEditorOverlay();
         EnsureCardPickerOverlay();
         EnsureOfferPreviewOverlay();
 
         SetTradeDetailsVisible(true);
 
-        // 设置玩家名称显示（不使用 Player 1/2 之类的占位文本）
         if (player1NameText is not null) player1NameText.text = ResolveLocalPlayerDisplayName(payload);
         if (player2NameText is not null) player2NameText.text = ResolvePartnerDisplayName(payload);
 
-        // 根据配置显示/隐藏取消按钮
         cancelButton?.gameObject.SetActive(_canCancel);
 
-        // 刷新本地化文案
         UpdateUIStrings();
 
         RefreshOfferEditorTexts();
@@ -315,16 +277,15 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     protected override void OnShown()
     {
-        // 面板显示完成后再次置顶，避免与 GapOptionsPanel/OptionWidget 的 sibling 顺序竞争。
+
         EnsurePopupTopmost();
     }
 
     protected override void OnHiding()
     {
-        // 隐藏动画开始时禁用交互
+
         _canvasGroup.interactable = false;
 
-        // 取消注册输入处理器
         if (_actionHandlerPushed)
         {
             UiManager.PopActionHandler(this);
@@ -336,7 +297,7 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     protected override void OnHided()
     {
-        // 完全隐藏后重置数据并清空 payload
+
         ResetTradeData();
         _payload = null;
     }
@@ -347,10 +308,9 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void UpdateUIStrings()
     {
-        // 设置初始状态提示为“等待放入卡牌”
+
         UpdateUIStatus(TryLocalize("Trade.WaitingForItems", "等待放入物品..."));
 
-        // 确保 action 按钮文字在 prefab 和运行时面板间保持一致。
         SetButtonText(confirmButton, "确认交易");
         SetButtonText(cancelButton, "取消");
     }
@@ -362,8 +322,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             return fallback;
         }
 
-        // 部分模组包可能未包含这些本地化 key。
-        // 若 key 缺失，直接回退，不触发 Localization.Localize 的 not found 报错。
         if (TryGetLocalizedStringQuiet(key, out string localized))
         {
             return localized;
@@ -412,7 +370,7 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void ResetTradeData()
     {
-        // 清空两侧玩家已放入的卡牌列表
+
         _player1OfferedCards.Clear();
         _player2OfferedCards.Clear();
 
@@ -429,11 +387,9 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         _lastTradeStatus = null;
         _lastPreparingHandledTimestamp = 0;
 
-        // 提前清空可见标签，避免显示过时/占位符名称。
         if (player1NameText is not null) player1NameText.text = string.Empty;
         if (player2NameText is not null) player2NameText.text = string.Empty;
 
-        // 隐藏所有活跃的 overlay。
         _partnerPickerActive = false;
         _blockingCenterMessageActive = false;
         _partnerPickerRoot?.SetActive(false);
@@ -449,16 +405,13 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         _offerActionsRoot?.SetActive(false);
         _offerPreviewRoot?.SetActive(false);
 
-        // 清空玩家1所有交易槽的显示
         player1Slots?.ToList().ForEach(s => s?.ClearSlot());
 
-        // 清空玩家2所有交易槽的显示
         player2Slots?.ToList().ForEach(s => s?.ClearSlot());
 
         ClearOfferPreviewPanel(_localOfferPreviewPanel);
         ClearOfferPreviewPanel(_remoteOfferPreviewPanel);
 
-        // 默认禁止点击确认按钮，直到双方都放入了卡牌
         if (confirmButton?.button is not null)
         {
             confirmButton.button.interactable = false;
@@ -476,20 +429,13 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     #region 交易卡牌操作
 
-    /// <summary>
-    /// 将一张卡牌加入交易。
-    /// </summary>
-    /// <param name="card">要加入交易的卡牌实例。</param>
-    /// <param name="isPlayer1">true 表示玩家 1，false 表示玩家 2。</param>
-    public void AddCardToTrade(Card card, bool isPlayer1)
+        public void AddCardToTrade(Card card, bool isPlayer1)
     {
         if (card is null)
         {
             return;
         }
 
-        // 联机模式下：只允许玩家操作“本地侧”(player1)。
-        // 在应用网络状态时会临时放开限制。
         if (!_isApplyingState && TryIsNetworkTrade(out _) && !isPlayer1)
         {
             return;
@@ -497,7 +443,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
         List<Card> offeredCards = isPlayer1 ? _player1OfferedCards : _player2OfferedCards;
 
-        // 仅在未超过最大交易卡位时添加
         if (offeredCards.Count < _maxTradeSlots)
         {
             offeredCards.Add(card);
@@ -512,19 +457,13 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
         }
     }
 
-    /// <summary>
-    /// 从交易中移除一张已加入的卡牌。
-    /// </summary>
-    /// <param name="card">要移除的卡牌实例。</param>
-    /// <param name="isPlayer1">true 表示玩家 1，false 表示玩家 2。</param>
-    public void RemoveCardFromTrade(Card card, bool isPlayer1)
+        public void RemoveCardFromTrade(Card card, bool isPlayer1)
     {
         if (card is null)
         {
             return;
         }
 
-        // 联机模式下：只允许玩家操作“本地侧”(player1)。
         if (!_isApplyingState && TryIsNetworkTrade(out _) && !isPlayer1)
         {
             return;
@@ -543,7 +482,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 UpdateTradeSlot(offeredCards[i], slots, i);
             }
 
-            // 清空末尾的 UI 槽位（避免旧卡牌残留显示）
             if (slots is not null && offeredCards.Count < slots.Length)
             {
                 slots[offeredCards.Count]?.ClearSlot();
@@ -570,18 +508,16 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
     private void CheckTradeReady()
     {
-        // v2：允许交易任意资产（卡牌/道具/金币/展品）。
+
         bool localHasOffer = (_player1OfferedCards?.Count ?? 0) > 0 || _localMoneyOffer > 0 || _localExhibitOfferIds.Count > 0;
         bool remoteHasOffer = (_player2OfferedCards?.Count ?? 0) > 0;
         bool hasAnyOffer = localHasOffer || remoteHasOffer;
 
-        // 用户需求：确认按钮永不置灰，点击服务端未就绪时会显示状态提示但不发送确认。
         if (confirmButton?.button is not null)
         {
             confirmButton.button.interactable = true;
         }
 
-        // 更新提示文本
         if (hasAnyOffer)
         {
             UpdateUIStatus(TryLocalize("Trade.ReadyToConfirm", "可以确认交易"));
@@ -605,7 +541,7 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     {
         if (TryIsNetworkTrade(out _))
         {
-            // v2：只要交易中包含任意资产（卡牌/道具/金币/展品）即可确认，支持单向赠送与双向交换。
+
             TradeSyncPatch.TradeSessionState state = TradeSyncPatch.GetLastKnown(_tradeId);
             if (state is null)
             {
@@ -626,14 +562,13 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
 
             if (localConfirmed)
             {
-                // 本地已经确认过，等待对方
+
                 UpdateUIStatus(remoteConfirmed
                     ? TryLocalize("Trade.BothConfirmed", "双方已确认，准备交换...")
                     : TryLocalize("Trade.WaitingForPartner", "已确认交易，等待对方确认..."));
                 return;
             }
 
-            // 首次点击确认
             UpdateUIStatus(remoteConfirmed
                 ? TryLocalize("Trade.BothConfirmed", "双方已确认，准备交换...")
                 : TryLocalize("Trade.WaitingForPartner", "已确认交易，等待对方确认..."));
@@ -642,14 +577,12 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             return;
         }
 
-        // 单机：未满足条件时只提示，不执行交易。
         if (_player1OfferedCards.Count <= 0 || _player2OfferedCards.Count <= 0)
         {
             UpdateUIStatus(TryLocalize("Trade.WaitingForItems", "等待放入物品..."));
             return;
         }
 
-        // 单机：沿用本地交易
         UpdateUIStatus("Trade.Confirmed".Localize());
         StartCoroutine(ExecuteTrade());
     }
@@ -672,7 +605,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             return;
         }
 
-        // 输入事件层面的取消处理，需判断当前是否允许取消
         if (_canCancel)
         {
             OnCancelTrade();
@@ -687,7 +619,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
     {
         GameRunController run = ActiveGameRun;
 
-        // 联机：该协程仅用于“交易完成后本地落地”。
         if (TryIsNetworkTrade(out _))
         {
             bool isA = string.Equals(_selfPlayerId, _playerAId, StringComparison.Ordinal);
@@ -702,7 +633,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             yield break;
         }
 
-        // 禁用按钮以防止重复点击触发多次交易
         if (confirmButton?.button is not null)
         {
             confirmButton.button.interactable = false;
@@ -712,7 +642,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             cancelButton.button.interactable = false;
         }
 
-        // 将玩家1提供的卡牌从其卡组移除并加入到玩家2（当前实现视为本地玩家）
         _player1OfferedCards.ForEach(card =>
         {
             run.RemoveDeckCard(card, false);
@@ -722,7 +651,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             });
         });
 
-        // 将玩家2提供的卡牌加入到玩家1侧（目前仅做本地添加）
         _player2OfferedCards.ForEach(card =>
         {
             run.AddDeckCard(card, true, new VisualSourceData
@@ -731,11 +659,8 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             });
         });
 
-        // 更新状态为"交易完成"
         UpdateUIStatus("Trade.Completed".Localize());
 
-        // 发送网络事件通知其他玩家本次交易已经完成
-        // 等待一小段时间，让玩家看清结果
         yield return new WaitForSeconds(TradeCompleteWaitTime);
         Hide();
     }
@@ -773,7 +698,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             _playerAId = payload?.Player1Id ?? _selfPlayerId;
             _playerBId = payload?.Player2Id;
 
-            // 如果未显式指定交易对象（主动发起交易），展示选择玩家界面供玩家点选。
             if (string.IsNullOrWhiteSpace(_playerBId) || string.Equals(_playerBId, _selfPlayerId, StringComparison.Ordinal))
             {
                 Plugin.Logger?.LogInfo($"[TradePanel] SetupTradeSession: partner unresolved, showing picker overlay. self={_selfPlayerId ?? "<null>"}, playerB={_playerBId ?? "<null>"}");
@@ -781,7 +705,6 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
                 return;
             }
 
-            // 已连接：请求 host 驱动的交易会话。离线/本地调试：跳过网络。
             transform.Find("NetworkPlugin_TradePanel_Frame")?.gameObject.SetActive(true);
             if (connected)
             {
@@ -842,178 +765,9 @@ public partial class TradePanel : UiPanel<TradePayload>, IInputActionHandler
             UiManager.GetPanel<TopMessagePanel>().ShowMessage(message);
     }
 
-        // [removed] ShowPartnerPickerOverlay (exists in partial file)
-
-        // [removed] TryShowPartnerPickerWaiting (exists in partial file)
-
-        // [removed] CoPartnerPickerAutoRefreshOnce (exists in partial file)
-
-        // [removed] ForceEnableRaycasts (exists in partial file)
-
-        // [removed] ShowTradeTargetUnavailableDialog (exists in partial file)
-
-        // [removed] HidePartnerPickerOverlay (exists in partial file)
-
-        // [removed] EnsurePopupTopmost (exists in partial file)
-
-        // [removed] SetTradeDetailsVisible (exists in partial file)
-
-        // [removed] SetCanvasInteractable (exists in partial file)
-
-        // [removed] EnsurePartnerPickerOverlay (exists in partial file)
-
-        // [removed] OnPartnerPickerRefreshClicked (exists in partial file)
-
-        // [removed] CopyRectTransform (exists in partial file)
-
-    // [removed] GetDialogField (exists in partial file)
-    // [removed] GetPrivateFieldValue (exists in partial file)
-
-        // [removed] TryFindCommonAncestorRect (exists in partial file)
-
-        // [removed] RebuildPartnerPickerList (exists in partial file)
-
-        // [removed] OnPartnerSelected (exists in partial file)
-
-        // [removed] PopulateLocalDebugRemoteOffer (exists in partial file)
-
-        // [removed] ResolveLocalPlayerDisplayName (exists in partial file)
-
-        // [removed] ResolvePartnerDisplayName (exists in partial file)
-
-        // [removed] IsShopLikeLocation (exists in partial file)
-
-        // [removed] EnsureCardPickerOverlay (exists in partial file)
-
-        // [removed] CardPickerOrderStatus (exists in partial file)
-
-        // [removed] CardPickerFilterStatus (exists in partial file)
-
-        // [removed] CardPickerTag (exists in partial file)
-
-        // [removed] ShowCardPickerOverlay (exists in partial file)
-
-        // [removed] HideCardPickerOverlay (exists in partial file)
-
-        // [removed] EnsureOfferPreviewOverlay (exists in partial file)
-
-        // [removed] CreateOfferPreviewPanel (exists in partial file)
-
-        // [removed] RefreshOfferPreview (exists in partial file)
-
-
-
-        // [removed] RebuildOfferPreviewPanel (exists in partial file)
-
-        // [removed] ClearOfferPreviewPanel (exists in partial file)
-
-        // [removed] OfferPreviewPanelTag (exists in partial file)
-
-        // [removed] RebuildCardPickerList (exists in partial file)
-
-        // [removed] BindCardPickerToggle (exists in partial file)
-
-        // [removed] ApplyCardPickerToggleStates (exists in partial file)
-
-        // [removed] PopulateCardPickerWidgets (exists in partial file)
-
-        // [removed] GetCardPickerDisplayCards (exists in partial file)
-
-        // [removed] CreateCardPickerCardWidget (exists in partial file)
-
-        // [removed] CreateCardPickerSelectionMarker (exists in partial file)
-
-        // [removed] OnCardPickerSelectionChanged (exists in partial file)
-
-        // [removed] ApplyCardPickerSelection (exists in partial file)
-
-    // 标记组件：用于在运行时 overlay 下定位列表容器。
-        // [removed] PartnerPickerTag (exists in partial file)
-
-        // [removed] PartnerCandidateTag (exists in partial file)
-
-        // [removed] PartnerPickerClickCatcher (exists in partial file)
-
-        // [removed] TryIsNetworkTrade (exists in partial file)
-
-        // [removed] TrySubscribeTradeEvents (exists in partial file)
-
-        // [removed] TryUnsubscribeTradeEvents (exists in partial file)
-
-        // [removed] OnTradeStateUpdated (exists in partial file)
-
-        // [removed] ApplyStateToUi (exists in partial file)
-
-        // [removed] TryFindDeckCard (exists in partial file)
-
-        // [removed] TrySendOfferUpdate (exists in partial file)
-
-        // [removed] ApplyNetworkTradeAndClose (exists in partial file)
-
-        // [removed] TryHandlePreparing (exists in partial file)
-
-        // [removed] EnsureOfferEditorOverlay (exists in partial file)
-
-        // [removed] PruneOfferEditorExtraButtons (exists in partial file)
-
-        // [removed] TryGetOwnedMoney (exists in partial file)
-
-        // [removed] EnsureOfferActionsOverlay (exists in partial file)
-
-        // [removed] TextButtonHover (exists in partial file)
-
-        // [removed] CreateTextButton (exists in partial file)
-
-        // [removed] ConfigureSingleLineText (exists in partial file)
-
-        // [removed] TryPickOfferEditorTemplates (exists in partial file)
-
-        // [removed] TryResolveCommonButtonWidget (exists in partial file)
-
-        // [removed] PreferSingleButtonWidget (exists in partial file)
-
-        // [removed] CanEditOffer (exists in partial file)
-
-        // [removed] RefreshOfferEditorTexts (exists in partial file)
-
     #region 展品预览栏
 
-        // [removed] EnsureExhibitPreviewContainers (exists in partial file)
-
-        // [removed] RebuildExhibitPreviews (exists in partial file)
-
-        // [removed] RebuildSideExhibitPreviews (exists in partial file)
-
     #endregion
-
-        // [removed] SetRect (exists in partial file)
-
-    // [removed] _exhibitPickerRoot (exists in partial file)
-
-        // [removed] ShowExhibitPickerOverlay (exists in partial file)
-
-        // [removed] HideExhibitPickerOverlay (exists in partial file)
-
-        // [removed] EnsureExhibitPickerOverlay (exists in partial file)
-
-        // [removed] ExhibitPickerTag (exists in partial file)
-
-        // [removed] RebuildExhibitPickerList (exists in partial file)
-
-        // [removed] CreateExhibitRecordRow (exists in partial file)
-
-        // [removed] BuildExhibitSecondaryText (exists in partial file)
-
-        // [removed] SetButtonText (exists in partial file)
-
-        // [removed] ApplyingStateScope (exists in partial file)
-
-    /// <summary>
-    /// 显示交易 UI 的协程方法，调用方可等待该协程直到面板被关闭。
-    /// </summary>
-    /// <param name="payload">交易配置参数。</param>
-    /// <returns>用于等待面板关闭的协程。</returns>
-        // [removed] ShowTradeAsync (exists in partial file)
 
     #endregion
 }

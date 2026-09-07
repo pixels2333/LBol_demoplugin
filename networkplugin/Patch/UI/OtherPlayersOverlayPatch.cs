@@ -20,14 +20,6 @@ using UnityEngine.UI;
 
 namespace NetworkPlugin.Patch.UI;
 
-/// <summary>
-/// "其他玩家角色实体更新/渲染"补丁（参考 Together in Spire：CharacterEntityUpdateAndRender.java）
-/// <para/>
-/// LBoL 是 Unity 渲染管线，通常不直接 Patch "render()"，因此本补丁采用：
-/// 1) Patch `GameDirector.Update()` 作为全局每帧入口（类比 AbstractDungeon.update / AbstractRoom.update）
-/// 2) 通过 Unity UI 在屏幕上生成"玩家信息框 + 翻页按钮"（类比 RenderInfoBoxes/UpdateInfoBoxes）
-/// 3) 通过监听网络事件维护"其他玩家列表"（类比 P2PManager.GetAllPlayers）
-/// </summary>
 [HarmonyPatch]
 public static partial class OtherPlayersOverlayPatch
 {
@@ -54,56 +46,39 @@ public static partial class OtherPlayersOverlayPatch
     private const float OverlayDebugLogInterval = 0.5f;
     private static readonly Vector3 OverlayRootLocalPosition;
 
-    /// <summary>获取依赖注入容器</summary>
-    private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
+        private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
-    /// <summary>用于同步访问玩家列表的锁</summary>
-    private static readonly object _syncLock;
+        private static readonly object _syncLock;
 
-    /// <summary>存储所有玩家信息的字典，key为PlayerId</summary>
-    private static readonly Dictionary<string, PlayerSummary> _players;
+        private static readonly Dictionary<string, PlayerSummary> _players;
 
-    /// <summary>overlay UI实例</summary>
-    private static OverlayUi _ui;
+        private static OverlayUi _ui;
 
-    /// <summary>默认字体资源（缓存）</summary>
-    private static TMP_FontAsset _defaultFont;
+        private static TMP_FontAsset _defaultFont;
 
-    /// <summary>是否已记录过缺失默认字体警告（避免刷屏）</summary>
-    private static bool _missingFontWarningLogged;
+        private static bool _missingFontWarningLogged;
 
-    /// <summary>当前订阅的网络客户端</summary>
-    private static INetworkClient _subscribedClient;
+        private static INetworkClient _subscribedClient;
 
-    /// <summary>是否已订阅网络事件</summary>
-    private static bool _subscribed;
+        private static bool _subscribed;
 
-    /// <summary>本地客户端在服务器侧的 PlayerId（用于过滤自身渲染）</summary>
-    private static string _selfPlayerId;
+        private static string _selfPlayerId;
 
-    /// <summary>战斗场景中远程玩家角色根节点</summary>
-    private static Transform _remoteCharactersRoot;
+        private static Transform _remoteCharactersRoot;
 
-    /// <summary>战斗场景中远程玩家角色视图缓存（PlayerId -> View）</summary>
-    private static readonly Dictionary<string, RemoteCharacterView> _remoteCharacters;
+        private static readonly Dictionary<string, RemoteCharacterView> _remoteCharacters;
 
-    /// <summary>地图面板中远程玩家图标根节点</summary>
-    private static RectTransform _mapIconsRoot;
+        private static RectTransform _mapIconsRoot;
 
-    /// <summary>地图面板中远程玩家图标缓存（PlayerId -> Icon）</summary>
-    private static readonly Dictionary<string, MapIconUi> _mapIcons;
+        private static readonly Dictionary<string, MapIconUi> _mapIcons;
 
-    /// <summary>地图节点级图标容器缓存（MapNodeWidget -> Root）</summary>
-    private static readonly Dictionary<MapNodeWidget, RectTransform> _mapNodeIconsRoots;
+        private static readonly Dictionary<MapNodeWidget, RectTransform> _mapNodeIconsRoots;
 
-    /// <summary>角色头像缓存（CharacterId -> Sprite）</summary>
-    private static readonly Dictionary<string, Sprite> _avatarCache;
+        private static readonly Dictionary<string, Sprite> _avatarCache;
 
-    /// <summary>缓存的圆形遮罩Sprite</summary>
-    private static Sprite _circleMaskSprite;
+        private static Sprite _circleMaskSprite;
 
-    /// <summary>缓存的圆形遮罩纹理</summary>
-    private static Texture2D _circleMaskTexture;
+        private static Texture2D _circleMaskTexture;
 
     private static readonly Action<string, object> _onGameEventReceived;
     private static readonly Action<bool> _onConnectionStateChanged;
@@ -149,14 +124,11 @@ public static partial class OtherPlayersOverlayPatch
         }
     }
 
-    /// <summary>Overlay 调试日志节流时间</summary>
-    private static float _nextOverlayDebugLogTime;
+        private static float _nextOverlayDebugLogTime;
 
-    /// <summary>上一次 Overlay 调试摘要</summary>
-    private static string _lastOverlayDebugSummary;
+        private static string _lastOverlayDebugSummary;
 
-    /// <summary>帧节流计数 / 脏标记（避免每帧 UI 刷新）。</summary>
-    private static int _uiDirtyCounter;
+        private static int _uiDirtyCounter;
     private const int UiRefreshFrameInterval = 30;
     private static bool _wasOverlayVisible;
     private static bool _wasRemoteCharactersVisible;
@@ -166,22 +138,17 @@ public static partial class OtherPlayersOverlayPatch
 
     #region Harmony 补丁方法
 
-    /// <summary>
-    /// GameDirector.Update() 的后处理补丁
-    /// 每帧执行，负责更新网络连接状态、处理事件、以及刷新UI
-    /// </summary>
-    [HarmonyPatch(typeof(GameDirector), "Update")]
+        [HarmonyPatch(typeof(GameDirector), "Update")]
     [HarmonyPostfix]
     public static void GameDirector_Update_Postfix()
     {
         try
         {
-            // 每帧同步 _selfPlayerId，确保开局渲染远程玩家时过滤逻辑正确
+
             _selfPlayerId = NetworkIdentityTracker.GetSelfPlayerId();
 
             INetworkClient client = TryGetNetworkClient();
 
-            // 每帧仅轮询网络事件（轻量级）
             if (client != null)
             {
                 EnsureSubscribed(client);
@@ -189,13 +156,11 @@ public static partial class OtherPlayersOverlayPatch
                 catch (Exception ex) { Plugin.Logger?.LogWarning($"[OtherPlayersOverlay] PollEvents 失败: {ex.Message}"); }
             }
 
-            // 帧节流：非脏标记触发时跳过完整 UI 刷新
             _uiDirtyCounter++;
             if (!_uiDirty && _uiDirtyCounter < UiRefreshFrameInterval)
                 return;
             _uiDirtyCounter = 0;
-            // 先保存脏标记再重置：玩家列表变化(PlayerJoined/PlayerLeft 等)时需要重建远程角色视图，
-            // 否则中途加入的玩家 spine 视图不会被创建（EnsureRemoteCharacters 仅在可见性切换时调用）。
+
             bool rosterDirty = _uiDirty;
             _uiDirty = false;
 
@@ -230,7 +195,6 @@ public static partial class OtherPlayersOverlayPatch
                 showRemoteChars = ShouldRenderRemoteCharacters(isMapPanelVisible);
             }
 
-            // 仅状态切换时操作 SetActive（避免每帧锁定）
             if (showOverlay != _wasOverlayVisible)
             {
                 _wasOverlayVisible = showOverlay;
@@ -250,8 +214,7 @@ public static partial class OtherPlayersOverlayPatch
             }
             else if (showRemoteChars)
             {
-                // 玩家列表变化时（如中途加入），即使可见性状态未切换也需重建远程角色视图，
-                // 否则新玩家的 spine 视图不会被创建，直到下次地图开关制造 false→true 切换。
+
                 if (rosterDirty) { EnsureRemoteCharacters(); }
                 UpdateRemoteCharactersLayout();
             }
@@ -262,12 +225,7 @@ public static partial class OtherPlayersOverlayPatch
         }
     }
 
-
-    /// <summary>
-    /// GameDirector.MasterTick() 的后处理补丁
-    /// 用于驱动远程玩家 UnitView 的 Tick（否则不会被 GameDirector 维护的列表更新）
-    /// </summary>
-    [HarmonyPatch(typeof(GameDirector), "MasterTick")]
+        [HarmonyPatch(typeof(GameDirector), "MasterTick")]
     [HarmonyPostfix]
     private static void GameDirector_MasterTick_Postfix()
     {
@@ -277,15 +235,11 @@ public static partial class OtherPlayersOverlayPatch
         }
         catch
         {
-            // 忽略：避免影响主循环
+
         }
     }
 
-    /// <summary>
-    /// MapPanel.UpdateMapNodesStatus() 的后处理补丁
-    /// 在地图面板刷新节点状态时，附带刷新远程玩家在地图上的头像标记
-    /// </summary>
-    [HarmonyPatch(typeof(MapPanel), "UpdateMapNodesStatus")]
+        [HarmonyPatch(typeof(MapPanel), "UpdateMapNodesStatus")]
     [HarmonyPostfix]
     public static void MapPanel_UpdateMapNodesStatus_Postfix(MapPanel __instance)
     {
@@ -496,7 +450,7 @@ public static partial class OtherPlayersOverlayPatch
         }
         catch
         {
-            // ignored
+
         }
 
         if (source == null)
@@ -507,7 +461,7 @@ public static partial class OtherPlayersOverlayPatch
             }
             catch
             {
-                // ignored
+
             }
         }
 
@@ -584,7 +538,7 @@ public static partial class OtherPlayersOverlayPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -613,7 +567,7 @@ public static partial class OtherPlayersOverlayPatch
         }
         catch
         {
-            // ignored
+
         }
 
         if (sourceWidget == null)
@@ -893,7 +847,7 @@ public static partial class OtherPlayersOverlayPatch
         }
         catch
         {
-            // ignored
+
         }
 
         try
@@ -1105,7 +1059,7 @@ public static partial class OtherPlayersOverlayPatch
         }
         catch
         {
-            // ignored
+
         }
 
         if (!string.IsNullOrWhiteSpace(player.PlayerId) &&
@@ -1385,28 +1339,18 @@ public static partial class OtherPlayersOverlayPatch
         });
     }
 
-    /// <summary>
-    /// 创建TextMeshPro文本控件
-    /// </summary>
-    /// <param name="parent">父容器</param>
-    /// <param name="name">文本对象名称</param>
-    /// <param name="text">初始文本内容</param>
-    /// <param name="fontSize">字体大小</param>
-    /// <returns>创建的TextMeshProUGUI组件</returns>
-    private static TextMeshProUGUI CreateTmpText(Transform parent, string name, string text, float fontSize)
+        private static TextMeshProUGUI CreateTmpText(Transform parent, string name, string text, float fontSize)
     {
-        // 创建文本容器
+
         GameObject go = new GameObject(name);
         go.transform.SetParent(parent, false);
 
-        // 创建并配置TextMeshProUGUI组件
         TextMeshProUGUI tmp = go.AddComponent<TextMeshProUGUI>();
         tmp.text = text;
         tmp.fontSize = fontSize;
         tmp.color = Color.white;
-        tmp.raycastTarget = false;  // 不阻挡射线检测
+        tmp.raycastTarget = false;
 
-        // 应用默认字体（优先缓存，失败时自动回退到 TMP 全局默认字体）
         TMP_FontAsset font = EnsureDefaultFont(parent);
         if (font != null)
         {
@@ -1609,7 +1553,7 @@ public static partial class OtherPlayersOverlayPatch
         }
         catch
         {
-            // ignored
+
         }
     }
 
@@ -1731,12 +1675,7 @@ public static partial class OtherPlayersOverlayPatch
         }
     }
 
-    /// <summary>
-    /// 确保可用的 TMP 默认字体（按优先级依次尝试：场景现有字体 -> TMP 全局默认字体 -> Unity内置 LiberationSans SDF）
-    /// </summary>
-    /// <param name="searchRoot">用于查找场景现有字体的根节点</param>
-    /// <returns>可用字体；若仍不可用则返回 null</returns>
-    private static TMP_FontAsset EnsureDefaultFont(Transform searchRoot)
+        private static TMP_FontAsset EnsureDefaultFont(Transform searchRoot)
     {
         if (_defaultFont != null)
         {
@@ -1768,7 +1707,7 @@ public static partial class OtherPlayersOverlayPatch
         }
         catch
         {
-            // ignored
+
         }
 
         if (_defaultFont == null && searchRoot != null)
@@ -1784,23 +1723,18 @@ public static partial class OtherPlayersOverlayPatch
             }
             catch
             {
-                // ignored
+
             }
         }
 
         return _defaultFont;
     }
 
-    /// <summary>
-    /// 查找默认字体资源（从父容器的现有文本中提取）
-    /// </summary>
-    /// <param name="root">搜索根节点</param>
-    /// <returns>找到的TMP_FontAsset，如果未找到则返回null</returns>
-    private static TMP_FontAsset FindDefaultFont(Transform root)
+        private static TMP_FontAsset FindDefaultFont(Transform root)
     {
         try
         {
-            // 查找第一个TextMeshProUGUI组件并获取其字体
+
             TextMeshProUGUI tmp = root.GetComponentInChildren<TextMeshProUGUI>(true);
             return tmp?.font;
         }
@@ -1810,16 +1744,11 @@ public static partial class OtherPlayersOverlayPatch
         }
     }
 
-    /// <summary>
-    /// 尝试通过反射获取UiManager的指定UI层级
-    /// </summary>
-    /// <param name="fieldName">字段名称（如 "topLayer"、"topmostLayer"）</param>
-    /// <returns>找到的RectTransform的Transform，如果失败则返回null</returns>
-    private static Transform TryGetUiLayerTransform(string fieldName)
+        private static Transform TryGetUiLayerTransform(string fieldName)
     {
         try
         {
-            // 使用Harmony的Traverse来访问私有字段
+
             RectTransform rect = Traverse.Create(UiManager.Instance).Field(fieldName).GetValue<RectTransform>();
             return rect?.transform;
         }
@@ -2004,38 +1933,27 @@ public static partial class OtherPlayersOverlayPatch
 
     #region 资源缓存
 
-    /// <summary>缓存的白色Sprite</summary>
-    private static Sprite _whiteSprite;
+        private static Sprite _whiteSprite;
 
-    /// <summary>缓存的白色纹理</summary>
-    private static Texture2D _whiteTexture;
+        private static Texture2D _whiteTexture;
 
-    /// <summary>缓存的圆形边框Sprite</summary>
-    private static Sprite _circleBorderSprite;
+        private static Sprite _circleBorderSprite;
 
-    /// <summary>缓存的圆形边框纹理</summary>
-    private static Texture2D _circleBorderTexture;
+        private static Texture2D _circleBorderTexture;
 
-    /// <summary>
-    /// 获取白色Sprite（用作背景和按钮图像）
-    /// 首次调用时创建，之后从缓存返回
-    /// </summary>
-    /// <returns>白色Sprite</returns>
-    private static Sprite GetWhiteSprite()
+        private static Sprite GetWhiteSprite()
     {
-        // 如果已缓存，直接返回
+
         if (_whiteSprite != null)
         {
             return _whiteSprite;
         }
 
-        // 创建1x1的白色纹理
         _whiteTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
         _whiteTexture.SetPixel(0, 0, Color.white);
-        // Apply(updateMipmaps=false, makeNoLongerReadable=true)：不生成Mip，释放内存
+
         _whiteTexture.Apply(false, true);
 
-        // 从纹理创建Sprite
         _whiteSprite = Sprite.Create(_whiteTexture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
         return _whiteSprite;
     }
@@ -2050,7 +1968,7 @@ public static partial class OtherPlayersOverlayPatch
         const int size = 128;
         const float radius = (size - 1) * 0.5f;
         const float center = radius;
-        const float innerRadius = radius - 4f; // 边框宽度为 4 像素
+        const float innerRadius = radius - 4f;
 
         _circleBorderTexture = new Texture2D(size, size, TextureFormat.RGBA32, false);
         for (int y = 0; y < size; y++)
@@ -2102,46 +2020,34 @@ public static partial class OtherPlayersOverlayPatch
 
     #region 数据模型
 
-    /// <summary>
-    /// 玩家摘要信息（用于显示在Overlay中）
-    /// </summary>
-    private sealed class PlayerSummary
+        private sealed class PlayerSummary
     {
-        /// <summary>玩家ID（唯一标识符）</summary>
-        public string PlayerId { get; set; }
+                public string PlayerId { get; set; }
 
-        /// <summary>玩家昵称</summary>
-        public string PlayerName { get; set; }
+                public string PlayerName { get; set; }
 
-        /// <summary>是否为房主</summary>
-        public bool IsHost { get; set; }
+                public bool IsHost { get; set; }
 
-        /// <summary>是否在线连接</summary>
-        public bool IsConnected { get; set; }
+                public bool IsConnected { get; set; }
 
-        /// <summary>角色/模型标识（用于头像/模型加载）</summary>
-        public string CharacterId { get; set; }
+                public string CharacterId { get; set; }
 
-        /// <summary>地图节点 X（未知为 -1）</summary>
-        public int LocationX { get; set; }
+                public int LocationX { get; set; }
 
-        /// <summary>地图节点 Y（未知为 -1）</summary>
-        public int LocationY { get; set; }
+                public int LocationY { get; set; }
 
-        /// <summary>当前章节（未知为 -1）</summary>
-        public int Stage { get; set; }
+                public int Stage { get; set; }
 
-        /// <summary>位置名称（如节点类型字符串）</summary>
-        public string LocationName { get; set; }
+                public string LocationName { get; set; }
 
-        /// <summary>最后更新时间（用于检测玩家心跳）</summary>
-        public float LastUpdateTime { get; set; }
+                public int Hp { get; set; } = -1;
+
+                public int MaxHp { get; set; } = -1;
+
+                public float LastUpdateTime { get; set; }
     }
 
-    /// <summary>
-    /// Overlay UI根容器的数据结构
-    /// </summary>
-    private sealed class OverlayUi
+        private sealed class OverlayUi
     {
         public GameObject Root { get; set; }
         public RectTransform RootRect { get; set; }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections;
 using System.Threading;
@@ -17,123 +17,59 @@ using Newtonsoft.Json.Linq;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// 心情特效同步补丁
-/// 同步Koishi心情（基于UnitEffectName）的循环VFX到其他客户端。
-/// 游戏通过UnitView.TryPlayEffectLoop/EndEffectLoop生成心情循环VFX，
-/// 因此广播这些调用足以让远程观看者同步显示。
-/// 
-/// 同步机制：
-/// 1. 本地玩家触发心情特效时，广播开始/结束事件
-/// 2. 远程客户端收到事件后，在对应的远程玩家UnitView上播放/停止特效
-/// 3. 定期广播当前心情状态，用于处理晚加入的玩家或重新创建的视图
-/// 4. 使用抑制广播机制避免事件循环
-/// </summary>
 [HarmonyPatch]
 public static class MoodEffectSyncPatch
 {
     #region 字段和属性
 
-    /// <summary>
-    /// 服务提供者，用于获取网络客户端实例
-    /// </summary>
-    private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
+        private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
 
-    /// <summary>
-    /// 心情特效名称列表
-    /// </summary>
-    private static readonly string[] MoodEffectNames = { "ChaowoLoop", "BenwoLoop", "DunwuLoop" };
+        private static readonly string[] MoodEffectNames = { "ChaowoLoop", "BenwoLoop", "DunwuLoop" };
 
-    /// <summary>
-    /// 当前订阅的网络客户端实例
-    /// </summary>
-    private static INetworkClient _subscribedClient;
+        private static INetworkClient _subscribedClient;
 
-    /// <summary>
-    /// 是否已订阅网络客户端事件
-    /// </summary>
-    private static bool _subscribed;
+        private static bool _subscribed;
 
-    /// <summary>
-    /// 游戏事件接收回调
-    /// </summary>
-    private static readonly Action<string, object> _onGameEventReceived = OnGameEventReceived;
+        private static readonly Action<string, object> _onGameEventReceived = OnGameEventReceived;
 
-    /// <summary>
-    /// 连接状态变化回调
-    /// </summary>
-    private static readonly Action<bool> _onConnectionStateChanged = OnConnectionStateChanged;
+        private static readonly Action<bool> _onConnectionStateChanged = OnConnectionStateChanged;
 
-    /// <summary>
-    /// 广播抑制深度计数器
-    /// </summary>
-    private static int _suppressBroadcastDepth;
+        private static int _suppressBroadcastDepth;
 
-    /// <summary>
-    /// 上一帧是否在战斗中
-    /// </summary>
-    private static bool _wasInBattle;
+        private static bool _wasInBattle;
 
-    /// <summary>
-    /// 最后广播的特效名称
-    /// </summary>
-    private static string _lastBroadcastedEffectName;
+        private static string _lastBroadcastedEffectName;
     private static long _lastBroadcastedAtTicks;
     private static ulong _lastBroadcastedFp;
 
-    /// <summary>
-    /// 按玩家ID缓存的待处理心情状态
-    /// </summary>
-    private static readonly Dictionary<string, string> _pendingMoodByPlayerId = new(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<string, string> _pendingMoodByPlayerId = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>
-    /// 最近一次成功解析的远端心情状态（按玩家ID）。
-    /// 用于远端 UnitView 被销毁/重建后，仍可在本地重新应用心情循环。
-    /// </summary>
-    private static readonly Dictionary<string, string> _lastKnownMoodByPlayerId = new(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<string, string> _lastKnownMoodByPlayerId = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>
-    /// 已应用到远端视图上的最后一次心情状态（按玩家ID），用于避免重复调用 TryPlay/EndEffectLoop。
-    /// </summary>
-    private static readonly Dictionary<string, string> _lastAppliedMoodByPlayerId = new(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<string, string> _lastAppliedMoodByPlayerId = new(StringComparer.OrdinalIgnoreCase);
 
     #endregion
 
     #region 辅助类
 
-    /// <summary>
-    /// 广播抑制作用域，用于避免事件循环
-    /// </summary>
-    private sealed class SuppressBroadcastScope : IDisposable
+        private sealed class SuppressBroadcastScope : IDisposable
     {
-        /// <summary>
-        /// 构造函数，增加抑制深度
-        /// </summary>
-        public SuppressBroadcastScope() => Interlocked.Increment(ref _suppressBroadcastDepth);
-        
-        /// <summary>
-        /// 析构函数，减少抑制深度
-        /// </summary>
-        public void Dispose() => Interlocked.Decrement(ref _suppressBroadcastDepth);
+                public SuppressBroadcastScope() => Interlocked.Increment(ref _suppressBroadcastDepth);
+
+                public void Dispose() => Interlocked.Decrement(ref _suppressBroadcastDepth);
     }
 
     #endregion
 
     #region 属性访问器
 
-    /// <summary>
-    /// 获取是否处于广播抑制状态
-    /// </summary>
-    private static bool IsSuppressed => Volatile.Read(ref _suppressBroadcastDepth) > 0;
+        private static bool IsSuppressed => Volatile.Read(ref _suppressBroadcastDepth) > 0;
 
     #endregion
 
     #region Harmony补丁
 
-    /// <summary>
-    /// GameDirector.Update的后置补丁，用于每帧更新同步状态
-    /// </summary>
-    [HarmonyPatch(typeof(GameDirector), "Update")]
+        [HarmonyPatch(typeof(GameDirector), "Update")]
     [HarmonyPostfix]
     private static void GameDirector_Update_Postfix()
     {
@@ -147,14 +83,12 @@ public static class MoodEffectSyncPatch
 
             EnsureSubscribed(client);
 
-            // 将缓冲/记录的心情状态应用到现有的远端视图上。
-            // 注意：这只做“本地视图修复”，不做任何定时网络广播。
             ApplyPendingMoodToExistingViews();
 
             bool inBattle = Singleton<GameDirector>.Instance?.PlayerUnitView != null;
             if (!inBattle && _wasInBattle)
             {
-                // 离开战斗：清理本地缓存，避免跨战斗污染。
+
                 _lastBroadcastedEffectName = null;
                 lock (_pendingMoodByPlayerId)
                 {
@@ -171,33 +105,27 @@ public static class MoodEffectSyncPatch
         }
         catch
         {
-            // 忽略异常
+
         }
     }
 
-    /// <summary>
-    /// GameDirector.EnterBattle的后置补丁，用于进入战斗时强制同步
-    /// </summary>
-    [HarmonyPatch(typeof(GameDirector), nameof(GameDirector.EnterBattle))]
+        [HarmonyPatch(typeof(GameDirector), nameof(GameDirector.EnterBattle))]
     [HarmonyPostfix]
     private static void GameDirector_EnterBattle_Postfix()
     {
         try
         {
-            // 进入战斗时：如当前已经有心情循环，则同步一次。
+
             _lastBroadcastedEffectName = null;
             BroadcastMoodStateSync(force: true);
         }
         catch
         {
-            // 忽略异常
+
         }
     }
 
-    /// <summary>
-    /// GameDirector.LeaveBattle的后置补丁，用于离开战斗时清理状态
-    /// </summary>
-    [HarmonyPatch(typeof(GameDirector), nameof(GameDirector.LeaveBattle))]
+        [HarmonyPatch(typeof(GameDirector), nameof(GameDirector.LeaveBattle))]
     [HarmonyPostfix]
     private static void GameDirector_LeaveBattle_Postfix()
     {
@@ -214,13 +142,7 @@ public static class MoodEffectSyncPatch
         }
     }
 
-    /// <summary>
-    /// UnitView.TryPlayEffectLoop的后置补丁，用于广播心情特效开始事件
-    /// </summary>
-    /// <param name="__instance">UnitView实例</param>
-    /// <param name="effectName">特效名称</param>
-    /// <param name="__result">尝试播放的结果</param>
-    [HarmonyPatch(typeof(UnitView), nameof(UnitView.TryPlayEffectLoop))]
+        [HarmonyPatch(typeof(UnitView), nameof(UnitView.TryPlayEffectLoop))]
     [HarmonyPostfix]
     private static void UnitView_TryPlayEffectLoop_Postfix(UnitView __instance, string effectName, ref bool __result)
     {
@@ -254,24 +176,17 @@ public static class MoodEffectSyncPatch
                 EffectName = effectName
             });
 
-            // 需求：不做定时轮询；当心情变化时发送一次“当前心情状态”。
             BroadcastMoodStateSync(force: false);
 
             Plugin.Logger?.LogDebug($"[MoodEffectSync] 已广播心情开始: playerId={selfId}, effect={effectName}");
         }
         catch
         {
-            // 忽略异常
+
         }
     }
 
-    /// <summary>
-    /// UnitView.EndEffectLoop的前置补丁，用于广播心情特效结束事件
-    /// </summary>
-    /// <param name="__instance">UnitView实例</param>
-    /// <param name="effectName">特效名称</param>
-    /// <param name="instant">是否立即结束</param>
-    [HarmonyPatch(typeof(UnitView), nameof(UnitView.EndEffectLoop))]
+        [HarmonyPatch(typeof(UnitView), nameof(UnitView.EndEffectLoop))]
     [HarmonyPrefix]
     private static void UnitView_EndEffectLoop_Prefix(UnitView __instance, string effectName, bool instant)
     {
@@ -306,14 +221,13 @@ public static class MoodEffectSyncPatch
                 Instant = instant
             });
 
-            // 需求：心情变化时发送同步事件（结束也算变化）。
             BroadcastMoodStateSync(force: true);
 
             Plugin.Logger?.LogDebug($"[MoodEffectSync] 已广播心情结束: playerId={selfId}, effect={effectName}, instant={instant}");
         }
         catch
         {
-            // 忽略异常
+
         }
     }
 
@@ -321,18 +235,10 @@ public static class MoodEffectSyncPatch
 
     #region 网络客户端管理
 
-    /// <summary>
-    /// 尝试获取网络客户端实例
-    /// </summary>
-    /// <returns>网络客户端实例，如果获取失败则返回null</returns>
-    private static INetworkClient TryGetClient()
+        private static INetworkClient TryGetClient()
         => ServiceProvider?.GetService<INetworkClient>();
 
-    /// <summary>
-    /// 确保订阅指定网络客户端的事件
-    /// </summary>
-    /// <param name="client">要订阅的网络客户端</param>
-    private static void EnsureSubscribed(INetworkClient client)
+        private static void EnsureSubscribed(INetworkClient client)
     {
         if (_subscribed && ReferenceEquals(_subscribedClient, client))
         {
@@ -349,7 +255,7 @@ public static class MoodEffectSyncPatch
         }
         catch
         {
-            // 忽略异常
+
         }
 
         _subscribedClient = client;
@@ -363,18 +269,13 @@ public static class MoodEffectSyncPatch
 
     #region 事件处理
 
-    /// <summary>
-    /// 连接状态变化事件处理
-    /// </summary>
-    /// <param name="isConnected">是否已连接</param>
-    private static void OnConnectionStateChanged(bool isConnected)
+        private static void OnConnectionStateChanged(bool isConnected)
     {
         if (!isConnected)
         {
             return;
         }
 
-        // 重新连接时，重新广播当前心情状态（如果有），以便其他客户端可以立即渲染
         try
         {
             _lastBroadcastedEffectName = null;
@@ -382,16 +283,11 @@ public static class MoodEffectSyncPatch
         }
         catch
         {
-            // 忽略异常
+
         }
     }
 
-    /// <summary>
-    /// 游戏事件接收处理
-    /// </summary>
-    /// <param name="eventType">事件类型</param>
-    /// <param name="payload">事件负载</param>
-    private static void OnGameEventReceived(string eventType, object payload)
+        private static void OnGameEventReceived(string eventType, object payload)
     {
         if (eventType != NetworkMessageTypes.OnMoodEffectLoopStarted
             && eventType != NetworkMessageTypes.OnMoodEffectLoopEnded
@@ -410,7 +306,7 @@ public static class MoodEffectSyncPatch
             string senderId = GetString(root, "SenderPlayerId");
             if (string.IsNullOrWhiteSpace(senderId))
             {
-                // 备用方案：如果只有SenderName，则通过名称解析
+
                 string senderName = GetString(root, "SenderName");
                 if (!string.IsNullOrWhiteSpace(senderName))
                 {
@@ -495,7 +391,7 @@ public static class MoodEffectSyncPatch
         }
         catch
         {
-            // 忽略异常
+
         }
     }
 
@@ -503,17 +399,14 @@ public static class MoodEffectSyncPatch
 
     #region 状态管理
 
-    /// <summary>
-    /// 将缓冲的心情状态应用到现有的视图上
-    /// </summary>
-    private static void ApplyPendingMoodToExistingViews()
+        private static void ApplyPendingMoodToExistingViews()
     {
         Dictionary<string, string> snapshot;
         lock (_pendingMoodByPlayerId)
         {
             if (_pendingMoodByPlayerId.Count == 0)
             {
-                // 仍然尝试从 lastKnown 表中恢复（处理“远端视图重建后没有再来事件”的情况）。
+
                 snapshot = null;
             }
             else
@@ -542,7 +435,6 @@ public static class MoodEffectSyncPatch
                 continue;
             }
 
-            // 去重：避免每帧重复对同一远端玩家调用 TryPlay/EndEffectLoop。
             bool shouldApply;
             lock (_lastKnownMoodByPlayerId)
             {
@@ -561,19 +453,12 @@ public static class MoodEffectSyncPatch
         }
     }
 
-    /// <summary>
-    /// 广播当前心情状态同步
-    /// </summary>
-    private static void BroadcastMoodStateSync()
+        private static void BroadcastMoodStateSync()
     {
         BroadcastMoodStateSync(force: false);
     }
 
-    /// <summary>
-    /// 广播当前心情状态同步。
-    /// force=true 时无视去重/限流（用于重连/入战等关键时刻）。
-    /// </summary>
-    private static void BroadcastMoodStateSync(bool force)
+        private static void BroadcastMoodStateSync(bool force)
     {
         INetworkClient client = TryGetClient();
         if (client == null || !client.IsConnected)
@@ -584,16 +469,11 @@ public static class MoodEffectSyncPatch
         bool hasEffect = TryGetLocalActiveMoodEffectName(out string effectName);
         string normalized = NormalizeEffectName(effectName, hasEffect);
 
-        // 避免重复广播相同状态；TryPlayEffectLoop在接收端是幂等的，
-        // 但我们保持低流量
-
         if (!OtherPlayersOverlayPatch.TryGetSelfPlayer(out string selfId, out string selfName))
         {
             return;
         }
 
-        // 二级限流：即使 force=true，也避免在极短时间内重复发送相同 payload。
-        // 这能显著降低重连/入战等路径抖动导致的刷屏。
         long nowTicks = DateTime.UtcNow.Ticks;
         ulong fp = NetLogHelper.ComputeFnv1a64($"{selfId}|{normalized}");
         long minIntervalTicks = force ? TimeSpan.FromMilliseconds(300).Ticks : TimeSpan.FromMilliseconds(150).Ticks;
@@ -602,7 +482,6 @@ public static class MoodEffectSyncPatch
             return;
         }
 
-        // 去重：只有状态变化（或 force）才发送，避免刷屏。
         if (!force)
         {
             bool sameState = string.Equals(normalized, _lastBroadcastedEffectName, StringComparison.OrdinalIgnoreCase);
@@ -632,7 +511,7 @@ public static class MoodEffectSyncPatch
     {
         if (!hasEffect)
         {
-            // 未检测到心情特效时，统一为 <none>，避免 null/空字符串导致“变化”误判。
+
             return "<none>";
         }
 
@@ -648,25 +527,14 @@ public static class MoodEffectSyncPatch
 
     #region 辅助方法
 
-    /// <summary>
-    /// 检查指定的特效名称是否为心情特效
-    /// </summary>
-    /// <param name="effectName">特效名称</param>
-    /// <returns>如果是心情特效则返回true，否则返回false</returns>
-    private static bool IsMoodEffect(string effectName)
+        private static bool IsMoodEffect(string effectName)
     {
         return string.Equals(effectName, "ChaowoLoop", StringComparison.OrdinalIgnoreCase)
                || string.Equals(effectName, "BenwoLoop", StringComparison.OrdinalIgnoreCase)
                || string.Equals(effectName, "DunwuLoop", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// 检查指定视图上是否正在播放指定的特效循环
-    /// </summary>
-    /// <param name="view">UnitView实例</param>
-    /// <param name="effectName">特效名称</param>
-    /// <returns>如果正在播放则返回true，否则返回false</returns>
-    private static bool IsEffectLoopPlaying(UnitView view, string effectName)
+        private static bool IsEffectLoopPlaying(UnitView view, string effectName)
     {
         if (view == null || string.IsNullOrWhiteSpace(effectName))
         {
@@ -694,12 +562,7 @@ public static class MoodEffectSyncPatch
         }
     }
 
-    /// <summary>
-    /// 尝试获取本地当前激活的心情特效名称
-    /// </summary>
-    /// <param name="effectName">输出的特效名称</param>
-    /// <returns>如果找到心情特效则返回true，否则返回false</returns>
-    private static bool TryGetLocalActiveMoodEffectName(out string effectName)
+        private static bool TryGetLocalActiveMoodEffectName(out string effectName)
     {
         effectName = null;
 
@@ -729,19 +592,14 @@ public static class MoodEffectSyncPatch
         }
         catch
         {
-            // 忽略异常
+
         }
 
         effectName = null;
         return false;
     }
 
-    /// <summary>
-    /// 将心情状态应用到指定的视图上
-    /// </summary>
-    /// <param name="view">要应用状态的UnitView</param>
-    /// <param name="currentEffectName">当前特效名称，如果为null则清除所有心情特效</param>
-    private static void ApplyMoodStateToView(UnitView view, string currentEffectName)
+        private static void ApplyMoodStateToView(UnitView view, string currentEffectName)
     {
         if (view == null)
         {
@@ -750,7 +608,7 @@ public static class MoodEffectSyncPatch
 
         using (new SuppressBroadcastScope())
         {
-            // 确保当前心情循环存在（如果有），并清除过时的心情循环而不产生警告
+
             if (!string.IsNullOrWhiteSpace(currentEffectName))
             {
                 view.TryPlayEffectLoop(currentEffectName);
@@ -794,7 +652,6 @@ public static class MoodEffectSyncPatch
                 return true;
             }
 
-            // 最后兜底：把 payload 先序列化为 JSON 再解析。
             root = JObject.Parse(JsonCompat.Serialize(payload));
             return true;
         }

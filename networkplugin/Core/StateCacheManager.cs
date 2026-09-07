@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using NetworkPlugin.Network.Event;
 using NetworkPlugin.Network.Messages;
@@ -6,30 +6,17 @@ using NetworkPlugin.Configuration;
 
 namespace NetworkPlugin.Core;
 
-/// <summary>
-/// 本地状态缓存管理器
-/// 负责存储最近的游戏状态快照、验证事件时间戳、应用远程事件到缓存
-/// </summary>
 internal sealed class StateCacheManager
 {
-    /// <summary>本地状态缓存字典 (key -> (data, updatedTime))</summary>
-    private readonly Dictionary<string, (object Data, DateTime UpdatedTime)> _stateCache = new(StringComparer.Ordinal);
-    /// <summary>同步配置</summary>
-    private readonly SyncConfiguration _config;
+        private readonly Dictionary<string, (object Data, DateTime UpdatedTime)> _stateCache = new(StringComparer.Ordinal);
+        private readonly SyncConfiguration _config;
 
-    /// <summary>
-    /// 初始化状态缓存管理器
-    /// </summary>
-    /// <param name="config">同步配置</param>
-    public StateCacheManager(SyncConfiguration config)
+        public StateCacheManager(SyncConfiguration config)
     {
         _config = config ?? throw new ArgumentNullException(nameof(config));
     }
 
-    /// <summary>
-    /// 更新本地状态缓存
-    /// </summary>
-    public void UpdateLocalState(GameEvent gameEvent)
+        public void UpdateLocalState(GameEvent gameEvent)
     {
         if (gameEvent == null) return;
 
@@ -37,7 +24,6 @@ internal sealed class StateCacheManager
         DateTime now = DateTime.UtcNow;
         _stateCache[stateKey] = (gameEvent.Data, now);
 
-        // 清理包含 Old/Temp 或超过 StateCacheExpiry 的过期状态缓存条目
         DateTime cutoffTime = now - _config.StateCacheExpiry;
         List<string> keysToRemove = [];
         foreach (var kvp in _stateCache)
@@ -49,10 +35,7 @@ internal sealed class StateCacheManager
             _stateCache.Remove(key);
     }
 
-    /// <summary>
-    /// 验证事件时间戳的有效性
-    /// </summary>
-    public bool ValidateEventTimestamp(DateTime timestamp)
+        public bool ValidateEventTimestamp(DateTime timestamp)
     {
         var now = DateTime.Now;
         var maxFutureTime = now.AddSeconds(5);
@@ -76,10 +59,7 @@ internal sealed class StateCacheManager
         return true;
     }
 
-    /// <summary>
-    /// 将从网络接收的远程事件应用到本地状态缓存
-    /// </summary>
-    public void ApplyRemoteEvent(GameEvent gameEvent)
+        public void ApplyRemoteEvent(GameEvent gameEvent)
     {
         if (gameEvent == null) return;
 
@@ -89,7 +69,6 @@ internal sealed class StateCacheManager
             return;
         }
 
-        // 控制类消息不写入缓存（缓存仅用于业务状态粗粒度对账）
         if (string.Equals(gameEvent.EventType, NetworkMessageTypes.FullStateSyncRequest, StringComparison.Ordinal) ||
             string.Equals(gameEvent.EventType, NetworkMessageTypes.FullStateSyncResponse, StringComparison.Ordinal) ||
             string.Equals(gameEvent.EventType, "DirectMessage", StringComparison.Ordinal))
@@ -102,10 +81,6 @@ internal sealed class StateCacheManager
         gameEvent.IsProcessed = true;
     }
 
-    /// <summary>
-    /// 获取状态缓存条目数
-    /// </summary>
-    public int CachedStateCount => _stateCache.Count;
-
+        public int CachedStateCount => _stateCache.Count;
 
 }

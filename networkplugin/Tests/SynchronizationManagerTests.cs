@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -44,9 +44,8 @@ public class SynchronizationManagerTests : IDisposable
             _configManager
         );
 
-        // 初始化 NetworkIdentityTracker 状态，避免其被先前测试的状态污染
         NetworkIdentityTracker.EnsureSubscribed(_mockNetworkClient.Object);
-        // 通过 Mock 发送 Welcome 消息，使得 NetworkIdentityTracker.GetSelfPlayerId() 返回有效的值
+
         var welcomePayload = "{\"PlayerId\":\"player_me\",\"IsHost\":false,\"Players\":[{\"PlayerId\":\"player_me\",\"IsHost\":false}]}";
         _mockNetworkClient.Raise(m => m.OnGameEventReceived += null, NetworkMessageTypes.Welcome, welcomePayload);
     }
@@ -61,7 +60,7 @@ public class SynchronizationManagerTests : IDisposable
             }
             catch
             {
-                // ignore
+
             }
         }
     }
@@ -78,30 +77,26 @@ public class SynchronizationManagerTests : IDisposable
     [Fact]
     public void SyncGameEventToNetwork_NetworkAvailable_SendsEvent()
     {
-        // Arrange
+
         _mockNetworkClient.Setup(c => c.IsConnected).Returns(true);
         var gameEvent = new GameEvent("CardPlayed", "player_me", new Dictionary<string, object> { ["CardId"] = "card_1" });
 
-        // Act
         _syncManager.SyncGameEventToNetwork(gameEvent);
 
-        // Assert
         _mockNetworkClient.Verify(c => c.SendRequest("CardPlayed", It.IsAny<object>()), Times.Once);
     }
 
     [Fact]
     public void SyncGameEventToNetwork_NetworkUnavailable_QueuesEvent()
     {
-        // Arrange
+
         _mockNetworkClient.Setup(c => c.IsConnected).Returns(false);
         var gameEvent = new GameEvent("CardPlayed", "player_me", new Dictionary<string, object> { ["CardId"] = "card_1" });
 
-        // Act
         _syncManager.SyncGameEventToNetwork(gameEvent);
 
-        // Assert
         _mockNetworkClient.Verify(c => c.SendRequest(It.IsAny<string>(), It.IsAny<object>()), Times.Never);
-        
+
         var stats = _syncManager.GetSyncStatistics();
         var statsProp = stats.GetType().GetProperty("QueuedEvents");
         Assert.NotNull(statsProp);
@@ -112,22 +107,20 @@ public class SynchronizationManagerTests : IDisposable
     [Fact]
     public void SyncGameEventToNetwork_FilteredEvent_IsIgnored()
     {
-        // Arrange
+
         _mockNetworkClient.Setup(c => c.IsConnected).Returns(true);
         _configManager.EnableCardSync.Value = false;
         var gameEvent = new GameEvent(NetworkMessageTypes.OnCardPlayStart, "player_me", new Dictionary<string, object> { ["CardId"] = "card_1" });
 
-        // Act
         _syncManager.SyncGameEventToNetwork(gameEvent);
 
-        // Assert
         _mockNetworkClient.Verify(c => c.SendRequest(It.IsAny<string>(), It.IsAny<object>()), Times.Never);
     }
 
     [Fact]
     public void OnConnectionRestored_SendsQueuedEvents_And_RequestsFullSync()
     {
-        // Arrange
+
         _mockNetworkClient.Setup(c => c.IsConnected).Returns(false);
         var event1 = new GameEvent("CardPlayed", "player_me", new Dictionary<string, object> { ["CardId"] = "card_1" });
         var event2 = new GameEvent("CardPlayed", "player_me", new Dictionary<string, object> { ["CardId"] = "card_2" });
@@ -141,10 +134,8 @@ public class SynchronizationManagerTests : IDisposable
 
         _mockNetworkClient.Setup(c => c.IsConnected).Returns(true);
 
-        // Act
         _syncManager.OnConnectionRestored();
 
-        // Assert
         _mockNetworkClient.Verify(c => c.SendRequest("CardPlayed", It.IsAny<object>()), Times.Exactly(2));
         _mockNetworkClient.Verify(c => c.SendRequest(NetworkMessageTypes.OnConnectionEstablished.ToString(), It.IsAny<object>()), Times.Once);
         _mockNetworkClient.Verify(c => c.SendRequest(NetworkMessageTypes.FullStateSyncRequest.ToString(), It.IsAny<object>()), Times.Once);
@@ -157,19 +148,16 @@ public class SynchronizationManagerTests : IDisposable
     [Fact]
     public void OnConnectionLost_SetsUnavailable_And_SwitchesToOfflineMode()
     {
-        // Arrange
+
         _mockNetworkClient.Setup(c => c.IsConnected).Returns(true);
         _syncManager.SyncGameEventToNetwork(new GameEvent("Dummy", "player_me", new Dictionary<string, object>()));
-        
-        // 丢失连接时，网络底层已断开
+
         _mockNetworkClient.Setup(c => c.IsConnected).Returns(false);
 
-        // Act
         _syncManager.OnConnectionLost();
 
-        // Assert
         Assert.False(_netAvailTracker.IsAvailable);
-        // 网络丢失后切换到离线模式，不尝试向底层发送 ConnectionLost 消息
+
         _mockNetworkClient.Verify(c => c.SendRequest("ConnectionLost", It.IsAny<object>()), Times.Never);
         _mockNetworkClient.Verify(c => c.SendGameEventData("ConnectionLost", It.IsAny<object>()), Times.Never);
     }
@@ -177,17 +165,15 @@ public class SynchronizationManagerTests : IDisposable
     [Fact]
     public void RequestFullSync_ThrottleActive_SkipsSubsequentRequests()
     {
-        // Arrange
+
         _mockNetworkClient.Setup(c => c.IsConnected).Returns(true);
 
-        // Act & Assert
         _syncManager.RequestFullSync();
         _mockNetworkClient.Verify(c => c.SendRequest(NetworkMessageTypes.FullStateSyncRequest.ToString(), It.IsAny<object>()), Times.Once);
 
         _syncManager.RequestFullSync();
         _mockNetworkClient.Verify(c => c.SendRequest(NetworkMessageTypes.FullStateSyncRequest.ToString(), It.IsAny<object>()), Times.Once);
 
-        // 绕过节流限制
         _netAvailTracker.LastFullSyncRequestAtTicks = DateTime.UtcNow.Ticks - TimeSpan.FromSeconds(5).Ticks;
 
         _syncManager.RequestFullSync();
@@ -206,13 +192,11 @@ public class SynchronizationManagerTests : IDisposable
     [Fact]
     public void SendCardPlayEvent_ConstructsCorrectGameEvent()
     {
-        // Arrange
+
         _mockNetworkClient.Setup(c => c.IsConnected).Returns(true);
 
-        // Act
         _syncManager.SendCardPlayEvent("c1", "Strike", "Attack", new[] { 1, 0, 0, 0 }, "EnemySelector", null);
 
-        // Assert
         _mockNetworkClient.Verify(c => c.SendRequest("CardPlayed", It.Is<object>(obj =>
             obj is Dictionary<string, object> &&
             CheckDictValue(obj, "CardId", "c1") &&
@@ -223,13 +207,11 @@ public class SynchronizationManagerTests : IDisposable
     [Fact]
     public void SendManaConsumeEvent_ConstructsCorrectGameEvent_WithConvertedMana()
     {
-        // Arrange
+
         _mockNetworkClient.Setup(c => c.IsConnected).Returns(true);
 
-        // Act
         _syncManager.SendManaConsumeEvent(new[] { 2, 2, 0, 0 }, new[] { 1, 0, 0, 0 }, "CardPlay");
 
-        // Assert
         _mockNetworkClient.Verify(c => c.SendRequest("ManaConsumeStarted", It.Is<object>(obj =>
             obj is Dictionary<string, object> &&
             CheckDictValue(obj, "Source", "CardPlay")
@@ -239,13 +221,11 @@ public class SynchronizationManagerTests : IDisposable
     [Fact]
     public void SendGapStationEvent_ConstructsCorrectGameEvent()
     {
-        // Arrange
+
         _mockNetworkClient.Setup(c => c.IsConnected).Returns(true);
 
-        // Act
         _syncManager.SendGapStationEvent("GapTradeOptionSelected", "TradeGoods", "FullHealth");
 
-        // Assert
         _mockNetworkClient.Verify(c => c.SendRequest("GapTradeOptionSelected", It.Is<object>(obj =>
             obj is Dictionary<string, object> &&
             CheckDictValue(obj, "OptionData", "TradeGoods") &&
@@ -256,7 +236,7 @@ public class SynchronizationManagerTests : IDisposable
     [Fact]
     public void ProcessEventFromNetwork_EventEnqueuedAndApplied()
     {
-        // Arrange
+
         var rawEvent = new Dictionary<string, object>
         {
             ["EventType"] = "OnDamageDealt",
@@ -265,10 +245,8 @@ public class SynchronizationManagerTests : IDisposable
             ["PlayerName"] = "Bob"
         };
 
-        // Act
         _syncManager.ProcessEventFromNetwork(rawEvent);
 
-        // Assert
         var stats = _syncManager.GetSyncStatistics();
         var cachedCount = (int)stats.GetType().GetProperty("CachedStates")!.GetValue(stats)!;
         Assert.Equal(1, cachedCount);
@@ -277,7 +255,7 @@ public class SynchronizationManagerTests : IDisposable
     [Fact]
     public void SyncGameEventToNetwork_LargeBatchSingleThread_QueuesAllEvents()
     {
-        // Arrange
+
         _configManager.MaxQueueSize.Value = 500;
         var syncManager = new SynchronizationManager(
             _mockNetworkClient.Object,
@@ -288,14 +266,12 @@ public class SynchronizationManagerTests : IDisposable
         _mockNetworkClient.Setup(c => c.IsConnected).Returns(false);
         int totalEvents = 400;
 
-        // Act
         for (int i = 0; i < totalEvents; i++)
         {
             var gameEvent = new GameEvent("CardPlayed", "player_me", new Dictionary<string, object> { ["Index"] = i });
             syncManager.SyncGameEventToNetwork(gameEvent);
         }
 
-        // Assert
         var stats = syncManager.GetSyncStatistics();
         var queuedCount = (int)stats.GetType().GetProperty("QueuedEvents")!.GetValue(stats)!;
         Assert.Equal(totalEvents, queuedCount);
@@ -304,7 +280,7 @@ public class SynchronizationManagerTests : IDisposable
     [Fact]
     public void SyncGameEventToNetwork_ExceedsMaxQueueSize_CapsQueue()
     {
-        // Arrange
+
         _configManager.MaxQueueSize.Value = 50;
         var syncManager = new SynchronizationManager(
             _mockNetworkClient.Object,
@@ -314,14 +290,12 @@ public class SynchronizationManagerTests : IDisposable
         );
         _mockNetworkClient.Setup(c => c.IsConnected).Returns(false);
 
-        // Act
         for (int i = 0; i < 100; i++)
         {
             var gameEvent = new GameEvent("CardPlayed", "player_me", new Dictionary<string, object> { ["Index"] = i });
             syncManager.SyncGameEventToNetwork(gameEvent);
         }
 
-        // Assert
         var stats = syncManager.GetSyncStatistics();
         var queuedCount = (int)stats.GetType().GetProperty("QueuedEvents")!.GetValue(stats)!;
         Assert.Equal(50, queuedCount);

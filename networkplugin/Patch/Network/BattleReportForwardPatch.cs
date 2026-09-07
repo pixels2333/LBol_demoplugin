@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text.Json;
@@ -11,16 +11,6 @@ using NetworkPlugin.Utils;
 
 namespace NetworkPlugin.Patch.Network;
 
-/// <summary>
-/// Host 侧转发补丁：把客户端上报的 Battle*Report 转发成 Battle*Broadcast。
-/// </summary>
-/// <remarks>
-/// 约定：
-/// - 客户端（非 Host）只发送 *Report，上报给 Host/Server。
-/// - Host 负责把 Report 重新广播为 Broadcast，让其他客户端都能收到一致事件。
-///
-/// 注意：这里只做“事件转发”，不做任何战斗状态落地；真正落地仍由各自客户端的接收逻辑决定。
-/// </remarks>
 [HarmonyPatch]
 public static class BattleReportForwardPatch
 {
@@ -30,7 +20,6 @@ public static class BattleReportForwardPatch
 	private static bool _subscribed;
 	private static INetworkClient _subscribedClient;
 
-	// 轻量去重：同一 PlayerId+TargetId+EventType 在同一 Timestamp 下只转发一次。
 	private static readonly Dictionary<string, long> _lastForwardedTicksByKey = new(StringComparer.Ordinal);
 	private const int MaxForwardedKeys = 256;
 
@@ -68,9 +57,7 @@ public static class BattleReportForwardPatch
 	[HarmonyTargetMethod]
 	private static MethodBase TargetMethod()
 	{
-		// 这里必须返回一个非 null 的 MethodBase，否则 Harmony 会在 PatchAll 期间直接抛异常并中止所有补丁。
-		// 以源码为准：GameDirector 位于 LBoL.Presentation.Units.GameDirector，且 Update() 是 private。
-		// 用 TypeByName + DeclaredMethod，兼容 private 方法与不同构建下的程序集加载差异。
+
 		Type t = AccessTools.TypeByName("LBoL.Presentation.Units.GameDirector")
 		         ?? AccessTools.TypeByName("LBoL.Presentation.GameDirector")
 		         ?? AccessTools.TypeByName("LBoL.Presentation.UI.GameDirector");
@@ -85,7 +72,7 @@ public static class BattleReportForwardPatch
 	[HarmonyPrepare]
 	private static bool Prepare()
 	{
-		// 如果目标方法不存在则跳过该补丁，避免因单个补丁失效导致整个插件 PatchAll 崩溃。
+
 		return TargetMethod() != null;
 	}
 
@@ -118,7 +105,7 @@ public static class BattleReportForwardPatch
 		}
 		catch
 		{
-			// ignored
+
 		}
 
 		try
@@ -158,7 +145,6 @@ public static class BattleReportForwardPatch
 			return;
 		}
 
-		// 只有 Host 才做转发。
 		if (!NetworkIdentityTracker.GetSelfIsHost())
 		{
 			return;
@@ -208,13 +194,12 @@ public static class BattleReportForwardPatch
 			return;
 		}
 
-		// 直接复用原 payload（Host 不修改内容，只负责转发）。
 		client.SendGameEventData(broadcastType, payload);
 	}
 
 	private static string MapToBroadcastType(string reportType)
 	{
-		// 明确映射：避免把未知 Report 误转发。
+
 		return reportType switch
 		{
 			NetworkMessageTypes.BattlePlayerDamageReport => NetworkMessageTypes.BattlePlayerDamageBroadcast,
