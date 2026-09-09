@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using HarmonyLib;
@@ -23,27 +23,19 @@ public static class GameSeedSyncPatch
         => ServiceProvider?.GetService<INetworkClient>();
 
     private static readonly object CacheLock = new();
-    private static ulong? _cachedRootSeed;
-    private static int? _cachedDifficulty;
-    private static int? _cachedPuzzles;
-    private static int? _cachedGameMode;
-    private static bool? _cachedShowRandomResult;
-    private static List<string>? _cachedStageTypeNames;
-    private static string? _cachedDebutAdventureTypeName;
-    private static string? _cachedHostPlayerId;
-    private static List<string>? _cachedJadeBoxIds;
+    private static HostGameStartConfig? _cachedConfig;
 
     private static bool _subscribed;
     private static INetworkClient? _subscribedClient;
     private static readonly Action<string, object> OnGameEventReceivedHandler = HandleGameEventReceived;
 
-        public static bool TryGetCachedHostSeed(out ulong rootSeed)
+    public static bool TryGetCachedHostSeed(out ulong rootSeed)
     {
         lock (CacheLock)
         {
-            if (_cachedRootSeed.HasValue)
+            if (_cachedConfig != null && _cachedConfig.RootSeed != 0)
             {
-                rootSeed = _cachedRootSeed.Value;
+                rootSeed = _cachedConfig.RootSeed;
                 return true;
             }
         }
@@ -51,7 +43,21 @@ public static class GameSeedSyncPatch
         return false;
     }
 
-        public static bool TryGetCachedHostConfig(
+    public static bool TryGetCachedHostConfig(out HostGameStartConfig? config)
+    {
+        lock (CacheLock)
+        {
+            if (_cachedConfig != null && _cachedConfig.RootSeed != 0)
+            {
+                config = _cachedConfig.Clone();
+                return true;
+            }
+        }
+        config = null;
+        return false;
+    }
+
+    public static bool TryGetCachedHostConfig(
         out ulong rootSeed,
         out GameDifficulty difficulty,
         out PuzzleFlag puzzles,
@@ -61,36 +67,63 @@ public static class GameSeedSyncPatch
         out string? debutAdventureTypeName,
         out List<string> jadeBoxIds)
     {
+        if (TryGetCachedHostConfig(out var config) && config != null)
+        {
+            rootSeed = config.RootSeed;
+            difficulty = config.Difficulty;
+            puzzles = config.Puzzles;
+            gameMode = config.GameMode;
+            showRandomResult = config.ShowRandomResult;
+            stageTypeNames = config.StageTypeNames;
+            debutAdventureTypeName = config.DebutAdventureTypeName;
+            jadeBoxIds = config.JadeBoxIds;
+            return true;
+        }
+
+        rootSeed = default;
+        difficulty = default;
+        puzzles = default;
+        gameMode = default;
+        showRandomResult = default;
+        stageTypeNames = new();
+        debutAdventureTypeName = null;
+        jadeBoxIds = new();
+        return false;
+    }
+
+    public static void SetCachedResumeConfig(JsonElement root)
+    {
         lock (CacheLock)
         {
-            rootSeed = default;
-            difficulty = default;
-            puzzles = default;
-            gameMode = default;
-            showRandomResult = default;
-            stageTypeNames = new();
-            debutAdventureTypeName = null;
-            jadeBoxIds = new();
+            _cachedConfig ??= new HostGameStartConfig();
 
-            if (!_cachedRootSeed.HasValue ||
-                _cachedDifficulty == null ||
-                _cachedPuzzles == null ||
-                _cachedGameMode == null ||
-                _cachedStageTypeNames == null ||
-                _cachedStageTypeNames.Count == 0)
+            if (root.TryGetProperty("RootSeed", out var sElem) && sElem.TryGetUInt64(out var sVal))
+                _cachedConfig.RootSeed = sVal;
+            if (root.TryGetProperty("Difficulty", out var dElem) && dElem.TryGetInt32(out var dVal))
+                _cachedConfig.Difficulty = (GameDifficulty)dVal;
+            if (root.TryGetProperty("GameMode", out var mElem) && mElem.TryGetInt32(out var mVal))
+                _cachedConfig.GameMode = (GameMode)mVal;
+            if (root.TryGetProperty("Puzzles", out var pElem) && pElem.TryGetInt32(out var pVal))
+                _cachedConfig.Puzzles = (PuzzleFlag)pVal;
+            else
+                _cachedConfig.Puzzles = PuzzleFlag.None;
+            if (root.TryGetProperty("ShowRandomResult", out var rElem) && (rElem.ValueKind == JsonValueKind.True || rElem.ValueKind == JsonValueKind.False))
+                _cachedConfig.ShowRandomResult = rElem.GetBoolean();
+
+            if (_cachedConfig.StageTypeNames == null || _cachedConfig.StageTypeNames.Count == 0)
             {
-                return false;
+                _cachedConfig.StageTypeNames = new List<string>
+                {
+                    "BambooForest",
+                    "XuanwuRavine",
+                    "WindGodLake",
+                    "FinalStage"
+                };
             }
-
-            rootSeed = _cachedRootSeed.Value;
-            difficulty = (GameDifficulty)_cachedDifficulty.Value;
-            puzzles = (PuzzleFlag)_cachedPuzzles.Value;
-            gameMode = (GameMode)_cachedGameMode.Value;
-            showRandomResult = _cachedShowRandomResult ?? false;
-            stageTypeNames = new List<string>(_cachedStageTypeNames);
-            debutAdventureTypeName = _cachedDebutAdventureTypeName;
-            jadeBoxIds = _cachedJadeBoxIds != null ? new List<string>(_cachedJadeBoxIds) : new();
-            return true;
+            if (string.IsNullOrWhiteSpace(_cachedConfig.DebutAdventureTypeName))
+            {
+                _cachedConfig.DebutAdventureTypeName = "Debut";
+            }
         }
     }
 
@@ -111,6 +144,7 @@ public static class GameSeedSyncPatch
                 return;
             }
 
+            GameMasterSaveHookPatch.IsMultiplayerRunActive = true;
             NetworkIdentityTracker.EnsureSubscribed(client);
 
             if (!NetworkIdentityTracker.GetSelfIsHost())
@@ -120,9 +154,9 @@ public static class GameSeedSyncPatch
 
             BroadcastHostGameStart(__result, parameters);
         }
-        catch
+        catch (Exception ex)
         {
-
+            Plugin.Logger?.LogWarning($"[GameSeedSync] GameRunController_Create_Postfix 广播失败: {ex.Message}");
         }
     }
 
@@ -142,9 +176,9 @@ public static class GameSeedSyncPatch
                 stageTypeNames.Add(stage.GetType().Name);
             }
         }
-        catch
+        catch (Exception ex)
         {
-
+            Plugin.Logger?.LogDebug($"[GameSeedSync] 获取关卡阶段名称异常: {ex.Message}");
         }
 
         string? debutAdventureTypeName = null;
@@ -153,9 +187,9 @@ public static class GameSeedSyncPatch
             Type? debutType = run.Stages.Count > 0 ? run.Stages[0].DebutAdventureType : null;
             debutAdventureTypeName = debutType?.Name;
         }
-        catch
+        catch (Exception ex)
         {
-
+            Plugin.Logger?.LogDebug($"[GameSeedSync] 获取首发事件类型异常: {ex.Message}");
         }
 
         List<string> jadeBoxIds = new();
@@ -167,9 +201,9 @@ public static class GameSeedSyncPatch
                     jadeBoxIds.Add(jb.Id);
             }
         }
-        catch
+        catch (Exception ex)
         {
-
+            Plugin.Logger?.LogDebug($"[GameSeedSync] 获取玉匣列表异常: {ex.Message}");
         }
 
         string hostId = NetworkIdentityTracker.GetSelfPlayerId();
@@ -211,9 +245,9 @@ public static class GameSeedSyncPatch
                 _subscribedClient.OnGameEventReceived -= OnGameEventReceivedHandler;
             }
         }
-        catch
+        catch (Exception ex)
         {
-
+            Plugin.Logger?.LogDebug($"[GameSeedSync] 退订网络事件异常: {ex.Message}");
         }
 
         try
@@ -222,8 +256,9 @@ public static class GameSeedSyncPatch
             _subscribedClient = client;
             _subscribed = true;
         }
-        catch
+        catch (Exception ex)
         {
+            Plugin.Logger?.LogWarning($"[GameSeedSync] 订阅网络事件异常: {ex.Message}");
             _subscribedClient = null;
             _subscribed = false;
         }
@@ -267,20 +302,23 @@ public static class GameSeedSyncPatch
 
             lock (CacheLock)
             {
-                _cachedRootSeed = rootSeed;
-                _cachedDifficulty = difficulty;
-                _cachedPuzzles = puzzles;
-                _cachedGameMode = gameMode;
-                _cachedShowRandomResult = showRandomResult;
-                _cachedStageTypeNames = stageTypeNames;
-                _cachedDebutAdventureTypeName = debutAdventureTypeName;
-                _cachedHostPlayerId = hostPlayerId;
-                _cachedJadeBoxIds = jadeBoxIds;
+                _cachedConfig = new HostGameStartConfig
+                {
+                    RootSeed = rootSeed.Value,
+                    Difficulty = (GameDifficulty)(difficulty ?? 0),
+                    Puzzles = (PuzzleFlag)(puzzles ?? 0),
+                    GameMode = (GameMode)(gameMode ?? 0),
+                    ShowRandomResult = showRandomResult ?? false,
+                    StageTypeNames = stageTypeNames ?? new List<string>(),
+                    DebutAdventureTypeName = debutAdventureTypeName,
+                    HostPlayerId = hostPlayerId,
+                    JadeBoxIds = jadeBoxIds ?? new List<string>()
+                };
             }
 
             Plugin.Logger?.LogInfo($"[GameSeedSync] 已缓存房主种子: RootSeed={rootSeed}, HostId={hostPlayerId}");
 
-            NetworkPlugin.Patch.UI.MainMenuMultiplayerEntryPatch.OnLobbyGameStartedReceived();
+            Plugin.RunOnMainThread(() => NetworkPlugin.Patch.UI.MainMenuMultiplayerEntryPatch.OnLobbyGameStartedReceived());
         }
         catch (Exception ex)
         {
@@ -367,5 +405,37 @@ public static class GameSeedSyncPatch
             }
         }
         return result;
+    }
+}
+
+/// <summary>
+/// 房主开局配置数据对象，消除配置字段散落的数据泥团（Data Clumps）。
+/// </summary>
+public class HostGameStartConfig
+{
+    public ulong RootSeed { get; set; }
+    public GameDifficulty Difficulty { get; set; }
+    public PuzzleFlag Puzzles { get; set; }
+    public GameMode GameMode { get; set; }
+    public bool ShowRandomResult { get; set; }
+    public List<string> StageTypeNames { get; set; } = new();
+    public string? DebutAdventureTypeName { get; set; }
+    public string? HostPlayerId { get; set; }
+    public List<string> JadeBoxIds { get; set; } = new();
+
+    public HostGameStartConfig Clone()
+    {
+        return new HostGameStartConfig
+        {
+            RootSeed = RootSeed,
+            Difficulty = Difficulty,
+            Puzzles = Puzzles,
+            GameMode = GameMode,
+            ShowRandomResult = ShowRandomResult,
+            StageTypeNames = new List<string>(StageTypeNames),
+            DebutAdventureTypeName = DebutAdventureTypeName,
+            HostPlayerId = HostPlayerId,
+            JadeBoxIds = new List<string>(JadeBoxIds)
+        };
     }
 }

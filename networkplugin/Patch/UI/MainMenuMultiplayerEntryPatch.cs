@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,6 +20,8 @@ using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Server;
 using NetworkPlugin.Network.Messages;
 using NetworkPlugin.Network.NetworkPlayer;
+using NetworkPlugin.Core;
+using NetworkPlugin.Patch.Network;
 using NetworkPlugin.Utils;
 using TMPro;
 using UnityEngine;
@@ -91,6 +93,13 @@ public static class MainMenuMultiplayerEntryPatch
         private static readonly Dictionary<string, bool> _playerReadyStates = new(StringComparer.Ordinal);
 
         private static Button _readyOrStartButton;
+        private static TextMeshProUGUI _roomListTitleText;
+        private static Button _roomListCloseBtn;
+        private static bool _lobbyResumeMode;
+        private static GameRunSaveData _resumingSave;
+        private static bool _clientLobbyResumeMode;
+        private static bool _isOldResumePlayer;
+        private static ulong _hostResumeRootSeed;
 
     private const string ConnStatusRootName = "NetworkPlugin_ConnectionStatusPanel";
     private static GameObject _connStatusRoot;
@@ -1511,25 +1520,7 @@ public static class MainMenuMultiplayerEntryPatch
                 }
 
                 HideOverlay();
-
-                GameRunSaveData save = null;
-                try
-                {
-                    save = Singleton<GameMaster>.Instance?.GameRunSaveData;
-                }
-                catch
-                {
-                    save = null;
-                }
-
-                if (save != null && Singleton<GameMaster>.Instance?.CurrentGameRun == null)
-                {
-                    TryConnectToServerAndRestoreAndCatchUp(ip, port, save);
-                }
-                else
-                {
-                    TryConnectToServerAndShowRoomList(ip, port);
-                }
+                TryConnectToServerAndShowRoomList(ip, port);
             });
 
             var cancelBtn = CreateDialogButton(buttonTemplate, joinButtonsGo.transform, "NetworkPlugin_CancelBtn", "返回", panelScale);
@@ -1681,7 +1672,7 @@ public static class MainMenuMultiplayerEntryPatch
                 GameRunSaveData save = null;
                 try
                 {
-                    save = Singleton<GameMaster>.Instance?.GameRunSaveData;
+                    save = MultiplayerSaveManager.LoadMultiplayerSave();
                 }
                 catch
                 {
@@ -1693,16 +1684,46 @@ public static class MainMenuMultiplayerEntryPatch
                     UiManager.GetDialog<MessageDialog>().Show(
                         new MessageContent
                         {
-                            Text = "检测到可继续的存档。\n\n确认：作为房主继续存档并开启联机\n取消：作为房主开新游戏（仍保持联机）",
+                            Text = "检测到可继续的多人存档。\n\n确认：作为房主继续存档并进入联机房间\n取消：作为房主开新游戏（仍保持联机）",
                             Icon = MessageIcon.Warning,
                             Buttons = DialogButtons.ConfirmCancel,
-                            OnConfirm = () => TryHostLocalServerAndConnectAndRestore(save),
-                            OnCancel = TryHostLocalServerAndConnectAndShowRoomList,
+                            OnConfirm = () =>
+                            {
+                                Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 房主选择继续存档，启动服务器并进入大厅。");
+                                _lobbyResumeMode = true;
+                                _resumingSave = save;
+                                TryHostLocalServerAndConnectAndShowRoomList();
+                            },
+                            OnCancel = () =>
+                            {
+                                UiManager.GetDialog<MessageDialog>().Show(
+                                    new MessageContent
+                                    {
+                                        Text = "开新游戏将覆盖现有未完成的多人存档，是否继续？",
+                                        Icon = MessageIcon.Warning,
+                                        Buttons = DialogButtons.ConfirmCancel,
+                                        OnConfirm = () =>
+                                        {
+                                            Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 房主确认开新游戏，清空旧多人存档。");
+                                            MultiplayerSaveManager.DeleteMultiplayerSave();
+                                            _lobbyResumeMode = false;
+                                            _resumingSave = null;
+                                            TryHostLocalServerAndConnectAndShowRoomList();
+                                        },
+                                        OnCancel = () =>
+                                        {
+                                            Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 房主取消开新游戏，保留旧多人存档。");
+                                        }
+                                    }
+                                );
+                            },
                         }
                     );
                     return;
                 }
 
+                _lobbyResumeMode = false;
+                _resumingSave = null;
                 TryHostLocalServerAndConnectAndShowRoomList();
             });
 
@@ -2181,31 +2202,6 @@ public static class MainMenuMultiplayerEntryPatch
             port = 7777;
         }
 
-        GameRunSaveData save = null;
-        try
-        {
-            save = Singleton<GameMaster>.Instance?.GameRunSaveData;
-        }
-        catch
-        {
-            save = null;
-        }
-
-        if (save != null && Singleton<GameMaster>.Instance?.CurrentGameRun == null)
-        {
-            UiManager.GetDialog<MessageDialog>().Show(
-                new MessageContent
-                {
-                    Text = $"检测到本地可继续的存档。\n\n将作为客户端加入服务器：{ip}:{port}\n\n确认：重连并继续存档（本地恢复 + 向房主追赶）\n取消：只连接（不恢复存档）",
-                    Icon = MessageIcon.Warning,
-                    Buttons = DialogButtons.ConfirmCancel,
-                    OnConfirm = () => TryConnectToServerAndRestoreAndCatchUp(ip, port, save),
-                    OnCancel = () => TryConnectToServerAndShowRoomList(ip, port),
-                }
-            );
-            return;
-        }
-
         UiManager.GetDialog<MessageDialog>().Show(
             new MessageContent
             {
@@ -2394,6 +2390,7 @@ public static class MainMenuMultiplayerEntryPatch
             title.color = new Color(1f, 0.92f, 0.6f, 1f);
             title.raycastTarget = false;
             if (_roomListFont != null) title.font = _roomListFont;
+            _roomListTitleText = title;
 
             GameObject subGo = new GameObject("Subtitle");
             subGo.transform.SetParent(frame.transform, false);
@@ -2482,6 +2479,7 @@ public static class MainMenuMultiplayerEntryPatch
             var refreshBtn = CreateTextActionButton(buttonsGo.transform, RoomListRootName + "_RefreshBtn", "刷新", panelScale, RefreshRoomList);
 
             var closeBtn = CreateTextActionButton(buttonsGo.transform, RoomListRootName + "_CloseBtn", "更换角色", panelScale, HideRoomListOverlay);
+            _roomListCloseBtn = closeBtn;
 
             var disconnectBtn = CreateTextActionButton(buttonsGo.transform, RoomListRootName + "_DisconnectBtn", "断开联机", panelScale, () =>
             {
@@ -2671,13 +2669,17 @@ public static class MainMenuMultiplayerEntryPatch
     {
         yield return null;
         _isSilentStarting = true;
+        GameMasterSaveHookPatch.IsMultiplayerRunActive = true;
         try
         {
-            StartGamePanel panel = UiManager.GetPanel<StartGamePanel>();
-            if (panel == null)
+            StartGamePanel panel = null;
+            try
             {
-                Plugin.Logger?.LogWarning("[MainMenuMultiplayerEntry] 未找到 StartGamePanel，无法自动进入游戏");
-                yield break;
+                panel = _lastStartGamePanel ?? UiManager.GetPanel<StartGamePanel>();
+            }
+            catch
+            {
+                panel = null;
             }
 
             bool isHost = NetworkIdentityTracker.GetSelfIsHost();
@@ -2750,7 +2752,10 @@ public static class MainMenuMultiplayerEntryPatch
                         }
                     }
 
-                    Type charaType = Type.GetType($"LBoL.Core.Units.{charaId}") ?? typeof(LBoL.EntityLib.PlayerUnits.Reimu);
+                    Type charaType = typeof(LBoL.EntityLib.PlayerUnits.Reimu).Assembly.GetType($"LBoL.EntityLib.PlayerUnits.{charaId}")
+                                  ?? Type.GetType($"LBoL.EntityLib.PlayerUnits.{charaId}, LBoL.EntityLib")
+                                  ?? Type.GetType($"LBoL.Core.Units.{charaId}")
+                                  ?? typeof(LBoL.EntityLib.PlayerUnits.Reimu);
                     playerUnit = LBoL.Core.Library.CreatePlayerUnit(charaType);
 
                     var config = playerUnit.Config;
@@ -3009,11 +3014,89 @@ public static class MainMenuMultiplayerEntryPatch
                 return string.Compare(a.Id, b.Id, StringComparison.Ordinal);
             });
 
+            bool isResume = _lobbyResumeMode || _clientLobbyResumeMode;
+            if (_roomListTitleText != null)
+            {
+                _roomListTitleText.text = isResume ? "联机房间【继续存档】" : "房间玩家列表";
+            }
+
             if (_roomListEmptyText != null)
             {
-                _roomListEmptyText.text = entries.Count == 0
-                    ? "暂无玩家（等待连接或玩家加入…）"
-                    : $"共 {entries.Count} 名玩家";
+                if (isResume)
+                {
+                    if (selfIsHost)
+                    {
+                        string charaRaw = _resumingSave?.Player?.Name ?? "未知角色";
+                        string chara = ResolveCharacterDisplayName(charaRaw);
+                        string diff = _resumingSave != null ? _resumingSave.Difficulty.ToString() : "Normal";
+                        _roomListEmptyText.text = $"存档进度: 角色 {chara} - 难度 {diff} (共 {entries.Count} 名玩家)";
+                    }
+                    else
+                    {
+                        _roomListEmptyText.text = _isOldResumePlayer
+                            ? $"【老玩家继承】角色已锁定，发车将恢复旧进度 (共 {entries.Count} 名玩家)"
+                            : $"【新玩家加入】可自由选择角色，发车将追赶进度 (共 {entries.Count} 名玩家)";
+                    }
+                }
+                else
+                {
+                    _roomListEmptyText.text = entries.Count == 0
+                        ? "暂无玩家（等待连接或玩家加入…）"
+                        : $"共 {entries.Count} 名玩家";
+                }
+            }
+
+            if (_roomListCloseBtn != null)
+            {
+                if (selfIsHost && _lobbyResumeMode)
+                {
+                    _roomListCloseBtn.interactable = false;
+                    var btnTxt = _roomListCloseBtn.GetComponentInChildren<TextMeshProUGUI>();
+                    if (btnTxt != null) btnTxt.text = "角色已锁定";
+                }
+                else if (!selfIsHost && _clientLobbyResumeMode && _isOldResumePlayer)
+                {
+                    _roomListCloseBtn.interactable = false;
+                    var btnTxt = _roomListCloseBtn.GetComponentInChildren<TextMeshProUGUI>();
+                    if (btnTxt != null) btnTxt.text = "角色已锁定";
+                }
+                else
+                {
+                    _roomListCloseBtn.interactable = true;
+                    var btnTxt = _roomListCloseBtn.GetComponentInChildren<TextMeshProUGUI>();
+                    if (btnTxt != null) btnTxt.text = "更换角色";
+                }
+            }
+
+            if (selfIsHost && _lobbyResumeMode && _resumingSave != null)
+            {
+                string hostChara = _resumingSave.Player?.Name ?? "Reimu";
+                var netManager = ServiceProvider?.GetService<NetworkManager>();
+                if (netManager != null)
+                {
+                    var self = netManager.GetSelf();
+                    if (self != null && self.chara != hostChara)
+                    {
+                        self.chara = hostChara;
+                        INetworkClient client = TryGetNetworkClient();
+                        client?.SendRequest(NetworkMessageTypes.UpdatePlayerLocation, JsonCompat.Serialize(new { CharacterId = hostChara }));
+                    }
+                }
+
+                INetworkClient netClient = TryGetNetworkClient();
+                if (netClient != null && netClient.IsConnected)
+                {
+                    var roster = MultiplayerSaveManager.LoadRoster(_resumingSave.RootSeed);
+                    netClient.SendGameEventData(NetworkMessageTypes.OnLobbyResumeInfo, new
+                    {
+                        RootSeed = _resumingSave.RootSeed,
+                        Difficulty = (int)_resumingSave.Difficulty,
+                        GameMode = (int)_resumingSave.Mode,
+                        HostChara = hostChara,
+                        HostPlayerId = selfId,
+                        Roster = roster
+                    });
+                }
             }
 
             if (entries.Count == 0)
@@ -3062,9 +3145,9 @@ public static class MainMenuMultiplayerEntryPatch
                 if (label != null) label.text = isReady ? "取消准备" : "准备就绪";
             }
         }
-        catch
+        catch (Exception ex)
         {
-
+            Plugin.Logger?.LogDebug($"[MainMenuMultiplayerEntry] UpdateRoomListActionButtons 异常: {ex.Message}");
         }
     }
 
@@ -3093,10 +3176,49 @@ public static class MainMenuMultiplayerEntryPatch
 
             if (selfIsHost)
             {
-
                 if (AreAllClientsReady(selfId))
                 {
+                    if (_lobbyResumeMode && _resumingSave != null)
+                    {
+                        Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 房主点击开始游戏 (继续存档模式)");
+
+                        // 1. 广播恢复发车通知
+                        if (client != null)
+                        {
+                            client.SendGameEventData(
+                                NetworkMessageTypes.OnLobbyResumeGame,
+                                new
+                                {
+                                    RootSeed = _resumingSave.RootSeed,
+                                    Difficulty = (int)_resumingSave.Difficulty,
+                                    GameMode = (int)_resumingSave.Mode,
+                                    Puzzles = (int)_resumingSave.Puzzles,
+                                    ShowRandomResult = _resumingSave.ShowRandomResult,
+                                    StageIndex = _resumingSave.StageIndex ?? 0
+                                }
+                            );
+                        }
+
+                        // 2. 房主持久化 Roster
+                        string hostChara = _resumingSave.Player?.Name ?? "Reimu";
+                        string hostId = NetworkIdentityTracker.GetSelfPlayerId();
+                        string hostName = ResolveSelfDisplayName();
+                        INetworkManager netManager = ServiceProvider?.GetService<INetworkManager>();
+                        MultiplayerSaveManager.RecordRoomPlayers(_resumingSave.RootSeed, hostId, hostName, hostChara, netManager?.GetAllPlayers());
+
+                        // 3. 标记联机运行活跃并恢复游戏
+                        GameMasterSaveHookPatch.IsMultiplayerRunActive = true;
+                        HideRoomListOverlay();
+                        Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 房主跳过角色/难度确认，直接恢复存档进入游戏...");
+                        GameMaster.RestoreGameRun(_resumingSave);
+
+                        _lobbyResumeMode = false;
+                        _resumingSave = null;
+                        return;
+                    }
+
                     Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 房主开始游戏");
+                    GameMasterSaveHookPatch.IsMultiplayerRunActive = true;
                     StartGamePanel startGamePanel = UiManager.GetPanel<StartGamePanel>();
                     Button confirmBtn = startGamePanel != null
                         ? Traverse.Create(startGamePanel).Field("characterConfirmButton").GetValue<Button>()
@@ -3386,18 +3508,138 @@ public static class MainMenuMultiplayerEntryPatch
 
     private static void OnRoomListGameEventReceived(string eventType, object payload)
     {
+        if (eventType == NetworkMessageTypes.OnLobbyResumeInfo)
+        {
+            HandleLobbyResumeInfoReceived(payload);
+            return;
+        }
+
+        if (eventType == NetworkMessageTypes.OnLobbyResumeGame)
+        {
+            HandleLobbyResumeGameReceived(payload);
+            return;
+        }
+
         if (eventType == NetworkMessageTypes.Welcome
             || eventType == NetworkMessageTypes.PlayerListUpdate
             || eventType == NetworkMessageTypes.PlayerJoined
             || eventType == NetworkMessageTypes.PlayerLeft
             || eventType == NetworkMessageTypes.HostChanged)
         {
-
             if (eventType == NetworkMessageTypes.Welcome || eventType == NetworkMessageTypes.PlayerListUpdate)
             {
                 ParseReadyStatesFromPayload(payload);
             }
-            RefreshRoomList();
+            Plugin.RunOnMainThread(() => RefreshRoomList());
+        }
+    }
+
+    private static void HandleLobbyResumeInfoReceived(object payload)
+    {
+        try
+        {
+            if (NetworkIdentityTracker.GetSelfIsHost()) return;
+            if (!NetworkEventHelper.TryGetJsonElement(payload, out JsonElement root)) return;
+
+            ulong? rootSeed = null;
+            if (root.TryGetProperty("RootSeed", out var sElem) && sElem.TryGetUInt64(out var sVal))
+                rootSeed = sVal;
+
+            if (rootSeed.HasValue && rootSeed.Value > 0)
+            {
+                _clientLobbyResumeMode = true;
+                _hostResumeRootSeed = rootSeed.Value;
+
+                // 解析房主下发的对局历史名单 Roster
+                Dictionary<string, string> hostRoster = null;
+                if (root.TryGetProperty("Roster", out var rElem) && rElem.ValueKind == JsonValueKind.Object)
+                {
+                    hostRoster = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var prop in rElem.EnumerateObject())
+                    {
+                        string chara = prop.Value.GetString() ?? "";
+                        hostRoster[prop.Name] = chara;
+                        MultiplayerSaveManager.RecordPlayerInRoster(_hostResumeRootSeed, prop.Name, chara);
+                    }
+                }
+
+                string selfId = NetworkIdentityTracker.GetSelfPlayerId();
+                string selfName = ResolveSelfDisplayName();
+                bool isOld = MultiplayerSaveManager.IsOldPlayer(_hostResumeRootSeed, selfId, hostRoster, out var inheritedChara)
+                          || (!string.IsNullOrWhiteSpace(selfName) && MultiplayerSaveManager.IsOldPlayer(_hostResumeRootSeed, selfName, hostRoster, out inheritedChara));
+                _isOldResumePlayer = isOld;
+
+                Plugin.Logger?.LogInfo($"[MainMenuMultiplayerEntry] 客机收到房间继续存档信息: RootSeed={_hostResumeRootSeed}, 是老玩家={isOld}, 角色={inheritedChara}");
+
+                if (isOld && !string.IsNullOrWhiteSpace(inheritedChara))
+                {
+                    INetworkClient client = TryGetNetworkClient();
+                    var netManager = ServiceProvider?.GetService<NetworkManager>();
+                    if (netManager != null)
+                    {
+                        var self = netManager.GetSelf();
+                        if (self != null) self.chara = inheritedChara;
+                    }
+                    client?.SendRequest(NetworkMessageTypes.UpdatePlayerLocation, JsonCompat.Serialize(new { CharacterId = inheritedChara }));
+                }
+
+                Plugin.RunOnMainThread(() => RefreshRoomList());
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] HandleLobbyResumeInfoReceived 失败: {ex}");
+        }
+    }
+
+    private static void HandleLobbyResumeGameReceived(object payload)
+    {
+        try
+        {
+            if (NetworkIdentityTracker.GetSelfIsHost()) return;
+            Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 客机收到房主恢复发车广播 (OnLobbyResumeGame)");
+
+            Plugin.RunOnMainThread(() =>
+            {
+                HideRoomListOverlay();
+                GameMasterSaveHookPatch.IsMultiplayerRunActive = true;
+
+                bool wasOld = _isOldResumePlayer;
+                ulong targetSeed = _hostResumeRootSeed;
+
+                // 显式复位大厅继续状态，防止在关卡内或后续对局中残留
+                _clientLobbyResumeMode = false;
+                _isOldResumePlayer = false;
+                _hostResumeRootSeed = 0;
+
+                if (wasOld)
+                {
+                    Plugin.Logger?.LogInfo("[MainMenuMultiplayerEntry] 老玩家客机：正在加载本地多人存档...");
+                    var localSave = MultiplayerSaveManager.LoadMultiplayerSave();
+                    if (localSave != null && localSave.RootSeed == targetSeed)
+                    {
+                        Plugin.Logger?.LogInfo($"[MainMenuMultiplayerEntry] 老玩家客机：本地存档校验匹配成功 (Seed={localSave.RootSeed})，直接恢复进入关卡！");
+                        GameMaster.RestoreGameRun(localSave);
+                        return;
+                    }
+                    else
+                    {
+                        Plugin.Logger?.LogWarning("[MainMenuMultiplayerEntry] 老玩家客机本地多人存档缺失或种子不匹配，转入新玩家追赶模式开局。");
+                    }
+                }
+
+                // 新玩家（或老玩家本地存档缺失的回退）：
+                if (NetworkEventHelper.TryGetJsonElement(payload, out JsonElement root))
+                {
+                    GameSeedSyncPatch.SetCachedResumeConfig(root);
+                }
+
+                Singleton<GameMaster>.Instance.StartCoroutine(DelayedStartGame());
+            });
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogError($"[MainMenuMultiplayerEntry] HandleLobbyResumeGameReceived 失败: {ex}");
         }
     }
 
@@ -3431,14 +3673,22 @@ public static class MainMenuMultiplayerEntryPatch
                 _playerReadyStates[pid] = ready;
             }
         }
-        catch
+        catch (Exception ex)
         {
-
+            Plugin.Logger?.LogDebug($"[MainMenuMultiplayerEntry] ParseReadyStatesFromPayload 异常: {ex.Message}");
         }
     }
 
     private static void OnRoomListConnectionStateChanged(bool connected)
     {
+        if (!connected)
+        {
+            _lobbyResumeMode = false;
+            _resumingSave = null;
+            _clientLobbyResumeMode = false;
+            _isOldResumePlayer = false;
+            _hostResumeRootSeed = 0;
+        }
         RefreshRoomList();
     }
 
@@ -3634,6 +3884,7 @@ public static class MainMenuMultiplayerEntryPatch
         UpdateConnectionStatusText($"已发起连接请求到 {host}:{port}，等待服务器响应…");
         try
         {
+            SubscribeRoomListEvents();
             Singleton<GameMaster>.Instance.StartCoroutine(CoWaitForConnectedThenShowRoomList());
         }
         catch
@@ -3649,6 +3900,7 @@ public static class MainMenuMultiplayerEntryPatch
         UpdateConnectionStatusText("正在连接到本机服务器…");
         try
         {
+            SubscribeRoomListEvents();
             Singleton<GameMaster>.Instance.StartCoroutine(CoWaitForConnectedThenShowRoomList());
         }
         catch

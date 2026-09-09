@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -340,15 +340,22 @@ public static class EnemyStateReceivePatch
                     damageInfo.DamageBlocked = blockDamage;
                     damageInfo.DamageShielded = shieldDamage;
 
-                    view.ComingDamage = damageInfo;
-                    view.Hit(ignoreCoolDown: true);
-
-                    if (PopupHud.Instance != null)
+                    if (!RemoteCardPlaybackTracker.IsInCardPlaybackWindow)
                     {
-                        PopupHud.Instance.DamagePopupFromScene(damageInfo, view.transform.position, sourceIsPlayer: true);
-                    }
+                        view.ComingDamage = damageInfo;
+                        view.Hit(ignoreCoolDown: true);
 
-                    view.OnDamageReceived(damageInfo);
+                        if (PopupHud.Instance != null)
+                        {
+                            PopupHud.Instance.DamagePopupFromScene(damageInfo, view.transform.position, sourceIsPlayer: true);
+                        }
+
+                        view.OnDamageReceived(damageInfo);
+                    }
+                    else
+                    {
+                        Plugin.Logger?.LogDebug($"[EnemyStateReceive] Suppressed preemptive damage popup/hit for {enemy.Name} during card playback window.");
+                    }
                 }
                 else if (healAmount > 0)
                 {

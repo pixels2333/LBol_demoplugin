@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text.Json;
@@ -12,6 +12,7 @@ using LBoL.Core.Battle.BattleActions;
 using LBoL.Core.Cards;
 using LBoL.Core.StatusEffects;
 using LBoL.Core.Units;
+using LBoL.Presentation.UI.Panels;
 using LBoL.Presentation.Units;
 using NetworkPlugin.Network.Client;
 using NetworkPlugin.Network.Messages;
@@ -474,7 +475,7 @@ public static partial class RemoteCardUsePatch
         }
     }
 
-    private static List<BattleAction> BuildReplayActions(JsonElement root, BattleController battle, PlayerUnit caster, Unit targetUnit)
+    internal static List<BattleAction> BuildReplayActions(JsonElement root, BattleController battle, PlayerUnit caster, Unit targetUnit)
     {
         List<BattleAction> list = new List<BattleAction>();
         try
@@ -499,16 +500,19 @@ public static partial class RemoteCardUsePatch
 
                 switch (kind)
                 {
-                    case "Damage":
+                    case ActionBlueprintConstants.KindDamage:
                         TryAddReplayDamage(list, item, caster, targetUnit, battle);
                         break;
-                    case "Heal":
+                    case ActionBlueprintConstants.KindBlockShield:
+                        TryAddReplayBlockShield(list, item, caster, targetUnit, battle);
+                        break;
+                    case ActionBlueprintConstants.KindHeal:
                         TryAddReplayHeal(list, item, caster, targetUnit, battle);
                         break;
-                    case "ApplyStatusEffect":
+                    case ActionBlueprintConstants.KindApplyStatusEffect:
                         TryAddReplayStatus(list, item, targetUnit, battle);
                         break;
-                    case "PerformAction":
+                    case ActionBlueprintConstants.KindPerformAction:
                         var pa = ReconstructPerformAction(item, battle);
                         if (pa != null)
                         {
@@ -518,9 +522,9 @@ public static partial class RemoteCardUsePatch
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-
+            Plugin.Logger?.LogDebug($"[RemoteCardUse] BuildReplayActions error: {ex.Message}");
         }
 
         return list;
@@ -577,9 +581,37 @@ public static partial class RemoteCardUsePatch
 
             list.Add(new DamageAction(actionCaster, targets, info, gunName, gunType));
         }
-        catch
+        catch (Exception ex)
         {
+            Plugin.Logger?.LogDebug($"[RemoteCardUse] TryAddReplayDamage error: {ex.Message}");
+        }
+    }
 
+    private static void TryAddReplayBlockShield(List<BattleAction> list, JsonElement item, Unit caster, Unit target, BattleController battle)
+    {
+        try
+        {
+            float? block = GetFloat(item, "Block");
+            float? shield = GetFloat(item, "Shield");
+            if (block == null && shield == null)
+            {
+                return;
+            }
+
+            string typeStr = GetString(item, "Type");
+            BlockShieldType type = Enum.TryParse(typeStr, out BlockShieldType parsed) ? parsed : BlockShieldType.Normal;
+            bool cast = GetBool(item, "Cast") ?? true;
+
+            Unit actionSource = ResolveUnit(item.TryGetProperty("Source", out JsonElement sEl) ? sEl : default, battle) ?? caster;
+            Unit actionTarget = ResolveUnit(item.TryGetProperty("Target", out JsonElement tEl) ? tEl : default, battle) ?? target ?? caster;
+
+            int b = Math.Max(0, (int)Math.Round(block ?? 0f));
+            int s = Math.Max(0, (int)Math.Round(shield ?? 0f));
+            list.Add(new CastBlockShieldAction(actionSource, actionTarget, b, s, type, cast));
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogDebug($"[RemoteCardUse] TryAddReplayBlockShield error: {ex.Message}");
         }
     }
 
@@ -608,13 +640,13 @@ public static partial class RemoteCardUsePatch
             float waitTime = GetFloat(item, "WaitTime") ?? 0.2f;
 
             Unit actionCaster = ResolveUnit(item.TryGetProperty("Caster", out JsonElement cEl) ? cEl : default, battle) ?? caster;
-            Unit actionTarget = ResolveUnit(item.TryGetProperty("Target", out JsonElement tEl) ? tEl : default, battle) ?? target;
+            Unit actionTarget = ResolveUnit(item.TryGetProperty("Target", out JsonElement tEl) ? tEl : default, battle) ?? target ?? caster;
 
             list.Add(new HealAction(actionCaster, actionTarget, amount.Value, healType, waitTime));
         }
-        catch
+        catch (Exception ex)
         {
-
+            Plugin.Logger?.LogDebug($"[RemoteCardUse] TryAddReplayHeal error: {ex.Message}");
         }
     }
 
@@ -645,9 +677,9 @@ public static partial class RemoteCardUsePatch
 
             list.Add(new ApplyStatusEffectAction(effect.GetType(), actionTarget, level, duration, count, limit, waitTime, startAutoDecreasing));
         }
-        catch
+        catch (Exception ex)
         {
-
+            Plugin.Logger?.LogDebug($"[RemoteCardUse] TryAddReplayStatus error: {ex.Message}");
         }
     }
 
@@ -794,23 +826,31 @@ public static partial class RemoteCardUsePatch
         }
     }
 
-    private static Unit ResolveUnit(JsonElement elem, BattleController battle)
+    internal static Unit ResolveUnit(JsonElement elem, BattleController battle, string defaultPlayerId = null)
     {
         if (elem.ValueKind != JsonValueKind.Object) return null;
         string kind = GetString(elem, "Kind");
         if (kind == "Player")
         {
             string playerId = GetString(elem, "PlayerId");
-            if (string.IsNullOrWhiteSpace(playerId)) return battle.Player;
+            if (string.IsNullOrWhiteSpace(playerId) || playerId == "__local__")
+            {
+                if (!string.IsNullOrWhiteSpace(defaultPlayerId))
+                {
+                    playerId = defaultPlayerId;
+                }
+            }
+            if (string.IsNullOrWhiteSpace(playerId)) return battle?.Player;
 
             string selfId;
             lock (_syncLock)
             {
                 selfId = _selfPlayerId;
             }
+            selfId ??= NetworkIdentityTracker.GetSelfPlayerId();
             if (string.Equals(playerId, selfId, StringComparison.Ordinal) || playerId == "__local__")
             {
-                return battle.Player;
+                return battle?.Player;
             }
 
             if (OtherPlayersOverlayPatch.TryGetRemoteCharacterUnitView(playerId, out UnitView view) && view?.Unit != null)
@@ -818,13 +858,13 @@ public static partial class RemoteCardUsePatch
                 return view.Unit;
             }
 
-            return battle.Player;
+            return battle?.Player;
         }
         else if (kind == "Enemy")
         {
             string enemyId = GetString(elem, "EnemyId");
             int? rootIndex = GetInt(elem, "RootIndex");
-            if (battle.EnemyGroup == null) return null;
+            if (battle?.EnemyGroup == null) return null;
 
             foreach (EnemyUnit enemy in battle.EnemyGroup)
             {
@@ -838,7 +878,7 @@ public static partial class RemoteCardUsePatch
             }
             if (rootIndex != null)
             {
-                EnemyUnit byIndex = battle.GetEnemyByRootIndex(rootIndex.Value);
+                EnemyUnit byIndex = battle?.GetEnemyByRootIndex(rootIndex.Value);
                 if (byIndex != null) return byIndex;
             }
             return null;
@@ -1014,16 +1054,81 @@ public static partial class RemoteCardUsePatch
         return null;
     }
 
-    private static UnitView ResolveUnitView(Unit unit, JsonElement elem, BattleController battle, string defaultPlayerId = null)
+    internal static bool IsSelfPlayer(string playerId, string defaultPlayerId = null)
+    {
+        if (string.IsNullOrWhiteSpace(playerId) || playerId == "__local__")
+        {
+            if (!string.IsNullOrWhiteSpace(defaultPlayerId))
+            {
+                playerId = defaultPlayerId;
+            }
+            else
+            {
+                return true;
+            }
+        }
+        string selfId;
+        lock (_syncLock)
+        {
+            selfId = _selfPlayerId;
+        }
+        selfId ??= NetworkIdentityTracker.GetSelfPlayerId();
+        return !string.IsNullOrWhiteSpace(selfId) && string.Equals(playerId, selfId, StringComparison.Ordinal);
+    }
+
+    internal static bool SafeIsNull(UnitView view)
+    {
+        if (ReferenceEquals(view, null))
+        {
+            return true;
+        }
+        try
+        {
+            return view == null;
+        }
+        catch
+        {
+            return ReferenceEquals(view, null);
+        }
+    }
+
+    private static UnitView SafeGetLocalPlayerUnitView()
     {
         try
         {
+            return Singleton<GameDirector>.Instance?.PlayerUnitView;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 
+    internal static object SafeWaitForSeconds(float seconds)
+    {
+        try
+        {
+            return new UnityEngine.WaitForSeconds(seconds);
+        }
+        catch (Exception)
+        {
+            return seconds;
+        }
+    }
+
+    internal static UnitView ResolveUnitView(Unit unit, JsonElement elem, BattleController battle, string defaultPlayerId = null)
+    {
+        try
+        {
             if (unit != null)
             {
-                if (Singleton<GameDirector>.Instance?.PlayerUnitView != null && unit == Singleton<GameDirector>.Instance.PlayerUnitView.Unit)
+                UnitView localView = SafeGetLocalPlayerUnitView();
+                if (localView != null && unit == localView.Unit)
                 {
-                    return Singleton<GameDirector>.Instance.PlayerUnitView;
+                    if (string.IsNullOrWhiteSpace(defaultPlayerId) || IsSelfPlayer(defaultPlayerId))
+                    {
+                        return localView;
+                    }
                 }
 
                 if (unit is EnemyUnit eu)
@@ -1043,37 +1148,38 @@ public static partial class RemoteCardUsePatch
 
             if (elem.ValueKind == JsonValueKind.Object)
             {
-                string kind = GetString(elem, "Kind");
-                if (kind == "Player")
+                string kind = GetString(elem, ActionBlueprintConstants.KeyKind);
+                if (kind == ActionBlueprintConstants.UnitPlayer)
                 {
-                    string playerId = GetString(elem, "PlayerId");
-                    if (string.IsNullOrWhiteSpace(playerId))
+                    string playerId = GetString(elem, ActionBlueprintConstants.KeyPlayerId);
+                    if (string.IsNullOrWhiteSpace(playerId) || playerId == "__local__")
                     {
-                        playerId = defaultPlayerId;
+                        if (!string.IsNullOrWhiteSpace(defaultPlayerId))
+                        {
+                            playerId = defaultPlayerId;
+                        }
                     }
 
                     if (!string.IsNullOrWhiteSpace(playerId))
                     {
-                        string selfId;
-                        lock (_syncLock)
+                        if (IsSelfPlayer(playerId))
                         {
-                            selfId = _selfPlayerId;
-                        }
-                        if (string.Equals(playerId, selfId, StringComparison.Ordinal) || playerId == "__local__")
-                        {
-                            return Singleton<GameDirector>.Instance?.PlayerUnitView;
+                            return SafeGetLocalPlayerUnitView();
                         }
 
                         if (OtherPlayersOverlayPatch.TryGetRemoteCharacterUnitView(playerId, out UnitView remoteView) && remoteView != null)
                         {
                             return remoteView;
                         }
+
+                        // 明确为远端玩家且未找到视图时，严格返回 null，绝不误回退至本地玩家
+                        return null;
                     }
                 }
-                else if (kind == "Enemy")
+                else if (kind == ActionBlueprintConstants.UnitEnemy)
                 {
-                    string enemyId = GetString(elem, "EnemyId");
-                    int? rootIndex = GetInt(elem, "RootIndex");
+                    string enemyId = GetString(elem, ActionBlueprintConstants.KeyEnemyId);
+                    int? rootIndex = GetInt(elem, ActionBlueprintConstants.KeyRootIndex);
                     if (rootIndex != null)
                     {
                         UnitView ev = GameDirector.GetEnemyByRootIndex(rootIndex.Value);
@@ -1090,22 +1196,36 @@ public static partial class RemoteCardUsePatch
                             }
                         }
                     }
+                    return null;
                 }
             }
 
             if (!string.IsNullOrWhiteSpace(defaultPlayerId))
             {
+                if (IsSelfPlayer(defaultPlayerId))
+                {
+                    return SafeGetLocalPlayerUnitView();
+                }
+
                 if (OtherPlayersOverlayPatch.TryGetRemoteCharacterUnitView(defaultPlayerId, out UnitView remoteView) && remoteView != null)
                 {
                     return remoteView;
                 }
+
+                // 明确为远端玩家且未找到视图时，严格返回 null
+                return null;
             }
 
-            return Singleton<GameDirector>.Instance?.PlayerUnitView;
+            return SafeGetLocalPlayerUnitView();
         }
-        catch
+        catch (Exception ex)
         {
-            return Singleton<GameDirector>.Instance?.PlayerUnitView;
+            Plugin.Logger?.LogDebug($"[RemoteCardUse] ResolveUnitView failed: {ex.Message}");
+            if (!string.IsNullOrWhiteSpace(defaultPlayerId) && !IsSelfPlayer(defaultPlayerId))
+            {
+                return null;
+            }
+            return SafeGetLocalPlayerUnitView();
         }
     }
 
@@ -1132,43 +1252,270 @@ public static partial class RemoteCardUsePatch
 
             return null;
         }
-        catch
+        catch (Exception ex)
         {
+            Plugin.Logger?.LogDebug($"[RemoteCardUse] ResolveTargetUnitView failed: {ex.Message}");
             return null;
+        }
+    }
+
+    internal static void EnsureUnitIdle(UnitView view, bool forceReset = false)
+    {
+        if (SafeIsNull(view))
+        {
+            return;
+        }
+
+        try
+        {
+            var trav = Traverse.Create(view);
+
+            // 检查内部射击状态（_status 与 _gunInShooting）
+            int statusInt = 0;
+            try
+            {
+                object statusObj = trav.Field("_status").GetValue();
+                if (statusObj != null)
+                {
+                    statusInt = Convert.ToInt32(statusObj);
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogDebug($"[RemoteCardUse] Read _status failed: {ex.Message}");
+            }
+
+            bool hasGun = false;
+            try
+            {
+                object gunObj = trav.Field("_gunInShooting").GetValue();
+                hasGun = gunObj != null;
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogDebug($"[RemoteCardUse] Read _gunInShooting failed: {ex.Message}");
+            }
+
+            bool isShooting = statusInt != 0 || hasGun;
+
+            if (isShooting || forceReset)
+            {
+                // 销毁残留 Shooter 粒子发射器
+                try
+                {
+                    var destroyShooterMethod = trav.Method("DestroyShooter");
+                    if (destroyShooterMethod.MethodExists())
+                    {
+                        destroyShooterMethod.GetValue();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Logger?.LogDebug($"[RemoteCardUse] DestroyShooter failed: {ex.Message}");
+                }
+
+                // 清理并复位射击相关状态与计时器
+                try
+                {
+                    trav.Field("_gunInShooting").SetValue(null);
+                    trav.Field("_complexFirstGun").SetValue(null);
+                    trav.Field("_shootCounting").SetValue(false);
+                    trav.Field("_shooterCounting").SetValue(false);
+                    trav.Field("_shootTime").SetValue(0f);
+                    trav.Field("_shooterTime").SetValue(0f);
+                    trav.Field("_status").SetValue(0); // ShootStatus.Idle
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Logger?.LogDebug($"[RemoteCardUse] Reset shoot status fields failed: {ex.Message}");
+                }
+
+                // 强制打断射击循环轨道（SpineIdle(false)）
+                try
+                {
+                    bool spineLoaded = false;
+                    try
+                    {
+                        object spineLoadedObj = trav.Property("SpineLoaded").GetValue();
+                        if (spineLoadedObj is bool b)
+                        {
+                            spineLoaded = b;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.Logger?.LogDebug($"[RemoteCardUse] Check SpineLoaded failed: {ex.Message}");
+                        spineLoaded = false;
+                    }
+
+                    if (spineLoaded)
+                    {
+                        var spineIdleMethod = trav.Method("SpineIdle", false);
+                        if (spineIdleMethod.MethodExists())
+                        {
+                            spineIdleMethod.GetValue();
+                        }
+                        else
+                        {
+                            SafePlayAnimation(view, ActionBlueprintConstants.AnimIdle);
+                        }
+                    }
+                    else
+                    {
+                        SafePlayAnimation(view, ActionBlueprintConstants.AnimIdle);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Logger?.LogDebug($"[RemoteCardUse] Force idle animation failed: {ex.Message}");
+                }
+            }
+            else
+            {
+                // 非射击循环（例如防御、施法、技能、Buff）：
+                // 严禁调用 SpineIdle(false) 暴力截断动画！
+                // 仅调用 SpineIdle(true)，即 AddAnimation(0, "idle", true, 0f)，确保动作自然播放完毕后平滑回归待机。
+                try
+                {
+                    bool spineLoaded = false;
+                    try
+                    {
+                        object spineLoadedObj = trav.Property("SpineLoaded").GetValue();
+                        if (spineLoadedObj is bool b)
+                        {
+                            spineLoaded = b;
+                        }
+                    }
+                    catch
+                    {
+                        spineLoaded = false;
+                    }
+
+                    if (spineLoaded)
+                    {
+                        var spineIdleAddMethod = trav.Method("SpineIdle", true);
+                        if (spineIdleAddMethod.MethodExists())
+                        {
+                            spineIdleAddMethod.GetValue();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Logger?.LogDebug($"[RemoteCardUse] SpineIdle(true) queue fallback: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogDebug($"[RemoteCardUse] EnsureUnitIdle failed: {ex.Message}");
+        }
+    }
+
+    private static void TrackCasterUnitView(JsonElement actionEl, BattleController battle, string defaultSenderPlayerId, HashSet<UnitView> views)
+    {
+        if (views == null || actionEl.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        try
+        {
+            if (actionEl.TryGetProperty("Caster", out JsonElement cEl))
+            {
+                UnitView cv = ResolveUnitView(null, cEl, battle, defaultSenderPlayerId);
+                if (cv != null) views.Add(cv);
+            }
+            if (actionEl.TryGetProperty("Source", out JsonElement sEl))
+            {
+                UnitView sv = ResolveUnitView(null, sEl, battle, defaultSenderPlayerId);
+                if (sv != null) views.Add(sv);
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogDebug($"[RemoteCardUse] TrackCasterUnitView failed: {ex.Message}");
         }
     }
 
     public static System.Collections.IEnumerator PlayVisualsCoroutine(JsonElement actionsEl, BattleController battle, bool skipStateVisuals, string defaultSenderPlayerId = null)
     {
-        if (actionsEl.ValueKind != JsonValueKind.Array)
+        RemoteCardPlaybackTracker.NotifyCardVisualStarted();
+        HashSet<UnitView> affectedViews = new HashSet<UnitView>();
+        try
         {
-            yield break;
+            if (actionsEl.ValueKind != JsonValueKind.Array)
+            {
+                if (!skipStateVisuals)
+                {
+                    yield return PlayGenericCastVisual(battle, defaultSenderPlayerId);
+                }
+                yield break;
+            }
+
+            bool playedAnyVisual = false;
+            foreach (JsonElement actionEl in actionsEl.EnumerateArray())
+            {
+                if (actionEl.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                TrackCasterUnitView(actionEl, battle, defaultSenderPlayerId, affectedViews);
+
+                string kind = GetString(actionEl, ActionBlueprintConstants.KeyKind);
+                if (kind == ActionBlueprintConstants.KindPerformAction)
+                {
+                    playedAnyVisual = true;
+                    string type = GetString(actionEl, ActionBlueprintConstants.KeyType);
+                    yield return PlayPerformActionVisual(type, actionEl, battle, defaultSenderPlayerId);
+                }
+                else if (kind == ActionBlueprintConstants.KindDamage && !skipStateVisuals)
+                {
+                    playedAnyVisual = true;
+                    yield return PlayDamageVisual(actionEl, battle, defaultSenderPlayerId);
+                }
+                else if (kind == ActionBlueprintConstants.KindBlockShield && !skipStateVisuals)
+                {
+                    playedAnyVisual = true;
+                    yield return PlayBlockShieldVisual(actionEl, battle, defaultSenderPlayerId);
+                }
+                else if (kind == ActionBlueprintConstants.KindHeal && !skipStateVisuals)
+                {
+                    playedAnyVisual = true;
+                    yield return PlayHealVisual(actionEl, battle, defaultSenderPlayerId);
+                }
+                else if (kind == ActionBlueprintConstants.KindApplyStatusEffect && !skipStateVisuals)
+                {
+                    playedAnyVisual = true;
+                    yield return PlayStatusEffectVisual(actionEl, battle, defaultSenderPlayerId);
+                }
+            }
+
+            if (!playedAnyVisual && !skipStateVisuals)
+            {
+                yield return PlayGenericCastVisual(battle, defaultSenderPlayerId);
+            }
         }
-
-        foreach (JsonElement actionEl in actionsEl.EnumerateArray())
+        finally
         {
-            if (actionEl.ValueKind != JsonValueKind.Object)
+            try
             {
-                continue;
-            }
+                if (!string.IsNullOrWhiteSpace(defaultSenderPlayerId) &&
+                    OtherPlayersOverlayPatch.TryGetRemoteCharacterUnitView(defaultSenderPlayerId, out UnitView senderView) &&
+                    senderView != null)
+                {
+                    affectedViews.Add(senderView);
+                }
 
-            string kind = GetString(actionEl, "Kind");
-            if (kind == "PerformAction")
-            {
-                string type = GetString(actionEl, "Type");
-                yield return PlayPerformActionVisual(type, actionEl, battle, defaultSenderPlayerId);
+                foreach (UnitView view in affectedViews)
+                {
+                    EnsureUnitIdle(view);
+                }
             }
-            else if (kind == "Damage" && !skipStateVisuals)
+            finally
             {
-                yield return PlayDamageVisual(actionEl, battle, defaultSenderPlayerId);
-            }
-            else if (kind == "Heal" && !skipStateVisuals)
-            {
-                yield return PlayHealVisual(actionEl, battle, defaultSenderPlayerId);
-            }
-            else if (kind == "ApplyStatusEffect" && !skipStateVisuals)
-            {
-                yield return PlayStatusEffectVisual(actionEl, battle, defaultSenderPlayerId);
+                RemoteCardPlaybackTracker.NotifyCardVisualEnded();
             }
         }
     }
@@ -1236,15 +1583,15 @@ public static partial class RemoteCardUsePatch
                     UnitView sourceView = ResolveUnitView(source, sEl, battle, defaultSenderPlayerId);
                     if (sourceView != null && !string.IsNullOrEmpty(animationName))
                     {
-                        try
+                        SafePlayAnimation(sourceView, animationName, ActionBlueprintConstants.AnimSpell);
+                        float actualWait = waitTime;
+                        if ((string.Equals(animationName, "skill", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(animationName, "spell", StringComparison.OrdinalIgnoreCase)) &&
+                            actualWait <= 0.2f)
                         {
-                            sourceView.PlayAnimation(animationName);
+                            actualWait = 0.4f;
                         }
-                        catch
-                        {
-                            try { sourceView.PlayAnimation("spell"); } catch { }
-                        }
-                        yield return new UnityEngine.WaitForSeconds(waitTime);
+                        yield return SafeWaitForSeconds(actualWait);
                     }
                     break;
                 }
@@ -1290,7 +1637,7 @@ public static partial class RemoteCardUsePatch
                     UnitView sourceView = ResolveUnitView(source, sEl, battle, defaultSenderPlayerId);
                     if (sourceView != null && !string.IsNullOrEmpty(spellName))
                     {
-                        yield return sourceView.SpellDeclare(spellName);
+                        yield return SafeSpellDeclare(sourceView, spellName);
                     }
                     break;
                 }
@@ -1431,7 +1778,10 @@ public static partial class RemoteCardUsePatch
         foreach (Unit t in targets)
         {
             UnitView tv = ResolveUnitView(t, default, battle, null);
-            if (tv != null) targetViews.Add(tv);
+            if (tv != null && (tv.Unit == null || tv.Unit.IsAlive))
+            {
+                targetViews.Add(tv);
+            }
         }
 
         if (targetViews.Count == 0)
@@ -1443,33 +1793,153 @@ public static partial class RemoteCardUsePatch
             }
         }
 
-        if (targetViews.Count > 0 && !string.IsNullOrEmpty(gunName) && gunName != "Empty" && gunName != "Instant")
+        if (targetViews.Count == 0)
+        {
+            yield break;
+        }
+
+        float realDamage = GetFloat(actionEl, ActionBlueprintConstants.KeyDamage) ?? GetFloat(actionEl, ActionBlueprintConstants.KeyAmount) ?? 0f;
+        string damageTypeStr = GetString(actionEl, ActionBlueprintConstants.KeyDamageType);
+        DamageType damageType = Enum.TryParse(damageTypeStr, out DamageType parsedDt) ? parsedDt : DamageType.Attack;
+        bool isAccuracy = GetBool(actionEl, ActionBlueprintConstants.KeyIsAccuracy) ?? false;
+        bool dontBreakPerfect = GetBool(actionEl, ActionBlueprintConstants.KeyDontBreakPerfect) ?? false;
+
+        DamageInfo realDamageInfo = damageType switch
+        {
+            DamageType.HpLose => DamageInfo.HpLose(realDamage, dontBreakPerfect),
+            DamageType.Reaction => DamageInfo.Reaction(realDamage, dontBreakPerfect),
+            DamageType.Attack => DamageInfo.Attack(realDamage, isAccuracy),
+            _ => DamageInfo.Attack(realDamage, isAccuracy)
+        };
+        realDamageInfo.DontBreakPerfect = dontBreakPerfect;
+
+        if (!string.IsNullOrEmpty(gunName) && gunName != "Empty" && gunName != "Instant")
         {
             var pairs = new List<ValueTuple<UnitView, DamageInfo>>();
             foreach (UnitView tv in targetViews)
             {
-                pairs.Add(new ValueTuple<UnitView, DamageInfo>(tv, DamageInfo.Attack(0f, false)));
+                pairs.Add(new ValueTuple<UnitView, DamageInfo>(tv, realDamageInfo));
             }
 
-            var method = Traverse.Create(typeof(GameDirector)).Method("GunShootAction", sourceView, pairs, gunName, gunType);
-            if (method.MethodExists())
+            bool isBusy = false;
+            try
             {
-                yield return (System.Collections.IEnumerator)method.GetValue();
+                object statusObj = Traverse.Create(sourceView).Field("_status").GetValue();
+                int statusInt = statusObj != null ? Convert.ToInt32(statusObj) : 0;
+                if (gunType == GunType.Middle || gunType == GunType.Last)
+                {
+                    if (statusInt != ActionBlueprintConstants.ShootStatusComplex)
+                    {
+                        isBusy = true;
+                    }
+                }
+                else
+                {
+                    if (statusInt != ActionBlueprintConstants.ShootStatusIdle)
+                    {
+                        EnsureUnitIdle(sourceView, forceReset: true);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogDebug($"[RemoteCardUse] Check sourceView _status failed: {ex.Message}");
+                isBusy = false;
+            }
+
+            if (!isBusy)
+            {
+                bool shootOk = false;
+                IEnumerator shootEnumerator = null;
+                try
+                {
+                    var method = Traverse.Create(typeof(GameDirector)).Method("GunShootAction", sourceView, pairs, gunName, gunType);
+                    if (method.MethodExists())
+                    {
+                        shootEnumerator = (System.Collections.IEnumerator)method.GetValue();
+                        shootOk = shootEnumerator != null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Logger?.LogWarning($"[RemoteCardUse] GunShootAction call failed: {ex.Message}");
+                    shootOk = false;
+                }
+
+                if (shootOk)
+                {
+                    try
+                    {
+                        Traverse.Create(typeof(GameDirector)).Field("_gunHitArgs").SetValue(new GunHitArgs(true, pairs, gunName));
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.Logger?.LogDebug($"[RemoteCardUse] Override _gunHitArgs failed: {ex.Message}");
+                    }
+                    yield return shootEnumerator;
+                }
+                else
+                {
+                    PerformSafeShoot(sourceView, targetViews, gunName, realDamageInfo);
+                }
             }
             else
             {
-                sourceView.PerformShoot(gunName);
+                PerformSafeShoot(sourceView, targetViews, gunName, realDamageInfo);
             }
-        }
-        else if (!string.IsNullOrEmpty(gunName) && gunName != "Empty" && gunName != "Instant")
-        {
-            sourceView.PerformShoot(gunName);
         }
         else
         {
             foreach (UnitView tv in targetViews)
             {
-                tv?.PlayAnimation("hit");
+                SafePlayAnimation(tv, ActionBlueprintConstants.AnimHit);
+                if (realDamage > 0f && PopupHud.Instance != null && tv != null)
+                {
+                    try
+                    {
+                        PopupHud.Instance.DamagePopupFromScene(realDamageInfo, tv.transform.position, sourceIsPlayer: true);
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.Logger?.LogDebug($"[RemoteCardUse] PlayDamageVisual fallback popup failed: {ex.Message}");
+                    }
+                }
+            }
+        }
+    }
+
+    private static void PerformSafeShoot(UnitView sourceView, List<UnitView> targetViews, string gunName, DamageInfo damageInfo)
+    {
+        try
+        {
+            sourceView.Targets = targetViews;
+            sourceView.Target = targetViews.Count > 0 ? targetViews[0] : null;
+            foreach (UnitView tv in targetViews)
+            {
+                if (tv != null)
+                {
+                    tv.ComingDamage = damageInfo;
+                }
+            }
+            sourceView.PerformShoot(gunName);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogDebug($"[RemoteCardUse] PerformShoot {gunName} failed: {ex.Message}");
+            foreach (UnitView tv in targetViews)
+            {
+                SafePlayAnimation(tv, ActionBlueprintConstants.AnimHit);
+                if (damageInfo.Damage > 0f && PopupHud.Instance != null && tv != null)
+                {
+                    try
+                    {
+                        PopupHud.Instance.DamagePopupFromScene(damageInfo, tv.transform.position, sourceIsPlayer: true);
+                    }
+                    catch (Exception pEx)
+                    {
+                        Plugin.Logger?.LogDebug($"[RemoteCardUse] PerformSafeShoot fallback popup failed: {pEx.Message}");
+                    }
+                }
             }
         }
     }
@@ -1478,9 +1948,16 @@ public static partial class RemoteCardUsePatch
     {
         Unit target = actionEl.TryGetProperty("Target", out JsonElement tEl) ? ResolveUnit(tEl, battle) : null;
         UnitView targetView = ResolveUnitView(target, tEl, battle, defaultSenderPlayerId);
-        if (targetView == null)
+        if (SafeIsNull(targetView))
         {
             yield break;
+        }
+
+        // 若施法者存在，联动触发施法手势
+        UnitView casterView = ResolveUnitView(null, default, battle, defaultSenderPlayerId);
+        if (!SafeIsNull(casterView) && (casterView.Unit == null || casterView.Unit.IsAlive))
+        {
+            SafePlayAnimation(casterView, ActionBlueprintConstants.AnimSpell, ActionBlueprintConstants.AnimCast);
         }
 
         int amount = GetInt(actionEl, "Amount") ?? 0;
@@ -1491,18 +1968,18 @@ public static partial class RemoteCardUsePatch
             LBoL.Presentation.Effect.EffectManager.CreateEffect(large ? "UnitHealLarge" : "UnitHeal", targetView.EffectRoot, true);
             LBoL.Presentation.AudioManager.PlayUi(large ? "HealLarge" : "Heal", false);
         }
-        catch
+        catch (Exception ex)
         {
-
+            Plugin.Logger?.LogDebug($"[RemoteCardUse] PlayHealVisual effect/audio failed: {ex.Message}");
         }
-        yield return new UnityEngine.WaitForSeconds(0.2f);
+        yield return SafeWaitForSeconds(0.35f);
     }
 
     private static System.Collections.IEnumerator PlayStatusEffectVisual(JsonElement actionEl, BattleController battle, string defaultSenderPlayerId = null)
     {
         Unit target = actionEl.TryGetProperty("Target", out JsonElement tEl) ? ResolveUnit(tEl, battle) : null;
         UnitView targetView = ResolveUnitView(target, tEl, battle, defaultSenderPlayerId);
-        if (targetView == null)
+        if (SafeIsNull(targetView))
         {
             yield break;
         }
@@ -1519,12 +1996,20 @@ public static partial class RemoteCardUsePatch
             yield break;
         }
 
+        // 若施法者存在，联动触发施法手势
+        UnitView casterView = ResolveUnitView(null, default, battle, defaultSenderPlayerId);
+        if (!SafeIsNull(casterView) && (casterView.Unit == null || casterView.Unit.IsAlive))
+        {
+            SafePlayAnimation(casterView, ActionBlueprintConstants.AnimSpell, ActionBlueprintConstants.AnimCast);
+        }
+
         int level = GetInt(actionEl, "Level") ?? 0;
         int duration = GetInt(actionEl, "Duration") ?? 0;
         int count = GetInt(actionEl, "Count") ?? 0;
         int num = 0;
         if (effect.HasLevel) num = level;
         else if (effect.HasDuration) num = duration;
+        else if (effect.HasCount) num = count;
 
         try
         {
@@ -1552,12 +2037,244 @@ public static partial class RemoteCardUsePatch
                 LBoL.Presentation.Effect.EffectManager.CreateEffect(effect.Config.VFX, targetView.EffectRoot, 0f, null, false, true);
             }
         }
-        catch
+        catch (Exception ex)
         {
-
+            Plugin.Logger?.LogDebug($"[RemoteCardUse] PlayStatusEffectVisual failed: {ex.Message}");
         }
 
-        yield return new UnityEngine.WaitForSeconds(0.2f);
+        yield return SafeWaitForSeconds(0.35f);
+    }
+
+    internal static void SafePlayAnimation(UnitView view, string primaryAnimation, string fallbackAnimation = null)
+    {
+        if (view is null || string.IsNullOrEmpty(primaryAnimation))
+        {
+            return;
+        }
+
+        try
+        {
+            view.PlayAnimation(primaryAnimation);
+        }
+        catch (Exception exPrimary)
+        {
+            Plugin.Logger?.LogDebug($"[RemoteCardUse] PlayAnimation '{primaryAnimation}' failed: {exPrimary.Message}");
+            if (!string.IsNullOrEmpty(fallbackAnimation) && !string.Equals(primaryAnimation, fallbackAnimation, StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    view.PlayAnimation(fallbackAnimation);
+                }
+                catch (Exception exFallback)
+                {
+                    Plugin.Logger?.LogDebug($"[RemoteCardUse] Fallback animation '{fallbackAnimation}' failed: {exFallback.Message}");
+                }
+            }
+        }
+    }
+
+    private static readonly System.Reflection.MethodInfo _createLocalShieldEffectMethod =
+        AccessTools.Method(typeof(UnitView), "CreateLocalShieldEffect", new[] { typeof(string), typeof(bool) });
+
+    internal static void PlayShieldVfx(UnitView targetView, bool isShield)
+    {
+        if (targetView is null)
+        {
+            return;
+        }
+
+        string effectName = isShield ? ActionBlueprintConstants.VfxCastShield : ActionBlueprintConstants.VfxCastBlock;
+        bool invokedReflectedMethod = false;
+
+        if (_createLocalShieldEffectMethod != null)
+        {
+            try
+            {
+                _createLocalShieldEffectMethod.Invoke(targetView, new object[] { effectName, isShield });
+                invokedReflectedMethod = true;
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogDebug($"[RemoteCardUse] CreateLocalShieldEffect invoke failed: {ex.Message}");
+            }
+        }
+
+        if (!invokedReflectedMethod)
+        {
+            try
+            {
+                LBoL.Presentation.Effect.EffectManager.CreateEffect(effectName, targetView.EffectRoot, true);
+            }
+            catch (Exception exFallback)
+            {
+                Plugin.Logger?.LogDebug($"[RemoteCardUse] CreateEffect fallback failed: {exFallback.Message}");
+            }
+        }
+    }
+
+    internal static System.Collections.IEnumerator PlayBlockShieldVisual(JsonElement actionEl, BattleController battle, string defaultSenderPlayerId = null)
+    {
+        Unit source = actionEl.TryGetProperty(ActionBlueprintConstants.KeySource, out JsonElement sEl) ? ResolveUnit(sEl, battle) : null;
+        UnitView sourceView = ResolveUnitView(source, sEl, battle, defaultSenderPlayerId);
+
+        Unit target = actionEl.TryGetProperty(ActionBlueprintConstants.KeyTarget, out JsonElement tEl) ? ResolveUnit(tEl, battle) : null;
+        UnitView targetView = ResolveUnitView(target, tEl, battle, defaultSenderPlayerId) ?? sourceView;
+
+        // 阶段 1: 起手防御姿态（0.2s 蓄力等待）
+        if (!SafeIsNull(sourceView))
+        {
+            SafePlayAnimation(sourceView, ActionBlueprintConstants.AnimDefend, ActionBlueprintConstants.AnimSpell);
+        }
+
+        yield return SafeWaitForSeconds(0.2f);
+
+        // 阶段 2: 护盾/格挡光效与音效爆发（0.2s 扩散等待）
+        if (!SafeIsNull(targetView))
+        {
+            float shield = GetFloat(actionEl, ActionBlueprintConstants.KeyShield) ?? 0f;
+            float block = GetFloat(actionEl, ActionBlueprintConstants.KeyBlock) ?? 0f;
+            bool isShield = shield > 0f;
+
+            PlayShieldVfx(targetView, isShield);
+
+            try
+            {
+                LBoL.Presentation.AudioManager.PlaySfx(ActionBlueprintConstants.SfxShieldCast, -1f);
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogDebug($"[RemoteCardUse] PlaySfx ShieldCast failed: {ex.Message}");
+            }
+        }
+
+        yield return SafeWaitForSeconds(0.2f);
+
+        // 阶段 3: 后摇缓冲（0.1s）
+        yield return SafeWaitForSeconds(0.1f);
+    }
+
+    internal static System.Collections.IEnumerator PlayGenericCastVisual(BattleController battle, string defaultSenderPlayerId = null)
+    {
+        UnitView casterView = ResolveUnitView(null, default, battle, defaultSenderPlayerId);
+        if (SafeIsNull(casterView))
+        {
+            yield break;
+        }
+
+        SafePlayAnimation(casterView, ActionBlueprintConstants.AnimSpell, ActionBlueprintConstants.AnimCast);
+
+        try
+        {
+            casterView.PlayEffectOneShot(ActionBlueprintConstants.VfxCardCast, 0f);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogDebug($"[RemoteCardUse] PlayEffectOneShot CardCast failed: {ex.Message}");
+        }
+
+        try
+        {
+            LBoL.Presentation.AudioManager.PlaySfx(ActionBlueprintConstants.SfxBuff, -1f);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogDebug($"[RemoteCardUse] PlaySfx Buff failed: {ex.Message}");
+        }
+
+        yield return SafeWaitForSeconds(0.45f);
+    }
+
+    internal static System.Collections.IEnumerator SafeSpellDeclare(UnitView view, string spellName)
+    {
+        if (view == null || string.IsNullOrEmpty(spellName))
+        {
+            yield break;
+        }
+
+        SafePlayAnimation(view, ActionBlueprintConstants.AnimSpell);
+
+        bool ok = false;
+        IEnumerator inner = null;
+        try
+        {
+            inner = view.SpellDeclare(spellName);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger?.LogWarning($"[RemoteCardUse] SpellDeclare call failed: {ex.Message}");
+        }
+
+        if (inner != null)
+        {
+            while (true)
+            {
+                bool hasNext = false;
+                try
+                {
+                    hasNext = inner.MoveNext();
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Logger?.LogWarning($"[RemoteCardUse] SpellDeclare MoveNext failed: {ex.Message}");
+                    break;
+                }
+
+                if (!hasNext)
+                {
+                    ok = true;
+                    break;
+                }
+
+                yield return inner.Current;
+            }
+        }
+
+        if (!ok)
+        {
+            SafePlayAnimation(view, ActionBlueprintConstants.AnimSpell);
+
+            try
+            {
+                LBoL.Presentation.AudioManager.PlaySfx("SpellDeclare", -1f);
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger?.LogDebug($"[RemoteCardUse] Fallback SpellDeclare SFX failed: {ex.Message}");
+            }
+            yield return new UnityEngine.WaitForSeconds(0.5f);
+        }
+    }
+
+    internal static System.Collections.IEnumerator PlayUsSequenceCoroutine(
+        UnitView view,
+        string spellName,
+        JsonElement? actions,
+        BattleController battle,
+        string playerId)
+    {
+        RemoteCardPlaybackTracker.NotifyCardVisualStarted();
+        try
+        {
+            yield return SafeSpellDeclare(view, spellName);
+            if (actions.HasValue && actions.Value.ValueKind == JsonValueKind.Array && actions.Value.GetArrayLength() > 0)
+            {
+                yield return PlayVisualsCoroutine(actions.Value, battle, skipStateVisuals: false, defaultSenderPlayerId: playerId);
+            }
+        }
+        finally
+        {
+            try
+            {
+                if (view != null)
+                {
+                    EnsureUnitIdle(view);
+                }
+            }
+            finally
+            {
+                RemoteCardPlaybackTracker.NotifyCardVisualEnded();
+            }
+        }
     }
 
     #endregion

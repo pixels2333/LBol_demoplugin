@@ -1,7 +1,6 @@
 ---
 name: unity-http-transform
 description: '发送 HTTP 请求到 RuntimeUnityEditor 的 HTTP API，获取或实时修改 Unity 场景中 GameObject 的 Transform 和 RectTransform 位置、大小、偏移、锚点及子级层级树信息。用于外部工具与 Unity 运行时调试集成。'
-user-invocable: true
 ---
 
 # Unity HTTP Transform API Client

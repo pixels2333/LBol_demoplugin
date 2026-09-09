@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using HarmonyLib;
 using LBoL.Core;
 using LBoL.Core.SaveData;
@@ -12,86 +12,19 @@ using NetworkPlugin.Network.Client;
 
 namespace NetworkPlugin.Patch.UI;
 
+/// <summary>
+/// 主菜单原生恢复解耦补丁：
+/// 废除原先对 MainMenuPanel.UI_RestoreGameClicked 的联机弹窗拦截。
+/// 玩家在主菜单点击“继续游戏”时，始终直接执行原版逻辑恢复单人存档，绝不打扰单人玩家。
+/// </summary>
 [HarmonyPatch]
 public static class MainMenuRestoreMultiplayerPatch
 {
-    private static IServiceProvider ServiceProvider => ModService.ServiceProvider;
-
-    private static INetworkClient TryGetNetworkClient()
-        => ServiceProvider?.GetService<INetworkClient>();
-
-    private static void RestoreSinglePlayer(GameRunSaveData save, string logMessage, string errorMessage)
-    {
-        try
-        {
-            Plugin.Logger?.LogInfo(logMessage);
-            GameMaster.RestoreGameRun(save);
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"{errorMessage}: {ex.Message}");
-        }
-    }
-
     [HarmonyPatch(typeof(MainMenuPanel), nameof(MainMenuPanel.UI_RestoreGameClicked))]
     [HarmonyPrefix]
     public static bool MainMenuPanel_UI_RestoreGameClicked_Prefix()
     {
-        try
-        {
-            GameMaster gm = Singleton<GameMaster>.Instance;
-            if (gm == null)
-            {
-                return true;
-            }
-
-            if (gm.CurrentGameRun != null)
-            {
-                return true;
-            }
-
-            GameRunSaveData save = gm.GameRunSaveData;
-            if (save == null)
-            {
-                return true;
-            }
-
-            INetworkClient client = TryGetNetworkClient();
-            if (client?.IsConnected == true)
-            {
-                return true;
-            }
-
-            UiManager.GetDialog<MessageDialog>().Show(
-                new MessageContent
-                {
-                    Text = "检测到可继续的存档。\n\n确认：作为房主继续存档并开启联机\n取消：单人继续",
-                    Icon = MessageIcon.Warning,
-                    Buttons = DialogButtons.ConfirmCancel,
-                    OnConfirm = () =>
-                    {
-                        try
-                        {
-                            Plugin.Logger?.LogInfo("[继续游戏] 用户选择：作为房主继续并开启联机");
-                            MainMenuMultiplayerEntryPatch.TryHostLocalServerAndConnectAndRestore(save);
-                        }
-                        catch (Exception ex)
-                        {
-                            Plugin.Logger?.LogError($"[继续游戏] 作为房主继续失败: {ex.Message}");
-
-                            RestoreSinglePlayer(save, "[继续游戏] 房主继续失败，回退为单人继续", "[继续游戏] 回退为单人继续失败");
-                        }
-                    },
-                    OnCancel = () => RestoreSinglePlayer(save, "[继续游戏] 用户选择：单人继续", "[继续游戏] 单人继续失败"),
-                }
-            );
-
-            return false;
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[继续游戏] 补丁异常: {ex}");
-            return true;
-        }
+        Plugin.Logger?.LogInfo("[MainMenuRestore] 主菜单点击继续游戏，原生进入单人模式。");
+        return true;
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -452,38 +452,41 @@ public static partial class OtherPlayersOverlayPatch
 
                 UnitView view = charView.View;
 
-                if (!string.IsNullOrWhiteSpace(cardOrUsName))
-                {
-                    string bubbleText = isUs ? $"【符卡】{cardOrUsName}" : cardOrUsName;
-                    view.Chat(bubbleText, 2.0f);
-                }
-
                 bool hasBlueprintActions = actions.HasValue && actions.Value.ValueKind == JsonValueKind.Array && actions.Value.GetArrayLength() > 0;
+
+                bool hasSpellAction = false;
                 if (hasBlueprintActions)
                 {
+                    foreach (JsonElement act in actions.Value.EnumerateArray())
+                    {
+                        if (act.ValueKind == JsonValueKind.Object &&
+                            NetworkEventHelper.GetString(act, "Kind") == "PerformAction" &&
+                            NetworkEventHelper.GetString(act, "Type") == "Spell")
+                        {
+                            hasSpellAction = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (isUs && !hasSpellAction)
+                {
+                    string spellName = !string.IsNullOrWhiteSpace(cardOrUsName) ? cardOrUsName : "符卡";
                     BattleController battle = GameStateUtils.GetCurrentGameRun()?.Battle;
-                    Singleton<GameDirector>.Instance?.StartCoroutine(RemoteCardUsePatch.PlayVisualsCoroutine(actions.Value.Clone(), battle, skipStateVisuals: true, defaultSenderPlayerId: playerId));
+                    JsonElement? capturedActions = actions.HasValue ? actions.Value.Clone() : (JsonElement?)null;
+                    Singleton<GameDirector>.Instance?.StartCoroutine(RemoteCardUsePatch.PlayUsSequenceCoroutine(view, spellName, capturedActions, battle, playerId));
+                }
+                else if (hasBlueprintActions)
+                {
+                    BattleController battle = GameStateUtils.GetCurrentGameRun()?.Battle;
+                    Singleton<GameDirector>.Instance?.StartCoroutine(RemoteCardUsePatch.PlayVisualsCoroutine(actions.Value.Clone(), battle, skipStateVisuals: false, defaultSenderPlayerId: playerId));
                 }
                 else
                 {
-
-                    string animName = isUs ? "spell" : "cast";
-                    try
+                    if (!isUs)
                     {
-                        view.PlayAnimation(animName);
-                    }
-                    catch
-                    {
-                        try { view.PlayAnimation("spell"); } catch { }
-                    }
-
-                    try
-                    {
-                        view.PlayEffectOneShot(isUs ? "UsCast" : "CardCast", 0f);
-                    }
-                    catch
-                    {
-
+                        BattleController battle = GameStateUtils.GetCurrentGameRun()?.Battle;
+                        Singleton<GameDirector>.Instance?.StartCoroutine(RemoteCardUsePatch.PlayGenericCastVisual(battle, playerId));
                     }
                 }
             }

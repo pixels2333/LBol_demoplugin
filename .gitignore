@@ -170,3 +170,8 @@ layout-preview.html
 handoffs
 *.html
 *.py
+.agents/
+plan/
+Profiles/
+Logs/ModTheLBoL.log
+.scratch/

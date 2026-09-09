@@ -68,7 +68,7 @@ public static partial class OtherPlayersOverlayPatch
         MarkOverlayUiDirty();
     }
 
-    private static void OnGameEventReceived(string eventType, object payload)
+    internal static void OnGameEventReceived(string eventType, object payload)
     {
         try
         {
@@ -98,9 +98,11 @@ public static partial class OtherPlayersOverlayPatch
                     HandlePlayerStateUpdate(root);
                     break;
                 case NetworkMessageTypes.BattlePlayerUsUsedBroadcast:
+                case NetworkMessageTypes.BattlePlayerUsUsedReport:
                     HandlePlayerUsUsed(root);
                     break;
                 case NetworkMessageTypes.BattlePlayerCardUsedBroadcast:
+                case NetworkMessageTypes.BattlePlayerCardUsedReport:
                     HandlePlayerCardUsed(root);
                     break;
                 case NetworkMessageTypes.BattlePlayerStatusEffectsDeltaBroadcast:
@@ -124,12 +126,14 @@ public static partial class OtherPlayersOverlayPatch
         }
     }
 
+    private static string CurrentSelfPlayerId => _selfPlayerId ?? NetworkIdentityTracker.GetSelfPlayerId();
+
     private static void HandleEnemyAttackPlayerVisual(JsonElement root)
     {
         try
         {
             string playerId = GetString(root, "PlayerId");
-            if (string.IsNullOrWhiteSpace(playerId) || string.Equals(playerId, _selfPlayerId, StringComparison.Ordinal))
+            if (string.IsNullOrWhiteSpace(playerId) || string.Equals(playerId, CurrentSelfPlayerId, StringComparison.Ordinal))
             {
                 return;
             }
@@ -156,7 +160,7 @@ public static partial class OtherPlayersOverlayPatch
         {
             string playerId = GetString(root, "PlayerId");
             string usName = GetString(root, "UsName") ?? GetString(root, "CardName") ?? "符卡";
-            if (!string.IsNullOrWhiteSpace(playerId) && !string.Equals(playerId, _selfPlayerId, StringComparison.Ordinal))
+            if (!string.IsNullOrWhiteSpace(playerId) && !string.Equals(playerId, CurrentSelfPlayerId, StringComparison.Ordinal))
             {
                 JsonElement? actions = root.TryGetProperty("Actions", out JsonElement actionsEl) && actionsEl.ValueKind == JsonValueKind.Array ? actionsEl : null;
                 TriggerRemoteCharacterCardUseEffect(playerId, usName, isUs: true, actions);
@@ -174,7 +178,7 @@ public static partial class OtherPlayersOverlayPatch
         {
             string playerId = GetString(root, "PlayerId");
             string cardName = GetString(root, "CardName") ?? "卡牌";
-            if (!string.IsNullOrWhiteSpace(playerId) && !string.Equals(playerId, _selfPlayerId, StringComparison.Ordinal))
+            if (!string.IsNullOrWhiteSpace(playerId) && !string.Equals(playerId, CurrentSelfPlayerId, StringComparison.Ordinal))
             {
                 JsonElement? actions = root.TryGetProperty("Actions", out JsonElement actionsEl) && actionsEl.ValueKind == JsonValueKind.Array ? actionsEl : null;
                 TriggerRemoteCharacterCardUseEffect(playerId, cardName, isUs: false, actions);

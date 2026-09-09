@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace NetworkPlugin.Network.Messages
@@ -272,6 +272,10 @@ namespace NetworkPlugin.Network.Messages
                 public const string ChatMessage = "ChatMessage";
 
                 public const string PlayerReadyChanged = "PlayerReadyChanged";
+
+        public const string OnLobbyResumeGame = "OnLobbyResumeGame";
+
+        public const string OnLobbyResumeInfo = "OnLobbyResumeInfo";
 
                 public const string HandSyncRequest = "HandSyncRequest";
 

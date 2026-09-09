@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
@@ -473,17 +473,22 @@ public static partial class RemoteCardUsePatch
         if (unit is PlayerUnit pu)
         {
             string pid = OtherPlayersOverlayPatch.GetPlayerIdFromUnit(pu);
-            if (pid == null)
+            if (string.IsNullOrWhiteSpace(pid))
             {
-                pid = NetworkIdentityTracker.GetSelfPlayerId() ?? "__local__";
+                pid = NetworkIdentityTracker.GetSelfPlayerId();
+                if (string.IsNullOrWhiteSpace(pid))
+                {
+                    pid = TryGetClient()?.GetSelf()?.playerId;
+                }
+                pid ??= "__local__";
             }
-            return new { Kind = "Player", PlayerId = pid };
+            return new { Kind = ActionBlueprintConstants.UnitPlayer, PlayerId = pid };
         }
         if (unit is EnemyUnit eu)
         {
-            return new { Kind = "Enemy", EnemyId = eu.Id, RootIndex = eu.RootIndex };
+            return new { Kind = ActionBlueprintConstants.UnitEnemy, EnemyId = eu.Id, RootIndex = eu.RootIndex };
         }
-        return new { Kind = "Unknown", Id = unit.Id };
+        return new { Kind = ActionBlueprintConstants.UnitUnknown, Id = unit.Id };
     }
 
     internal static object[] BuildActionBlueprint(IEnumerable<BattleAction> actions)
@@ -526,7 +531,7 @@ public static partial class RemoteCardUsePatch
                             }
                             list.Add(new
                             {
-                                Kind = "Damage",
+                                Kind = ActionBlueprintConstants.KindDamage,
                                 Caster = SerializeUnit(da.DealingArgs.Source),
                                 Targets = targetsList.ToArray(),
                                 Damage = info.Damage,
@@ -543,7 +548,7 @@ public static partial class RemoteCardUsePatch
                             hasHeal = true;
                             list.Add(new
                             {
-                                Kind = "Heal",
+                                Kind = ActionBlueprintConstants.KindHeal,
                                 Caster = SerializeUnit(ha.Args.Source),
                                 Target = SerializeUnit(ha.Args.Target),
                                 Amount = ha.Args.Amount,
@@ -564,7 +569,7 @@ public static partial class RemoteCardUsePatch
                             hasStatus = true;
                             list.Add(new
                             {
-                                Kind = "ApplyStatusEffect",
+                                Kind = ActionBlueprintConstants.KindApplyStatusEffect,
                                 Target = SerializeUnit(args.Unit),
                                 EffectId = effect.Id,
                                 Level = args.Level,
@@ -576,13 +581,28 @@ public static partial class RemoteCardUsePatch
                             });
                             break;
                         }
+                    case CastBlockShieldAction cba:
+                        {
+                            var args = cba.Args;
+                            list.Add(new
+                            {
+                                Kind = ActionBlueprintConstants.KindBlockShield,
+                                Source = SerializeUnit(args?.Source),
+                                Target = SerializeUnit(args?.Target),
+                                Block = args?.Block ?? 0f,
+                                Shield = args?.Shield ?? 0f,
+                                Cast = cba.Cast,
+                                Type = args?.Type.ToString() ?? "Normal"
+                            });
+                            break;
+                        }
                     case PerformAction pa:
                         {
                             var paArgs = pa.Args;
                             if (paArgs is PerformAction.ViewCardArgs vca)
                             {
                                 list.Add(new {
-                                    Kind = "PerformAction",
+                                    Kind = ActionBlueprintConstants.KindPerformAction,
                                     Type = "ViewCard",
                                     CardId = vca.Card?.Id,
                                     Zone = vca.Zone.ToString()

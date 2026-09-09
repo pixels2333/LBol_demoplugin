@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using HarmonyLib;
@@ -36,8 +36,13 @@ public static class CardActionCapturePatch
             return false;
         }
 
+        NetworkIdentityTracker.EnsureSubscribed(client);
         isHost = NetworkIdentityTracker.GetSelfIsHost();
         selfPlayerId = NetworkIdentityTracker.GetSelfPlayerId();
+        if (string.IsNullOrWhiteSpace(selfPlayerId))
+        {
+            selfPlayerId = client.GetSelf()?.playerId;
+        }
         return !string.IsNullOrWhiteSpace(selfPlayerId);
     }
 
@@ -86,7 +91,17 @@ public static class CardActionCapturePatch
             string cardId = __instance.Id;
             string cardName = __instance.Name;
 
-            __result = WrapActionEnumerable(__result, cardId, cardName, isUs: false, selector);
+            var actionList = new List<BattleAction>();
+            foreach (var act in __result)
+            {
+                if (act != null)
+                {
+                    actionList.Add(act);
+                }
+            }
+
+            SendCapturedActionsBroadcast(cardId, cardName, isUs: false, selector, actionList);
+            __result = actionList;
         }
         catch (Exception ex)
         {
@@ -126,7 +141,17 @@ public static class CardActionCapturePatch
             string usId = __instance?.Id ?? "UnknownUs";
             string usName = __instance?.Name ?? __instance?.DebugName ?? "符卡";
 
-            __result = WrapActionEnumerable(__result, usId, usName, isUs: true, selector);
+            var actionList = new List<BattleAction>();
+            foreach (var act in __result)
+            {
+                if (act != null)
+                {
+                    actionList.Add(act);
+                }
+            }
+
+            SendCapturedActionsBroadcast(usId, usName, isUs: true, selector, actionList);
+            __result = actionList;
         }
         catch (Exception ex)
         {
@@ -136,69 +161,7 @@ public static class CardActionCapturePatch
 
     #endregion
 
-    #region 动作流包装器与广播
-
-    private static IEnumerable<BattleAction> WrapActionEnumerable(
-        IEnumerable<BattleAction> original,
-        string cardOrUsId,
-        string cardOrUsName,
-        bool isUs,
-        UnitSelector selector)
-    {
-        if (original == null)
-        {
-            yield break;
-        }
-
-        List<BattleAction> capturedActions = new List<BattleAction>();
-        IEnumerator<BattleAction> enumerator = null;
-
-        try
-        {
-            enumerator = original.GetEnumerator();
-        }
-        catch (Exception ex)
-        {
-            Plugin.Logger?.LogError($"[CardActionCapture] GetEnumerator failed for {cardOrUsName}: {ex.Message}");
-            yield break;
-        }
-
-        bool hasMore = true;
-        while (hasMore)
-        {
-            BattleAction current = null;
-            try
-            {
-                hasMore = enumerator.MoveNext();
-                if (hasMore)
-                {
-                    current = enumerator.Current;
-                }
-            }
-            catch (Exception ex)
-            {
-                Plugin.Logger?.LogError($"[CardActionCapture] MoveNext failed for {cardOrUsName}: {ex.Message}");
-                hasMore = false;
-            }
-
-            if (hasMore && current != null)
-            {
-                capturedActions.Add(current);
-                yield return current;
-            }
-        }
-
-        try
-        {
-            enumerator?.Dispose();
-        }
-        catch
-        {
-
-        }
-
-        SendCapturedActionsBroadcast(cardOrUsId, cardOrUsName, isUs, selector, capturedActions);
-    }
+    #region 动作蓝图广播
 
     private static void SendCapturedActionsBroadcast(
         string cardOrUsId,
@@ -220,19 +183,9 @@ public static class CardActionCapturePatch
                 actionBlueprint = RemoteCardUsePatch.BuildActionBlueprint(actions);
             }
 
-            string eventType;
-            if (isUs)
-            {
-                eventType = isHost
-                    ? NetworkMessageTypes.BattlePlayerUsUsedBroadcast
-                    : NetworkMessageTypes.BattlePlayerUsUsedReport;
-            }
-            else
-            {
-                eventType = isHost
-                    ? NetworkMessageTypes.BattlePlayerCardUsedBroadcast
-                    : NetworkMessageTypes.BattlePlayerCardUsedReport;
-            }
+            string eventType = isUs
+                ? NetworkMessageTypes.BattlePlayerUsUsedBroadcast
+                : NetworkMessageTypes.BattlePlayerCardUsedBroadcast;
 
             var payload = new
             {
